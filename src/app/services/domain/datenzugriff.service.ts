@@ -1,4 +1,4 @@
-// pur-office/src/app/services/domain/datenzugriff.service.ts
+// pur-system/src/app/services/domain/datenzugriff.service.ts
 
 import { Injectable, inject } from '@angular/core';
 import { IDatenzugriffEintrag } from '../../commons/models/domain/datenzugriff';

@@ -1,4 +1,4 @@
-// pur-office/src/app/components/datenzugriff-auswahl/datenzugriff-auswahl.ts
+// pur-system/src/app/components/datenzugriff-auswahl/datenzugriff-auswahl.ts
 
 import {
   ChangeDetectionStrategy,
@@ -24,6 +24,7 @@ export class DatenzugriffAuswahl {
   readonly unternehmerMehrfach = input(false, { transform: booleanAttribute });
   readonly firmenMehrfach = input(false, { transform: booleanAttribute });
   readonly filialenMehrfach = input(false, { transform: booleanAttribute });
+  readonly filialenSichtbar = input(true, { transform: booleanAttribute });
   readonly firmenLaden = input(false);
   readonly filialenLaden = input(false);
   readonly unternehmerIds = model<readonly string[]>([]);

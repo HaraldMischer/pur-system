@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/utils/errors/firebase-error-message.ts
+// pur-system/src/app/commons/utils/errors/firebase-error-message.ts
 
 import { IFirebaseErrorLike } from '../../models/app/firebase-error.types';
 

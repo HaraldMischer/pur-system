@@ -1,4 +1,4 @@
-<!-- pur-office/docs/pwa-konfigurationen.md -->
+<!-- pur-system/docs/pwa-konfigurationen.md -->
 
 # PWA-Konfigurationen
 

@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/tokens/firebase.tokens.ts
+// pur-system/src/app/commons/tokens/firebase.tokens.ts
 
 import { InjectionToken } from '@angular/core';
 import {
@@ -14,6 +14,7 @@ import {
   addDoc,
   collection,
   collectionData,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -78,6 +79,11 @@ export const FIRESTORE_DOC = new InjectionToken<typeof doc>('FIRESTORE_DOC', {
 export const FIRESTORE_GET_DOC = new InjectionToken<typeof getDoc>('FIRESTORE_GET_DOC', {
   providedIn: 'root',
   factory: () => getDoc,
+});
+
+export const FIRESTORE_DELETE_DOC = new InjectionToken<typeof deleteDoc>('FIRESTORE_DELETE_DOC', {
+  providedIn: 'root',
+  factory: () => deleteDoc,
 });
 
 export const FIRESTORE_ON_SNAPSHOT = new InjectionToken<typeof onSnapshot>(

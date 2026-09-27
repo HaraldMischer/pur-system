@@ -1,4 +1,4 @@
-// pur-office/src/environments/environment.mitarbeiter-prod.ts
+// pur-system/src/environments/environment.mitarbeiter-prod.ts
 
 import { firebaseConfig } from './firebase-config';
 

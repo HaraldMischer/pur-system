@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/verwaltung.store.ts
+// pur-system/src/app/stores/domain/verwaltung.store.ts
 
 import { DestroyRef, computed, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';

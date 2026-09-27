@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/benutzer-anlage.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/benutzer-anlage.ts
 
 import {
   ChangeDetectionStrategy,
@@ -49,6 +49,7 @@ type TBenutzerAnlageForm = {
   anzeigename: FormControl<string>;
   userRole: FormControl<TUserRole>;
   erlaubteBereiche: FormGroup<TErlaubteBereicheForm>;
+  firmaMitarbeiterId: FormControl<string | null>;
   passwort: FormControl<string>;
 };
 
@@ -92,7 +93,6 @@ export class BenutzerAnlage implements OnInit {
     { value: 'mitarbeiter', label: 'Mitarbeiter' },
     { value: 'master', label: 'Master' },
   ];
-  readonly bereiche = getWaehlbareAppBereiche();
   readonly benutzerForm = new FormGroup<TBenutzerAnlageForm>({
     namensbestandteil: new FormControl('', {
       nonNullable: true,
@@ -111,19 +111,26 @@ export class BenutzerAnlage implements OnInit {
       mitarbeiter: new FormControl(false, { nonNullable: true }),
       verwaltung: new FormControl(false, { nonNullable: true }),
     }),
+    firmaMitarbeiterId: new FormControl<string | null>(null),
     passwort: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.minLength(8)],
     }),
   });
 
+  // ===== Öffentliche Ableitungen ==============
+  /**
+   * Liefert die für die gewählte Rolle optional auswählbaren App-Bereiche.
+   *
+   * @returns Die rollenabhängigen Bereichsoptionen.
+   */
+  get bereiche() {
+    return getWaehlbareAppBereiche(this.benutzerForm.controls.userRole.value);
+  }
+
   constructor() {
     effect(() => {
-      if (this.verwaltungStore.inProgress()) {
-        this.benutzerForm.disable({ emitEvent: false });
-      } else {
-        this.benutzerForm.enable({ emitEvent: false });
-      }
+      this.updateFormStatus();
     });
     this.benutzerForm.controls.anzeigename.valueChanges
       .pipe(distinctUntilChanged(), takeUntilDestroyed())
@@ -136,6 +143,16 @@ export class BenutzerAnlage implements OnInit {
       .pipe(distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((userRole) => {
         this.verwaltungStore.selectUnternehmer([]);
+        this.verwaltungStore.selectMitarbeiter(null);
+        const firmaMitarbeiterId = this.benutzerForm.controls.firmaMitarbeiterId;
+        firmaMitarbeiterId.setValue(null, { emitEvent: false });
+        if (userRole === 'mitarbeiter') {
+          firmaMitarbeiterId.setValidators(Validators.required);
+        } else {
+          firmaMitarbeiterId.clearValidators();
+        }
+        firmaMitarbeiterId.updateValueAndValidity({ emitEvent: false });
+        this.updateFormStatus();
       });
   }
 
@@ -172,7 +189,16 @@ export class BenutzerAnlage implements OnInit {
    */
   datenAuswahlGueltig(): boolean {
     const rolle = this.benutzerForm.controls.userRole.value;
-    if (rolle === 'master' || rolle === 'mitarbeiter') return true;
+    if (rolle === 'master') return true;
+    if (rolle === 'mitarbeiter') {
+      return (
+        this.verwaltungStore.mitarbeiterFirma() !== null &&
+        this.verwaltungStore.mitarbeiterAuswahlIsLoaded() &&
+        !this.verwaltungStore.mitarbeiterAuswahlError() &&
+        this.verwaltungStore.selectedMitarbeiter()?.id ===
+          this.benutzerForm.controls.firmaMitarbeiterId.value
+      );
+    }
     const zugriffe = this.verwaltungStore.zugriffe();
     const firmen = Object.values(zugriffe).flatMap((eintrag) => Object.values(eintrag));
     return (
@@ -191,6 +217,41 @@ export class BenutzerAnlage implements OnInit {
       this.benutzerForm.controls.anzeigename.value,
       this.benutzerForm.controls.userRole.value,
     );
+  }
+
+  /**
+   * Übernimmt die Unternehmerauswahl und verwirft eine davon abhängige Mitarbeiterauswahl.
+   *
+   * @param ids - Ausgewählte Unternehmer-IDs.
+   */
+  handleUnternehmerChange(ids: readonly string[]): void {
+    this.benutzerForm.controls.firmaMitarbeiterId.setValue(null);
+    this.verwaltungStore.selectUnternehmer(ids);
+    this.updateFormStatus();
+  }
+
+  /**
+   * Übernimmt die Firmenauswahl und lädt für Mitarbeiterzugänge die reduzierte Mitarbeiterauswahl.
+   *
+   * @param ids - Ausgewählte Firmenschlüssel.
+   */
+  handleFirmenChange(ids: readonly string[]): void {
+    const istMitarbeiter = this.benutzerForm.controls.userRole.value === 'mitarbeiter';
+    this.benutzerForm.controls.firmaMitarbeiterId.setValue(null);
+    this.verwaltungStore.selectFirmen(ids, !istMitarbeiter);
+    if (istMitarbeiter) {
+      void this.verwaltungStore.loadMitarbeiterAuswahl();
+    }
+    this.updateFormStatus();
+  }
+
+  /**
+   * Übernimmt die gewählte Firma-Mitarbeiter-ID in den Verwaltungs-Store.
+   *
+   * @param firmaMitarbeiterId - Gewählte fachliche Mitarbeiter-ID.
+   */
+  handleMitarbeiterChange(firmaMitarbeiterId: string | null): void {
+    this.verwaltungStore.selectMitarbeiter(firmaMitarbeiterId);
   }
 
   /**
@@ -221,10 +282,10 @@ export class BenutzerAnlage implements OnInit {
       anzeigename: formValue.anzeigename,
       userRole: formValue.userRole,
       erlaubteBereiche,
-      zugriffe:
-        formValue.userRole === 'master' || formValue.userRole === 'mitarbeiter'
-          ? {}
-          : this.verwaltungStore.zugriffe(),
+      zugriffe: formValue.userRole === 'master' ? {} : this.verwaltungStore.zugriffe(),
+      ...(formValue.userRole === 'mitarbeiter' && formValue.firmaMitarbeiterId
+        ? { firmaMitarbeiterId: formValue.firmaMitarbeiterId }
+        : {}),
       passwort: formValue.passwort,
     };
   }
@@ -239,6 +300,27 @@ export class BenutzerAnlage implements OnInit {
   }
 
   // ===== Interne Helfer =======================
+  private updateFormStatus(): void {
+    if (this.verwaltungStore.inProgress()) {
+      this.benutzerForm.disable({ emitEvent: false });
+      return;
+    }
+
+    this.benutzerForm.enable({ emitEvent: false });
+    const mitarbeiterAuswahlVerfuegbar =
+      this.verwaltungStore.mitarbeiterFirma() !== null &&
+      this.verwaltungStore.mitarbeiterAuswahlIsLoaded() &&
+      !this.verwaltungStore.mitarbeiterAuswahlDownload() &&
+      !this.verwaltungStore.mitarbeiterAuswahlError() &&
+      this.verwaltungStore.mitarbeiterAuswahl().length > 0;
+    if (
+      this.benutzerForm.controls.userRole.value === 'mitarbeiter' &&
+      !mitarbeiterAuswahlVerfuegbar
+    ) {
+      this.benutzerForm.controls.firmaMitarbeiterId.disable({ emitEvent: false });
+    }
+  }
+
   private resetForm(): void {
     this.passwortSichtbar.set(false);
     this.verwaltungStore.selectUnternehmer([]);
@@ -251,6 +333,7 @@ export class BenutzerAnlage implements OnInit {
         mitarbeiter: false,
         verwaltung: false,
       },
+      firmaMitarbeiterId: null,
       passwort: '',
     });
   }

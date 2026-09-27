@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/schichtplan-page/schichtplan-page.ts
+// pur-system/src/app/pages/schichtplan-page/schichtplan-page.ts
 
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 

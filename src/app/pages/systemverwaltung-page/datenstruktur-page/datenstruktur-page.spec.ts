@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/datenstruktur-page/datenstruktur-page.spec.ts
+// pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/datenstruktur-page.spec.ts
 
 import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
 import { signal, WritableSignal } from '@angular/core';

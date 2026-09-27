@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/models/domain/person.ts
+// pur-system/src/app/commons/models/domain/person.ts
 
 import { IAdresse } from './adresse';
 import { IKontakt } from './kontakt';

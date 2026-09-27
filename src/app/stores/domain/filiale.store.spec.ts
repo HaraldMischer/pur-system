@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/filiale.store.spec.ts
+// pur-system/src/app/stores/domain/filiale.store.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 
@@ -40,6 +40,7 @@ describe('FilialeStore', () => {
   let filialeServiceMock: {
     loadFilialen: ReturnType<typeof vi.fn>;
     createFiliale: ReturnType<typeof vi.fn>;
+    deleteFiliale: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -50,6 +51,7 @@ describe('FilialeStore', () => {
         nummer: 5,
         anzeigename: anlage.anzeigename,
       }),
+      deleteFiliale: vi.fn().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({
@@ -113,6 +115,16 @@ describe('FilialeStore', () => {
       },
       filialeZulu,
     ]);
+  });
+
+  it('should delete a branch from the loaded context', async () => {
+    const store = TestBed.inject(FilialeStore);
+    await store.loadFilialen('unternehmer-1', 'firma-1');
+
+    await store.deleteFiliale('unternehmer-1', 'firma-1', 'a');
+
+    expect(filialeServiceMock.deleteFiliale).toHaveBeenCalledWith('unternehmer-1', 'firma-1', 'a');
+    expect(store.filialen()).toEqual([filialeZulu]);
   });
 
   it('should expose errors and reset the branch context', async () => {

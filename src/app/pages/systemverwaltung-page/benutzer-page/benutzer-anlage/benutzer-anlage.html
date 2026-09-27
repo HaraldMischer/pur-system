@@ -1,4 +1,4 @@
-<!-- pur-office/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/benutzer-anlage.html -->
+<!-- pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/benutzer-anlage.html -->
 
 <section class="pur-page-section">
   <header class="pur-page-section__header">
@@ -83,14 +83,58 @@
       </div>
     </div>
 
-    @if (
-      benutzerForm.controls.userRole.value !== 'master' &&
-      benutzerForm.controls.userRole.value !== 'mitarbeiter'
-    ) {
+    @if (benutzerForm.controls.userRole.value !== 'master') {
       <!-- Datenzugriff -->
       <div class="pur-form__group">
         <h2 class="pur-form__group-titel">Datenzugriff</h2>
-        @if (benutzerForm.controls.userRole.value === 'filiale') {
+        @if (benutzerForm.controls.userRole.value === 'mitarbeiter') {
+          <app-datenzugriff-auswahl
+            [unternehmer]="verwaltungStore.unternehmer()"
+            [firmenLaden]="verwaltungStore.firmenDownload()"
+            [unternehmerIds]="verwaltungStore.unternehmerIds()"
+            (unternehmerIdsChange)="handleUnternehmerChange($event)"
+            [firmaIds]="verwaltungStore.firmaIds()"
+            (firmaIdsChange)="handleFirmenChange($event)"
+            [unternehmerMehrfach]="false"
+            [firmenMehrfach]="false"
+            [filialenSichtbar]="false"
+          >
+            <!-- Firma-Mitarbeiter -->
+            <mat-form-field
+              datenzugriffZusatzfeld
+              appearance="outline"
+              class="pur-form__field"
+              subscriptSizing="dynamic"
+            >
+              <mat-label>Mitarbeiter</mat-label>
+              <mat-select
+                formControlName="firmaMitarbeiterId"
+                (selectionChange)="handleMitarbeiterChange($event.value)"
+              >
+                @for (mitarbeiter of verwaltungStore.mitarbeiterAuswahl(); track mitarbeiter.id) {
+                  <mat-option [value]="mitarbeiter.id">{{ mitarbeiter.anzeigename }}</mat-option>
+                }
+              </mat-select>
+              @if (benutzerForm.controls.firmaMitarbeiterId.hasError('required')) {
+                <mat-error>Ein Mitarbeiter ist erforderlich.</mat-error>
+              }
+            </mat-form-field>
+          </app-datenzugriff-auswahl>
+
+          @if (verwaltungStore.mitarbeiterAuswahlDownload()) {
+            <p role="status">Mitarbeiter werden geladen.</p>
+          } @else if (verwaltungStore.mitarbeiterAuswahlError(); as error) {
+            <p class="pur-form__error" role="alert">Mitarbeiter: {{ error }}</p>
+            <button matButton type="button" (click)="verwaltungStore.loadMitarbeiterAuswahl()">
+              Erneut laden
+            </button>
+          } @else if (
+            verwaltungStore.mitarbeiterAuswahlIsLoaded() &&
+            verwaltungStore.mitarbeiterAuswahl().length === 0
+          ) {
+            <p class="pur-form__error" role="alert">Die Firma hat noch keine Mitarbeiter.</p>
+          }
+        } @else if (benutzerForm.controls.userRole.value === 'filiale') {
           <app-datenzugriff-auswahl
             [unternehmer]="verwaltungStore.unternehmer()"
             [firmenLaden]="verwaltungStore.firmenDownload()"
@@ -121,7 +165,11 @@
             [filialenMehrfach]="true"
           />
         }
-        @if (verwaltungStore.unternehmerIds().length > 0 && !datenAuswahlGueltig()) {
+        @if (
+          benutzerForm.controls.userRole.value !== 'mitarbeiter' &&
+          verwaltungStore.unternehmerIds().length > 0 &&
+          !datenAuswahlGueltig()
+        ) {
           <p>
             Wähle für jeden Unternehmer mindestens eine Firma und für jede Firma mindestens eine
             Filiale.

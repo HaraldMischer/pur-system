@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/netzwerk-status.service.ts
+// pur-system/src/app/services/core/netzwerk-status.service.ts
 
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { DestroyRef, Injectable, PLATFORM_ID, inject, signal } from '@angular/core';

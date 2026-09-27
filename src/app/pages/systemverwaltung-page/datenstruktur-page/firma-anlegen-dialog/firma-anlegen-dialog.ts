@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/datenstruktur-page/firma-anlegen-dialog/firma-anlegen-dialog.ts
+// pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/firma-anlegen-dialog/firma-anlegen-dialog.ts
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {

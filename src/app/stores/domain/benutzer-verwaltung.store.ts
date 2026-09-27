@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/benutzer-verwaltung.store.ts
+// pur-system/src/app/stores/domain/benutzer-verwaltung.store.ts
 
 import { DestroyRef, computed, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
@@ -13,6 +13,7 @@ import {
   IDatenzugriffEintrag,
   IUnternehmerAuswahl,
 } from '../../commons/models/domain/datenzugriff';
+import { IMitarbeiterAuswahl } from '../../commons/models/domain/mitarbeiter';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { BenutzerService } from '../../services/domain/benutzer.service';
@@ -47,6 +48,12 @@ export type TBenutzerVerwaltungSnapshot = {
   readonly unternehmerIds: readonly string[];
   readonly firmaIds: readonly string[];
   readonly filialen: Readonly<Partial<Record<string, readonly string[]>>>;
+  readonly mitarbeiterAuswahl: readonly IMitarbeiterAuswahl[];
+  readonly mitarbeiterAuswahlKontext: string | null;
+  readonly mitarbeiterAuswahlDownload: boolean;
+  readonly mitarbeiterAuswahlIsLoaded: boolean;
+  readonly mitarbeiterAuswahlError: string | null;
+  readonly selectedMitarbeiterId: string | null;
   readonly inProgress: boolean;
   readonly error: string | null;
   readonly createdBenutzer: IBenutzerAnlageErgebnis | null;
@@ -62,6 +69,12 @@ const initialState: TBenutzerVerwaltungState = {
   unternehmerIds: [],
   firmaIds: [],
   filialen: {},
+  mitarbeiterAuswahl: [],
+  mitarbeiterAuswahlKontext: null,
+  mitarbeiterAuswahlDownload: false,
+  mitarbeiterAuswahlIsLoaded: false,
+  mitarbeiterAuswahlError: null,
+  selectedMitarbeiterId: null,
   inProgress: false,
   error: null,
   createdBenutzer: null,
@@ -137,6 +150,17 @@ export const BenutzerVerwaltungStore = signalStore(
         })
       );
     });
+    const mitarbeiterFirma = computed(() => {
+      const firmen = ausgewaehlteFirmen();
+      return store.unternehmerIds().length === 1 && firmen.length === 1 ? firmen[0] : null;
+    });
+    const selectedMitarbeiter = computed(() => {
+      return (
+        store
+          .mitarbeiterAuswahl()
+          .find((mitarbeiter) => mitarbeiter.id === store.selectedMitarbeiterId()) ?? null
+      );
+    });
     const benutzerprofile = computed(() => {
       return stammdatenStore.benutzerprofile();
     });
@@ -161,6 +185,8 @@ export const BenutzerVerwaltungStore = signalStore(
       datenStatus,
       zugriffe,
       datenAuswahlGueltig,
+      mitarbeiterFirma,
+      selectedMitarbeiter,
       benutzerprofile,
       benutzerprofileDownload,
       benutzerprofileIsLoaded,
@@ -181,6 +207,7 @@ export const BenutzerVerwaltungStore = signalStore(
       storeSnapshotService = inject(StoreSnapshotService),
     ) => {
       let generation = 0;
+      let mitarbeiterGeneration = 0;
       const laufend = new Map<string, Promise<void>>();
 
       // ===== Methoden: Laden ======================
@@ -275,6 +302,60 @@ export const BenutzerVerwaltungStore = signalStore(
         );
       }
 
+      /**
+       * Lädt die reduzierte Mitarbeiterauswahl für die eindeutig ausgewählte Firma.
+       */
+      async function loadMitarbeiterAuswahl(): Promise<void> {
+        const firma = store.mitarbeiterFirma();
+        if (!firma) {
+          resetMitarbeiterAuswahl();
+          return;
+        }
+
+        const kontext = firma.schluessel;
+        if (
+          store.mitarbeiterAuswahlKontext() === kontext &&
+          (store.mitarbeiterAuswahlIsLoaded() || store.mitarbeiterAuswahlDownload())
+        ) {
+          return;
+        }
+
+        const aktuell = ++mitarbeiterGeneration;
+        patchState(store, {
+          mitarbeiterAuswahl: [],
+          mitarbeiterAuswahlKontext: kontext,
+          mitarbeiterAuswahlDownload: true,
+          mitarbeiterAuswahlIsLoaded: false,
+          mitarbeiterAuswahlError: null,
+          selectedMitarbeiterId: null,
+        });
+
+        try {
+          const mitarbeiterAuswahl = await service.loadMitarbeiterAuswahl({
+            unternehmerId: firma.unternehmerId,
+            firmaId: firma.id,
+          });
+          if (aktuell === mitarbeiterGeneration && store.mitarbeiterAuswahlKontext() === kontext) {
+            patchState(store, {
+              mitarbeiterAuswahl,
+              mitarbeiterAuswahlDownload: false,
+              mitarbeiterAuswahlIsLoaded: true,
+              mitarbeiterAuswahlError: null,
+            });
+          }
+        } catch (error: unknown) {
+          if (aktuell === mitarbeiterGeneration && store.mitarbeiterAuswahlKontext() === kontext) {
+            patchState(store, {
+              mitarbeiterAuswahl: [],
+              mitarbeiterAuswahlDownload: false,
+              mitarbeiterAuswahlIsLoaded: false,
+              mitarbeiterAuswahlError: getFirebaseErrorMessage(error),
+              selectedMitarbeiterId: null,
+            });
+          }
+        }
+      }
+
       // ===== Methoden: Schreiben ==================
 
       /**
@@ -303,6 +384,7 @@ export const BenutzerVerwaltungStore = signalStore(
             userRole: anlage.userRole,
             erlaubteBereiche: anlage.erlaubteBereiche,
             zugriffe: anlage.zugriffe,
+            ...(anlage.firmaMitarbeiterId ? { firmaMitarbeiterId: anlage.firmaMitarbeiterId } : {}),
             aktiv: true,
           });
           patchState(store, { createdBenutzer });
@@ -394,15 +476,22 @@ export const BenutzerVerwaltungStore = signalStore(
        * Übernimmt gültige Firmenauswahlen und lädt die davon abhängigen Filialen.
        *
        * @param ids - Die Schlüssel der ausgewählten Firmen.
+       * @param filialenLaden - Legt fest, ob die Filiallisten der gewählten Firmen geladen werden.
        */
-      function selectFirmen(ids: readonly string[]): void {
+      function selectFirmen(ids: readonly string[], filialenLaden = true): void {
         const verfuegbar = store
           .unternehmer()
           .filter((u) => store.unternehmerIds().includes(u.id))
           .flatMap((u) => u.firmen.map((f) => firmaKey(u.id, f.id)));
-        patchState(store, { firmaIds: [...new Set(ids)].filter((id) => verfuegbar.includes(id)) });
+        const firmaIds = [...new Set(ids)].filter((id) => verfuegbar.includes(id));
+        if (JSON.stringify(firmaIds) !== JSON.stringify(store.firmaIds())) {
+          resetMitarbeiterAuswahl();
+        }
+        patchState(store, { firmaIds });
         selectFilialen(store.filialen());
-        void loadAuswahl();
+        if (filialenLaden) {
+          void loadAuswahl();
+        }
       }
 
       /**
@@ -411,12 +500,31 @@ export const BenutzerVerwaltungStore = signalStore(
        * @param ids - Die IDs der ausgewählten Unternehmer.
        */
       function selectUnternehmer(ids: readonly string[]): void {
+        const unternehmerIds = [...new Set(ids)].filter((id) =>
+          store.unternehmer().some((u) => u.id === id),
+        );
+        if (JSON.stringify(unternehmerIds) !== JSON.stringify(store.unternehmerIds())) {
+          resetMitarbeiterAuswahl();
+        }
         patchState(store, {
-          unternehmerIds: [...new Set(ids)].filter((id) =>
-            store.unternehmer().some((u) => u.id === id),
-          ),
+          unternehmerIds,
         });
         selectFirmen(store.firmaIds());
+      }
+
+      /**
+       * Wählt einen Eintrag aus der aktuell geladenen Mitarbeiterauswahl aus.
+       *
+       * @param mitarbeiterId - Mitarbeiter-ID oder `null`, um die Auswahl aufzuheben.
+       */
+      function selectMitarbeiter(mitarbeiterId: string | null): void {
+        patchState(store, {
+          selectedMitarbeiterId: store
+            .mitarbeiterAuswahl()
+            .some((mitarbeiter) => mitarbeiter.id === mitarbeiterId)
+            ? mitarbeiterId
+            : null,
+        });
       }
 
       /**
@@ -440,7 +548,23 @@ export const BenutzerVerwaltungStore = signalStore(
       function resetDatenzugriff(): void {
         generation++;
         laufend.clear();
+        resetMitarbeiterAuswahl();
         patchState(store, { listen: {}, unternehmerIds: [], firmaIds: [], filialen: {} });
+      }
+
+      /**
+       * Verwirft die geladene und ausgewählte Mitarbeiterauswahl.
+       */
+      function resetMitarbeiterAuswahl(): void {
+        mitarbeiterGeneration++;
+        patchState(store, {
+          mitarbeiterAuswahl: [],
+          mitarbeiterAuswahlKontext: null,
+          mitarbeiterAuswahlDownload: false,
+          mitarbeiterAuswahlIsLoaded: false,
+          mitarbeiterAuswahlError: null,
+          selectedMitarbeiterId: null,
+        });
       }
 
       /**
@@ -474,6 +598,12 @@ export const BenutzerVerwaltungStore = signalStore(
           unternehmerIds: store.unternehmerIds(),
           firmaIds: store.firmaIds(),
           filialen: store.filialen(),
+          mitarbeiterAuswahl: store.mitarbeiterAuswahl(),
+          mitarbeiterAuswahlKontext: store.mitarbeiterAuswahlKontext(),
+          mitarbeiterAuswahlDownload: store.mitarbeiterAuswahlDownload(),
+          mitarbeiterAuswahlIsLoaded: store.mitarbeiterAuswahlIsLoaded(),
+          mitarbeiterAuswahlError: store.mitarbeiterAuswahlError(),
+          selectedMitarbeiterId: store.selectedMitarbeiterId(),
           inProgress: store.inProgress(),
           error: store.error(),
           createdBenutzer: store.createdBenutzer(),
@@ -491,13 +621,16 @@ export const BenutzerVerwaltungStore = signalStore(
 
       return {
         loadAuswahl,
+        loadMitarbeiterAuswahl,
         createBenutzer,
         updateBenutzerProfil,
         selectFilialen,
         selectFirmen,
         selectUnternehmer,
+        selectMitarbeiter,
         selectBenutzer,
         resetDatenzugriff,
+        resetMitarbeiterAuswahl,
         clearFeedback,
         reset,
         snapshot,

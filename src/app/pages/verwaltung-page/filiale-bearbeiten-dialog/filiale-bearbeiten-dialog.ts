@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/verwaltung-page/filiale-bearbeiten-dialog/filiale-bearbeiten-dialog.ts
+// pur-system/src/app/pages/verwaltung-page/filiale-bearbeiten-dialog/filiale-bearbeiten-dialog.ts
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {

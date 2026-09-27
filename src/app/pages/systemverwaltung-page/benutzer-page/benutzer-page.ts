@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.ts
 
 import { ChangeDetectionStrategy, Component, OnDestroy, inject } from '@angular/core';
 import { MatDivider } from '@angular/material/list';

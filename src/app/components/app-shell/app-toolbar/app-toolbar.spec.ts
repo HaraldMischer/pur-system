@@ -1,4 +1,4 @@
-// pur-office/src/app/components/app-shell/app-toolbar/app-toolbar.spec.ts
+// pur-system/src/app/components/app-shell/app-toolbar/app-toolbar.spec.ts
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';

@@ -1,4 +1,4 @@
-// pur-office/functions/src/technische-anmeldeadresse.spec.ts
+// pur-system/functions/src/technische-anmeldeadresse.spec.ts
 
 import { describe, expect, it } from 'vitest';
 

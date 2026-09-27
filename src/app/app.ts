@@ -1,4 +1,4 @@
-// pur-office/src/app/app.ts
+// pur-system/src/app/app.ts
 
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {

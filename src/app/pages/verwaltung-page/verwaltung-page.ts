@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/verwaltung-page/verwaltung-page.ts
+// pur-system/src/app/pages/verwaltung-page/verwaltung-page.ts
 
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';

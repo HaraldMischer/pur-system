@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/utils/auth/technische-anmeldeadresse.ts
+// pur-system/src/app/commons/utils/auth/technische-anmeldeadresse.ts
 
 import { TUserRole } from '../../models/domain/benutzer';
 

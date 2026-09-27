@@ -1,4 +1,4 @@
-<!-- pur-office/AGENTS.md -->
+<!-- pur-system/AGENTS.md -->
 
 # Projekt-Vorgaben
 

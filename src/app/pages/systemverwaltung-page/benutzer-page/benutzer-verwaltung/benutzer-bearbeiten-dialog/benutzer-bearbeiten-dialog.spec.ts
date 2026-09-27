@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.spec.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.spec.ts
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -187,7 +187,7 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(updateBenutzerProfilMock).toHaveBeenCalledWith({
       anzeigename: 'Mitarbeiter Neu',
       aktiv: true,
-      erlaubteBereiche: ['dashboard', 'schichtplan', 'mitarbeiter'],
+      erlaubteBereiche: ['dashboard', 'schichtplan'],
       zugriffe: {},
     });
   });
@@ -204,8 +204,16 @@ describe('BenutzerBearbeitenDialog', () => {
         },
       },
     });
-    const component = TestBed.createComponent(BenutzerBearbeitenDialog).componentInstance;
+    const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
     component.benutzerForm.controls.erlaubteBereiche.controls.verwaltung.setValue(true);
+
+    expect(
+      Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('mat-checkbox'),
+      ).map((checkbox) => checkbox.textContent?.trim()),
+    ).toEqual(['Benutzerprofil aktiv', 'Schichtplan', 'Mitarbeiter', 'Verwaltung']);
 
     await component.onSubmit();
 

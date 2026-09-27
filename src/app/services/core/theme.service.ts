@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/theme.service.ts
+// pur-system/src/app/services/core/theme.service.ts
 
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import {

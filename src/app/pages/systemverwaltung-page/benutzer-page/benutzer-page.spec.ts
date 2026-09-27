@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.spec.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.spec.ts
 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';
@@ -89,6 +89,9 @@ describe('BenutzerPage', () => {
         {
           provide: BenutzerVerwaltungService,
           useValue: {
+            loadMitarbeiterAuswahl: vi
+              .fn()
+              .mockResolvedValue([{ id: 'm-1', anzeigename: 'Muster, Mia' }]),
             createBenutzer: vi.fn().mockResolvedValue({
               uid: 'neu-123',
               anmeldename: 'test-master',
@@ -120,9 +123,9 @@ describe('BenutzerPage', () => {
     ).toEqual(['Benutzer anlegen', 'Benutzer verwalten']);
     expect(compiled.querySelectorAll('mat-divider')).toHaveLength(1);
     expect(compiled.querySelector('mat-select')).toBeTruthy();
-    expect(compiled.querySelectorAll('mat-checkbox')).toHaveLength(3);
+    expect(compiled.querySelectorAll('mat-checkbox')).toHaveLength(2);
     const bereichCheckboxen = compiled.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
-    expect(bereichCheckboxen).toHaveLength(3);
+    expect(bereichCheckboxen).toHaveLength(2);
   });
 
   it('should create normalized input data from a valid form', () => {
@@ -183,10 +186,17 @@ describe('BenutzerPage', () => {
     expect(component.benutzerForm.controls.namensbestandteil.hasError('required')).toBe(true);
   });
 
-  it('should create an employee account with the selected areas and without data scopes', async () => {
+  it('should create an employee account with its company employee reference', async () => {
+    const daten = TestBed.inject(DatenzugriffService);
+    vi.mocked(daten.loadUnternehmer).mockResolvedValue([{ id: 'u', anzeigename: 'Unternehmer' }]);
+    vi.mocked(daten.loadFirmen).mockResolvedValue([{ id: 'f', anzeigename: 'Firma' }]);
     const fixture = TestBed.createComponent(BenutzerAnlage);
-    fixture.detectChanges();
-    await fixture.whenStable();
+    async function render() {
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+    await render();
     const component = fixture.componentInstance;
 
     component.benutzerForm.patchValue({
@@ -198,21 +208,69 @@ describe('BenutzerPage', () => {
         schichtplan: true,
       },
     });
-    fixture.detectChanges();
+    await render();
+    expect(component.benutzerForm.controls.firmaMitarbeiterId.disabled).toBe(true);
+
+    const datenAuswahl = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
+      .componentInstance as DatenzugriffAuswahl;
+    datenAuswahl.selectUnternehmer('u');
+    await render();
+    datenAuswahl.selectFirmen([datenAuswahl.getFirmaSchluessel('u', 'f')]);
+    await render();
+    expect(component.benutzerForm.controls.firmaMitarbeiterId.enabled).toBe(true);
+    component.benutzerForm.controls.firmaMitarbeiterId.setValue('m-1');
+    component.handleMitarbeiterChange('m-1');
 
     expect(component.rollen).toContainEqual({ value: 'mitarbeiter', label: 'Mitarbeiter' });
     expect(component.benutzerForm.controls.erlaubteBereiche.controls.schichtplan.enabled).toBe(
       true,
     );
-    expect(fixture.debugElement.query(By.directive(DatenzugriffAuswahl))).toBeNull();
+    expect(datenAuswahl.filialenSichtbar()).toBe(false);
+    expect(datenAuswahl.filialen()).toEqual({});
+    expect(
+      Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+          'app-datenzugriff-auswahl mat-label',
+        ),
+      ).map((label) => label.textContent?.trim()),
+    ).toEqual(['Unternehmer', 'Firmen', 'Mitarbeiter']);
     expect(component.getBenutzerAnlage()).toEqual({
       namensbestandteil: 'test.mitarbeiter',
       anzeigename: 'Test Mitarbeiter',
       userRole: 'mitarbeiter',
       erlaubteBereiche: ['dashboard', 'schichtplan'],
-      zugriffe: {},
+      zugriffe: { u: { f: [] } },
+      firmaMitarbeiterId: 'm-1',
       passwort: 'SicheresPasswort123!',
     });
+  });
+
+  it('should show when the selected company has no employees', async () => {
+    const daten = TestBed.inject(DatenzugriffService);
+    const benutzerVerwaltung = TestBed.inject(BenutzerVerwaltungService);
+    vi.mocked(daten.loadUnternehmer).mockResolvedValue([{ id: 'u', anzeigename: 'Unternehmer' }]);
+    vi.mocked(daten.loadFirmen).mockResolvedValue([{ id: 'f', anzeigename: 'Firma' }]);
+    vi.mocked(benutzerVerwaltung.loadMitarbeiterAuswahl).mockResolvedValue([]);
+    const fixture = TestBed.createComponent(BenutzerAnlage);
+    async function render() {
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+    await render();
+
+    fixture.componentInstance.benutzerForm.controls.userRole.setValue('mitarbeiter');
+    await render();
+    const datenAuswahl = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
+      .componentInstance as DatenzugriffAuswahl;
+    datenAuswahl.selectUnternehmer('u');
+    await render();
+    datenAuswahl.selectFirmen([datenAuswahl.getFirmaSchluessel('u', 'f')]);
+    await render();
+
+    const meldung = fixture.nativeElement.querySelector('.pur-form__error[role="alert"]');
+    expect(meldung?.textContent).toContain('Die Firma hat noch keine Mitarbeiter.');
+    expect(fixture.componentInstance.benutzerForm.controls.firmaMitarbeiterId.disabled).toBe(true);
   });
 
   it('should preserve selected areas when changing roles', () => {
@@ -239,17 +297,24 @@ describe('BenutzerPage', () => {
   });
 
   it('should derive mandatory areas without exposing them as form controls', () => {
-    const component = TestBed.createComponent(BenutzerAnlage).componentInstance;
+    const fixture = TestBed.createComponent(BenutzerAnlage);
+    const component = fixture.componentInstance;
     component.benutzerForm.patchValue({
       anzeigename: 'Test Master',
       userRole: 'master',
       passwort: 'SicheresPasswort123!',
     });
+    fixture.detectChanges();
 
     expect(component.getBenutzerAnlage()?.erlaubteBereiche).toEqual([
       'dashboard',
       'systemverwaltung',
     ]);
+    expect(
+      Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('mat-checkbox'),
+      ).map((checkbox) => checkbox.textContent?.trim()),
+    ).toEqual(['Schichtplan', 'Mitarbeiter', 'Verwaltung']);
   });
 
   it.each(['', 'short'])(
@@ -348,7 +413,16 @@ describe('BenutzerPage', () => {
   });
 
   it('should allow all optional areas to remain unselected', async () => {
+    const daten = TestBed.inject(DatenzugriffService);
+    vi.mocked(daten.loadUnternehmer).mockResolvedValue([{ id: 'u', anzeigename: 'Unternehmer' }]);
+    vi.mocked(daten.loadFirmen).mockResolvedValue([{ id: 'f', anzeigename: 'Firma' }]);
     const fixture = TestBed.createComponent(BenutzerAnlage);
+    async function render() {
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+    await render();
     const component = fixture.componentInstance;
     component.benutzerForm.patchValue({
       namensbestandteil: 'testbenutzer',
@@ -361,6 +435,15 @@ describe('BenutzerPage', () => {
         verwaltung: false,
       },
     });
+    await render();
+    const auswahl = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
+      .componentInstance as DatenzugriffAuswahl;
+    auswahl.selectUnternehmer('u');
+    await render();
+    auswahl.selectFirmen([auswahl.getFirmaSchluessel('u', 'f')]);
+    await render();
+    component.benutzerForm.controls.firmaMitarbeiterId.setValue('m-1');
+    component.handleMitarbeiterChange('m-1');
 
     expect(component.getBenutzerAnlage()?.erlaubteBereiche).toEqual(['dashboard']);
   });
@@ -456,7 +539,7 @@ describe('BenutzerPage', () => {
     expect(component.verwaltungStore.error()).toBeTruthy();
     expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(false);
   });
-  it.each(['office', 'filiale'] as const)(
+  it.each(['office', 'filiale', 'mitarbeiter'] as const)(
     'keeps %s disabled without any data selection, including after a role change',
     async (userRole) => {
       const fixture = TestBed.createComponent(BenutzerAnlage);

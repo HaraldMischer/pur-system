@@ -1,4 +1,4 @@
-<!-- pur-office/src/app/components/datenzugriff-auswahl/datenzugriff-auswahl.html -->
+<!-- pur-system/src/app/components/datenzugriff-auswahl/datenzugriff-auswahl.html -->
 
 <div class="pur-form pur-form--grid">
   <!-- Unternehmer -->
@@ -57,51 +57,55 @@
     </mat-select>
   </mat-form-field>
 
-  <!-- Filialen -->
-  <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
-    <mat-label>Filialen</mat-label>
-    <mat-select
-      [multiple]="filialenMehrfach()"
-      [value]="
-        filialenMehrfach()
-          ? filialSchluessel()
-          : filialSchluessel().length
-            ? filialSchluessel()[0]
-            : null
-      "
-      [disabled]="filialenLaden() || !hatFilialen()"
-      (selectionChange)="selectFilialen($event.value)"
-    >
-      @if (filialAnzahl() > 1) {
-        <mat-select-trigger>{{ filialAnzahl() }} Filialen ausgewählt</mat-select-trigger>
-      }
-      @if (firmenMehrfach() && ausgewaehlteFirmen().length > 1) {
-        @for (firma of ausgewaehlteFirmen(); track firma.id) {
-          <mat-optgroup
-            [label]="
-              ausgewaehlteUnternehmer().length > 1
-                ? firma.unternehmerAnzeigename + ' / ' + firma.anzeigename
-                : firma.anzeigename
-            "
-          >
+  @if (filialenSichtbar()) {
+    <!-- Filialen -->
+    <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+      <mat-label>Filialen</mat-label>
+      <mat-select
+        [multiple]="filialenMehrfach()"
+        [value]="
+          filialenMehrfach()
+            ? filialSchluessel()
+            : filialSchluessel().length
+              ? filialSchluessel()[0]
+              : null
+        "
+        [disabled]="filialenLaden() || !hatFilialen()"
+        (selectionChange)="selectFilialen($event.value)"
+      >
+        @if (filialAnzahl() > 1) {
+          <mat-select-trigger>{{ filialAnzahl() }} Filialen ausgewählt</mat-select-trigger>
+        }
+        @if (firmenMehrfach() && ausgewaehlteFirmen().length > 1) {
+          @for (firma of ausgewaehlteFirmen(); track firma.id) {
+            <mat-optgroup
+              [label]="
+                ausgewaehlteUnternehmer().length > 1
+                  ? firma.unternehmerAnzeigename + ' / ' + firma.anzeigename
+                  : firma.anzeigename
+              "
+            >
+              @for (filiale of firma.filialen; track filiale.id) {
+                <mat-option [value]="getFilialSchluessel(firma.id, filiale.id)">{{
+                  filiale.anzeigename
+                }}</mat-option>
+              } @empty {
+                <mat-option disabled>Keine Filialen vorhanden.</mat-option>
+              }
+            </mat-optgroup>
+          }
+        } @else {
+          @for (firma of ausgewaehlteFirmen(); track firma.id) {
             @for (filiale of firma.filialen; track filiale.id) {
               <mat-option [value]="getFilialSchluessel(firma.id, filiale.id)">{{
                 filiale.anzeigename
               }}</mat-option>
-            } @empty {
-              <mat-option disabled>Keine Filialen vorhanden.</mat-option>
             }
-          </mat-optgroup>
-        }
-      } @else {
-        @for (firma of ausgewaehlteFirmen(); track firma.id) {
-          @for (filiale of firma.filialen; track filiale.id) {
-            <mat-option [value]="getFilialSchluessel(firma.id, filiale.id)">{{
-              filiale.anzeigename
-            }}</mat-option>
           }
         }
-      }
-    </mat-select>
-  </mat-form-field>
+      </mat-select>
+    </mat-form-field>
+  } @else {
+    <ng-content select="[datenzugriffZusatzfeld]" />
+  }
 </div>

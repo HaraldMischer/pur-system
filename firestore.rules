@@ -38,23 +38,9 @@ service cloud.firestore {
       return !('userRole' in request.resource.data)
         || request.resource.data.userRole != 'mitarbeiter'
         || (
-          request.resource.data.zugriffe is map
-          && request.resource.data.zugriffe.size() == 0
-        );
-    }
-
-    function hatGueltigePflichtbereiche() {
-      return request.resource.data.erlaubteBereiche is list
-        && 'dashboard' in request.resource.data.erlaubteBereiche
-        && (
-          (
-            request.resource.data.userRole == 'master'
-            && 'systemverwaltung' in request.resource.data.erlaubteBereiche
-          )
-          || (
-            request.resource.data.userRole != 'master'
-            && !('systemverwaltung' in request.resource.data.erlaubteBereiche)
-          )
+          resource.data.userRole == 'mitarbeiter'
+          && request.resource.data.zugriffe == resource.data.zugriffe
+          && request.resource.data.firmaMitarbeiterId == resource.data.firmaMitarbeiterId
         );
     }
 
@@ -72,8 +58,22 @@ service cloud.firestore {
           'aktualisiertAm'
         ])
         && isValidMitarbeiterProfilWrite()
-        && hatGueltigePflichtbereiche()
+        && hatGueltigeFilialProfilZugriffe()
         && (request.auth.uid != uid || request.resource.data.aktiv == true);
+    }
+
+    function hatGueltigeFilialProfilZugriffe() {
+      let zugriffe = request.resource.data.zugriffe;
+      return request.resource.data.userRole != 'filiale'
+        || (
+          zugriffe is map
+          && zugriffe.size() == 1
+          && zugriffe.values()[0] is map
+          && zugriffe.values()[0].size() == 1
+          && zugriffe.values()[0].values()[0] is list
+          && zugriffe.values()[0].values()[0].size() == 1
+          && zugriffe.values()[0].values()[0][0] is string
+        );
     }
 
     function darfUnternehmerLesen(unternehmerId) {
@@ -96,37 +96,131 @@ service cloud.firestore {
         && filialId in profil().zugriffe[unternehmerId][firmaId];
     }
 
-    // ===============================================================================
-    // 1. Master dürfen alles lesen und schreiben
-    // ===============================================================================
+    function darfMitarbeiterFirmaVerwenden(unternehmerId, firmaId) {
+      return isMaster() || darfFirmaLesen(unternehmerId, firmaId);
+    }
 
-    match /{collection}/{document=**} {
-      allow read, write: if isMaster() && collection != 'benutzerprofil';
+    function darfMitarbeiterLesen(unternehmerId, firmaId) {
+      return darfMitarbeiterFirmaVerwenden(unternehmerId, firmaId)
+        && (
+          profil().userRole in ['master', 'office']
+          || (
+            profil().userRole == 'filiale'
+            && resource.data.filialIds is list
+            && resource.data.filialIds.hasAny([profil().zugriffe[unternehmerId][firmaId][0]])
+          )
+        );
+    }
+
+    function hatGueltigeMitarbeiterFilialenBeiAnlage(unternehmerId, firmaId) {
+      return request.resource.data.filialIds is list
+        && request.resource.data.filialIds.size() == request.resource.data.filialIds.toSet().size()
+        && (
+          profil().userRole == 'master'
+          || request.resource.data.filialIds.hasOnly(profil().zugriffe[unternehmerId][firmaId])
+        );
+    }
+
+    function bleibenFremdeMitarbeiterFilialenErhalten(unternehmerId, firmaId) {
+      let erlaubteFilialen = profil().zugriffe[unternehmerId][firmaId].toSet();
+      let bisherigeFremdeFilialen = resource.data.filialIds.toSet().difference(erlaubteFilialen);
+      let neueFremdeFilialen = request.resource.data.filialIds.toSet().difference(erlaubteFilialen);
+      return neueFremdeFilialen == bisherigeFremdeFilialen;
+    }
+
+    function hatGueltigeMitarbeiterFilialenBeiBearbeitung(unternehmerId, firmaId) {
+      return resource.data.filialIds is list
+        && request.resource.data.filialIds is list
+        && request.resource.data.filialIds.size() == request.resource.data.filialIds.toSet().size()
+        && (
+          profil().userRole == 'master'
+          || bleibenFremdeMitarbeiterFilialenErhalten(unternehmerId, firmaId)
+        );
+    }
+
+    function darfMitarbeiterAnlegen(unternehmerId, firmaId) {
+      return darfMitarbeiterFirmaVerwenden(unternehmerId, firmaId)
+        && !('benutzerUid' in request.resource.data)
+        && request.resource.data.rolle in ['service', 'kasse', 'admin']
+        && request.resource.data.aktiv == true
+        && request.resource.data.erstelltAm == request.time
+        && request.resource.data.aktualisiertAm == request.time
+        && hatGueltigeMitarbeiterFilialenBeiAnlage(unternehmerId, firmaId)
+        && (
+          profil().userRole in ['master', 'office']
+          || profil().zugriffe[unternehmerId][firmaId][0] in request.resource.data.filialIds
+        );
+    }
+
+    function darfMitarbeiterBearbeiten(unternehmerId, firmaId) {
+      return darfMitarbeiterLesen(unternehmerId, firmaId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'person',
+          'rolle',
+          'filialIds',
+          'aktiv',
+          'aktualisiertAm'
+        ])
+        && request.resource.data.rolle in ['service', 'kasse', 'admin']
+        && request.resource.data.aktiv is bool
+        && request.resource.data.aktualisiertAm == request.time
+        && hatGueltigeMitarbeiterFilialenBeiBearbeitung(unternehmerId, firmaId)
+        && (
+          profil().userRole in ['master', 'office']
+          || profil().zugriffe[unternehmerId][firmaId][0] in request.resource.data.filialIds
+        );
+    }
+
+    function darfMitarbeiterFirmaLesen(unternehmerId, firmaId) {
+      return isMitarbeiter()
+        && profil().zugriffe is map
+        && unternehmerId in profil().zugriffe
+        && profil().zugriffe[unternehmerId] is map
+        && firmaId in profil().zugriffe[unternehmerId]
+        && profil().zugriffe[unternehmerId][firmaId] is list;
     }
 
     // ===============================================================================
-    // 2. Office und Filiale lesen nur die über TBenutzerZugriffe zugeordneten Daten
+    // 1. Fachliche Daten der Unternehmensstruktur
     // ===============================================================================
 
     match /unternehmer/{unternehmerId} {
+      allow read, create, update: if isMaster();
       allow read: if darfUnternehmerLesen(unternehmerId);
 
       match /firma/{firmaId} {
+        allow read, create, update: if isMaster();
         allow read: if darfFirmaLesen(unternehmerId, firmaId);
         allow update: if isOffice() && darfFirmaLesen(unternehmerId, firmaId);
 
         match /filiale/{filialId} {
+          allow read, create, update: if isMaster();
+          allow read: if darfFilialeLesen(unternehmerId, firmaId, filialId);
           allow update: if isOffice() && darfFilialeLesen(unternehmerId, firmaId, filialId);
         }
 
         match /filiale/{filialId}/{document=**} {
+          allow read, create, update: if isMaster();
           allow read: if darfFilialeLesen(unternehmerId, firmaId, filialId);
         }
+
+        match /mitarbeiter/{mitarbeiterId} {
+          allow read: if isMaster();
+          allow read: if isOffice() && darfFirmaLesen(unternehmerId, firmaId);
+          allow read: if profil().userRole == 'filiale'
+            && darfFirmaLesen(unternehmerId, firmaId);
+          allow read: if darfMitarbeiterFirmaLesen(unternehmerId, firmaId);
+          allow create: if darfMitarbeiterAnlegen(unternehmerId, firmaId);
+          allow update: if darfMitarbeiterBearbeiten(unternehmerId, firmaId);
+          allow delete: if isMaster()
+            && resource.data.get('benutzerUid', null) == null;
+        }
+
       }
     }
 
     // ===============================================================================
-    // 3. Benutzerprofile lesen und durch Master bearbeiten
+    // 2. Benutzerprofile lesen und durch Master bearbeiten
     // ===============================================================================
 
     match /benutzerprofil/{uid} {
@@ -139,7 +233,7 @@ service cloud.firestore {
     }
 
     // ===============================================================================
-    // 4. Konten der Altanwendung ohne Pur-System-Benutzerprofil
+    // 3. Konten der Altanwendung ohne Pur-System-Benutzerprofil
     // ===============================================================================
 
     match /purCustomers/{document=**} {

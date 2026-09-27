@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/utils/errors/firebase-error-message.spec.ts
+// pur-system/src/app/commons/utils/errors/firebase-error-message.spec.ts
 
 import { getFirebaseErrorMessage } from './firebase-error-message';
 

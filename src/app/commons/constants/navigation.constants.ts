@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/constants/navigation.constants.ts
+// pur-system/src/app/commons/constants/navigation.constants.ts
 
 import { INavigationGruppe, INavigationLink, IRollenNavigation } from '../models/app/navigation';
 import { TUserRole } from '../models/domain/benutzer';
@@ -21,13 +21,21 @@ const SCHICHTPLAN_NAVIGATION: INavigationLink = {
   bereich: 'schichtplan',
 };
 
-const MITARBEITER_NAVIGATION: INavigationLink = {
-  typ: 'link',
+const MITARBEITER_NAVIGATION: INavigationGruppe = {
+  typ: 'gruppe',
   id: 'mitarbeiter',
   label: 'Mitarbeiter',
   icon: 'groups',
-  route: '/mitarbeiter',
-  bereich: 'mitarbeiter',
+  kinder: [
+    {
+      typ: 'link',
+      id: 'mitarbeiterliste',
+      label: 'Mitarbeiterliste',
+      icon: 'badge',
+      route: '/mitarbeiter/liste',
+      bereich: 'mitarbeiter',
+    },
+  ],
 };
 
 const VERWALTUNG_NAVIGATION: INavigationLink = {
@@ -76,7 +84,7 @@ export const NAVIGATION_NACH_ROLLE = {
     ],
   },
   office: {
-    darstellung: 'flat',
+    darstellung: 'nested',
     eintraege: [
       DASHBOARD_NAVIGATION,
       SCHICHTPLAN_NAVIGATION,
@@ -85,11 +93,11 @@ export const NAVIGATION_NACH_ROLLE = {
     ],
   },
   filiale: {
-    darstellung: 'flat',
+    darstellung: 'nested',
     eintraege: [DASHBOARD_NAVIGATION, SCHICHTPLAN_NAVIGATION, MITARBEITER_NAVIGATION],
   },
   mitarbeiter: {
     darstellung: 'flat',
-    eintraege: [DASHBOARD_NAVIGATION, SCHICHTPLAN_NAVIGATION, MITARBEITER_NAVIGATION],
+    eintraege: [DASHBOARD_NAVIGATION, SCHICHTPLAN_NAVIGATION],
   },
 } as const satisfies Readonly<Record<TUserRole, IRollenNavigation>>;

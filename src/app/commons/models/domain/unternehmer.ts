@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/models/domain/unternehmer.ts
+// pur-system/src/app/commons/models/domain/unternehmer.ts
 
 import { Timestamp } from 'firebase/firestore';
 import { IPerson } from './person';

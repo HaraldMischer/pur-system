@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/constants/navigation.constants.spec.ts
+// pur-system/src/app/commons/constants/navigation.constants.spec.ts
 
 import { TUserRole } from '../models/domain/benutzer';
 import { getNavigationLinks } from '../utils/navigation/rollen-navigation';
@@ -15,11 +15,28 @@ describe('NAVIGATION_NACH_ROLLE', () => {
     expect(Object.keys(NAVIGATION_NACH_ROLLE).sort()).toEqual([...USER_ROLES].sort());
   });
 
-  it('should use nested navigation for master and flat navigation for all other roles', () => {
+  it('should use nested navigation for management roles and flat navigation for employees', () => {
     expect(NAVIGATION_NACH_ROLLE.master.darstellung).toBe('nested');
-    expect(NAVIGATION_NACH_ROLLE.office.darstellung).toBe('flat');
-    expect(NAVIGATION_NACH_ROLLE.filiale.darstellung).toBe('flat');
+    expect(NAVIGATION_NACH_ROLLE.office.darstellung).toBe('nested');
+    expect(NAVIGATION_NACH_ROLLE.filiale.darstellung).toBe('nested');
     expect(NAVIGATION_NACH_ROLLE.mitarbeiter.darstellung).toBe('flat');
+  });
+
+  it('should provide employees as a nested list route for the allowed management roles', () => {
+    for (const userRole of ['master', 'office', 'filiale'] as const) {
+      const mitarbeiter = NAVIGATION_NACH_ROLLE[userRole].eintraege.find(
+        (eintrag) => eintrag.id === 'mitarbeiter',
+      );
+
+      expect(mitarbeiter?.typ).toBe('gruppe');
+      if (mitarbeiter?.typ !== 'gruppe') continue;
+      expect(mitarbeiter.kinder.map((eintrag) => eintrag.id)).toEqual(['mitarbeiterliste']);
+      expect(getNavigationLinks(mitarbeiter.kinder).map((eintrag) => eintrag.route)).toEqual([
+        '/mitarbeiter/liste',
+      ]);
+    }
+
+    expect(getNavigationIds('mitarbeiter')).not.toContain('mitarbeiter');
   });
 
   it('should provide verwaltung only for master and office', () => {

@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/models/domain/adresse.ts
+// pur-system/src/app/commons/models/domain/adresse.ts
 
 export interface IAdresse {
   strasse: string;

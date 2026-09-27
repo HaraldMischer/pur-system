@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/verwaltung.store.spec.ts
+// pur-system/src/app/stores/domain/verwaltung.store.spec.ts
 
 import { signal, WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';

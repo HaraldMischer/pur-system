@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/utils/navigation/rollen-navigation.spec.ts
+// pur-system/src/app/commons/utils/navigation/rollen-navigation.spec.ts
 
 import { TNavigationEintrag } from '../../models/app/navigation';
 import { IBenutzerProfilDokument, TUserRole } from '../../models/domain/benutzer';
@@ -15,7 +15,7 @@ function createProfil(
     aktiv,
     userRole,
     erlaubteBereiche,
-    zugriffe: {},
+    zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
   };
 }
 
@@ -25,7 +25,7 @@ describe('rollen-navigation', () => {
       createProfil('office', ['dashboard', 'verwaltung', 'systemverwaltung']),
     );
 
-    expect(navigation.darstellung).toBe('flat');
+    expect(navigation.darstellung).toBe('nested');
     expect(navigation.eintraege.map((eintrag) => eintrag.id)).toEqual(['dashboard', 'verwaltung']);
   });
 
@@ -37,6 +37,38 @@ describe('rollen-navigation', () => {
     expect(navigation.darstellung).toBe('nested');
     expect(navigation.eintraege.map((eintrag) => eintrag.id)).toEqual([
       'dashboard',
+      'systemverwaltung',
+    ]);
+  });
+
+  it.each(['office', 'filiale'] as const)(
+    'should show the nested employee list only with a valid data scope for %s',
+    (userRole) => {
+      const profil = createProfil(userRole, ['dashboard', 'mitarbeiter']);
+
+      expect(getSichtbareRollenNavigation(profil)).toMatchObject({
+        darstellung: 'nested',
+        eintraege: [
+          { id: 'dashboard' },
+          { id: 'mitarbeiter', kinder: [{ id: 'mitarbeiterliste' }] },
+        ],
+      });
+
+      expect(
+        getSichtbareRollenNavigation({ ...profil, zugriffe: { 'u-1': { 'f-1': [] } } }).eintraege,
+      ).toEqual([expect.objectContaining({ id: 'dashboard' })]);
+    },
+  );
+
+  it('should show the assigned employee area for master without a data scope', () => {
+    const navigation = getSichtbareRollenNavigation({
+      ...createProfil('master', ['dashboard', 'mitarbeiter', 'systemverwaltung']),
+      zugriffe: {},
+    });
+
+    expect(navigation.eintraege.map((eintrag) => eintrag.id)).toEqual([
+      'dashboard',
+      'mitarbeiter',
       'systemverwaltung',
     ]);
   });

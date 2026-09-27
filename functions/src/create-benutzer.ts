@@ -1,4 +1,4 @@
-// pur-office/functions/src/create-benutzer.ts
+// pur-system/functions/src/create-benutzer.ts
 
 import { HttpsError } from 'firebase-functions/v2/https';
 
@@ -29,6 +29,7 @@ export interface ICreateBenutzerData {
   userRole: TUserRole;
   erlaubteBereiche: TAppBereich[];
   zugriffe: TBenutzerZugriffe;
+  firmaMitarbeiterId?: string;
   passwort: string;
 }
 
@@ -45,6 +46,7 @@ interface ICreateBenutzerProfilData {
   userRole: TUserRole;
   erlaubteBereiche: TAppBereich[];
   zugriffe: TBenutzerZugriffe;
+  firmaMitarbeiterId?: string;
 }
 
 interface IParsedCreateBenutzerData extends ICreateBenutzerProfilData {
@@ -59,6 +61,7 @@ interface ICreateBenutzerRequest {
 interface ICreateBenutzerDependencies {
   getBenutzerProfil(uid: string): Promise<unknown>;
   existierenDokumente(pfade: readonly string[]): Promise<boolean>;
+  getMitarbeiterDokument(pfad: string): Promise<unknown>;
   createAuthBenutzer(data: {
     email: string;
     displayName: string;
@@ -66,6 +69,12 @@ interface ICreateBenutzerDependencies {
     disabled: true;
   }): Promise<{ uid: string }>;
   setBenutzerProfilDokument(uid: string, data: ICreateBenutzerProfilData): Promise<void>;
+  setBenutzerProfilMitMitarbeiter(
+    uid: string,
+    data: ICreateBenutzerProfilData,
+    mitarbeiterPfad: string,
+  ): Promise<void>;
+  removeMitarbeiterVerknuepfung(uid: string, mitarbeiterPfad: string): Promise<void>;
   setAuthBenutzerDisabled(uid: string, disabled: boolean): Promise<void>;
   deactivateBenutzerProfilDokument(uid: string): Promise<void>;
   logAnlageError(uid: string, schritt: string, error: unknown): void;
@@ -90,7 +99,7 @@ function isDokumentId(value: unknown): value is string {
   );
 }
 
-function parseZugriffe(value: unknown): TBenutzerZugriffe {
+function parseZugriffe(value: unknown, leereFiliallisteErlaubt: boolean): TBenutzerZugriffe {
   if (!isRecord(value)) {
     throw new HttpsError('invalid-argument', 'Zugriffe müssen als Objekt übergeben werden.');
   }
@@ -110,13 +119,10 @@ function parseZugriffe(value: unknown): TBenutzerZugriffe {
       if (
         !isDokumentId(roheFirmaId) ||
         !isStringArray(filialIdsValue) ||
-        filialIdsValue.length === 0 ||
+        (!leereFiliallisteErlaubt && filialIdsValue.length === 0) ||
         !filialIdsValue.every(isDokumentId)
       ) {
-        throw new HttpsError(
-          'invalid-argument',
-          'Jede Firma benötigt mindestens eine gültige Filiale.',
-        );
+        throw new HttpsError('invalid-argument', 'Jede Firma benötigt eine gültige Filialliste.');
       }
 
       const firmaId = roheFirmaId.trim();
@@ -150,6 +156,7 @@ function parseCreateBenutzerData(value: unknown): IParsedCreateBenutzerData {
   const anzeigename = typeof value['anzeigename'] === 'string' ? value['anzeigename'].trim() : '';
   const userRole = value['userRole'];
   const erlaubteBereiche = value['erlaubteBereiche'];
+  const firmaMitarbeiterIdValue = value['firmaMitarbeiterId'];
   const passwort = typeof value['passwort'] === 'string' ? value['passwort'] : undefined;
 
   if (!namensbestandteil) {
@@ -162,6 +169,16 @@ function parseCreateBenutzerData(value: unknown): IParsedCreateBenutzerData {
 
   if (typeof userRole !== 'string' || !USER_ROLES.includes(userRole as TUserRole)) {
     throw new HttpsError('invalid-argument', 'Die Benutzerrolle ist ungültig.');
+  }
+
+  const firmaMitarbeiterId =
+    firmaMitarbeiterIdValue === undefined
+      ? undefined
+      : isDokumentId(firmaMitarbeiterIdValue)
+        ? firmaMitarbeiterIdValue.trim()
+        : null;
+  if (firmaMitarbeiterId === null) {
+    throw new HttpsError('invalid-argument', 'Die Firma-Mitarbeiter-ID ist ungültig.');
   }
 
   const anmeldename = buildAnmeldename(namensbestandteil, userRole);
@@ -190,15 +207,36 @@ function parseCreateBenutzerData(value: unknown): IParsedCreateBenutzerData {
     normalisierteBereiche.push('systemverwaltung');
   }
 
-  return {
+  const parsed: IParsedCreateBenutzerData = {
     anmeldename,
     email,
     anzeigename,
     userRole: userRole as TUserRole,
     erlaubteBereiche: normalisierteBereiche,
-    zugriffe: parseZugriffe(value['zugriffe']),
+    zugriffe: parseZugriffe(value['zugriffe'], userRole === 'mitarbeiter'),
     passwort,
   };
+  if (firmaMitarbeiterId) {
+    parsed.firmaMitarbeiterId = firmaMitarbeiterId;
+  }
+  return parsed;
+}
+
+function pruefeMitarbeiterDokument(dokument: unknown): void {
+  if (!isRecord(dokument)) {
+    throw new HttpsError('invalid-argument', 'Der gewählte Firma-Mitarbeiter existiert nicht.');
+  }
+  if (dokument['aktiv'] !== true) {
+    throw new HttpsError('failed-precondition', 'Der gewählte Firma-Mitarbeiter ist inaktiv.');
+  }
+
+  const benutzerUid = dokument['benutzerUid'];
+  if (typeof benutzerUid === 'string' && benutzerUid.trim()) {
+    throw new HttpsError(
+      'already-exists',
+      'Der gewählte Firma-Mitarbeiter besitzt bereits einen Benutzerzugang.',
+    );
+  }
 }
 
 function mapAuthError(error: unknown): HttpsError {
@@ -244,10 +282,22 @@ export async function handleCreateBenutzer(
       filialIds,
     })),
   );
-  if (data.userRole === 'mitarbeiter' && zugriffsEintraege.length > 0) {
+  if (
+    data.userRole === 'mitarbeiter' &&
+    (Object.keys(data.zugriffe).length !== 1 ||
+      zugriffsEintraege.length !== 1 ||
+      zugriffsEintraege[0].filialIds.length !== 0 ||
+      !data.firmaMitarbeiterId)
+  ) {
     throw new HttpsError(
       'invalid-argument',
-      'Mitarbeiterzugänge dürfen noch keine fachliche Datenzuordnung besitzen.',
+      'Mitarbeiterzugänge benötigen genau einen Unternehmer, eine Firma und einen Firma-Mitarbeiter.',
+    );
+  }
+  if (data.userRole !== 'mitarbeiter' && data.firmaMitarbeiterId !== undefined) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Eine Firma-Mitarbeiter-ID ist nur für Mitarbeiterzugänge zulässig.',
     );
   }
   if (
@@ -297,6 +347,21 @@ export async function handleCreateBenutzer(
       );
     }
   }
+  const mitarbeiterPfad =
+    data.userRole === 'mitarbeiter'
+      ? `unternehmer/${zugriffsEintraege[0].unternehmerId}/firma/${zugriffsEintraege[0].firmaId}/mitarbeiter/${data.firmaMitarbeiterId}`
+      : null;
+  if (mitarbeiterPfad) {
+    try {
+      pruefeMitarbeiterDokument(await dependencies.getMitarbeiterDokument(mitarbeiterPfad));
+    } catch (error: unknown) {
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError(
+        'unavailable',
+        'Der Firma-Mitarbeiter konnte nicht geprüft werden. Bitte erneut versuchen.',
+      );
+    }
+  }
   let authBenutzer: { uid: string };
 
   try {
@@ -311,9 +376,19 @@ export async function handleCreateBenutzer(
   }
 
   let aktivierungVersucht = false;
+  let verknuepfungVersucht = false;
   try {
     const { passwort, ...benutzerProfilDokument } = data;
-    await dependencies.setBenutzerProfilDokument(authBenutzer.uid, benutzerProfilDokument);
+    if (mitarbeiterPfad) {
+      verknuepfungVersucht = true;
+      await dependencies.setBenutzerProfilMitMitarbeiter(
+        authBenutzer.uid,
+        benutzerProfilDokument,
+        mitarbeiterPfad,
+      );
+    } else {
+      await dependencies.setBenutzerProfilDokument(authBenutzer.uid, benutzerProfilDokument);
+    }
 
     aktivierungVersucht = true;
     await dependencies.setAuthBenutzerDisabled(authBenutzer.uid, false);
@@ -348,11 +423,27 @@ export async function handleCreateBenutzer(
         }
       }
     }
+    if (mitarbeiterPfad && verknuepfungVersucht) {
+      try {
+        await dependencies.removeMitarbeiterVerknuepfung(authBenutzer.uid, mitarbeiterPfad);
+      } catch (cleanupError: unknown) {
+        bereinigungFehlgeschlagen = true;
+        dependencies.logAnlageError(
+          authBenutzer.uid,
+          'mitarbeiter-verknuepfung-entfernen',
+          cleanupError,
+        );
+      }
+    }
     try {
       await dependencies.deleteAuthBenutzer(authBenutzer.uid);
     } catch (rollbackError: unknown) {
       bereinigungFehlgeschlagen = true;
       dependencies.logRollbackError(authBenutzer.uid, rollbackError);
+    }
+
+    if (!bereinigungFehlgeschlagen && error instanceof HttpsError) {
+      throw error;
     }
 
     throw new HttpsError(

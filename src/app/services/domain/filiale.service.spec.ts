@@ -1,12 +1,14 @@
-// pur-office/src/app/services/domain/filiale.service.spec.ts
+// pur-system/src/app/services/domain/filiale.service.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 
 import { IFilialeAnlage } from '../../commons/models/domain/filiale';
 import { FilialeService } from './filiale.service';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
+import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
 
 describe('FilialeService', () => {
+  const strukturVerwaltungServiceMock = { deleteStruktureintrag: vi.fn() };
   const firestoreDbServiceMock = {
     loadCollection: vi.fn(),
     loadDocument: vi.fn(),
@@ -36,12 +38,27 @@ describe('FilialeService', () => {
     firestoreDbServiceMock.createDocument.mockResolvedValue('filiale-123');
     firestoreDbServiceMock.updateDocument.mockResolvedValue(undefined);
     firestoreDbServiceMock.createServerTimestamp.mockReturnValue('server-zeitstempel');
+    strukturVerwaltungServiceMock.deleteStruktureintrag.mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
       providers: [
         FilialeService,
         { provide: FirestoreDbService, useValue: firestoreDbServiceMock },
+        { provide: StrukturVerwaltungService, useValue: strukturVerwaltungServiceMock },
       ],
+    });
+  });
+
+  it('should delete a branch through the protected structure service', async () => {
+    const service = TestBed.inject(FilialeService);
+
+    await service.deleteFiliale('unternehmer-1', 'firma-1', 'filiale-1');
+
+    expect(strukturVerwaltungServiceMock.deleteStruktureintrag).toHaveBeenCalledWith({
+      typ: 'filiale',
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialId: 'filiale-1',
     });
   });
 

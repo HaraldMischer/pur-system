@@ -1,4 +1,4 @@
-// pur-office/src/app/components/app-shell/app-toolbar/app-toolbar.ts
+// pur-system/src/app/components/app-shell/app-toolbar/app-toolbar.ts
 
 import {
   ChangeDetectionStrategy,

@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/utils/navigation/rollen-navigation.ts
+// pur-system/src/app/commons/utils/navigation/rollen-navigation.ts
 
 import { NAVIGATION_NACH_ROLLE } from '../../constants/navigation.constants';
 import { TAppBereich } from '../../models/app/app-bereich';
@@ -8,6 +8,7 @@ import {
   TNavigationEintrag,
 } from '../../models/app/navigation';
 import { IBenutzerProfilDokument } from '../../models/domain/benutzer';
+import { darfMitarbeiterBereichNutzen } from '../mitarbeiter/mitarbeiter-berechtigung';
 
 function filterNavigationEintraege(
   eintraege: readonly TNavigationEintrag[],
@@ -40,8 +41,12 @@ function filterNavigationEintraege(
  */
 export function getSichtbareRollenNavigation(profil: IBenutzerProfilDokument): IRollenNavigation {
   const navigation = NAVIGATION_NACH_ROLLE[profil.userRole];
+  const erlaubteBereiche = new Set(profil.erlaubteBereiche);
+  if (!darfMitarbeiterBereichNutzen(profil)) {
+    erlaubteBereiche.delete('mitarbeiter');
+  }
   const eintraege = profil.aktiv
-    ? filterNavigationEintraege(navigation.eintraege, new Set(profil.erlaubteBereiche))
+    ? filterNavigationEintraege(navigation.eintraege, erlaubteBereiche)
     : [];
 
   return {

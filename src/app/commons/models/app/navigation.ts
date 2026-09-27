@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/models/app/navigation.ts
+// pur-system/src/app/commons/models/app/navigation.ts
 
 import { TAppBereich } from './app-bereich';
 

@@ -1,4 +1,4 @@
-// pur-office/src/app/components/datenzugriff-auswahl/datenzugriff-auswahl.spec.ts
+// pur-system/src/app/components/datenzugriff-auswahl/datenzugriff-auswahl.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -77,6 +77,16 @@ describe('DatenzugriffAuswahl', () => {
     component.selectFirma(firma('demo-firma-rhein'), true);
     expect(component.firmaIds()).toEqual([firma('demo-firma-rhein')]);
     expect(component.filialAnzahl()).toBe(0);
+  });
+
+  it('should hide the branch selection when it is not required', () => {
+    const fixture = TestBed.createComponent(DatenzugriffAuswahl);
+    fixture.componentRef.setInput('unternehmer', DATENZUGRIFF_MOCK);
+    fixture.componentRef.setInput('filialenSichtbar', false);
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.queryAll(By.directive(MatSelect))).toHaveLength(2);
+    expect(fixture.nativeElement.textContent).not.toContain('Filialen');
   });
 
   it('should select multiple companies and grouped branches through the selects', async () => {

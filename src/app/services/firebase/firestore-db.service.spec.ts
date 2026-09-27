@@ -1,4 +1,4 @@
-// pur-office/src/app/services/firebase/firestore-db.service.spec.ts
+// pur-system/src/app/services/firebase/firestore-db.service.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 import { Firestore } from '@angular/fire/firestore';
@@ -6,12 +6,15 @@ import { Firestore } from '@angular/fire/firestore';
 import {
   FIRESTORE_ADD_DOC,
   FIRESTORE_COLLECTION,
+  FIRESTORE_DELETE_DOC,
   FIRESTORE_DOC,
   FIRESTORE_GET_DOC,
   FIRESTORE_GET_DOCS,
   FIRESTORE_ON_SNAPSHOT,
+  FIRESTORE_QUERY,
   FIRESTORE_SERVER_TIMESTAMP,
   FIRESTORE_SET_DOC,
+  FIRESTORE_WHERE,
 } from '../../commons/tokens/firebase.tokens';
 import { LoadingService } from '../core/loading.service';
 import { NetzwerkStatusService } from '../core/netzwerk-status.service';
@@ -21,13 +24,16 @@ describe('FirestoreDbService', () => {
   const firestoreMock = {} as Firestore;
   const collectionMock = vi.fn().mockReturnValue('collection-ref');
   const docMock = vi.fn().mockReturnValue('document-ref');
+  const deleteDocMock = vi.fn();
   const getDocsMock = vi.fn();
   const getDocMock = vi.fn();
   const addDocMock = vi.fn();
   const onSnapshotMock = vi.fn();
+  const queryMock = vi.fn().mockReturnValue('query-ref');
   const setDocMock = vi.fn();
   const unsubscribeMock = vi.fn();
   const serverTimestampMock = vi.fn().mockReturnValue('server-zeitstempel');
+  const whereMock = vi.fn().mockReturnValue('where-constraint');
   const trackLoadMock = vi.fn(async <T>(aktion: () => Promise<T>): Promise<T> => {
     return aktion();
   });
@@ -47,6 +53,7 @@ describe('FirestoreDbService', () => {
     getDocsMock.mockResolvedValue({ docs: [] });
     getDocMock.mockResolvedValue({ exists: () => false });
     addDocMock.mockResolvedValue({ id: 'neu-123' });
+    deleteDocMock.mockResolvedValue(undefined);
     onSnapshotMock.mockImplementation(
       (_documentRef: unknown, next: typeof snapshotNext, error: typeof snapshotError) => {
         snapshotNext = next;
@@ -62,12 +69,15 @@ describe('FirestoreDbService', () => {
         { provide: Firestore, useValue: firestoreMock },
         { provide: FIRESTORE_ADD_DOC, useValue: addDocMock },
         { provide: FIRESTORE_COLLECTION, useValue: collectionMock },
+        { provide: FIRESTORE_DELETE_DOC, useValue: deleteDocMock },
         { provide: FIRESTORE_DOC, useValue: docMock },
         { provide: FIRESTORE_GET_DOC, useValue: getDocMock },
         { provide: FIRESTORE_GET_DOCS, useValue: getDocsMock },
         { provide: FIRESTORE_ON_SNAPSHOT, useValue: onSnapshotMock },
+        { provide: FIRESTORE_QUERY, useValue: queryMock },
         { provide: FIRESTORE_SERVER_TIMESTAMP, useValue: serverTimestampMock },
         { provide: FIRESTORE_SET_DOC, useValue: setDocMock },
+        { provide: FIRESTORE_WHERE, useValue: whereMock },
         {
           provide: LoadingService,
           useValue: { trackLoad: trackLoadMock, trackWrite: trackWriteMock },
@@ -115,6 +125,20 @@ describe('FirestoreDbService', () => {
     expect(getDocsMock).toHaveBeenCalledTimes(2);
   });
 
+  it('should load a collection filtered by an array value', async () => {
+    getDocsMock.mockResolvedValue({
+      docs: [{ id: 'm-1', data: () => ({ filialIds: ['b-1'] }) }],
+    });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(
+      service.loadCollectionByArrayValue('unternehmer/u/firma/f/mitarbeiter', 'filialIds', 'b-1'),
+    ).resolves.toEqual([{ id: 'm-1', daten: { filialIds: ['b-1'] } }]);
+    expect(whereMock).toHaveBeenCalledWith('filialIds', 'array-contains', 'b-1');
+    expect(queryMock).toHaveBeenCalledWith('collection-ref', 'where-constraint');
+    expect(getDocsMock).toHaveBeenCalledWith('query-ref');
+  });
+
   it('should load an existing document', async () => {
     getDocMock.mockResolvedValue({
       id: 'dokument-1',
@@ -136,6 +160,20 @@ describe('FirestoreDbService', () => {
     const service = TestBed.inject(FirestoreDbService);
 
     await expect(service.loadDocument('unternehmer/unbekannt')).resolves.toBeNull();
+  });
+
+  it('should delete a document while tracking the write', async () => {
+    const service = TestBed.inject(FirestoreDbService);
+
+    await service.deleteDocument('unternehmer/u-1/firma/f-1/mitarbeiter/m-1');
+
+    expect(assertOnlineMock).toHaveBeenCalledOnce();
+    expect(docMock).toHaveBeenCalledWith(
+      firestoreMock,
+      'unternehmer/u-1/firma/f-1/mitarbeiter/m-1',
+    );
+    expect(deleteDocMock).toHaveBeenCalledWith('document-ref');
+    expect(trackWriteMock).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('should share parallel document loads for the same path', async () => {

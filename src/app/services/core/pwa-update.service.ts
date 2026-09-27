@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/pwa-update.service.ts
+// pur-system/src/app/services/core/pwa-update.service.ts
 
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';

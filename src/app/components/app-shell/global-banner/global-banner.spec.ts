@@ -1,4 +1,4 @@
-// pur-office/src/app/components/app-shell/global-banner/global-banner.spec.ts
+// pur-system/src/app/components/app-shell/global-banner/global-banner.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 

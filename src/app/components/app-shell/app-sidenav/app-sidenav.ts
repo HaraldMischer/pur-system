@@ -1,4 +1,4 @@
-// pur-office/src/app/components/app-shell/app-sidenav/app-sidenav.ts
+// pur-system/src/app/components/app-shell/app-sidenav/app-sidenav.ts
 
 import {
   ChangeDetectionStrategy,

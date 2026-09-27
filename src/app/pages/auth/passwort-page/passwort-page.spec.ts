@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/auth/passwort-page/passwort-page.spec.ts
+// pur-system/src/app/pages/auth/passwort-page/passwort-page.spec.ts
 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TestBed } from '@angular/core/testing';

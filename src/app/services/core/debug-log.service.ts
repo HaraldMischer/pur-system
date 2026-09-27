@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/debug-log.service.ts
+// pur-system/src/app/services/core/debug-log.service.ts
 
 import { Injectable, isDevMode } from '@angular/core';
 

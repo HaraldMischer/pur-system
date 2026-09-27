@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/app/benutzer.store.spec.ts
+// pur-system/src/app/stores/app/benutzer.store.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 import { UserCredential } from '@angular/fire/auth';

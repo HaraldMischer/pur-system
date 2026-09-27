@@ -1,4 +1,4 @@
-// pur-office/src/app/guards/auth.guard.ts
+// pur-system/src/app/guards/auth.guard.ts
 
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';

@@ -1,0 +1,189 @@
+<!-- pur-system/src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog.html -->
+
+<h2 mat-dialog-title>Mitarbeiter anlegen</h2>
+
+<mat-dialog-content class="pur-dialog__content">
+  <form
+    id="mitarbeiter-anlegen-form"
+    class="pur-form pur-form--grid"
+    [formGroup]="mitarbeiterForm"
+    (ngSubmit)="onSubmit()"
+  >
+    <!-- Firmenkontext -->
+    <div class="pur-form__group">
+      <h2 class="pur-form__group-titel">Firma</h2>
+      <div class="pur-page-section__summary">
+        <div>
+          <span>Unternehmer</span><span>{{ dialogDaten.unternehmerName }}</span>
+        </div>
+        <div>
+          <span>Firma</span><span>{{ dialogDaten.firmaName }}</span>
+        </div>
+      </div>
+    </div>
+
+    <ng-container formGroupName="person">
+      <!-- Person -->
+      <div class="pur-form__group">
+        <h2 class="pur-form__group-titel">Person</h2>
+        <div class="pur-form__row">
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Vorname</mat-label>
+            <input matInput formControlName="vorname" type="text" autocomplete="given-name" />
+            @if (mitarbeiterForm.controls.person.controls.vorname.hasError('required')) {
+              <mat-error>Vorname ist erforderlich.</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Nachname</mat-label>
+            <input matInput formControlName="nachname" type="text" autocomplete="family-name" />
+            @if (mitarbeiterForm.controls.person.controls.nachname.hasError('required')) {
+              <mat-error>Nachname ist erforderlich.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+        <div class="pur-form__row">
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Geburtstag</mat-label>
+            <input matInput formControlName="geburtstag" type="date" autocomplete="bday" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Geschlecht</mat-label>
+            <mat-select formControlName="geschlecht">
+              <mat-option [value]="null">Keine Angabe</mat-option>
+              @for (geschlecht of geschlechter; track geschlecht) {
+                <mat-option [value]="geschlecht">{{ geschlecht }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Adresse -->
+      <div class="pur-form__group" formGroupName="adresse">
+        <h2 class="pur-form__group-titel">Adresse</h2>
+        <div class="pur-form__row">
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Straße</mat-label>
+            <input matInput formControlName="strasse" type="text" autocomplete="street-address" />
+            @if (
+              mitarbeiterForm.controls.person.controls.adresse.controls.strasse.hasError('required')
+            ) {
+              <mat-error>Straße ist erforderlich.</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Hausnummer</mat-label>
+            <input matInput formControlName="hausnummer" type="text" autocomplete="off" />
+            @if (
+              mitarbeiterForm.controls.person.controls.adresse.controls.hausnummer.hasError(
+                'required'
+              )
+            ) {
+              <mat-error>Hausnummer ist erforderlich.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+        <div class="pur-form__row">
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Postleitzahl</mat-label>
+            <input matInput formControlName="postleitzahl" type="text" autocomplete="postal-code" />
+            @if (
+              mitarbeiterForm.controls.person.controls.adresse.controls.postleitzahl.hasError(
+                'required'
+              )
+            ) {
+              <mat-error>Postleitzahl ist erforderlich.</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Ort</mat-label>
+            <input matInput formControlName="ort" type="text" autocomplete="address-level2" />
+            @if (
+              mitarbeiterForm.controls.person.controls.adresse.controls.ort.hasError('required')
+            ) {
+              <mat-error>Ort ist erforderlich.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Kontaktdaten -->
+      <div class="pur-form__group" formGroupName="kontakt">
+        <h2 class="pur-form__group-titel">Kontaktdaten</h2>
+        <div class="pur-form__row">
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>E-Mail-Adresse</mat-label>
+            <input matInput formControlName="email" type="email" autocomplete="email" />
+            @if (
+              mitarbeiterForm.controls.person.controls.kontakt.controls.email.hasError('email')
+            ) {
+              <mat-error>Bitte eine gültige E-Mail-Adresse eingeben.</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Telefon</mat-label>
+            <input matInput formControlName="telefon" type="tel" autocomplete="tel" />
+          </mat-form-field>
+        </div>
+        <div class="pur-form__row">
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Mobil</mat-label>
+            <input matInput formControlName="mobil" type="tel" autocomplete="tel" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="pur-form__field">
+            <mat-label>Webseite</mat-label>
+            <input matInput formControlName="webseite" type="url" autocomplete="url" />
+          </mat-form-field>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Beschäftigung -->
+    <div class="pur-form__group">
+      <h2 class="pur-form__group-titel">Beschäftigung</h2>
+      <div class="pur-form__row">
+        <mat-form-field appearance="outline" class="pur-form__field">
+          <mat-label>Rolle</mat-label>
+          <mat-select formControlName="rolle">
+            @for (rolle of rollen; track rolle.value) {
+              <mat-option [value]="rolle.value">{{ rolle.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="pur-form__field">
+          <mat-label>Filialen</mat-label>
+          <mat-select formControlName="filialIds" multiple>
+            @for (filiale of dialogDaten.filialen; track filiale.id) {
+              <mat-option [value]="filiale.id">{{ filiale.anzeigename }}</mat-option>
+            }
+          </mat-select>
+          <mat-hint>Die Zuordnung ist optional.</mat-hint>
+        </mat-form-field>
+      </div>
+    </div>
+
+    @if (submitError() || mitarbeiterStore.error(); as error) {
+      <p class="pur-form__error" role="alert">{{ submitError() || error }}</p>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions class="pur-dialog__footer" align="end">
+  <button
+    matButton
+    type="button"
+    [mat-dialog-close]="undefined"
+    [disabled]="mitarbeiterStore.inProgress()"
+  >
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="mitarbeiter-anlegen-form"
+    [disabled]="mitarbeiterForm.invalid || mitarbeiterStore.inProgress()"
+  >
+    {{ mitarbeiterStore.inProgress() ? 'Mitarbeiter wird angelegt' : 'Mitarbeiter anlegen' }}
+  </button>
+</mat-dialog-actions>

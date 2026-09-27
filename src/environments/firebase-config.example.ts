@@ -1,4 +1,4 @@
-// pur-office/src/environments/firebase-config.example.ts
+// pur-system/src/environments/firebase-config.example.ts
 // Lokale firebase-config.ts anhand dieser Vorlage mit der Firebase-Web-Konfiguration anlegen.
 
 export const firebaseConfig = {

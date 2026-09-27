@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/models/domain/kontakt.ts
+// pur-system/src/app/commons/models/domain/kontakt.ts
 
 export interface IKontakt {
   email?: string;

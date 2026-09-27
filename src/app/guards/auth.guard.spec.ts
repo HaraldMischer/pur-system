@@ -1,4 +1,4 @@
-// pur-office/src/app/guards/auth.guard.spec.ts
+// pur-system/src/app/guards/auth.guard.spec.ts
 
 import { User } from '@angular/fire/auth';
 import { TestBed } from '@angular/core/testing';

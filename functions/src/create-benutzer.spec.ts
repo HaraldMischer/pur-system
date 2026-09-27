@@ -1,4 +1,4 @@
-// pur-office/functions/src/create-benutzer.spec.ts
+// pur-system/functions/src/create-benutzer.spec.ts
 
 import { HttpsError } from 'firebase-functions/v2/https';
 import { describe, expect, it, vi } from 'vitest';
@@ -22,8 +22,11 @@ describe('handleCreateBenutzer', () => {
         userRole: 'master',
       }),
       existierenDokumente: vi.fn().mockResolvedValue(true),
+      getMitarbeiterDokument: vi.fn().mockResolvedValue({ aktiv: true }),
       createAuthBenutzer: vi.fn().mockResolvedValue({ uid: 'neu-123' }),
       setBenutzerProfilDokument: vi.fn().mockResolvedValue(undefined),
+      setBenutzerProfilMitMitarbeiter: vi.fn().mockResolvedValue(undefined),
+      removeMitarbeiterVerknuepfung: vi.fn().mockResolvedValue(undefined),
       setAuthBenutzerDisabled: vi.fn().mockResolvedValue(undefined),
       deactivateBenutzerProfilDokument: vi.fn().mockResolvedValue(undefined),
       logAnlageError: vi.fn(),
@@ -161,6 +164,30 @@ describe('handleCreateBenutzer', () => {
     expect(dependencies.setBenutzerProfilDokument).toHaveBeenCalledWith(
       'neu-123',
       expect.objectContaining({ erlaubteBereiche: ['dashboard', 'systemverwaltung'] }),
+    );
+  });
+
+  it('should preserve selected optional areas between mandatory master areas', async () => {
+    const dependencies = createDependencies();
+
+    await handleCreateBenutzer(
+      {
+        auth: { uid: 'master-123' },
+        data: {
+          ...data,
+          userRole: 'master',
+          erlaubteBereiche: ['verwaltung', 'schichtplan'],
+          zugriffe: {},
+        },
+      },
+      dependencies,
+    );
+
+    expect(dependencies.setBenutzerProfilDokument).toHaveBeenCalledWith(
+      'neu-123',
+      expect.objectContaining({
+        erlaubteBereiche: ['dashboard', 'schichtplan', 'verwaltung', 'systemverwaltung'],
+      }),
     );
   });
 
@@ -366,30 +393,46 @@ describe('handleCreateBenutzer', () => {
     expect(dependencies.setBenutzerProfilDokument.mock.calls[0][1].zugriffe).toEqual({});
   });
 
-  it('should allow an employee account with the selected areas and no data scopes', async () => {
+  it('should link an employee account to exactly one company employee', async () => {
     const dependencies = createDependencies();
     const mitarbeiterData: ICreateBenutzerData = {
       ...data,
       userRole: 'mitarbeiter',
       erlaubteBereiche: ['dashboard', 'schichtplan'],
-      zugriffe: {},
+      zugriffe: { u: { f: [] } },
+      firmaMitarbeiterId: 'm-1',
     };
 
     await expect(
       handleCreateBenutzer({ auth: { uid: 'master' }, data: mitarbeiterData }, dependencies),
     ).resolves.toMatchObject({ uid: 'neu-123' });
-    expect(dependencies.existierenDokumente).not.toHaveBeenCalled();
-    expect(dependencies.setBenutzerProfilDokument).toHaveBeenCalledWith(
+    expect(dependencies.existierenDokumente).toHaveBeenCalledWith([
+      'unternehmer/u',
+      'unternehmer/u/firma/f',
+    ]);
+    expect(dependencies.getMitarbeiterDokument).toHaveBeenCalledWith(
+      'unternehmer/u/firma/f/mitarbeiter/m-1',
+    );
+    expect(dependencies.setBenutzerProfilDokument).not.toHaveBeenCalled();
+    expect(dependencies.setBenutzerProfilMitMitarbeiter).toHaveBeenCalledWith(
       'neu-123',
       expect.objectContaining({
         userRole: 'mitarbeiter',
         erlaubteBereiche: ['dashboard', 'schichtplan'],
-        zugriffe: {},
+        zugriffe: { u: { f: [] } },
+        firmaMitarbeiterId: 'm-1',
       }),
+      'unternehmer/u/firma/f/mitarbeiter/m-1',
     );
   });
 
-  it('should reject employee account data scopes', async () => {
+  it.each([
+    { zugriffe: {}, firmaMitarbeiterId: 'm-1' },
+    { zugriffe: { u: { f: [] } }, firmaMitarbeiterId: undefined },
+    { zugriffe: { u: { f: ['b'] } }, firmaMitarbeiterId: 'm-1' },
+    { zugriffe: { u: { f1: [], f2: [] } }, firmaMitarbeiterId: 'm-1' },
+    { zugriffe: { u1: { f: [] }, u2: { f: [] } }, firmaMitarbeiterId: 'm-1' },
+  ])('should reject incomplete employee assignments: %j', async (zuordnung) => {
     const dependencies = createDependencies();
 
     await expect(
@@ -400,7 +443,7 @@ describe('handleCreateBenutzer', () => {
             ...data,
             userRole: 'mitarbeiter',
             erlaubteBereiche: ['dashboard'],
-            zugriffe: { u: { f: ['b'] } },
+            ...zuordnung,
           },
         },
         dependencies,
@@ -408,6 +451,99 @@ describe('handleCreateBenutzer', () => {
     ).rejects.toMatchObject({ code: 'invalid-argument' });
     expect(dependencies.createAuthBenutzer).not.toHaveBeenCalled();
     expect(dependencies.setBenutzerProfilDokument).not.toHaveBeenCalled();
+  });
+
+  it('should reject a company employee reference for another user role', async () => {
+    const dependencies = createDependencies();
+
+    await expect(
+      handleCreateBenutzer(
+        {
+          auth: { uid: 'master' },
+          data: { ...data, firmaMitarbeiterId: 'm-1' },
+        },
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect(dependencies.createAuthBenutzer).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [null, 'invalid-argument'],
+    [{ aktiv: false }, 'failed-precondition'],
+    [{ aktiv: true, benutzerUid: 'vorhanden' }, 'already-exists'],
+  ])('should reject an unavailable company employee: %j', async (dokument, code) => {
+    const dependencies = createDependencies();
+    dependencies.getMitarbeiterDokument.mockResolvedValue(dokument);
+
+    await expect(
+      handleCreateBenutzer(
+        {
+          auth: { uid: 'master' },
+          data: {
+            ...data,
+            userRole: 'mitarbeiter',
+            zugriffe: { u: { f: [] } },
+            firmaMitarbeiterId: 'm-1',
+          },
+        },
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ code });
+    expect(dependencies.createAuthBenutzer).not.toHaveBeenCalled();
+  });
+
+  it('should remove a possibly committed employee link after a transactional conflict', async () => {
+    const dependencies = createDependencies();
+    dependencies.setBenutzerProfilMitMitarbeiter.mockRejectedValue(
+      new HttpsError('already-exists', 'Bereits verknüpft.'),
+    );
+
+    await expect(
+      handleCreateBenutzer(
+        {
+          auth: { uid: 'master' },
+          data: {
+            ...data,
+            userRole: 'mitarbeiter',
+            zugriffe: { u: { f: [] } },
+            firmaMitarbeiterId: 'm-1',
+          },
+        },
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ code: 'already-exists' });
+    expect(dependencies.removeMitarbeiterVerknuepfung).toHaveBeenCalledWith(
+      'neu-123',
+      'unternehmer/u/firma/f/mitarbeiter/m-1',
+    );
+    expect(dependencies.deleteAuthBenutzer).toHaveBeenCalledWith('neu-123');
+  });
+
+  it('should remove the employee link when account activation fails', async () => {
+    const dependencies = createDependencies();
+    dependencies.setAuthBenutzerDisabled.mockRejectedValueOnce(new Error('activation timeout'));
+
+    await expect(
+      handleCreateBenutzer(
+        {
+          auth: { uid: 'master' },
+          data: {
+            ...data,
+            userRole: 'mitarbeiter',
+            zugriffe: { u: { f: [] } },
+            firmaMitarbeiterId: 'm-1',
+          },
+        },
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ code: 'internal' });
+    expect(dependencies.removeMitarbeiterVerknuepfung).toHaveBeenCalledWith(
+      'neu-123',
+      'unternehmer/u/firma/f/mitarbeiter/m-1',
+    );
+    expect(dependencies.deactivateBenutzerProfilDokument).toHaveBeenCalledWith('neu-123');
+    expect(dependencies.deleteAuthBenutzer).toHaveBeenCalledWith('neu-123');
   });
   it('waits for the profile write before enabling the new account', async () => {
     const dependencies = createDependencies();

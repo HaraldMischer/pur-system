@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/pwa-update.service.spec.ts
+// pur-system/src/app/services/core/pwa-update.service.spec.ts
 
 import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';

@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/models/domain/datenzugriff.ts
+// pur-system/src/app/commons/models/domain/datenzugriff.ts
 
 export interface IDatenzugriffEintrag {
   id: string;

@@ -1,4 +1,4 @@
-// pur-office/src/app/guards/guard-navigation.spec.ts
+// pur-system/src/app/guards/guard-navigation.spec.ts
 
 import { TAppBereich } from '../commons/models/app/app-bereich';
 import { IBenutzerProfilDokument, TUserRole } from '../commons/models/domain/benutzer';
@@ -25,14 +25,24 @@ describe('getErlaubteStartRoute', () => {
     expect(getErlaubteStartRoute(profil)).toBe('/dashboard');
   });
 
-  it.each([
-    ['schichtplan', '/schichtplan'],
-    ['mitarbeiter', '/mitarbeiter'],
-  ] as const)('should map the allowed %s area to %s', (bereich, route) => {
-    const profil = createProfil('mitarbeiter', [bereich]);
+  it.each([['schichtplan', '/schichtplan']] as const)(
+    'should map the allowed %s area to %s',
+    (bereich, route) => {
+      const profil = createProfil('mitarbeiter', [bereich]);
 
-    expect(getErlaubteStartRoute(profil)).toBe(route);
-  });
+      expect(getErlaubteStartRoute(profil)).toBe(route);
+    },
+  );
+
+  it.each(['office', 'filiale'] as const)(
+    'should map the employee area to its list route for an assigned %s user',
+    (userRole) => {
+      const profil = createProfil(userRole, ['mitarbeiter']);
+      profil.zugriffe = { 'u-1': { 'f-1': ['b-1'] } };
+
+      expect(getErlaubteStartRoute(profil)).toBe('/mitarbeiter/liste');
+    },
+  );
 
   it('should allow verwaltung for an office user', () => {
     const profil = createProfil('office', ['verwaltung']);

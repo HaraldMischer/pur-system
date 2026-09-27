@@ -1,4 +1,4 @@
-// pur-office/rules-tests/firestore.rules.test.mjs
+// pur-system/rules-tests/firestore.rules.test.mjs
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,15 +10,17 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  documentId,
-  query,
-  where,
   collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
+  query,
+  serverTimestamp,
   setDoc,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 
 let testEnvironment;
@@ -103,7 +105,10 @@ const zugriffe = { 'u-1': { 'f-1': ['b-1'] } };
 const unternehmerPath = 'unternehmer/u-1';
 const firmaPath = `${unternehmerPath}/firma/f-1`;
 const filialePath = `${firmaPath}/filiale/b-1`;
+const mitarbeiterPath = `${firmaPath}/mitarbeiter/m-1`;
+const andererMitarbeiterPath = `${firmaPath}/mitarbeiter/m-2`;
 const nichtZugeordneteFirmaPath = `${unternehmerPath}/firma/f-2`;
+const nichtZugeordneterMitarbeiterPath = `${nichtZugeordneteFirmaPath}/mitarbeiter/m-3`;
 const nichtZugeordneteFilialePath = `${firmaPath}/filiale/b-2`;
 const legacyBranchPath = 'purCustomers/u-1/company/f-1/branches/b-1';
 
@@ -122,6 +127,9 @@ async function seedProfile(userRole, overrides = {}) {
       firmaPath,
       filialePath,
       `${filialePath}/mitarbeiter/m-1`,
+      mitarbeiterPath,
+      andererMitarbeiterPath,
+      nichtZugeordneterMitarbeiterPath,
       nichtZugeordneteFirmaPath,
       nichtZugeordneteFilialePath,
       'unternehmer/u-2/firma/f-1/filiale/b-1',
@@ -131,6 +139,23 @@ async function seedProfile(userRole, overrides = {}) {
       'benutzerprofil/other/private/doc',
     ]) {
       await setDoc(doc(db, path), { name: path });
+    }
+    for (const path of [
+      mitarbeiterPath,
+      andererMitarbeiterPath,
+      nichtZugeordneterMitarbeiterPath,
+    ]) {
+      await setDoc(doc(db, path), {
+        person: {
+          vorname: 'Mia',
+          nachname: 'Muster',
+          adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
+          kontakt: {},
+        },
+        rolle: 'service',
+        filialIds: ['b-1'],
+        aktiv: true,
+      });
     }
     await setDoc(doc(db, 'benutzerprofil/other'), {
       anzeigename: 'Other',
@@ -143,28 +168,24 @@ async function seedProfile(userRole, overrides = {}) {
   return testEnvironment.authenticatedContext('scoped').firestore();
 }
 
-test('active master reads all collections, nested data and all profiles with legacy scopes', async () => {
+test('active master reads all permitted collections, nested data and all profiles with legacy scopes', async () => {
   const db = await seedProfile('master', { zugriffe: [] });
   for (const path of [
     filialePath,
     `${filialePath}/mitarbeiter/m-1`,
-    legacyBranchPath,
-    'purUser/old',
-    'other/doc',
     'benutzerprofil/other',
     'benutzerprofil/other/private/doc',
   ]) {
     await assertSucceeds(getDoc(doc(db, path)));
   }
-  for (const path of [
-    'benutzerprofil',
-    'unternehmer',
-    'purCustomers',
-    'purUser',
-    `${firmaPath}/filiale`,
-  ]) {
+  for (const path of ['benutzerprofil', 'unternehmer', `${firmaPath}/filiale`]) {
     await assertSucceeds(getDocs(collection(db, path)));
   }
+  for (const path of [legacyBranchPath, 'purUser/old', 'other/doc']) {
+    await assertFails(getDoc(doc(db, path)));
+  }
+  await assertFails(getDocs(collection(db, 'purCustomers')));
+  await assertFails(getDocs(collection(db, 'purUser')));
 });
 
 for (const role of ['office', 'filiale']) {
@@ -208,18 +229,196 @@ for (const role of ['office', 'filiale']) {
   });
 }
 
-test('active employee account reads only the own profile and no business data', async () => {
+test('active employee account reads employees only within the assigned company', async () => {
   const db = await seedProfile('mitarbeiter', {
     erlaubteBereiche: ['dashboard', 'schichtplan'],
-    zugriffe: {},
+    zugriffe: { 'u-1': { 'f-1': [] } },
+    firmaMitarbeiterId: 'm-1',
   });
 
   await assertSucceeds(getDoc(doc(db, 'benutzerprofil/scoped')));
+  await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
+  await assertSucceeds(getDoc(doc(db, andererMitarbeiterPath)));
+  await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
   for (const path of [unternehmerPath, firmaPath, filialePath, legacyBranchPath, 'other/doc']) {
     await assertFails(getDoc(doc(db, path)));
   }
+  await assertFails(getDoc(doc(db, nichtZugeordneterMitarbeiterPath)));
+  await assertFails(getDocs(collection(db, `${nichtZugeordneteFirmaPath}/mitarbeiter`)));
+  await assertFails(setDoc(doc(db, mitarbeiterPath), { rolle: 'admin' }, { merge: true }));
   await assertFails(getDoc(doc(db, 'benutzerprofil/other')));
   await assertFails(getDocs(collection(db, 'unternehmer')));
+});
+
+for (const role of ['office', 'filiale']) {
+  test(`${role} reads company employees and writes only allowed branch assignments`, async () => {
+    const db = await seedProfile(role, {
+      erlaubteBereiche: ['dashboard', 'mitarbeiter'],
+    });
+    const neuerMitarbeiter = doc(db, `${firmaPath}/mitarbeiter/neu`);
+
+    await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
+    if (role === 'filiale') {
+      await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
+      await assertSucceeds(
+        getDocs(
+          query(
+            collection(db, `${firmaPath}/mitarbeiter`),
+            where('filialIds', 'array-contains', 'b-1'),
+          ),
+        ),
+      );
+      await assertSucceeds(
+        getDocs(
+          query(
+            collection(db, `${firmaPath}/mitarbeiter`),
+            where('filialIds', 'array-contains', 'b-2'),
+          ),
+        ),
+      );
+    } else {
+      await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
+    }
+    await assertSucceeds(
+      setDoc(neuerMitarbeiter, {
+        person: {
+          vorname: 'Neu',
+          nachname: 'Mitarbeiter',
+          adresse: { strasse: 'Weg', hausnummer: '2', postleitzahl: '12345', ort: 'Ort' },
+          kontakt: {},
+        },
+        rolle: 'kasse',
+        filialIds: role === 'filiale' ? ['b-1'] : [],
+        aktiv: true,
+        erstelltAm: serverTimestamp(),
+        aktualisiertAm: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { rolle: 'admin', filialIds: ['b-1'], aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { filialIds: ['b-2'], aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { filialIds: ['b-1', 'b-1'], aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), mitarbeiterPath),
+        { filialIds: ['b-1', 'b-2'] },
+        { merge: true },
+      );
+    });
+    const fremdeFilialeBehalten = setDoc(
+      doc(db, mitarbeiterPath),
+      { rolle: 'kasse', filialIds: ['b-2'], aktualisiertAm: serverTimestamp() },
+      { merge: true },
+    );
+    if (role === 'office') {
+      await assertSucceeds(fremdeFilialeBehalten);
+    } else {
+      await assertFails(fremdeFilialeBehalten);
+    }
+    await assertFails(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { filialIds: [], aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { filialIds: ['b-2', 'b-3'], aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await assertFails(deleteDoc(doc(db, mitarbeiterPath)));
+  });
+
+  test(`${role} retains employee rights without the employee area`, async () => {
+    const db = await seedProfile(role);
+
+    await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
+    await assertSucceeds(
+      setDoc(doc(db, `${firmaPath}/mitarbeiter/neu`), {
+        person: {},
+        rolle: 'service',
+        filialIds: role === 'filiale' ? ['b-1'] : [],
+        aktiv: true,
+        erstelltAm: serverTimestamp(),
+        aktualisiertAm: serverTimestamp(),
+      }),
+    );
+  });
+}
+
+test('active master manages company employees without the employee area', async () => {
+  const db = await seedProfile('master');
+
+  await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
+  await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
+  await assertSucceeds(
+    setDoc(doc(db, `${firmaPath}/mitarbeiter/neu`), {
+      person: {},
+      rolle: 'service',
+      filialIds: [],
+      aktiv: true,
+      erstelltAm: serverTimestamp(),
+      aktualisiertAm: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(deleteDoc(doc(db, mitarbeiterPath)));
+});
+
+test('active master manages all company employees with the employee area', async () => {
+  const db = await seedProfile('master', {
+    erlaubteBereiche: ['dashboard', 'mitarbeiter', 'systemverwaltung'],
+    zugriffe: {},
+  });
+  const neuerMitarbeiter = doc(db, `${firmaPath}/mitarbeiter/neu`);
+
+  await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
+  await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
+  await assertSucceeds(
+    setDoc(neuerMitarbeiter, {
+      person: {},
+      rolle: 'service',
+      filialIds: ['b-1'],
+      aktiv: true,
+      erstelltAm: serverTimestamp(),
+      aktualisiertAm: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    setDoc(
+      doc(db, mitarbeiterPath),
+      { rolle: 'admin', filialIds: ['b-2'], aktualisiertAm: serverTimestamp() },
+      { merge: true },
+    ),
+  );
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(
+      doc(context.firestore(), andererMitarbeiterPath),
+      { benutzerUid: 'mitarbeiter-user' },
+      { merge: true },
+    );
+  });
+  await assertFails(deleteDoc(doc(db, andererMitarbeiterPath)));
+  await assertSucceeds(deleteDoc(doc(db, mitarbeiterPath)));
 });
 
 for (const role of ['master', 'office', 'filiale']) {
@@ -248,7 +447,13 @@ test('active master can write business data and update profiles', async () => {
   await assertSucceeds(
     setDoc(doc(db, 'benutzerprofil/other'), { anzeigename: 'updated' }, { merge: true }),
   );
-  await assertSucceeds(deleteDoc(doc(db, 'other/doc')));
+  await assertFails(setDoc(doc(db, 'other/new'), { name: 'new' }));
+  await assertFails(setDoc(doc(db, `${firmaPath}/private/new`), { name: 'new' }));
+  await assertFails(setDoc(doc(db, `${unternehmerPath}/private/new`), { name: 'new' }));
+  await assertFails(deleteDoc(doc(db, 'other/doc')));
+  await assertFails(deleteDoc(doc(db, unternehmerPath)));
+  await assertFails(deleteDoc(doc(db, firmaPath)));
+  await assertFails(deleteDoc(doc(db, filialePath)));
   await assertFails(deleteDoc(doc(db, 'benutzerprofil/other')));
 });
 
@@ -273,14 +478,16 @@ test('active master cannot change immutable profile fields', async () => {
   );
 });
 
-test('active master must preserve mandatory profile areas', async () => {
+test('active master may store client-managed profile areas', async () => {
   const db = await seedProfile('master');
   const eigenesProfil = doc(db, 'benutzerprofil/scoped');
   const anderesProfil = doc(db, 'benutzerprofil/other');
 
-  await assertFails(setDoc(eigenesProfil, { erlaubteBereiche: ['dashboard'] }, { merge: true }));
-  await assertFails(setDoc(anderesProfil, { erlaubteBereiche: ['verwaltung'] }, { merge: true }));
-  await assertFails(
+  await assertSucceeds(setDoc(eigenesProfil, { erlaubteBereiche: ['dashboard'] }, { merge: true }));
+  await assertSucceeds(
+    setDoc(anderesProfil, { erlaubteBereiche: ['verwaltung'] }, { merge: true }),
+  );
+  await assertSucceeds(
     setDoc(anderesProfil, { erlaubteBereiche: ['dashboard', 'systemverwaltung'] }, { merge: true }),
   );
   await assertSucceeds(
@@ -288,7 +495,31 @@ test('active master must preserve mandatory profile areas', async () => {
   );
 });
 
-test('active master updates employee account areas while data scopes remain empty', async () => {
+test('active master must preserve exactly one entrepreneur, company and branch for branch profiles', async () => {
+  const db = await seedProfile('master');
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'benutzerprofil/filiale'), {
+      anzeigename: 'Filiale',
+      aktiv: true,
+      userRole: 'filiale',
+      erlaubteBereiche: ['dashboard'],
+      zugriffe,
+    });
+  });
+  const profil = doc(db, 'benutzerprofil/filiale');
+
+  await assertSucceeds(setDoc(profil, { anzeigename: 'Filiale Neu' }, { merge: true }));
+  await assertFails(updateDoc(profil, { zugriffe: {} }));
+  await assertFails(updateDoc(profil, { zugriffe: { 'u-1': { 'f-1': ['b-1', 'b-2'] } } }));
+  await assertFails(
+    updateDoc(profil, {
+      zugriffe: { 'u-1': { 'f-1': ['b-1'] }, 'u-2': { 'f-2': ['b-2'] } },
+    }),
+  );
+  await assertSucceeds(updateDoc(profil, { zugriffe: { 'u-2': { 'f-2': ['b-2'] } } }));
+});
+
+test('active master updates an employee account while preserving its employee assignment', async () => {
   const db = await seedProfile('master');
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), 'benutzerprofil/mitarbeiter'), {
@@ -296,14 +527,18 @@ test('active master updates employee account areas while data scopes remain empt
       aktiv: true,
       userRole: 'mitarbeiter',
       erlaubteBereiche: ['dashboard', 'schichtplan'],
-      zugriffe: {},
+      zugriffe: { 'u-1': { 'f-1': [] } },
+      firmaMitarbeiterId: 'm-1',
     });
   });
   const profil = doc(db, 'benutzerprofil/mitarbeiter');
 
   await assertSucceeds(setDoc(profil, { anzeigename: 'Mitarbeiter Neu' }, { merge: true }));
   await assertSucceeds(setDoc(profil, { erlaubteBereiche: ['dashboard'] }, { merge: true }));
-  await assertFails(setDoc(profil, { zugriffe }, { merge: true }));
+  await assertSucceeds(setDoc(profil, { aktiv: false }, { merge: true }));
+  await assertFails(setDoc(profil, { zugriffe: {} }, { merge: true }));
+  await assertFails(setDoc(profil, { zugriffe: { 'u-1': { 'f-2': [] } } }, { merge: true }));
+  await assertFails(setDoc(profil, { firmaMitarbeiterId: 'm-2' }, { merge: true }));
 });
 
 test('active master cannot create employee account profiles directly', async () => {

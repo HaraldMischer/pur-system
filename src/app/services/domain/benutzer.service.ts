@@ -1,4 +1,4 @@
-// pur-office/src/app/services/domain/benutzer.service.ts
+// pur-system/src/app/services/domain/benutzer.service.ts
 
 import { Injectable, inject } from '@angular/core';
 
@@ -119,7 +119,7 @@ export class BenutzerService {
 
   // ===== Interne Helfer =======================
 
-  private parseZugriffe(value: unknown): TBenutzerZugriffe {
+  private parseZugriffe(value: unknown, userRole: TUserRole): TBenutzerZugriffe {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       return {};
     }
@@ -134,7 +134,7 @@ export class BenutzerService {
       for (const [firmaId, filialenValue] of Object.entries(firmenValue)) {
         if (
           Array.isArray(filialenValue) &&
-          filialenValue.length > 0 &&
+          (filialenValue.length > 0 || userRole === 'mitarbeiter') &&
           filialenValue.every((id) => typeof id === 'string')
         ) {
           firmen.push([firmaId, filialenValue]);
@@ -147,6 +147,13 @@ export class BenutzerService {
   }
 
   private mapBenutzerProfil(profil: TBenutzerProfilRohdaten): IBenutzerProfilDokument {
+    const firmaMitarbeiterId =
+      profil.userRole === 'mitarbeiter' &&
+      typeof profil.firmaMitarbeiterId === 'string' &&
+      profil.firmaMitarbeiterId.trim()
+        ? profil.firmaMitarbeiterId.trim()
+        : undefined;
+
     return {
       email: profil.email,
       anmeldename: profil.anmeldename,
@@ -154,7 +161,8 @@ export class BenutzerService {
       aktiv: profil.aktiv,
       userRole: profil.userRole,
       erlaubteBereiche: buildErlaubteBereiche(profil.userRole, profil.erlaubteBereiche),
-      zugriffe: this.parseZugriffe(profil.zugriffe),
+      zugriffe: this.parseZugriffe(profil.zugriffe, profil.userRole),
+      ...(firmaMitarbeiterId ? { firmaMitarbeiterId } : {}),
       erstelltAm: profil.erstelltAm,
       aktualisiertAm: profil.aktualisiertAm,
     };

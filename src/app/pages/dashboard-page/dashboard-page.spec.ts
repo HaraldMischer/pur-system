@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/dashboard-page/dashboard-page.spec.ts
+// pur-system/src/app/pages/dashboard-page/dashboard-page.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 

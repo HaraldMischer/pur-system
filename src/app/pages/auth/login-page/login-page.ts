@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/auth/login-page/login-page.ts
+// pur-system/src/app/pages/auth/login-page/login-page.ts
 
 import {
   ChangeDetectionStrategy,

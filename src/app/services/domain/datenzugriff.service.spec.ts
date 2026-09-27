@@ -1,4 +1,4 @@
-// pur-office/src/app/services/domain/datenzugriff.service.spec.ts
+// pur-system/src/app/services/domain/datenzugriff.service.spec.ts
 import { TestBed } from '@angular/core/testing';
 import { DatenzugriffService } from './datenzugriff.service';
 import { FilialeService } from './filiale.service';

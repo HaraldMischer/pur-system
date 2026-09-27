@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/global-banner.service.ts
+// pur-system/src/app/services/core/global-banner.service.ts
 
 import { Injectable, computed, signal } from '@angular/core';
 

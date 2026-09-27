@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/app/benutzer.store.ts
+// pur-system/src/app/stores/app/benutzer.store.ts
 
 import { DestroyRef, computed, inject, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';

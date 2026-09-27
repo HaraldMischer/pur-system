@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/verwaltung-page/verwaltung-page.spec.ts
+// pur-system/src/app/pages/verwaltung-page/verwaltung-page.spec.ts
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';

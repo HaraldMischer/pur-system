@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/unternehmer.store.ts
+// pur-system/src/app/stores/domain/unternehmer.store.ts
 
 import { DestroyRef, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
@@ -112,6 +112,36 @@ export const UnternehmerStore = signalStore(
         }
       }
 
+      /**
+       * Löscht einen Unternehmer und entfernt ihn aus den geladenen Stammdaten.
+       *
+       * @param unternehmerId - Die Dokument-ID des zu löschenden Unternehmers.
+       * @returns Ein Promise, das nach der bestätigten Löschung abgeschlossen ist.
+       * @throws Wenn die Unternehmerliste nicht geladen ist oder die Löschung fehlschlägt.
+       */
+      async function deleteUnternehmer(unternehmerId: string): Promise<void> {
+        if (
+          !store.isLoaded() ||
+          !store.unternehmer().some((eintrag) => eintrag.id === unternehmerId)
+        ) {
+          throw new Error('Der Unternehmer ist nicht in der geladenen Liste enthalten.');
+        }
+
+        patchState(store, { inProgress: true, error: null });
+        try {
+          await unternehmerService.deleteUnternehmer(unternehmerId);
+          stammdatenStore.removeUnternehmer(unternehmerId);
+          patchState(store, {
+            unternehmer: store.unternehmer().filter((eintrag) => eintrag.id !== unternehmerId),
+          });
+        } catch (error: unknown) {
+          patchState(store, { error: getFirebaseErrorMessage(error) });
+          throw error;
+        } finally {
+          patchState(store, { inProgress: false });
+        }
+      }
+
       // ===== Methoden: Sonstige Aktionen ==========
 
       /**
@@ -145,6 +175,7 @@ export const UnternehmerStore = signalStore(
       return {
         loadUnternehmer,
         createUnternehmer,
+        deleteUnternehmer,
         snapshot,
         clearError,
       };

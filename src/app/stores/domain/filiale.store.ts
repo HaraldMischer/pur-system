@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/filiale.store.ts
+// pur-system/src/app/stores/domain/filiale.store.ts
 
 import { DestroyRef, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
@@ -148,6 +148,44 @@ export const FilialeStore = signalStore(
         }
       }
 
+      /**
+       * Löscht eine Filiale und entfernt sie aus dem geladenen Filialkontext.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der übergeordneten Firma.
+       * @param filialId - Die Dokument-ID der zu löschenden Filiale.
+       * @returns Ein Promise, das nach der bestätigten Löschung abgeschlossen ist.
+       * @throws Wenn der Filialkontext nicht passt oder die Löschung fehlschlägt.
+       */
+      async function deleteFiliale(
+        unternehmerId: string,
+        firmaId: string,
+        filialId: string,
+      ): Promise<void> {
+        if (
+          !store.isLoaded() ||
+          store.unternehmerId() !== unternehmerId ||
+          store.firmaId() !== firmaId ||
+          !store.filialen().some((eintrag) => eintrag.id === filialId)
+        ) {
+          throw new Error('Die Filiale ist nicht in der geladenen Liste enthalten.');
+        }
+
+        patchState(store, { inProgress: true, error: null });
+        try {
+          await filialeService.deleteFiliale(unternehmerId, firmaId, filialId);
+          stammdatenStore.removeFiliale(unternehmerId, firmaId, filialId);
+          patchState(store, {
+            filialen: store.filialen().filter((eintrag) => eintrag.id !== filialId),
+          });
+        } catch (error: unknown) {
+          patchState(store, { error: getFirebaseErrorMessage(error) });
+          throw error;
+        } finally {
+          patchState(store, { inProgress: false });
+        }
+      }
+
       // ===== Methoden: Sonstige Aktionen ==========
 
       /**
@@ -190,6 +228,7 @@ export const FilialeStore = signalStore(
       return {
         loadFilialen,
         createFiliale,
+        deleteFiliale,
         resetFilialen,
         clearError,
         snapshot,

@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/models/domain/firma.ts
+// pur-system/src/app/commons/models/domain/firma.ts
 
 import { Timestamp } from 'firebase/firestore';
 

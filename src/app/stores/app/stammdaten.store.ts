@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/app/stammdaten.store.ts
+// pur-system/src/app/stores/app/stammdaten.store.ts
 
 import { DestroyRef, Injector, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
@@ -181,6 +181,67 @@ export const StammdatenStore = signalStore(
       function upsertBenutzerprofil(eintrag: IBenutzerProfilEintrag): void {
         const profile = store.benutzerprofile().filter((wert) => wert.uid !== eintrag.uid);
         patchState(store, { benutzerprofile: sortEintraege([...profile, eintrag]) });
+      }
+
+      /**
+       * Entfernt einen Unternehmer und seine untergeordneten Cache-Einträge.
+       *
+       * @param unternehmerId - ID des entfernten Unternehmers.
+       */
+      function removeUnternehmer(unternehmerId: string): void {
+        const firmenNachUnternehmer = { ...store.firmenNachUnternehmer() };
+        const filialenNachFirma = { ...store.filialenNachFirma() };
+        delete firmenNachUnternehmer[unternehmerId];
+        delete filialenNachFirma[unternehmerId];
+        patchState(store, {
+          unternehmer: store.unternehmer().filter((eintrag) => eintrag.id !== unternehmerId),
+          firmenNachUnternehmer,
+          filialenNachFirma,
+        });
+      }
+
+      /**
+       * Entfernt eine Firma und ihre untergeordneten Cache-Einträge.
+       *
+       * @param unternehmerId - ID des übergeordneten Unternehmers.
+       * @param firmaId - ID der entfernten Firma.
+       */
+      function removeFirma(unternehmerId: string, firmaId: string): void {
+        const filialenDesUnternehmers = {
+          ...(store.filialenNachFirma()[unternehmerId] ?? {}),
+        };
+        delete filialenDesUnternehmers[firmaId];
+        patchState(store, {
+          firmenNachUnternehmer: {
+            ...store.firmenNachUnternehmer(),
+            [unternehmerId]: getFirmen(unternehmerId).filter((eintrag) => eintrag.id !== firmaId),
+          },
+          filialenNachFirma: {
+            ...store.filialenNachFirma(),
+            [unternehmerId]: filialenDesUnternehmers,
+          },
+        });
+      }
+
+      /**
+       * Entfernt eine Filiale aus dem Sitzungsspeicher.
+       *
+       * @param unternehmerId - ID des übergeordneten Unternehmers.
+       * @param firmaId - ID der übergeordneten Firma.
+       * @param filialId - ID der entfernten Filiale.
+       */
+      function removeFiliale(unternehmerId: string, firmaId: string, filialId: string): void {
+        patchState(store, {
+          filialenNachFirma: {
+            ...store.filialenNachFirma(),
+            [unternehmerId]: {
+              ...(store.filialenNachFirma()[unternehmerId] ?? {}),
+              [firmaId]: getFilialen(unternehmerId, firmaId).filter(
+                (eintrag) => eintrag.id !== filialId,
+              ),
+            },
+          },
+        });
       }
 
       // ===== Methoden: Sonstige Aktionen ==========
@@ -375,6 +436,9 @@ export const StammdatenStore = signalStore(
         upsertFirma,
         upsertFiliale,
         upsertBenutzerprofil,
+        removeUnternehmer,
+        removeFirma,
+        removeFiliale,
         getFirmen,
         getFilialen,
         reset,

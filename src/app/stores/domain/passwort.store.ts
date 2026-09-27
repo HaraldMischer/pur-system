@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/passwort.store.ts
+// pur-system/src/app/stores/domain/passwort.store.ts
 
 import { DestroyRef, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';

@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/passwort.store.spec.ts
+// pur-system/src/app/stores/domain/passwort.store.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 

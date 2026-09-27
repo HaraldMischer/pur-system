@@ -1,4 +1,4 @@
-// pur-office/src/app/services/firebase/auth.service.spec.ts
+// pur-system/src/app/services/firebase/auth.service.spec.ts
 
 import { Auth, User, UserCredential } from '@angular/fire/auth';
 import { TestBed } from '@angular/core/testing';

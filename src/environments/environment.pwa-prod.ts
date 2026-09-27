@@ -1,4 +1,4 @@
-// pur-office/src/environments/environment.pwa-prod.ts
+// pur-system/src/environments/environment.pwa-prod.ts
 
 import { firebaseConfig } from './firebase-config';
 

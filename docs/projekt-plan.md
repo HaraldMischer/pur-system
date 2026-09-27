@@ -1,4 +1,4 @@
-<!-- pur-office/docs/projekt-plan.md -->
+<!-- pur-system/docs/projekt-plan.md -->
 
 # Projekt-Plan: Pur-System
 
@@ -151,40 +151,68 @@ einem Mitarbeiterzugang verwenden die bestehenden Abläufe für Anmeldung, Abmel
 Mitarbeiterzugang deaktivieren und vergibt bei einem vergessenen Passwort ein neues vorläufiges Passwort.
 
 Der Master weist Mitarbeiterzugängen die benötigten `erlaubteBereiche` bei der Anlage und Bearbeitung des Kontos zu. Die
-Auslieferungsvariante erzeugt keine zusätzliche Rollenbeschränkung und gewährt keine fachlichen Datenrechte. Datenzugriffe werden
-zusätzlich durch Backend und Firestore Rules abgesichert.
+Auslieferungsvariante erzeugt keine zusätzliche Rollenbeschränkung und gewährt keine fachlichen Datenrechte. Direkte
+Datenzugriffe werden durch die Firestore Rules abgesichert.
 
-Die Auth-Rolle `mitarbeiter` und ein fachlicher Mitarbeiterdatensatz einer Firma sind getrennte Konzepte. Ein Mitarbeiterdatensatz
-kann ohne Mitarbeiterzugang bestehen. Soll ein Mitarbeiter Pur Mitarbeiter verwenden, wird sein Mitarbeiterzugang später eindeutig
-mit dem zugehörigen Mitarbeiterdatensatz verknüpft. Erst über diesen Mitarbeiterdatensatz und dessen noch festzulegende
-Filialzuordnungen entstehen fachliche Datenrechte, beispielsweise auf Dienstpläne bestimmter Filialen. `erlaubteBereiche` steuert
-dagegen ausschließlich, welche App-Funktionen über den Mitarbeiterzugang geöffnet werden dürfen.
+Der Begriff Mitarbeiter bezeichnet zwei technisch getrennte Konzepte, auch wenn beide dieselbe Person betreffen können. Der
+fachliche Mitarbeiterdatensatz beschreibt die in einer Firma beziehungsweise Filiale beschäftigte Person einschließlich
+Stammdaten, Filialzuordnungen und betrieblichem Filialzugang. Der persönliche Mitarbeiterzugang ist dagegen ein
+Firebase-Auth-Benutzer mit `userRole: mitarbeiter` für die App Pur Mitarbeiter. Ein fachlicher Mitarbeiterdatensatz ist weder von
+einem solchen Zugang abhängig noch mit dem betrieblichen Filialzugang gleichzusetzen.
 
-Bei der Anlage und Bearbeitung von Benutzerprofilen zeigt die Oberfläche nur die optional wählbaren Bereiche `schichtplan`,
-`mitarbeiter` und `verwaltung`. `dashboard` und `systemverwaltung` werden nicht als Checkboxen angeboten. Die Anwendung ergänzt
-`dashboard` immer und `systemverwaltung` ausschließlich für Master. Die Callable Function setzt diese Pflichtbereiche bei der
-Anlage verbindlich durch; bei Profilaktualisierungen normalisiert der fachliche Service die Bereiche entsprechend. Die Firestore
-Rules lehnen Aktualisierungen ohne `dashboard`, Masterprofile ohne `systemverwaltung` und Nicht-Masterprofile mit
-`systemverwaltung` ab.
+Ein persönlicher Mitarbeiterzugang ist genau einem fachlichen Mitarbeiterdatensatz zugeordnet. Sein Benutzerprofil enthält in
+`zugriffe` genau einen Unternehmer und darunter genau eine Firma mit einer leeren Filialliste. Zusätzlich enthält es die für
+`userRole: mitarbeiter` verpflichtende String-ID `firmaMitarbeiterId`; für andere Auth-Rollen ist dieses Feld unzulässig. Aus
+diesen drei IDs kann die Mitarbeiter-App den vollständigen Firestore-Pfad des fachlichen Mitarbeiterdatensatzes bilden. Die
+fachlich erlaubten Filialen werden ausschließlich aus dessen `filialIds` gelesen und nicht im Benutzerprofil dupliziert.
+
+Der fachliche Mitarbeiterdatensatz enthält als Gegenreferenz optional `benutzerUid`. Beide Referenzen werden ausschließlich
+serverseitig gemeinsam gesetzt oder entfernt. Die serverseitige Anlage stellt auch bei parallelen Aufrufen sicher, dass ein
+fachlicher Mitarbeiter höchstens einem persönlichen Mitarbeiterzugang zugeordnet ist. Schlägt die Kontoanlage fehl, darf keine
+Referenz bestehen bleiben. Eine Kontodeaktivierung erhält die Verknüpfung für eine spätere Reaktivierung. Eine Aufhebung
+erfolgt als ausdrückliche serverseitige Aktion; erst nach ihrem vollständigen Abschluss ist eine neue Verknüpfung zulässig.
+Solange die Verknüpfung besteht, darf die Auth-Rolle des Benutzerprofils nicht geändert werden.
+
+Bei einem verknüpften Mitarbeiterprofil darf ein Master ausschließlich Anzeigename, Aktivstatus und `erlaubteBereiche`
+bearbeiten. `zugriffe` und `firmaMitarbeiterId` bleiben unverändert. Die Zuordnung zu einem fachlichen Mitarbeiterdatensatz wird
+nicht über die allgemeine Profilbearbeitung, sondern ausschließlich über eine eigene serverseitige Aktion geändert oder
+aufgehoben.
+
+Die Firmenzuordnung in `zugriffe` erlaubt einem Mitarbeiterzugang das Lesen der fachlichen Mitarbeiterdatensätze dieser Firma.
+Sein eigener Mitarbeiterdatensatz und dessen `filialIds` bilden die Grundlage für weitere persönliche Datenrechte,
+beispielsweise auf Dienstpläne bestimmter Filialen. `erlaubteBereiche` steuert ausschließlich, welche App-Funktionen geöffnet
+werden dürfen.
+
+Bei der Anlage und Bearbeitung von Benutzerprofilen zeigt die Oberfläche die gemäß App-Bereich-Matrix optional wählbaren Bereiche
+rollenabhängig als Checkboxen. `dashboard` und `systemverwaltung` werden nicht als Checkboxen angeboten. Die Callable Function
+ergänzt `dashboard` immer und `systemverwaltung` ausschließlich für Master; die optionalen Bereiche übernimmt sie aus der
+Clientauswahl. Bei Profilaktualisierungen normalisiert der fachliche Service die Bereiche entsprechend. Die Firestore Rules
+leiten aus `erlaubteBereiche` keine Datenrechte oder rollenabhängigen Bereichskombinationen ab.
 
 ### Datenrechte und Firestore Rules
 
-Welche App-Bereiche und welche Datenräume der Benutzer lesen darf, wird über `erlaubteBereiche` und `zugriffe` festgelegt. Die
-Zugriffe sind als verschachtelte Map `Unternehmer-ID -> Firma-ID -> Filial-IDs` gespeichert. Altprofile mit der früheren
-Array-Struktur bleiben für Login und Bereichsfreigaben lesbar, gewähren Office- und Filialkonten aber keinen Datenzugriff. Aktive
-Master bleiben davon unberührt.
+Welche App-Bereiche sichtbar und erreichbar sind, wird über `erlaubteBereiche` festgelegt. Datenrechte ergeben sich unabhängig
+davon aus `userRole`, Aktivstatus, `zugriffe` und den fachlichen Bedingungen der Collection-Matrix. Die Zugriffe sind als
+verschachtelte Map `Unternehmer-ID -> Firma-ID -> Filial-IDs` gespeichert. Altprofile mit der früheren Array-Struktur bleiben für
+Login und Bereichsfreigaben lesbar, gewähren Office- und Filialkonten aber keinen Datenzugriff. Aktive Master bleiben davon
+unberührt.
 
 Die App speichert keine direkten Firestore-Pfade als Berechtigung, sondern fachliche Berechtigungen. Daraus werden Navigation,
 Route Guards und Firestore-Abfragen abgeleitet.
 
 Die Firestore Rules erlauben aktiven Mastern das Lesen aller Collections samt Untercollections. Fachliche Daten dürfen sie
-vollständig schreiben; vorhandene Benutzerprofile dürfen sie nur in den ausdrücklich freigegebenen Feldern aktualisieren.
+anlegen und aktualisieren; vorhandene Benutzerprofile dürfen sie nur in den ausdrücklich freigegebenen Feldern aktualisieren.
 Benutzerrolle, E-Mail-Adresse und Auth-Daten bleiben dabei unveränderlich. Office und Filiale lesen Geschäftsdaten direkt anhand
 der verschachtelten `zugriffe`-Map und weiterhin ihr eigenes Profil. Aktive Office-Konten dürfen ihre zugeordneten Firmen- und
 Filialdokumente aktualisieren, aber weder Firmen oder Filialen anlegen oder löschen noch Filial-Untercollections beschreiben.
-Filialkonten bleiben vorerst rein lesend. Ein separater Zugriffsindex wird nicht gespeichert. Bestätigte Altanwendungskonten ohne
-`benutzerprofil`-Dokument behalten ihren bisherigen Zugriff außerhalb von `benutzerprofil` und `unternehmer`. Clientseitige Guards
-ersetzen die Rules nicht.
+Filialkonten bleiben außerhalb der Mitarbeiterverwaltung rein lesend. Das eigene Profil bleibt auch bei einem inaktiven Konto
+lesbar; alle weiteren Rechte erfordern ein aktives Profil. Ein separater Zugriffsindex wird nicht gespeichert. Bestätigte Altanwendungskonten ohne
+`benutzerprofil`-Dokument behalten ihren bisherigen Zugriff ausschließlich auf `purCustomers` und `purUser`. Für Pur-System-Konten
+gilt die Collection-Matrix abschließend: Was dort nicht steht, ist nicht erlaubt. Clientseitige Guards ersetzen die Rules nicht.
+
+Unternehmer, Firmen und Filialen werden nicht direkt vom Client gelöscht. Ein aktiver Master verwendet dafür eine geschützte
+Callable Function, die vorhandene Benutzer- oder Mitarbeiterreferenzen ablehnt und den gewählten Strukturzweig anschließend
+rekursiv löscht. Die Domain-Services und Stores stellen die Löschmethoden bereit; eine UI-Aktion wird separat ergänzt.
 
 Falls eine Fachfunktion später ausdrücklich für den Offline-Betrieb freigegeben wird, dürfen lokal gespeicherte Berechtigungen und
 Daten ausschließlich den zuletzt erfolgreich bestätigten Stand abbilden und keine neuen Rechte gewähren. Nach Wiederherstellung
@@ -209,20 +237,22 @@ für manuelle Administratorprüfung protokolliert.
 ### Vereinbartes Rollenmodell für Datenzugriffe
 
 - **Filiale:** Das Konto repräsentiert genau eine Filiale, in der Daten erzeugt werden. Bei der Anlage ist genau eine vollständige
-  Zuordnung aus Unternehmer, Firma und Filiale erforderlich; alle drei Selects verwenden Einfachauswahl.
+  Zuordnung aus Unternehmer, Firma und Filiale erforderlich; alle drei Selects verwenden Einfachauswahl. Auch spätere
+  Profilaktualisierungen müssen genau eine solche Zuordnung erhalten.
 - **Office:** Das Konto erhält Zugriff ausschließlich auf ausgewählte Firmen und deren ausdrücklich freigegebene Filialen. Mehrere
   Firmen und Filialen können zugeordnet werden; auch eine Beschränkung auf einzelne Filialen ist möglich. Office hat keinen
   pauschalen Lesezugriff auf alle Daten. Bestehende zugeordnete Firmen- und Filialdokumente dürfen aktualisiert, aber nicht
   angelegt oder gelöscht werden. Weitere Schreibaktionen, beispielsweise Mitarbeiter anlegen, müssen pro Datenart und Aktion
   innerhalb des freigegebenen Datenbereichs festgelegt werden.
-- **Master:** Keine Datenzuordnung erforderlich; aktive Master lesen und schreiben alle Collections und Untercollections auch mit
-  `zugriffe: {}`. Bestehende Masterprofile mit der früheren leeren Liste bleiben ebenfalls funktionsfähig. Datenstruktur- und
-  Benutzerverwaltung bleiben dem Master vorbehalten.
+- **Master:** Keine Datenzuordnung erforderlich; aktive Master erhalten die in der Collection-Matrix aufgeführten Rechte auch mit
+  `zugriffe: {}`. Nicht aufgeführte Collections bleiben gesperrt. Bestehende Masterprofile mit der früheren leeren Liste bleiben
+  ebenfalls funktionsfähig. Datenstruktur- und Benutzerverwaltung bleiben dem Master vorbehalten.
 - **Mitarbeiter:** Vierte Auth-Rolle für die mobile Mitarbeiter-App. Ein Mitarbeiter kann optional einen eigenen, durch einen
-  Master angelegten Mitarbeiterzugang erhalten. Der Master weist die benötigten `erlaubteBereiche` zu; fachliche Datenrechte
-  entstehen daraus nicht. Ein fachlicher Mitarbeiterdatensatz kann ohne Mitarbeiterzugang bestehen. Seine mögliche spätere
-  Verknüpfung mit einem Zugang, Filialzuordnungen, fachliche Mitarbeiterrollen wie Service, Kasse oder Admin, Dienstplandaten,
-  persönliche Aktionen und Push-Benachrichtigungen werden bei konkretem fachlichem Bedarf separat geplant.
+  Master angelegten Mitarbeiterzugang erhalten. Der Master weist die benötigten `erlaubteBereiche` zu und verknüpft den Zugang
+  mit genau einem aktiven Firma-Mitarbeiter. Das Benutzerprofil speichert dessen `firmaMitarbeiterId`; der Mitarbeiterdatensatz
+  speichert die Gegenreferenz `benutzerUid`. Ein fachlicher Mitarbeiterdatensatz kann weiterhin ohne Mitarbeiterzugang bestehen.
+  Filialzuordnungen, fachliche Mitarbeiterrollen wie Service, Kasse oder Admin, Dienstplandaten, persönliche Aktionen und
+  Push-Benachrichtigungen werden bei konkretem fachlichem Bedarf separat geplant.
 
 Eine Firmenfreigabe gewährt nicht automatisch Zugriff auf alle aktuellen oder zukünftigen Filialen. Filialen werden weiterhin
 ausdrücklich in der verschachtelten Zugriffs-Map zugeordnet. Weitere Schreibrechte für Filial- und Office-Konten sind separat
@@ -238,8 +268,9 @@ Pur Office verwendet für neue Benutzer die fachlich benannte Firebase-Struktur:
 unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}
 ```
 
-Die Altanwendung verwendet weiterhin unverändert `purCustomers/{unternehmerId}/company/{firmaId}/branches/{filialId}`. Ihre Konten
-ohne `benutzerprofil`-Dokument behalten dort den bisherigen Zugriff, erhalten aber keinen Legacy-Zugriff auf die neue
+Die Altanwendung verwendet weiterhin unverändert `purCustomers/{unternehmerId}/company/{firmaId}/branches/{filialId}` sowie die
+zugehörige Collection `purUser`. Beide Legacy-Collections bleiben vom neuen Berechtigungsmodell unberührt. Konten ohne
+`benutzerprofil`-Dokument behalten dort den bisherigen Zugriff, erhalten aber keinen Legacy-Zugriff auf die neue
 Top-Level-Collection `unternehmer`.
 
 ### Auswahlverhalten
@@ -274,6 +305,48 @@ seine zugeordneten Firmen- und Filialdaten bearbeiten; die vereinbarten Schreibg
 abgesichert.
 Der genaue Implementierungsstand steht im [Projekt-Stand](./projekt-stand.md), die unmittelbar anstehenden Schritte in den
 [offenen Todos](./todo_next.md) und bewusst zurückgestellte Aufgaben in den [späteren Todos](./todo_spaeter.md).
+
+## Fachliche Mitarbeiterverwaltung
+
+Ein fachlicher Mitarbeiter wird als Beschäftigter einer Firma unter folgendem Pfad gespeichert:
+
+```text
+unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}
+```
+
+Pflichtdaten sind `person.vorname`, `person.nachname`, eine vollständige `person.adresse` und die betriebliche `rolle`. Als Rollen
+sind `service`, `kasse` und `admin` vorgesehen. `person.kontakt` wird als Objekt geführt; seine einzelnen Kontaktwege sowie
+`person.geburtstag` und `person.geschlecht` sind optional. `aktiv` kennzeichnet, ob der Mitarbeiter fachlich verwendet werden
+darf. `erstelltAm` und `aktualisiertAm` werden serverseitig gepflegt.
+
+`filialIds` enthält ausschließlich Filial-IDs der übergeordneten Firma. Für Office darf die Liste leer sein, weil ein Mitarbeiter
+zunächst nur bei der Firma beschäftigt sein kann. Sie kann später eine oder mehrere eindeutige Filial-IDs enthalten. Filialkonten
+dürfen die Mitarbeiter ihrer Firma lesen, laden über eine `array-contains`-Abfrage aber direkt nur Mitarbeiter mit ihrer eigenen
+Filial-ID. Sie können nur solche Mitarbeiter anlegen und bearbeiten. Bei einer Bearbeitung werden nur die für das angemeldete
+Konto erlaubten Filialzuordnungen angeboten; weitere bereits vorhandene Zuordnungen bleiben unverändert.
+
+`benutzerUid` ist eine optionale, ausschließlich serverseitig gesetzte technische Gegenreferenz zum persönlichen
+Firebase-Auth-Zugang. Sie wird weder im Mitarbeiterformular erfasst noch für den betrieblichen Mitarbeiter-Login verwendet. Der
+betriebliche Login erhält ein eigenes Sicherheits- und Sitzungsmodell und wird nicht im fachlichen Mitarbeiterdatensatz
+vorweggenommen. Die betriebliche Rolle eines Mitarbeiters ist unabhängig von `TUserRole`.
+
+Für die Mitarbeiterverwaltung gilt folgende Rollenmatrix:
+
+| Auth-Rolle    | Sidebar und `/mitarbeiter/liste`                | Lesen                           | Schreiben                        |
+| ------------- | ----------------------------------------------- | ------------------------------- | -------------------------------- |
+| `master`      | mit Bereichsfreigabe                            | Mitarbeiter aller Firmen        | anlegen, bearbeiten und löschen  |
+| `office`      | mit Bereichsfreigabe und gültigem Datenzugriff  | Mitarbeiter erlaubter Firmen    | in erlaubten Firmen und Filialen |
+| `filiale`     | mit Bereichsfreigabe und gültigem Filialkontext | Mitarbeiter der eigenen Filiale | in der eigenen Filiale           |
+| `mitarbeiter` | nein                                            | Mitarbeiter der eigenen Firma   | nein                             |
+
+Mit einem persönlichen Mitarbeiterzugang verknüpfte Datensätze dürfen nicht gelöscht werden. `erlaubteBereiche` steuert nur
+Sidebar und Routenzugriff; die Lese- und Schreibrechte gelten davon unabhängig nach Rolle und `zugriffe`. Der gleichnamige
+App-Bereich gewährt `userRole: mitarbeiter` keine Verwaltungsrechte.
+
+Mitarbeiterlisten werden clientseitig direkt aus Firestore geladen. Master und Office laden die erlaubte Firmen-Collection;
+Filialkonten begrenzen die Abfrage mit ihrer zugewiesenen Filial-ID. Bei der Benutzeranlage lädt der Client aktive, noch nicht
+verknüpfte Mitarbeiter der ausgewählten Firma für die Auswahl. Die Cloud Function `createBenutzer` prüft den konkret gewählten
+Datensatz erneut und stellt die Verknüpfung atomar her.
 
 ## Projektstruktur
 
@@ -327,7 +400,26 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
 
 2. **Schichtplan (`/schichtplan`):** Schichtpläne der Filialen.
 
-3. **Mitarbeiter (`/mitarbeiter`):** Stammdaten der Mitarbeiter.
+3. **Mitarbeiter (`/mitarbeiter`):** Stammdaten der Mitarbeiter. `mitarbeiter-page` bildet einen komponentenlosen Elternbereich
+   für die gerouteten Unterseiten. Anlage und Bearbeitung erfolgen in Dialogen innerhalb der Mitarbeiterliste:
+
+   ```text
+   src/app/pages/mitarbeiter-page/
+   ├── mitarbeiter-liste-page/
+   │   ├── mitarbeiter-card/
+   │   ├── mitarbeiter-anlegen-dialog/
+   │   └── mitarbeiter-bearbeiten-dialog/
+   └── mitarbeiter-login-page/
+   ```
+
+   `/mitarbeiter` leitet auf `/mitarbeiter/liste` weiter. Die Mitarbeiterliste zeigt eine Card zum Hinzufügen sowie eine
+   `MitarbeiterCard` mit kompakten Details und Bearbeitungsaktion je vorhandenem Mitarbeiter. Der Anlegen- und der
+   Bearbeiten-Dialog bleiben fachlich getrennt; gemeinsam benötigte Formularbestandteile können bei Bedarf intern
+   wiederverwendet werden. Eine eigene geroutete Anlage- oder Detailseite ist nicht vorgesehen.
+
+   Die `mitarbeiter-login-page` ist unter `/mitarbeiter/login` erreichbar und behandelt den betrieblichen Login eines Mitarbeiters
+   in der Filiale. Firebase-Auth-Benutzer einschließlich der Rolle `mitarbeiter` verwenden dagegen weiterhin die allgemeine
+   `auth/login-page`.
 
 4. **Verwaltung (`/verwaltung`):** Bereich für Office und Master zur Auswahl und Bearbeitung zugeordneter Firmen- und Filialdaten.
    Die Route erfordert zusätzlich die Bereichsfreigabe `verwaltung`; Filialkonten bleiben ausgeschlossen.

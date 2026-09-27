@@ -1,4 +1,4 @@
-// pur-office/src/app/services/firebase/auth.service.ts
+// pur-system/src/app/services/firebase/auth.service.ts
 
 import { Injectable, Injector, inject, runInInjectionContext } from '@angular/core';
 import { Auth, User, UserCredential } from '@angular/fire/auth';

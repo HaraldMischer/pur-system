@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/datenstruktur-page/unternehmer-anlegen-dialog/unternehmer-anlegen-dialog.ts
+// pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/unternehmer-anlegen-dialog/unternehmer-anlegen-dialog.ts
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {

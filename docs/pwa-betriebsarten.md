@@ -1,4 +1,4 @@
-<!-- pur-office/docs/pwa-betriebsarten.md -->
+<!-- pur-system/docs/pwa-betriebsarten.md -->
 
 # Auslieferungs- und Betriebsartenmatrix
 

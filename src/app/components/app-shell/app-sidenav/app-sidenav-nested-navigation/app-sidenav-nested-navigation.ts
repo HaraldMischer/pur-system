@@ -1,4 +1,4 @@
-// pur-office/src/app/components/app-shell/app-sidenav/app-sidenav-nested-navigation/app-sidenav-nested-navigation.ts
+// pur-system/src/app/components/app-shell/app-sidenav/app-sidenav-nested-navigation/app-sidenav-nested-navigation.ts
 
 import {
   ChangeDetectionStrategy,

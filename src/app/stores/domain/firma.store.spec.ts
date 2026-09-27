@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/firma.store.spec.ts
+// pur-system/src/app/stores/domain/firma.store.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 
@@ -40,6 +40,7 @@ describe('FirmaStore', () => {
   let firmaServiceMock: {
     loadFirmen: ReturnType<typeof vi.fn>;
     createFirma: ReturnType<typeof vi.fn>;
+    deleteFirma: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -50,6 +51,7 @@ describe('FirmaStore', () => {
         nummer: 5,
         anzeigename: anlage.anzeigename,
       }),
+      deleteFirma: vi.fn().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({
@@ -108,6 +110,16 @@ describe('FirmaStore', () => {
       },
       firmaZulu,
     ]);
+  });
+
+  it('should delete a company from the loaded context', async () => {
+    const store = TestBed.inject(FirmaStore);
+    await store.loadFirmen('unternehmer-1');
+
+    await store.deleteFirma('unternehmer-1', 'a');
+
+    expect(firmaServiceMock.deleteFirma).toHaveBeenCalledWith('unternehmer-1', 'a');
+    expect(store.firmen()).toEqual([firmaZulu]);
   });
 
   it('should expose errors and reset the company context', async () => {

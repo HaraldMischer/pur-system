@@ -1,8 +1,8 @@
-<!-- pur-office/docs/projekt-stand.md -->
+<!-- pur-system/docs/projekt-stand.md -->
 
 # Projekt-Stand: Pur-System
 
-Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 27.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -22,13 +22,14 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - `app-toolbar` liegt unter `src/app/components/app-shell/app-toolbar`.
 - Für jede `userRole` ist eine eigene Navigationsstruktur einschließlich der ausdrücklich festgelegten Darstellung `flat` oder
   `nested` zentral konfiguriert. Die Darstellungsart wird nicht automatisch aus den enthaltenen Navigationseinträgen abgeleitet.
-  Master verwendet aktuell `nested`; Office, Filiale und Mitarbeiter verwenden `flat`.
+  Master, Office und Filiale verwenden aktuell `nested`; Mitarbeiter verwendet `flat`.
 - Die Rolle aus dem geladenen Benutzerprofil wählt die Navigationskonfiguration. `erlaubteBereiche` filtert anschließend nur die
   sichtbaren Einträge und verändert die konfigurierte Darstellungsart nicht.
 - Flache und verschachtelte Navigationen verwenden getrennte Darstellungskomponenten. Die verschachtelte Component unterstützt
   direkte Links, nicht navigierbare ausklappbare Gruppen, eingerückte Unterpunkte und das automatische Öffnen der Gruppe einer
   aktiven Unterroute. Die Master-Navigation stellt `Systemverwaltung` als solche Gruppe mit den Unterpunkten
-  `Datenstruktur anlegen` und `Benutzerverwaltung` dar.
+  `Datenstruktur anlegen` und `Benutzerverwaltung` dar. Office und Filiale erhalten bei gültigem Datenzugriff die Gruppe
+  `Mitarbeiter` mit dem Unterpunkt `Mitarbeiterliste`; Master erhält sie bei optionaler Zuweisung des App-Bereichs.
 - Die Toolbar zeigt den Titel der aktiven Route und den Menübutton.
 - Die Toolbar bietet einen Dark-/Light-Mode-Umschalter und im Entwicklungsmodus einen Button für die Snapshots der aktiven Stores.
 - Die Toolbar zeigt während zentral registrierter Lese- und Schreibvorgänge eine globale unbestimmte Progress-Bar.
@@ -43,8 +44,12 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 - `dashboard-page` wurde unter `src/app/pages/dashboard-page` angelegt.
 - `schichtplan-page` wurde unter `src/app/pages/schichtplan-page` angelegt.
-- `mitarbeiter-page` wurde unter `src/app/pages/mitarbeiter-page` angelegt.
-- Routen für `/dashboard`, `/schichtplan` und `/mitarbeiter` werden per `loadComponent` geladen.
+- `mitarbeiter-page` ist der Feature-Ordner für die fachliche Mitarbeiterverwaltung. Die bisherige Platzhalterseite wurde
+  entfernt.
+- Routen für `/dashboard` und `/schichtplan` werden per `loadComponent` geladen.
+- `/mitarbeiter` ist ein komponentenloser, nach Bereichsfreigabe geschützter Elternpfad und leitet auf
+  `/mitarbeiter/liste` weiter. Die Listenroute ist für aktive Office- und Filialkonten mit vollständigem Datenzugriff sowie für
+  aktive Master mit optional zugewiesenem App-Bereich erreichbar. Die Master-Freigabe erweitert nicht die Collection-Rechte.
 - `/` leitet auf `/dashboard` weiter.
 - Die komponentenlose Route `/systemverwaltung` ist der geschützte Elternpfad für `/systemverwaltung/datenstruktur` und
   `/systemverwaltung/benutzer` und leitet ohne Unterpfad auf die Datenstruktur-Anlage weiter.
@@ -143,11 +148,13 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Die Benutzerauswahl zeigt Anzeigename und Rollenbezeichnung. Im Bearbeitungsdialog bleiben Anmeldename und technische
   Firebase-Adresse einsehbar; die Profilkarte der App-Shell zeigt unter dem Anzeigenamen den Anmeldenamen.
 - Die Rolle `mitarbeiter` kann in der Benutzeranlage mit der Anzeige „Mitarbeiter“ ausgewählt werden. Der Master weist ihre
-  `erlaubteBereiche` über dieselben Checkboxen wie bei den bestehenden Rollen zu. Eine Datenzugriffsauswahl wird nicht angezeigt
-  und das Profil erhält `zugriffe: {}`. Beim Rollenwechsel werden zuvor ausgewählte fachliche Datenzugriffe entfernt, die
-  gewählten Bereiche bleiben erhalten.
+  `erlaubteBereiche` über dieselben Checkboxen wie bei den bestehenden Rollen zu. Zusätzlich wählt er genau einen Unternehmer,
+  eine Firma und einen aktiven, noch nicht verknüpften Firma-Mitarbeiter aus. Eine Filialauswahl wird dabei nicht angezeigt. Das
+  Profil erhält genau eine Firma mit leerer Filialliste in `zugriffe` sowie deren `firmaMitarbeiterId`. Beim Rollenwechsel werden
+  zuvor ausgewählte fachliche Datenzugriffe und der Firma-Mitarbeiter entfernt; die gewählten Bereiche bleiben erhalten.
 - Vorhandene Profile von Mitarbeiterzugängen zeigen ihre Rolle in der Benutzerverwaltung korrekt an. Ihre Bereichsfreigaben können
-  durch einen Master bearbeitet werden, ihre Datenzugriffe bleiben leer und ihr Aktivstatus kann weiterhin geändert werden.
+  durch einen Master bearbeitet werden, ihre bestehende Mitarbeiterzuordnung bleibt unverändert und ihr Aktivstatus kann
+  weiterhin geändert werden.
 
 ## Mitarbeiterrolle und Mitarbeiter-App
 
@@ -156,19 +163,55 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Ein aktiver Master kann einen Mitarbeiterzugang mit Anfangspasswort anlegen. Die bestehende sichere Kontoanlage aktiviert den
   Auth-Benutzer erst nach erfolgreichem Schreiben des Profils. Die Rolle wurde von `personal` zu `mitarbeiter` geändert und in
   Functions, Rules sowie allen Hosting-Builds deployed.
-- Mitarbeiterzugänge erhalten die durch den Master ausgewählten `erlaubteBereiche` und weiterhin `zugriffe: {}`. Frontend, Backend
-  und Firestore Rules verhindern fachliche Datenzuordnungen. Benutzer mit einem Mitarbeiterzugang können ihr eigenes Profil lesen,
-  erhalten aber noch keine fachlichen Datenrechte.
+- Mitarbeiterzugänge erhalten die durch den Master ausgewählten `erlaubteBereiche` sowie genau einen Unternehmer und eine Firma
+  mit leerer Filialliste in `zugriffe`. `firmaMitarbeiterId` verweist auf den fachlichen Mitarbeiterdatensatz; dieser speichert
+  `benutzerUid` als Gegenreferenz. Beide Referenzen werden durch die Callable Function in einer Firestore-Transaktion gesetzt.
+  Der Auth-Benutzer wird erst danach aktiviert. Fehler bereinigen eine möglicherweise angelegte Verknüpfung und das Auth-Konto.
 - Anmeldung, Abmeldung und die vorhandene Passwortänderung werden wiederverwendet. Die Vergabe eines neuen vorläufigen Passworts
   durch einen Master ist noch nicht umgesetzt.
 - Pur Mitarbeiter ist als installierbare, für Handys optimierte PWA mit eigener App-Shell und der Produktkennung „Pur Mitarbeiter“
   veröffentlicht. Installation und eigenständiger Start wurden auf Desktop und iPhone bestätigt.
 - Die Hosting-Variante erzeugt keine zusätzliche Rollenbeschränkung. Navigation und Routenzugriff richten sich nach
   `erlaubteBereiche`; administrative Routen bleiben zusätzlich durch ihre vorhandenen Rollenguards geschützt.
-- Ein Mitarbeiterzugang ist vom fachlichen Mitarbeiterdatensatz einer Firma getrennt. Ein Mitarbeiterdatensatz kann ohne
-  Mitarbeiterzugang bestehen. Die spätere eindeutige Verknüpfung beider Datensätze, Filialzuordnungen, Dienstplandaten,
-  persönliche Aktionen und Push-Benachrichtigungen sind ausdrücklich noch nicht festgelegt und werden bei konkretem fachlichem
-  Bedarf separat geplant. `erlaubteBereiche` steuert nur verfügbare App-Funktionen und ersetzt diese fachliche Zuordnung nicht.
+- Der Begriff Mitarbeiter bezeichnet zwei technisch getrennte Konzepte, auch wenn beide dieselbe Person betreffen können: Der
+  fachliche Mitarbeiterdatensatz beschreibt die beschäftigte Person mit Stammdaten, Filialzuordnungen und betrieblichem
+  Filialzugang. Der persönliche Mitarbeiterzugang ist ein Firebase-Auth-Benutzer mit `userRole: mitarbeiter` für Pur
+  Mitarbeiter.
+  Er wird bei seiner Anlage eindeutig mit einem vorhandenen fachlichen Mitarbeiterdatensatz verknüpft, ist aber weder dessen
+  Voraussetzung noch mit dem betrieblichen Filialzugang gleichzusetzen. Dienstplandaten, persönliche Aktionen und
+  Push-Benachrichtigungen werden bei fachlichem Bedarf separat geplant. `erlaubteBereiche` steuert nur verfügbare App-Funktionen.
+- Das fachliche Mitarbeiter-Domänenmodell und sein Datenzugriff sind lokal umgesetzt. Mitarbeiter liegen unter
+  `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`. Der Service lädt, erstellt, aktualisiert und löscht
+  Mitarbeiter; der Domain-Store bildet Lade-, Schreib- und Fehlerzustände sowie den aktuellen Firmenkontext ab.
+- Die lokalen Firestore Rules erlauben Office- und Filialkonten die vereinbarten Lese-, Anlage- und Aktualisierungszugriffe
+  innerhalb ihres Firmen- beziehungsweise Filialbereichs. Filialkonten dürfen Mitarbeiter ihrer Firma lesen, laden mit ihrer
+  Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
+  Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
+  `erlaubteBereiche`. Die Löschmethode ist in Service und Store vorhanden; verknüpfte Mitarbeiter sind durch Rules vor Löschung
+  geschützt. Eine Löschaktion in der Oberfläche ist noch nicht angebunden. Diese Änderungen sind noch nicht produktiv deployed.
+- Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie übernimmt eindeutige Unternehmer- und Firmenzuordnungen
+  automatisch, erlaubt andernfalls die Auswahl aus den geladenen Stammdaten und zeigt Mitarbeiter als kompakte Cards mit Rolle,
+  Aktivstatus und Anzahl der Filialzuordnungen. Lade-, Fehler- und Leerzustände werden separat dargestellt.
+- Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
+  Bearbeitungsdialog. Beide Reactive Forms erfassen Person, vollständige Adresse, optionale Kontakt- und Personendaten,
+  betriebliche Rolle und optionale Filialzuordnungen. Der Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer,
+  Firma sowie Mitarbeiter-ID unveränderlich an.
+- Vor dem Öffnen und erneut vor dem Speichern wird der aktuelle Verwaltungszugriff auf die Firma geprüft. Während eines
+  Schreibvorgangs sind Formular und Aktionen deaktiviert. Anlage und Aktualisierung erscheinen durch die Store-Aktualisierung
+  ohne erneutes Laden in der Liste; bei Fehlern bleiben die Eingaben erhalten.
+- Im Bearbeitungsdialog werden nur erlaubte Filialen angeboten. Bereits vorhandene, für das aktuelle Konto nicht zugängliche
+  Filialzuordnungen bleiben beim Speichern unverändert; die lokalen Firestore Rules erzwingen dieselbe Begrenzung.
+- Filialprofile müssen bei Anlage und Bearbeitung genau einen Unternehmer, eine Firma und eine Filiale enthalten. Filialkonten
+  legen Mitarbeiter nur mit der eigenen Filial-ID an und behalten diese beim Bearbeiten verpflichtend bei.
+
+## Datenstruktur-Löschung
+
+- Ein aktiver Master kann Unternehmer, Firmen und Filialen über Service- und Store-Methoden löschen. Eine sichtbare UI-Aktion ist
+  noch nicht angebunden.
+- Der Client besitzt kein direktes Firestore-Löschrecht. Die geschützte Callable Function `deleteStruktureintrag` prüft Rolle,
+  Dokumentpfad und Referenzen und löscht den vollständigen Strukturzweig anschließend rekursiv.
+- Referenzen aus Benutzerprofilen verhindern jede betroffene Löschung. Eine Filiale wird außerdem nicht gelöscht, solange sie in
+  `filialIds` eines fachlichen Mitarbeiters verwendet wird.
 
 ## Datenstruktur-Anlage
 
@@ -218,10 +261,12 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Der Bearbeitungsdialog verwendet die vorhandene Datenzugriffsauswahl mit rollenabhängiger Validierung. Erfolgreiche
   Aktualisierungen setzen `aktualisiertAm` serverseitig und werden ohne erneutes Laden in den Stammdaten- und Verwaltungsbestand
   übernommen.
-- In Benutzeranlage und Bearbeitungsdialog werden nur die optionalen Bereiche `schichtplan`, `mitarbeiter` und `verwaltung` als
-  Checkboxen angezeigt. `dashboard` wird für jede Rolle verbindlich ergänzt; `systemverwaltung` wird ausschließlich für Master
-  ergänzt und bei allen anderen Rollen entfernt. Ein gemeinsamer Frontend-Helfer normalisiert die Bereiche beim Laden sowie vor
-  einer Profilaktualisierung. Die vorhandenen Rollen-Guards bleiben die funktionale Zugriffssicherung.
+- In Benutzeranlage und Bearbeitungsdialog werden die optionalen Bereiche gemäß App-Bereich-Matrix rollenabhängig als Checkboxen
+  angezeigt. `dashboard` wird für jede Rolle verbindlich ergänzt; `systemverwaltung` wird ausschließlich für Master ergänzt und
+  bei allen anderen Rollen entfernt. Die Callable Function ergänzt bei der Anlage nur diese Pflichtbereiche und übernimmt die
+  optionalen Bereiche aus der Clientauswahl. Ein gemeinsamer Frontend-Helfer normalisiert die Bereiche beim Laden sowie vor einer
+  Profilaktualisierung. Die Firestore Rules leiten aus `erlaubteBereiche` keine Datenrechte oder rollenabhängigen
+  Bereichskombinationen ab. Die vorhandenen Rollen-Guards bleiben die funktionale Zugriffssicherung.
 - Das eigene Masterprofil kann nicht deaktiviert werden. Die Benutzerrolle ist für sämtliche Profile unveränderlich. Dieser
   Selbstschutz sowie die weiteren unveränderlichen Profilfelder sind zusätzlich durch Firestore Rules abgesichert.
 - Änderungen am aktuell angemeldeten Profil werden über den Echtzeit-Listener unmittelbar in den lokalen Benutzer-Store
@@ -319,8 +364,9 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Die Function prüft Anmeldung, aktives Profil und `userRole: master` serverseitig und legt per Admin SDK Auth-Benutzer und
   `benutzerprofil/{uid}` an. Die Sitzung des Masters bleibt erhalten.
 - Die Function normalisiert `erlaubteBereiche` unabhängig vom Client: `dashboard` wird immer gespeichert,
-  `systemverwaltung` ausschließlich für Master. Die Firestore Rules erzwingen dieselbe Pflichtbereichsregel bei Änderungen
-  bestehender Profile. Function und Rules sind produktiv deployed.
+  `systemverwaltung` ausschließlich für Master. Bei Änderungen bestehender Profile stellt der Client die Pflichtbereiche
+  wieder her; die Rules verwenden `erlaubteBereiche` nicht als Datenberechtigung. Der bisherige produktive Stand wird durch die
+  lokalen Änderungen abgelöst.
 - Das Backend verlangt für jeden Zugriff eine Unternehmer-ID und prüft vor der Auth-Anlage die Existenz von Unternehmer, Firma und
   Filialen unter ihren vollständigen Pfaden. Fehlende Dokumente, ungültige IDs oder fehlgeschlagene Prüfabfragen brechen die
   Anlage ab. Doppelte Firmenzugriffe werden nur innerhalb desselben Unternehmers zusammengeführt.
@@ -380,8 +426,8 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Umleitung von `/systemverwaltung` erfolgreich bestätigt.
 
 - Die vereinfachte Function ohne Zugriffsindex ist deployed (Benutzerbestätigung). Die sichere Kontoaktivierung bleibt erhalten.
-- Lokal umgesetzt, im Emulator geprüft und laut Benutzer deployed: Aktive Master lesen und schreiben alle Collections und
-  Untercollections inklusive aller Benutzerprofile, sowohl mit `zugriffe: {}` als auch mit der alten leeren Liste.
+- Lokal umgesetzt: Aktive Master lesen alle vorgesehenen Collections und legen fachliche Daten an oder aktualisieren sie. Direkte
+  Löschungen neuer Strukturdatensätze sind gesperrt und erfolgen ausschließlich über die geschützte Callable Function.
 - Aktive Office-/Filialprofile lesen nur zugeordnete Unternehmer-/Firmendokumente sowie freigegebene Filialen und deren
   Untercollections. Das eigene Profil bleibt auch für inaktive Konten lesbar. Aktive Office-Konten dürfen zugeordnete Firmen- und
   Filialdokumente vollständig aktualisieren, aber weder anlegen noch löschen und keine Filial-Untercollections beschreiben.
@@ -392,8 +438,9 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Altanwendung nutzt laut Benutzer ausschließlich Konten ohne `benutzerprofil`-Dokument. Diese behalten den bisherigen
   Lese-/Schreibzugriff außerhalb von `benutzerprofil` und `unternehmer`; Emulator-Tests sichern das ab. Fehlgeschlagene
   Kontoanlage darf kein nutzbares Auth-Konto ohne Profil hinterlassen (lokal durch deaktivierte Anlage abgesichert).
-- Office-/Filialqueries müssen erlaubte Dokument-IDs eingrenzen; unbeschränkte Listen werden abgelehnt. Die aktuellen
-  unbeschränkten Auswahllisten sind für die Master-Verwaltung vorgesehen.
+- Office-Queries müssen ihren erlaubten Datenraum eingrenzen. Filialkonten besitzen für die Mitarbeiter-Collection ihrer Firma
+  Leserechte und laden die fachliche Mitarbeiterliste clientseitig direkt mit einem `array-contains`-Filter auf die eigene
+  Filial-ID. Anlage und Bearbeitung bleiben auf Mitarbeiter dieser Filiale begrenzt.
 - Neue Rules sind laut Benutzer produktiv; Lesen und Schreiben in der Altanwendung funktionieren weiterhin. Die sichere
   Kontoaktivierung ist ebenfalls deployed und die Formularsperre wurde entfernt. Ein reales Office-Testkonto konnte seine
   zugeordnete Firma und Filiale über die fachliche Verwaltungsoberfläche erfolgreich aktualisieren. Nicht zugeordnete Dokumente,
@@ -401,19 +448,23 @@ Stand: 26.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Die Rules für eingeschränkte Profilaktualisierungen und den Selbstschutz des eigenen Masterprofils wurden am 23.09.2026
   erfolgreich deployed. Die Profilbearbeitung und die bestehenden Office-Zugriffe wurden anschließend mit realen Testkonten
   erfolgreich geprüft.
-- Die Rolle `mitarbeiter`, ihre freie Bereichszuweisung und ihre Begrenzung auf `zugriffe: {}` sind in Function und Rules
-  deployed. Das vorhandene Testprofil wurde kontrolliert von `personal` zu `mitarbeiter` migriert und anschließend erfolgreich
-  geprüft.
+- Die ursprüngliche Rolle `mitarbeiter` und ihre freie Bereichszuweisung sind in Function und Rules deployed. Die neue eindeutige
+  Verknüpfung mit einem Firma-Mitarbeiter ist lokal umgesetzt. Die aktualisierten Rules erlauben die Bearbeitung von Anzeigename,
+  Aktivstatus und Bereichen eines verknüpften Mitarbeiterprofils, verhindern aber Änderungen an `zugriffe` und
+  `firmaMitarbeiterId` und gewähren Lesezugriff auf Mitarbeiter der zugewiesenen Firma. Diese Rules-Änderung ist noch nicht
+  produktiv deployed.
 - Der Git-Push der aktuellen Änderungen ist kein Firebase-Deployment.
 
 ## Tests und Build
 
-Am 26.09.2026 für den aktuellen Frontend-Stand erfolgreich geprüft:
+Am 27.09.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 354 Frontend-Tests einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und konsistenter
+- 431 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
+  konsistenter
   Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,
-  Filial- und Benutzerprofil-Bearbeitung, Echtzeitbeobachtung des eigenen Profils sowie globalem Banner-Service und
+  Filial- und Benutzerprofil-Bearbeitung, fachlichem Mitarbeiter-Service und -Store, Mitarbeiterlistenroute, Rollenprüfung und
+  Mitarbeiter-Cards, Anlage- und Bearbeitungsdialogen, Echtzeitbeobachtung des eigenen Profils sowie globalem Banner-Service,
   Inaktivhinweis und sichtbarer Anwendungsversion.
 - Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
 - Datenstruktur-Anlage und Benutzerverwaltung wurden unter ihren getrennten Systemverwaltungsrouten auf Desktop und einem
@@ -421,16 +472,18 @@ Am 26.09.2026 für den aktuellen Frontend-Stand erfolgreich geprüft:
 - Die Echtzeitbeobachtung des eigenen Profils wurde manuell mit Deaktivierung, Neustart, Wiederverbindung und erneuter Aktivierung
   geprüft. Ein inaktives, weiterhin authentifiziertes Profil wird auf der Loginseite durch den globalen Banner kenntlich gemacht;
   nach erneuter Aktivierung wechselt die Anwendung selbstständig zum Dashboard.
-- 52 Functions-Tests einschließlich technischer Anmeldedaten, doppelter Anmeldenamen, Mitarbeiterzugangsanlage, Rollenprüfung,
-  Hierarchievalidierung und sicherer Kontoaktivierung.
-- 29 Firestore-Emulator-Tests für die Begrenzung der Rolle `mitarbeiter`, bestehende Rollen, neue Hierarchie, Untercollections,
-  eingeschränkte Queries, Office-Aktualisierungen, Profil-Selbstschutz, unveränderliche Profilfelder sowie die Trennung vom
-  Legacy-Zugriff auf `purCustomers`.
+- 70 Functions-Tests einschließlich technischer Anmeldedaten, doppelter Anmeldenamen, rekursiver Strukturlöschung, eindeutiger
+  Mitarbeiterverknüpfung, Rückabwicklung, Rollenprüfung, Hierarchievalidierung und sicherer Kontoaktivierung.
+- 36 Firestore-Emulator-Tests für die Begrenzung der Rolle `mitarbeiter`, unveränderliche Mitarbeiterzuordnungen, fachliche
+  Mitarbeiterzugriffe einschließlich optionaler Master-CRUD-Rechte, eindeutige Filialprofile, direkte Strukturlöschsperren,
+  bestehende Rollen, neue Hierarchie, ausdrücklich erlaubte Untercollections, filialgefilterte Mitarbeiterabfragen,
+  Office-Aktualisierungen, Profil-Selbstschutz, unveränderliche Profilfelder, Ablehnung nicht aufgeführter Collections sowie die
+  Trennung vom Legacy-Zugriff auf `purCustomers`.
 - Master-, Office-, Filial- und Mitarbeiter-Produktionsbuild sind als vollständige PWA-Ausgaben konfiguriert. Sie enthalten das
   jeweils passende Manifest, zehn erreichbare App-Icons, lokale Roboto- und Material-Icon-Schriften, `ngsw.json`,
   `ngsw-worker.js` und die Ressourcengruppen `app`, `fonts` und `assets`. Die Builds benötigen in der Codex-Umgebung Zugriff
   außerhalb der Sandbox, weil der native `esbuild`-Prozess innerhalb der eingeschränkten Umgebung mit Exit-Code 134 beendet wird.
-  Der aktuelle Standard-Produktionsbuild ist erfolgreich. Das initiale Bundle liegt bei rund 1,57 MB. Das zugehörige Warnlimit
+  Der aktuelle Standard-Produktionsbuild ist erfolgreich. Das initiale Bundle liegt bei rund 1,58 MB. Das zugehörige Warnlimit
   beträgt 1,60 MB und das Fehlerlimit 1,70 MB.
 - Die Mitarbeiter-App-Shell wurde lokal nach vollständigem Beenden des Webservers in Desktop- und mobiler Viewport-Größe
   erfolgreich aus dem Service-Worker-Cache neu geladen. Die veröffentlichte Login-Seite wurde ohne Browserfehler geladen. Pur
@@ -459,8 +512,9 @@ Mitarbeiter-Auslieferungsvarianten wurden laut Benutzer erfolgreich geprüft. Di
   deployed.
 - Office-Konten bleiben auf ausgewählte Firmen und ausdrücklich zugeordnete Filialen beschränkt; sie erhalten keinen globalen
   Lesezugriff. Eine Firmenfreigabe umfasst weder automatisch alle aktuellen noch zukünftige Filialen.
-- Master benötigen keine Datenzuordnung und besitzen globalen Lese- und Schreibzugriff. Die Datenzuordnung ist im Formular für
-  Master ausgeblendet; das Formular sendet für Master eine leere Zugriffs-Map.
+- Master benötigen keine Datenzuordnung und besitzen die in der Collection-Matrix ausdrücklich aufgeführten Rechte. Nicht
+  aufgeführte Collections bleiben gesperrt. Die Datenzuordnung ist im Formular für Master ausgeblendet; das Formular sendet für
+  Master eine leere Zugriffs-Map.
 - Office-Konten dürfen zugeordnete Firmen- und Filialdokumente aktualisieren, jedoch nicht anlegen oder löschen. Schreibrechte für
   Filial-Untercollections sowie eigene Schreibrechte von Filialkonten werden erst zusammen mit den jeweiligen fachlichen
   Funktionen festgelegt und umgesetzt.

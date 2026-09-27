@@ -1,0 +1,23 @@
+<!-- pur-system/src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-card/mitarbeiter-card.html -->
+
+<mat-card
+  class="mitarbeiter-card"
+  appearance="outlined"
+  [class.mitarbeiter-card--inaktiv]="!mitarbeiter().aktiv"
+>
+  <mat-card-header>
+    <mat-icon mat-card-avatar aria-hidden="true">person</mat-icon>
+    <mat-card-title>{{ name() }}</mat-card-title>
+    <mat-card-subtitle>{{ rollenLabel() }}</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    <p>{{ filialenText() }}</p>
+    <p>{{ mitarbeiter().aktiv ? 'Aktiv' : 'Inaktiv' }}</p>
+  </mat-card-content>
+  <mat-card-actions align="end">
+    <button matButton type="button" (click)="selectBearbeiten()">
+      <mat-icon aria-hidden="true">edit</mat-icon>
+      Bearbeiten
+    </button>
+  </mat-card-actions>
+</mat-card>

@@ -1,4 +1,4 @@
-// pur-office/src/app/components/app-shell/global-banner/global-banner.ts
+// pur-system/src/app/components/app-shell/global-banner/global-banner.ts
 
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';

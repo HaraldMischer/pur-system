@@ -1,8 +1,9 @@
-// pur-office/src/app/app.routes.spec.ts
+// pur-system/src/app/app.routes.spec.ts
 
 import { authGuard } from './guards/auth.guard';
 import { bereichGuard } from './guards/bereich.guard';
 import { masterGuard } from './guards/master.guard';
+import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
 import { verwaltungGuard } from './guards/verwaltung.guard';
 import { routes } from './app.routes';
 
@@ -12,7 +13,6 @@ describe('app routes', () => {
       ['login', 'Anmelden'],
       ['dashboard', 'Dashboard'],
       ['schichtplan', 'Schichtplan'],
-      ['mitarbeiter', 'Mitarbeiter'],
       ['passwort', 'Passwort ändern'],
       ['verwaltung', 'Verwaltung'],
     ]);
@@ -20,6 +20,20 @@ describe('app routes', () => {
     expectedTitles.forEach((title, path) => {
       expect(routes.find((route) => route.path === path)?.title).toBe(title);
     });
+  });
+
+  it('should provide a protected componentless employee parent and list route', () => {
+    const mitarbeiterRoute = routes.find((route) => route.path === 'mitarbeiter');
+    const redirectRoute = mitarbeiterRoute?.children?.find((route) => route.path === '');
+    const listeRoute = mitarbeiterRoute?.children?.find((route) => route.path === 'liste');
+
+    expect(mitarbeiterRoute?.canActivate).toEqual([authGuard, bereichGuard]);
+    expect(mitarbeiterRoute?.data?.['bereich']).toBe('mitarbeiter');
+    expect(mitarbeiterRoute?.loadComponent).toBeUndefined();
+    expect(redirectRoute).toEqual({ path: '', pathMatch: 'full', redirectTo: 'liste' });
+    expect(listeRoute?.title).toBe('Mitarbeiter');
+    expect(listeRoute?.canActivate).toEqual([mitarbeiterVerwaltungGuard]);
+    expect(listeRoute?.loadComponent).toBeDefined();
   });
 
   it('should use the auth layout for the login route', () => {

@@ -1,4 +1,4 @@
-// pur-office/src/app/services/firebase/benutzer-verwaltung.service.spec.ts
+// pur-system/src/app/services/firebase/benutzer-verwaltung.service.spec.ts
 
 import { assertInInjectionContext } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -9,6 +9,7 @@ import { HTTPS_CALLABLE } from '../../commons/tokens/firebase.tokens';
 import { LoadingService } from '../core/loading.service';
 import { NetzwerkStatusService } from '../core/netzwerk-status.service';
 import { BenutzerVerwaltungService } from './benutzer-verwaltung.service';
+import { FirestoreDbService } from './firestore-db.service';
 
 describe('BenutzerVerwaltungService', () => {
   const functionsMock = {} as Functions;
@@ -24,6 +25,7 @@ describe('BenutzerVerwaltungService', () => {
   let httpsCallableMock: ReturnType<typeof vi.fn>;
   let trackWriteMock: ReturnType<typeof vi.fn>;
   let assertOnlineMock: ReturnType<typeof vi.fn>;
+  const firestoreDbServiceMock = { loadCollection: vi.fn() };
 
   beforeEach(() => {
     callableMock = vi.fn().mockImplementation(() => {
@@ -46,6 +48,7 @@ describe('BenutzerVerwaltungService', () => {
       return aktion();
     });
     assertOnlineMock = vi.fn();
+    firestoreDbServiceMock.loadCollection.mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
         BenutzerVerwaltungService,
@@ -53,8 +56,55 @@ describe('BenutzerVerwaltungService', () => {
         { provide: HTTPS_CALLABLE, useValue: httpsCallableMock },
         { provide: LoadingService, useValue: { trackWrite: trackWriteMock } },
         { provide: NetzwerkStatusService, useValue: { assertOnline: assertOnlineMock } },
+        { provide: FirestoreDbService, useValue: firestoreDbServiceMock },
       ],
     });
+  });
+
+  it('should load the reduced employee selection for a company', async () => {
+    firestoreDbServiceMock.loadCollection.mockResolvedValue([
+      {
+        id: 'm-2',
+        daten: {
+          aktiv: true,
+          person: { vorname: 'Zoe', nachname: 'Zimmer' },
+        },
+      },
+      {
+        id: 'm-1',
+        daten: {
+          aktiv: true,
+          person: { vorname: 'Mia', nachname: 'Muster' },
+        },
+      },
+      {
+        id: 'm-3',
+        daten: {
+          aktiv: false,
+          person: { vorname: 'Ina', nachname: 'Inaktiv' },
+        },
+      },
+      {
+        id: 'm-4',
+        daten: {
+          aktiv: true,
+          benutzerUid: 'user-4',
+          person: { vorname: 'Vera', nachname: 'Verknüpft' },
+        },
+      },
+    ]);
+    const service = TestBed.inject(BenutzerVerwaltungService);
+
+    await expect(
+      service.loadMitarbeiterAuswahl({ unternehmerId: 'u-1', firmaId: 'f-1' }),
+    ).resolves.toEqual([
+      { id: 'm-1', anzeigename: 'Muster, Mia' },
+      { id: 'm-2', anzeigename: 'Zimmer, Zoe' },
+    ]);
+    expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith(
+      'unternehmer/u-1/firma/f-1/mitarbeiter',
+    );
+    expect(httpsCallableMock).not.toHaveBeenCalled();
   });
 
   it('should call the server-side user creation function', async () => {
@@ -90,5 +140,16 @@ describe('BenutzerVerwaltungService', () => {
     expect(httpsCallableMock).not.toHaveBeenCalled();
     expect(callableMock).not.toHaveBeenCalled();
     expect(trackWriteMock).not.toHaveBeenCalled();
+  });
+
+  it('should pass Firestore errors while loading employees', async () => {
+    const error = { code: 'permission-denied' };
+    firestoreDbServiceMock.loadCollection.mockRejectedValue(error);
+    const service = TestBed.inject(BenutzerVerwaltungService);
+
+    await expect(
+      service.loadMitarbeiterAuswahl({ unternehmerId: 'u-1', firmaId: 'f-1' }),
+    ).rejects.toBe(error);
+    expect(httpsCallableMock).not.toHaveBeenCalled();
   });
 });

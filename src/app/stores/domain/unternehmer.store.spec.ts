@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/unternehmer.store.spec.ts
+// pur-system/src/app/stores/domain/unternehmer.store.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 
@@ -27,6 +27,7 @@ describe('UnternehmerStore', () => {
   let unternehmerServiceMock: {
     loadUnternehmer: ReturnType<typeof vi.fn>;
     createUnternehmer: ReturnType<typeof vi.fn>;
+    deleteUnternehmer: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -40,6 +41,7 @@ describe('UnternehmerStore', () => {
         nummer: 5,
         anzeigename: anlage.anzeigename,
       }),
+      deleteUnternehmer: vi.fn().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({
@@ -105,6 +107,16 @@ describe('UnternehmerStore', () => {
       { id: 'z', anzeigename: 'Zulu', nummer: 4 },
     ]);
     expect(store.inProgress()).toBe(false);
+  });
+
+  it('should delete an entrepreneur from the loaded list', async () => {
+    const store = TestBed.inject(UnternehmerStore);
+    await store.loadUnternehmer();
+
+    await store.deleteUnternehmer('a');
+
+    expect(unternehmerServiceMock.deleteUnternehmer).toHaveBeenCalledWith('a');
+    expect(store.unternehmer()).toEqual([{ id: 'z', anzeigename: 'Zulu', nummer: 4 }]);
   });
 
   it('should expose friendly load and creation errors', async () => {

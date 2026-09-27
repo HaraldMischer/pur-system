@@ -1,4 +1,4 @@
-// pur-office/src/app/guards/guard-navigation.ts
+// pur-system/src/app/guards/guard-navigation.ts
 
 import { IBenutzerProfilDokument } from '../commons/models/domain/benutzer';
 import {

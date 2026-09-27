@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/schichtplan-page/schichtplan-page.spec.ts
+// pur-system/src/app/pages/schichtplan-page/schichtplan-page.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 

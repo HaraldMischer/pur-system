@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/benutzer-verwaltung.store.spec.ts
+// pur-system/src/app/stores/domain/benutzer-verwaltung.store.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 
@@ -24,13 +24,19 @@ describe('BenutzerVerwaltungStore', () => {
     zugriffe: {},
     passwort: 'SicheresPasswort123!',
   };
-  let serviceMock: { createBenutzer: ReturnType<typeof vi.fn> };
+  let serviceMock: {
+    loadMitarbeiterAuswahl: ReturnType<typeof vi.fn>;
+    createBenutzer: ReturnType<typeof vi.fn>;
+  };
   let benutzerServiceMock: { updateBenutzerProfil: ReturnType<typeof vi.fn> };
   let authServiceMock: { getAktuelleBenutzerId: ReturnType<typeof vi.fn> };
   let benutzerStoreMock: { setBenutzerProfil: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     serviceMock = {
+      loadMitarbeiterAuswahl: vi
+        .fn()
+        .mockResolvedValue([{ id: 'm-1', anzeigename: 'Muster, Mia' }]),
       createBenutzer: vi.fn().mockResolvedValue({
         uid: 'neu-123',
         anmeldename: 'testbenutzer-office',
@@ -78,6 +84,12 @@ describe('BenutzerVerwaltungStore', () => {
       unternehmerIds: [],
       firmaIds: [],
       filialen: {},
+      mitarbeiterAuswahl: [],
+      mitarbeiterAuswahlKontext: null,
+      mitarbeiterAuswahlDownload: false,
+      mitarbeiterAuswahlIsLoaded: false,
+      mitarbeiterAuswahlError: null,
+      selectedMitarbeiterId: null,
       inProgress: false,
       error: null,
       createdBenutzer: null,
@@ -112,6 +124,26 @@ describe('BenutzerVerwaltungStore', () => {
       aktiv: true,
     });
     expect(store.inProgress()).toBe(false);
+  });
+
+  it('should preserve the company employee reference in the local profile', async () => {
+    const store = TestBed.inject(BenutzerVerwaltungStore);
+    const mitarbeiterAnlage: IBenutzerAnlage = {
+      ...anlage,
+      userRole: 'mitarbeiter',
+      zugriffe: { u: { f: [] } },
+      firmaMitarbeiterId: 'm-1',
+    };
+
+    await store.createBenutzer(mitarbeiterAnlage);
+
+    expect(TestBed.inject(StammdatenStore).benutzerprofile()).toContainEqual(
+      expect.objectContaining({
+        userRole: 'mitarbeiter',
+        zugriffe: { u: { f: [] } },
+        firmaMitarbeiterId: 'm-1',
+      }),
+    );
   });
 
   it('should expose a friendly callable error', async () => {
@@ -338,5 +370,69 @@ describe('BenutzerVerwaltungStore', () => {
     store.selectUnternehmer(['b']);
     await store.loadAuswahl();
     expect(store.zugriffe()).toEqual({ b: { f: ['z'] } });
+  });
+
+  it('should load and select reduced employees for the uniquely selected company', async () => {
+    const { store } = prepareDaten();
+    const firmaKey = JSON.stringify(['a', 'f']);
+    await store.loadAuswahl();
+    store.selectUnternehmer(['a']);
+    await store.loadAuswahl();
+    store.selectFirmen([firmaKey]);
+
+    await store.loadMitarbeiterAuswahl();
+
+    expect(serviceMock.loadMitarbeiterAuswahl).toHaveBeenCalledWith({
+      unternehmerId: 'a',
+      firmaId: 'f',
+    });
+    expect(store.mitarbeiterAuswahl()).toEqual([{ id: 'm-1', anzeigename: 'Muster, Mia' }]);
+    expect(store.mitarbeiterAuswahlIsLoaded()).toBe(true);
+    expect(store.mitarbeiterAuswahlDownload()).toBe(false);
+    store.selectMitarbeiter('m-1');
+    expect(store.selectedMitarbeiter()).toEqual({ id: 'm-1', anzeigename: 'Muster, Mia' });
+  });
+
+  it('should reset employees and ignore a late response after the company changes', async () => {
+    const { store } = prepareDaten();
+    const firmaAKey = JSON.stringify(['a', 'f']);
+    let resolve!: (data: { id: string; anzeigename: string }[]) => void;
+    serviceMock.loadMitarbeiterAuswahl.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    await store.loadAuswahl();
+    store.selectUnternehmer(['a']);
+    await store.loadAuswahl();
+    store.selectFirmen([firmaAKey]);
+    const pending = store.loadMitarbeiterAuswahl();
+    await Promise.resolve();
+
+    store.selectUnternehmer(['b']);
+    expect(store.mitarbeiterAuswahl()).toEqual([]);
+    expect(store.selectedMitarbeiterId()).toBeNull();
+    resolve([{ id: 'm-alt', anzeigename: 'Alt, Anton' }]);
+    await pending;
+    expect(store.mitarbeiterAuswahl()).toEqual([]);
+    expect(store.mitarbeiterAuswahlIsLoaded()).toBe(false);
+  });
+
+  it('should expose employee selection loading errors separately', async () => {
+    const { store } = prepareDaten();
+    const firmaKey = JSON.stringify(['a', 'f']);
+    serviceMock.loadMitarbeiterAuswahl.mockRejectedValue({ code: 'functions/unavailable' });
+    await store.loadAuswahl();
+    store.selectUnternehmer(['a']);
+    await store.loadAuswahl();
+    store.selectFirmen([firmaKey]);
+
+    await store.loadMitarbeiterAuswahl();
+
+    expect(store.mitarbeiterAuswahl()).toEqual([]);
+    expect(store.mitarbeiterAuswahlIsLoaded()).toBe(false);
+    expect(store.mitarbeiterAuswahlError()).toBeTruthy();
+    expect(store.error()).toBeNull();
   });
 });

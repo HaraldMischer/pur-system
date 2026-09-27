@@ -1,4 +1,4 @@
-// pur-office/src/app/components/app-shell/app-sidenav/app-sidenav.spec.ts
+// pur-system/src/app/components/app-shell/app-sidenav/app-sidenav.spec.ts
 
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -17,7 +17,7 @@ function createProfil(userRole: TUserRole): IBenutzerProfilDokument {
     aktiv: true,
     userRole,
     erlaubteBereiche: ['dashboard', 'schichtplan', 'mitarbeiter', 'verwaltung', 'systemverwaltung'],
-    zugriffe: {},
+    zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
   };
 }
 
@@ -116,8 +116,12 @@ describe('AppSidenav', () => {
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const toggle = compiled.querySelector<HTMLButtonElement>('button[mat-list-item]');
-    const children = compiled.querySelector('.app-sidenav-nested-navigation__children');
+    const toggle = Array.from(
+      compiled.querySelectorAll<HTMLButtonElement>('button[mat-list-item]'),
+    ).find((button) => button.textContent?.includes('Systemverwaltung'));
+    const children = toggle?.parentElement?.querySelector(
+      '.app-sidenav-nested-navigation__children',
+    );
 
     expect(toggle?.textContent).toContain('Systemverwaltung');
     expect(toggle?.getAttribute('aria-label')).toBe('Systemverwaltung ausklappen');
@@ -156,14 +160,15 @@ describe('AppSidenav', () => {
     const navigationText = compiled.querySelector('[aria-label="Hauptnavigation"]')?.textContent;
 
     expect(navigationText).toContain('Dashboard');
+    expect(navigationText).toContain('Mitarbeiter');
     expect(navigationText).toContain('Verwaltung');
     expect(navigationText).not.toContain('Systemverwaltung');
   });
 
   it.each([
     ['master', 'app-sidenav-nested-navigation'],
-    ['office', 'app-sidenav-flat-navigation'],
-    ['filiale', 'app-sidenav-flat-navigation'],
+    ['office', 'app-sidenav-nested-navigation'],
+    ['filiale', 'app-sidenav-nested-navigation'],
     ['mitarbeiter', 'app-sidenav-flat-navigation'],
   ] as const)('should use the configured navigation renderer for %s', (userRole, selector) => {
     benutzerStoreMock.benutzerProfil.mockReturnValue(createProfil(userRole));

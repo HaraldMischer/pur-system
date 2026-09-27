@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/datenstruktur-page/datenstruktur-page.ts
+// pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/datenstruktur-page.ts
 
 import { BreakpointObserver } from '@angular/cdk/layout';
 import type { StepperOrientation } from '@angular/cdk/stepper';

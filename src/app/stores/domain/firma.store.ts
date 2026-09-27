@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/domain/firma.store.ts
+// pur-system/src/app/stores/domain/firma.store.ts
 
 import { DestroyRef, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
@@ -133,6 +133,38 @@ export const FirmaStore = signalStore(
         }
       }
 
+      /**
+       * Löscht eine Firma und entfernt sie aus dem geladenen Firmenkontext.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der zu löschenden Firma.
+       * @returns Ein Promise, das nach der bestätigten Löschung abgeschlossen ist.
+       * @throws Wenn der Firmenkontext nicht passt oder die Löschung fehlschlägt.
+       */
+      async function deleteFirma(unternehmerId: string, firmaId: string): Promise<void> {
+        if (
+          !store.isLoaded() ||
+          store.unternehmerId() !== unternehmerId ||
+          !store.firmen().some((eintrag) => eintrag.id === firmaId)
+        ) {
+          throw new Error('Die Firma ist nicht in der geladenen Liste enthalten.');
+        }
+
+        patchState(store, { inProgress: true, error: null });
+        try {
+          await firmaService.deleteFirma(unternehmerId, firmaId);
+          stammdatenStore.removeFirma(unternehmerId, firmaId);
+          patchState(store, {
+            firmen: store.firmen().filter((eintrag) => eintrag.id !== firmaId),
+          });
+        } catch (error: unknown) {
+          patchState(store, { error: getFirebaseErrorMessage(error) });
+          throw error;
+        } finally {
+          patchState(store, { inProgress: false });
+        }
+      }
+
       // ===== Methoden: Sonstige Aktionen ==========
 
       /**
@@ -171,6 +203,7 @@ export const FirmaStore = signalStore(
       return {
         loadFirmen,
         createFirma,
+        deleteFirma,
         resetFirmen,
         clearError,
         snapshot,

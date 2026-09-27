@@ -1,0 +1,235 @@
+// pur-system/src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog.ts
+
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+
+import { IFilialeEintrag } from '../../../../commons/models/domain/filiale';
+import {
+  IMitarbeiterAnlage,
+  IMitarbeiterAnlageErgebnis,
+  TMitarbeiterRolle,
+} from '../../../../commons/models/domain/mitarbeiter';
+import { EGender } from '../../../../commons/models/domain/person';
+import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
+import { BenutzerStore } from '../../../../stores/app/benutzer.store';
+import { MitarbeiterStore } from '../../../../stores/domain/mitarbeiter.store';
+
+// ===== Top-Level Helper =====================
+
+const nichtLeerValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  return String(control.value).trim() ? null : { required: true };
+};
+
+export interface IMitarbeiterAnlegenDialogDaten {
+  unternehmerId: string;
+  unternehmerName: string;
+  firmaId: string;
+  firmaName: string;
+  filialen: readonly IFilialeEintrag[];
+}
+
+@Component({
+  selector: 'app-mitarbeiter-anlegen-dialog',
+  imports: [
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    ReactiveFormsModule,
+  ],
+  templateUrl: './mitarbeiter-anlegen-dialog.html',
+  styleUrl: './mitarbeiter-anlegen-dialog.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class MitarbeiterAnlegenDialog {
+  // ===== Interne Dependency Injection =========
+
+  private readonly dialogRef = inject(
+    MatDialogRef<MitarbeiterAnlegenDialog, IMitarbeiterAnlageErgebnis | undefined>,
+  );
+  readonly dialogDaten = inject<IMitarbeiterAnlegenDialogDaten>(MAT_DIALOG_DATA);
+  readonly benutzerStore = inject(BenutzerStore);
+  readonly mitarbeiterStore = inject(MitarbeiterStore);
+
+  // ===== Öffentliche Werte ====================
+
+  readonly geschlechter = Object.values(EGender);
+  readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
+    { value: 'service', label: 'Service' },
+    { value: 'kasse', label: 'Kasse' },
+    { value: 'admin', label: 'Administration' },
+  ];
+  readonly submitError = signal<string | null>(null);
+  readonly mitarbeiterForm = new FormGroup({
+    person: new FormGroup({
+      vorname: new FormControl('', {
+        nonNullable: true,
+        validators: [Validators.required, nichtLeerValidator],
+      }),
+      nachname: new FormControl('', {
+        nonNullable: true,
+        validators: [Validators.required, nichtLeerValidator],
+      }),
+      geburtstag: new FormControl('', { nonNullable: true }),
+      geschlecht: new FormControl<EGender | null>(null),
+      adresse: new FormGroup({
+        strasse: new FormControl('', {
+          nonNullable: true,
+          validators: [Validators.required, nichtLeerValidator],
+        }),
+        hausnummer: new FormControl('', {
+          nonNullable: true,
+          validators: [Validators.required, nichtLeerValidator],
+        }),
+        postleitzahl: new FormControl('', {
+          nonNullable: true,
+          validators: [Validators.required, nichtLeerValidator],
+        }),
+        ort: new FormControl('', {
+          nonNullable: true,
+          validators: [Validators.required, nichtLeerValidator],
+        }),
+      }),
+      kontakt: new FormGroup({
+        email: new FormControl('', { nonNullable: true, validators: [Validators.email] }),
+        telefon: new FormControl('', { nonNullable: true }),
+        mobil: new FormControl('', { nonNullable: true }),
+        webseite: new FormControl('', { nonNullable: true }),
+      }),
+    }),
+    rolle: new FormControl<TMitarbeiterRolle>('service', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    filialIds: new FormControl<string[]>([], { nonNullable: true }),
+  });
+
+  constructor() {
+    effect(() => {
+      const inProgress = this.mitarbeiterStore.inProgress();
+      untracked(() => {
+        if (inProgress) {
+          this.mitarbeiterForm.disable({ emitEvent: false });
+        } else {
+          this.mitarbeiterForm.enable({ emitEvent: false });
+        }
+      });
+    });
+  }
+
+  // ===== Öffentliche Aktionen =================
+
+  /**
+   * Validiert und speichert einen neuen Mitarbeiter für die ausgewählte Firma.
+   */
+  async onSubmit(): Promise<void> {
+    this.normalisiereEmail();
+    if (this.mitarbeiterForm.invalid || this.mitarbeiterStore.inProgress()) {
+      this.mitarbeiterForm.markAllAsTouched();
+      return;
+    }
+    if (!this.hatAktuellenFirmenzugriff()) {
+      this.submitError.set('Der Zugriff auf die ausgewählte Firma ist nicht mehr erlaubt.');
+      return;
+    }
+
+    this.submitError.set(null);
+    this.dialogRef.disableClose = true;
+    try {
+      const ergebnis = await this.mitarbeiterStore.createMitarbeiter(
+        this.dialogDaten.unternehmerId,
+        this.dialogDaten.firmaId,
+        this.getMitarbeiterAnlage(),
+      );
+      this.dialogRef.close(ergebnis);
+    } catch {
+      // Der Store stellt die benutzerfreundliche Fehlermeldung bereit.
+    } finally {
+      this.dialogRef.disableClose = false;
+    }
+  }
+
+  // ===== Interne Helfer =======================
+
+  private hatAktuellenFirmenzugriff(): boolean {
+    const profil = this.benutzerStore.benutzerProfil();
+    return Boolean(
+      profil &&
+      hatMitarbeiterVerwaltungszugriffAufFirma(
+        profil,
+        this.dialogDaten.unternehmerId,
+        this.dialogDaten.firmaId,
+      ),
+    );
+  }
+
+  private normalisiereEmail(): void {
+    const control = this.mitarbeiterForm.controls.person.controls.kontakt.controls.email;
+    control.setValue(control.getRawValue().trim().toLowerCase());
+    this.mitarbeiterForm.updateValueAndValidity();
+  }
+
+  private getMitarbeiterAnlage(): IMitarbeiterAnlage {
+    const value = this.mitarbeiterForm.getRawValue();
+    const kontakt = value.person.kontakt;
+    const geburtstag = value.person.geburtstag.trim();
+
+    const verpflichtendeFilialId = this.getVerpflichtendeFilialId();
+    return {
+      person: {
+        vorname: value.person.vorname.trim(),
+        nachname: value.person.nachname.trim(),
+        adresse: {
+          strasse: value.person.adresse.strasse.trim(),
+          hausnummer: value.person.adresse.hausnummer.trim(),
+          postleitzahl: value.person.adresse.postleitzahl.trim(),
+          ort: value.person.adresse.ort.trim(),
+        },
+        kontakt: {
+          ...(kontakt.email.trim() ? { email: kontakt.email.trim().toLowerCase() } : {}),
+          ...(kontakt.telefon.trim() ? { telefon: kontakt.telefon.trim() } : {}),
+          ...(kontakt.mobil.trim() ? { mobil: kontakt.mobil.trim() } : {}),
+          ...(kontakt.webseite.trim() ? { webseite: kontakt.webseite.trim() } : {}),
+        },
+        ...(geburtstag ? { geburtstag } : {}),
+        ...(value.person.geschlecht ? { geschlecht: value.person.geschlecht } : {}),
+      },
+      rolle: value.rolle,
+      filialIds: [
+        ...new Set([
+          ...value.filialIds,
+          ...(verpflichtendeFilialId ? [verpflichtendeFilialId] : []),
+        ]),
+      ],
+    };
+  }
+
+  private getVerpflichtendeFilialId(): string | undefined {
+    const profil = this.benutzerStore.benutzerProfil();
+    if (profil?.userRole !== 'filiale') return undefined;
+
+    const filialIds = profil.zugriffe[this.dialogDaten.unternehmerId]?.[this.dialogDaten.firmaId];
+    return Array.isArray(filialIds) && filialIds.length === 1 ? filialIds[0] : undefined;
+  }
+}

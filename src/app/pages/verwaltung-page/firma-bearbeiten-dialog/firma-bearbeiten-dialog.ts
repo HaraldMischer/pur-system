@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/verwaltung-page/firma-bearbeiten-dialog/firma-bearbeiten-dialog.ts
+// pur-system/src/app/pages/verwaltung-page/firma-bearbeiten-dialog/firma-bearbeiten-dialog.ts
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {

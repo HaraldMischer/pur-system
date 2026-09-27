@@ -1,4 +1,4 @@
-// pur-office/src/app/services/firebase/firestore-db.service.ts
+// pur-system/src/app/services/firebase/firestore-db.service.ts
 
 import { EnvironmentInjector, Injectable, inject, runInInjectionContext } from '@angular/core';
 import { DocumentData, FieldValue, Firestore } from '@angular/fire/firestore';
@@ -6,12 +6,15 @@ import { DocumentData, FieldValue, Firestore } from '@angular/fire/firestore';
 import {
   FIRESTORE_ADD_DOC,
   FIRESTORE_COLLECTION,
+  FIRESTORE_DELETE_DOC,
   FIRESTORE_DOC,
   FIRESTORE_GET_DOC,
   FIRESTORE_GET_DOCS,
   FIRESTORE_ON_SNAPSHOT,
+  FIRESTORE_QUERY,
   FIRESTORE_SERVER_TIMESTAMP,
   FIRESTORE_SET_DOC,
+  FIRESTORE_WHERE,
 } from '../../commons/tokens/firebase.tokens';
 import { LoadingService } from '../core/loading.service';
 import { NetzwerkStatusService } from '../core/netzwerk-status.service';
@@ -29,14 +32,17 @@ export class FirestoreDbService {
   private readonly firestore = inject(Firestore);
   private readonly addDoc = inject(FIRESTORE_ADD_DOC);
   private readonly collection = inject(FIRESTORE_COLLECTION);
+  private readonly deleteDoc = inject(FIRESTORE_DELETE_DOC);
   private readonly doc = inject(FIRESTORE_DOC);
   private readonly getDoc = inject(FIRESTORE_GET_DOC);
   private readonly getDocs = inject(FIRESTORE_GET_DOCS);
   private readonly onSnapshot = inject(FIRESTORE_ON_SNAPSHOT);
+  private readonly query = inject(FIRESTORE_QUERY);
   private readonly loadingService = inject(LoadingService);
   private readonly netzwerkStatusService = inject(NetzwerkStatusService);
   private readonly serverTimestamp = inject(FIRESTORE_SERVER_TIMESTAMP);
   private readonly setDoc = inject(FIRESTORE_SET_DOC);
+  private readonly where = inject(FIRESTORE_WHERE);
 
   // ===== Interner State =======================
 
@@ -57,6 +63,39 @@ export class FirestoreDbService {
         const snapshot = await this.runInContext(() => {
           const collectionRef = this.collection(this.firestore, collectionPath);
           return this.getDocs(collectionRef);
+        });
+
+        return snapshot.docs.map((dokument) => {
+          return {
+            id: dokument.id,
+            daten: dokument.data() as T,
+          };
+        });
+      });
+    });
+  }
+
+  /**
+   * Lädt Dokumente, deren Array-Feld einen bestimmten Wert enthält.
+   *
+   * @param collectionPath - Vollständiger Pfad der Collection.
+   * @param feld - Name des zu filternden Array-Felds.
+   * @param wert - Im Array enthaltener Vergleichswert.
+   * @returns Dokument-IDs und unveränderte Firestore-Daten.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  loadCollectionByArrayValue<T extends DocumentData>(
+    collectionPath: string,
+    feld: string,
+    wert: unknown,
+  ): Promise<IFirestoreDokument<T>[]> {
+    const auftragKey = `collection-array:${collectionPath}:${feld}:${JSON.stringify(wert)}`;
+    return this.getOrCreateLeseauftrag(auftragKey, () => {
+      return this.loadingService.trackLoad(async () => {
+        const snapshot = await this.runInContext(() => {
+          const collectionRef = this.collection(this.firestore, collectionPath);
+          const queryRef = this.query(collectionRef, this.where(feld, 'array-contains', wert));
+          return this.getDocs(queryRef);
         });
 
         return snapshot.docs.map((dokument) => {
@@ -148,6 +187,24 @@ export class FirestoreDbService {
       });
 
       return dokumentRef.id;
+    });
+  }
+
+  /**
+   * Löscht ein einzelnes Firestore-Dokument.
+   *
+   * @param documentPath - Vollständiger Pfad des zu löschenden Dokuments.
+   * @returns Ein Promise, das nach der bestätigten Löschung abgeschlossen ist.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async deleteDocument(documentPath: string): Promise<void> {
+    this.netzwerkStatusService.assertOnline();
+
+    await this.loadingService.trackWrite(async () => {
+      await this.runInContext(() => {
+        const documentRef = this.doc(this.firestore, documentPath);
+        return this.deleteDoc(documentRef);
+      });
     });
   }
 

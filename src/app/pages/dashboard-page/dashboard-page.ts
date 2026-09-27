@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/dashboard-page/dashboard-page.ts
+// pur-system/src/app/pages/dashboard-page/dashboard-page.ts
 
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 

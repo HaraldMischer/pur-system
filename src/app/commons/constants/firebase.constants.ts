@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/constants/firebase.constants.ts
+// pur-system/src/app/commons/constants/firebase.constants.ts
 
 export const FIRESTORE_COLLECTION_PATHS = {
   benutzerprofile: 'benutzerprofil',
@@ -8,6 +8,9 @@ export const FIRESTORE_COLLECTION_PATHS = {
   },
   filialen(unternehmerId: string, firmaId: string): string {
     return `unternehmer/${unternehmerId}/firma/${firmaId}/filiale`;
+  },
+  mitarbeiter(unternehmerId: string, firmaId: string): string {
+    return `unternehmer/${unternehmerId}/firma/${firmaId}/mitarbeiter`;
   },
 } as const;
 
@@ -23,5 +26,8 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   },
   filiale(unternehmerId: string, firmaId: string, filialeId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.filialen(unternehmerId, firmaId)}/${filialeId}`;
+  },
+  mitarbeiter(unternehmerId: string, firmaId: string, mitarbeiterId: string): string {
+    return `${FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId)}/${mitarbeiterId}`;
   },
 } as const;

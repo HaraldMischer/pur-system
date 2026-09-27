@@ -1,4 +1,4 @@
-// pur-office/src/app/app.spec.ts
+// pur-system/src/app/app.spec.ts
 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Component, WritableSignal, signal } from '@angular/core';

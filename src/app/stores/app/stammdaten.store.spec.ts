@@ -1,4 +1,4 @@
-// pur-office/src/app/stores/app/stammdaten.store.spec.ts
+// pur-system/src/app/stores/app/stammdaten.store.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 
@@ -178,6 +178,13 @@ describe('StammdatenStore', () => {
     expect(store.unternehmer()[0].id).toBe('u-2');
     expect(store.getFirmen('u-1')[0].id).toBe('f-2');
     expect(store.getFilialen('u-1', 'f-1')[0].id).toBe('b-2');
+
+    store.removeFiliale('u-1', 'f-1', 'b-2');
+    store.removeFirma('u-1', 'f-2');
+    store.removeUnternehmer('u-2');
+    expect(store.getFilialen('u-1', 'f-1').map((eintrag) => eintrag.id)).toEqual(['b-1']);
+    expect(store.getFirmen('u-1').some((eintrag) => eintrag.id === 'f-2')).toBe(false);
+    expect(store.unternehmer().some((eintrag) => eintrag.id === 'u-2')).toBe(false);
 
     store.reset();
     expect(store.snapshot()).toEqual({

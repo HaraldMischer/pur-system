@@ -1,4 +1,4 @@
-// pur-office/src/app/services/domain/filiale.service.ts
+// pur-system/src/app/services/domain/filiale.service.ts
 
 import { Injectable, inject } from '@angular/core';
 
@@ -13,6 +13,7 @@ import {
   IFilialeEintrag,
 } from '../../commons/models/domain/filiale';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
+import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
 
 // ===== Top-Level Helper =====================
 
@@ -68,6 +69,7 @@ export class FilialeService {
   // ===== Interne Dependency Injection =========
 
   private readonly firestoreDbService = inject(FirestoreDbService);
+  private readonly strukturVerwaltungService = inject(StrukturVerwaltungService);
 
   // ===== Öffentliche Aktionen =================
 
@@ -168,5 +170,23 @@ export class FilialeService {
         aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
       },
     );
+  }
+
+  /**
+   * Löscht eine unreferenzierte Filiale einschließlich ihrer untergeordneten Daten.
+   *
+   * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+   * @param firmaId - Die Dokument-ID der übergeordneten Firma.
+   * @param filialId - Die Dokument-ID der zu löschenden Filiale.
+   * @returns Ein Promise, das nach der bestätigten Löschung abgeschlossen ist.
+   * @throws Gibt Fehler der geschützten Strukturlöschung weiter.
+   */
+  async deleteFiliale(unternehmerId: string, firmaId: string, filialId: string): Promise<void> {
+    await this.strukturVerwaltungService.deleteStruktureintrag({
+      typ: 'filiale',
+      unternehmerId,
+      firmaId,
+      filialId,
+    });
   }
 }

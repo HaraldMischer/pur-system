@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/loading.service.spec.ts
+// pur-system/src/app/services/core/loading.service.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 

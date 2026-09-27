@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 import { bereichGuard } from './guards/bereich.guard';
 import { masterGuard } from './guards/master.guard';
+import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
 import { verwaltungGuard } from './guards/verwaltung.guard';
 
 export const routes: Routes = [
@@ -35,11 +36,24 @@ export const routes: Routes = [
   },
   {
     path: 'mitarbeiter',
-    title: 'Mitarbeiter',
     canActivate: [authGuard, bereichGuard],
     data: { bereich: 'mitarbeiter' },
-    loadComponent: () =>
-      import('./pages/mitarbeiter-page/mitarbeiter-page').then((m) => m.MitarbeiterPage),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'liste',
+      },
+      {
+        path: 'liste',
+        title: 'Mitarbeiter',
+        canActivate: [mitarbeiterVerwaltungGuard],
+        loadComponent: () =>
+          import('./pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page').then(
+            (m) => m.MitarbeiterListePage,
+          ),
+      },
+    ],
   },
   {
     path: 'passwort',

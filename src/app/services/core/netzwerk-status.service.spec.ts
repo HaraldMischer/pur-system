@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/netzwerk-status.service.spec.ts
+// pur-system/src/app/services/core/netzwerk-status.service.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 

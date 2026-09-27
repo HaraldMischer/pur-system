@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/store-snapshot.service.ts
+// pur-system/src/app/services/core/store-snapshot.service.ts
 
 import { Injectable, inject, isDevMode } from '@angular/core';
 

@@ -1,4 +1,4 @@
-// pur-office/functions/src/technische-anmeldeadresse.ts
+// pur-system/functions/src/technische-anmeldeadresse.ts
 
 export const TECHNISCHE_ANMELDE_DOMAIN = 'pur-system.invalid';
 

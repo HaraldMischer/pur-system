@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/auth/passwort-page/passwort-page.ts
+// pur-system/src/app/pages/auth/passwort-page/passwort-page.ts
 
 import {
   ChangeDetectionStrategy,

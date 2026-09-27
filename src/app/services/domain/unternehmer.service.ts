@@ -1,4 +1,4 @@
-// pur-office/src/app/services/domain/unternehmer.service.ts
+// pur-system/src/app/services/domain/unternehmer.service.ts
 
 import { Injectable, inject } from '@angular/core';
 
@@ -12,6 +12,7 @@ import {
   IUnternehmerEintrag,
 } from '../../commons/models/domain/unternehmer';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
+import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
 
 // ===== Top-Level Helper =====================
 
@@ -31,6 +32,7 @@ export class UnternehmerService {
   // ===== Interne Dependency Injection =========
 
   private readonly firestoreDbService = inject(FirestoreDbService);
+  private readonly strukturVerwaltungService = inject(StrukturVerwaltungService);
 
   // ===== Öffentliche Aktionen =================
 
@@ -94,5 +96,19 @@ export class UnternehmerService {
       nummer,
       anzeigename: anlage.anzeigename,
     };
+  }
+
+  /**
+   * Löscht einen unreferenzierten Unternehmer einschließlich seiner untergeordneten Daten.
+   *
+   * @param unternehmerId - Die Dokument-ID des zu löschenden Unternehmers.
+   * @returns Ein Promise, das nach der bestätigten Löschung abgeschlossen ist.
+   * @throws Gibt Fehler der geschützten Strukturlöschung weiter.
+   */
+  async deleteUnternehmer(unternehmerId: string): Promise<void> {
+    await this.strukturVerwaltungService.deleteStruktureintrag({
+      typ: 'unternehmer',
+      unternehmerId,
+    });
   }
 }

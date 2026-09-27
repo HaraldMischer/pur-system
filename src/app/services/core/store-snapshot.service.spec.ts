@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/store-snapshot.service.spec.ts
+// pur-system/src/app/services/core/store-snapshot.service.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 import { DebugLogService } from './debug-log.service';

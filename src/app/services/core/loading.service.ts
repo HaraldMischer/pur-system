@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/loading.service.ts
+// pur-system/src/app/services/core/loading.service.ts
 
 import { Injectable, computed, signal } from '@angular/core';
 

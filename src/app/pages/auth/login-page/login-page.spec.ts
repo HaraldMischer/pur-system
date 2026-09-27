@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/auth/login-page/login-page.spec.ts
+// pur-system/src/app/pages/auth/login-page/login-page.spec.ts
 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';

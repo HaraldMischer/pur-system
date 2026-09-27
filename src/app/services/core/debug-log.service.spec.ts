@@ -1,4 +1,4 @@
-// pur-office/src/app/services/core/debug-log.service.spec.ts
+// pur-system/src/app/services/core/debug-log.service.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 

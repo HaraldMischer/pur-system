@@ -1,4 +1,4 @@
-// pur-office/src/app/services/domain/firma.service.ts
+// pur-system/src/app/services/domain/firma.service.ts
 
 import { Injectable, inject } from '@angular/core';
 
@@ -13,6 +13,7 @@ import {
   IFirmaEintrag,
 } from '../../commons/models/domain/firma';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
+import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
 
 // ===== Top-Level Helper =====================
 
@@ -68,6 +69,7 @@ export class FirmaService {
   // ===== Interne Dependency Injection =========
 
   private readonly firestoreDbService = inject(FirestoreDbService);
+  private readonly strukturVerwaltungService = inject(StrukturVerwaltungService);
 
   // ===== Öffentliche Aktionen =================
 
@@ -158,5 +160,21 @@ export class FirmaService {
         aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
       },
     );
+  }
+
+  /**
+   * Löscht eine unreferenzierte Firma einschließlich ihrer untergeordneten Daten.
+   *
+   * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+   * @param firmaId - Die Dokument-ID der zu löschenden Firma.
+   * @returns Ein Promise, das nach der bestätigten Löschung abgeschlossen ist.
+   * @throws Gibt Fehler der geschützten Strukturlöschung weiter.
+   */
+  async deleteFirma(unternehmerId: string, firmaId: string): Promise<void> {
+    await this.strukturVerwaltungService.deleteStruktureintrag({
+      typ: 'firma',
+      unternehmerId,
+      firmaId,
+    });
   }
 }

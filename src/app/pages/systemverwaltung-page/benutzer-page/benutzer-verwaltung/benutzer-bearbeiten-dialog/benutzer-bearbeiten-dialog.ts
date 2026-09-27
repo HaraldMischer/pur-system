@@ -1,4 +1,4 @@
-// pur-office/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.ts
 
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import {
@@ -82,7 +82,7 @@ export class BenutzerBearbeitenDialog {
         : this.profil.userRole === 'mitarbeiter'
           ? 'Mitarbeiter'
           : 'Master';
-  readonly bereiche = getWaehlbareAppBereiche();
+  readonly bereiche = getWaehlbareAppBereiche(this.profil.userRole);
   readonly unternehmer = computed<readonly IUnternehmerAuswahl[]>(() => {
     return this.stammdatenStore.unternehmer().map((unternehmer) => ({
       id: unternehmer.id,

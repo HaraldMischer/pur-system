@@ -1,4 +1,4 @@
-// pur-office/src/app/services/domain/benutzer.service.spec.ts
+// pur-system/src/app/services/domain/benutzer.service.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 
@@ -93,6 +93,27 @@ describe('BenutzerService', () => {
     await expect(service.getBenutzerProfil('test')).resolves.toMatchObject({
       erlaubteBereiche: ['dashboard'],
       zugriffe: { u: { gueltig: ['b'] } },
+    });
+  });
+
+  it('should preserve an employee company reference with an empty branch list', async () => {
+    firestoreDbServiceMock.loadDocument.mockResolvedValue({
+      id: 'mitarbeiter-user',
+      daten: {
+        email: 'mitarbeiter@example.com',
+        anzeigename: 'Mia Mitarbeiter',
+        aktiv: true,
+        userRole: 'mitarbeiter',
+        erlaubteBereiche: ['dashboard'],
+        zugriffe: { u: { f: [] } },
+        firmaMitarbeiterId: 'm-1',
+      },
+    });
+    const service = TestBed.inject(BenutzerService);
+
+    await expect(service.getBenutzerProfil('mitarbeiter-user')).resolves.toMatchObject({
+      zugriffe: { u: { f: [] } },
+      firmaMitarbeiterId: 'm-1',
     });
   });
 

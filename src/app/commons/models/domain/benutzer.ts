@@ -1,4 +1,4 @@
-// pur-office/src/app/commons/models/domain/benutzer.ts
+// pur-system/src/app/commons/models/domain/benutzer.ts
 
 import { Timestamp } from 'firebase/firestore';
 import { TAppBereich } from '../app/app-bereich';
@@ -14,6 +14,7 @@ export interface IBenutzerAnlage {
   userRole: TUserRole;
   erlaubteBereiche: TAppBereich[];
   zugriffe: TBenutzerZugriffe;
+  firmaMitarbeiterId?: string;
   passwort: string;
 }
 
@@ -44,6 +45,7 @@ export interface IBenutzerProfilDokument {
   userRole: TUserRole;
   erlaubteBereiche: TAppBereich[];
   zugriffe: TBenutzerZugriffe;
+  firmaMitarbeiterId?: string;
   erstelltAm?: Timestamp;
   aktualisiertAm?: Timestamp;
 }
