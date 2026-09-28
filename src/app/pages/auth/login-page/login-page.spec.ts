@@ -53,7 +53,7 @@ describe('LoginPage', () => {
 
     compiled.querySelector<HTMLButtonElement>('mat-card-title button')?.click();
 
-    expect(compiled.querySelector('mat-card-title button')?.textContent).toContain('pur-master');
+    expect(compiled.querySelector('mat-card-title button')?.textContent).toContain('Master');
     expect(fixture.componentInstance.loginForm.getRawValue()).toEqual({
       anmeldename: 'harry-master',
       password: '',
