@@ -299,11 +299,16 @@ Die Auswahl erfolgt abhängig voneinander: zuerst Unternehmer, danach dessen Fir
 Auswahlmodell und die Firestore-Dokumente verwenden für alle Ebenen einheitlich `anzeigename`. Die Zuordnung verwendet die
 jeweiligen Dokument-IDs.
 
-Die wiederverwendbare Component `datenzugriff-auswahl` stellt drei Material-Selects bereit. Die Mehrfachauswahl ist je Ebene
+Die wiederverwendbare Component `datenzugriff-selector` stellt drei Material-Selects bereit. Die Mehrfachauswahl ist je Ebene
 konfigurierbar und standardmäßig deaktiviert; damit verwenden alle drei Selects standardmäßig Einfachauswahl. Firmen werden nur
 bei aktivierter Unternehmer-Mehrfachauswahl und mehr als einem ausgewählten Unternehmer gruppiert; Filialen entsprechend bei
 Firmen-Mehrfachauswahl und mehr als einer ausgewählten Firma. Beim Abwählen eines übergeordneten Eintrags entfällt dessen
 abhängige Auswahl.
+
+Einfache fachliche Auswahlen werden als getrennte Components unter `components/data-selectors` bereitgestellt. Unternehmer-,
+Firmen-, Filial- und Mitarbeiter-Selektoren erhalten jeweils eine Liste vollständiger Domäneneinträge und geben den vollständig
+ausgewählten Eintrag oder `null` zurück. Der zusammengesetzte `DatenzugriffSelector` bleibt davon getrennt, weil er eine
+hierarchische Berechtigungszuordnung mit konfigurierbarer Einfach- und Mehrfachauswahl abbildet.
 
 Für den seitenübergreifenden Arbeitskontext hält der `AppKontextStore` den ausgewählten Unternehmer, die ausgewählte Firma und
 den Filialkontext. Er leitet seine verfügbaren Einträge aus dem `StammdatenStore` ab und hält selbst keine fachlichen Stammdaten.

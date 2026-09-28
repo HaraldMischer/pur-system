@@ -1,4 +1,4 @@
-// pur-system/src/app/components/datenzugriff-auswahl/datenzugriff-auswahl.ts
+// pur-system/src/app/components/data-selectors/datenzugriff-selector/datenzugriff-selector.ts
 
 import {
   ChangeDetectionStrategy,
@@ -10,16 +10,16 @@ import {
 } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { IUnternehmerAuswahl } from '../../commons/models/domain/datenzugriff';
+import { IUnternehmerAuswahl } from '../../../commons/models/domain/datenzugriff';
 
 @Component({
-  selector: 'app-datenzugriff-auswahl',
+  selector: 'app-datenzugriff-selector',
   imports: [MatFormFieldModule, MatSelectModule],
-  templateUrl: './datenzugriff-auswahl.html',
-  styleUrl: './datenzugriff-auswahl.scss',
+  templateUrl: './datenzugriff-selector.html',
+  styleUrl: './datenzugriff-selector.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DatenzugriffAuswahl {
+export class DatenzugriffSelector {
   readonly unternehmer = input.required<readonly IUnternehmerAuswahl[]>();
   readonly unternehmerMehrfach = input(false, { transform: booleanAttribute });
   readonly firmenMehrfach = input(false, { transform: booleanAttribute });

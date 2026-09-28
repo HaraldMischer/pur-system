@@ -1,11 +1,11 @@
-// pur-system/src/app/components/datenzugriff-auswahl/datenzugriff-auswahl.spec.ts
+// pur-system/src/app/components/data-selectors/datenzugriff-selector/datenzugriff-selector.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { MatSelect } from '@angular/material/select';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { DatenzugriffAuswahl } from './datenzugriff-auswahl';
+import { DatenzugriffSelector } from './datenzugriff-selector';
 const DATENZUGRIFF_MOCK = [
   {
     id: 'demo-unternehmer-west',
@@ -46,12 +46,12 @@ function firma(id: string): string {
   ]);
 }
 
-describe('DatenzugriffAuswahl', () => {
+describe('DatenzugriffSelector', () => {
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [DatenzugriffAuswahl, NoopAnimationsModule] });
+    TestBed.configureTestingModule({ imports: [DatenzugriffSelector, NoopAnimationsModule] });
   });
   function setup(unternehmerMehrfach = false, firmenMehrfach = true, filialenMehrfach = true) {
-    const fixture = TestBed.createComponent(DatenzugriffAuswahl);
+    const fixture = TestBed.createComponent(DatenzugriffSelector);
     fixture.componentRef.setInput('unternehmer', DATENZUGRIFF_MOCK);
     fixture.componentRef.setInput('unternehmerMehrfach', unternehmerMehrfach);
     fixture.componentRef.setInput('firmenMehrfach', firmenMehrfach);
@@ -61,7 +61,7 @@ describe('DatenzugriffAuswahl', () => {
   }
 
   it('should default to single selection for entrepreneur, company and branch', () => {
-    const fixture = TestBed.createComponent(DatenzugriffAuswahl);
+    const fixture = TestBed.createComponent(DatenzugriffSelector);
     fixture.componentRef.setInput('unternehmer', DATENZUGRIFF_MOCK);
     fixture.detectChanges();
     const selects = fixture.debugElement
@@ -80,7 +80,7 @@ describe('DatenzugriffAuswahl', () => {
   });
 
   it('should hide the branch selection when it is not required', () => {
-    const fixture = TestBed.createComponent(DatenzugriffAuswahl);
+    const fixture = TestBed.createComponent(DatenzugriffSelector);
     fixture.componentRef.setInput('unternehmer', DATENZUGRIFF_MOCK);
     fixture.componentRef.setInput('filialenSichtbar', false);
     fixture.detectChanges();
@@ -320,7 +320,7 @@ describe('DatenzugriffAuswahl', () => {
   });
 
   it('should support multiple entrepreneurs with single company and branch selection', () => {
-    const fixture = TestBed.createComponent(DatenzugriffAuswahl);
+    const fixture = TestBed.createComponent(DatenzugriffSelector);
     fixture.componentRef.setInput('unternehmer', DATENZUGRIFF_MOCK);
     fixture.componentRef.setInput('unternehmerMehrfach', true);
     fixture.detectChanges();

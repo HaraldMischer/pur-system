@@ -16,7 +16,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
-import { DatenzugriffAuswahl } from '../../../../../components/datenzugriff-auswahl/datenzugriff-auswahl';
+import { DatenzugriffSelector } from '../../../../../components/data-selectors/datenzugriff-selector/datenzugriff-selector';
 import {
   IBenutzerProfilAktualisierung,
   IBenutzerProfilEintrag,
@@ -47,7 +47,7 @@ export interface IBenutzerBearbeitenDialogDaten {
 @Component({
   selector: 'app-benutzer-bearbeiten-dialog',
   imports: [
-    DatenzugriffAuswahl,
+    DatenzugriffSelector,
     MatButtonModule,
     MatCheckboxModule,
     MatDialogModule,

@@ -176,7 +176,7 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(component.benutzerForm.controls.erlaubteBereiche.controls.schichtplan.enabled).toBe(
       true,
     );
-    expect(fixture.nativeElement.querySelector('app-datenzugriff-auswahl')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-datenzugriff-selector')).toBeNull();
 
     component.benutzerForm.controls.anzeigename.setValue('Mitarbeiter Neu');
     component.benutzerForm.controls.erlaubteBereiche.patchValue({

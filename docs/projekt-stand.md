@@ -367,8 +367,11 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Datenzugriff-Auswahl mit Firebase
 
-- Die wiederverwendbare Component liegt unter `src/app/components/datenzugriff-auswahl`; ihre Auswahlmodelle liegen in
-  `src/app/commons/models/domain/datenzugriff.ts`.
+- Die wiederverwendbare Component liegt unter `src/app/components/data-selectors/datenzugriff-selector`; ihre Auswahlmodelle
+  liegen in `src/app/commons/models/domain/datenzugriff.ts`.
+- Unter `src/app/components/data-selectors` liegen außerdem einfache Selektoren für Unternehmer, Firmen, Filialen und Mitarbeiter.
+  Sie erhalten vollständige Domäneneinträge und geben den ausgewählten Eintrag zurück. Der `MitarbeiterSelector` zeigt Vor- und
+  Nachname an, ist vollständig getestet und noch nicht in eine Fachseite oder ein Formular eingebunden.
 - Die Systemverwaltungsseite lädt Unternehmer aus `unternehmer`, Firmen aus `firma` und Filialen aus `filiale`. Die produktiven
   Mock-Daten wurden entfernt. `UnternehmerService`, `FirmaService` und `FilialeService` kapseln Laden und Anlegen ihrer
   vollständigen Domäneneinträge. Das gemeinsame Datenzugriff-Auswahlmodell und die Firestore-Dokumente verwenden auf allen Ebenen

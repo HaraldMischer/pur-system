@@ -88,7 +88,7 @@
       <div class="pur-form__group">
         <h2 class="pur-form__group-titel">Datenzugriff</h2>
         @if (benutzerForm.controls.userRole.value === 'mitarbeiter') {
-          <app-datenzugriff-auswahl
+          <app-datenzugriff-selector
             [unternehmer]="verwaltungStore.unternehmer()"
             [firmenLaden]="verwaltungStore.firmenDownload()"
             [unternehmerIds]="verwaltungStore.unternehmerIds()"
@@ -119,7 +119,7 @@
                 <mat-error>Ein Mitarbeiter ist erforderlich.</mat-error>
               }
             </mat-form-field>
-          </app-datenzugriff-auswahl>
+          </app-datenzugriff-selector>
 
           @if (verwaltungStore.mitarbeiterAuswahlDownload()) {
             <p role="status">Mitarbeiter werden geladen.</p>
@@ -135,7 +135,7 @@
             <p class="pur-form__error" role="alert">Die Firma hat noch keine Mitarbeiter.</p>
           }
         } @else if (benutzerForm.controls.userRole.value === 'filiale') {
-          <app-datenzugriff-auswahl
+          <app-datenzugriff-selector
             [unternehmer]="verwaltungStore.unternehmer()"
             [firmenLaden]="verwaltungStore.firmenDownload()"
             [filialenLaden]="verwaltungStore.filialenDownload()"
@@ -150,7 +150,7 @@
             [filialenMehrfach]="false"
           />
         } @else {
-          <app-datenzugriff-auswahl
+          <app-datenzugriff-selector
             [unternehmer]="verwaltungStore.unternehmer()"
             [firmenLaden]="verwaltungStore.firmenDownload()"
             [filialenLaden]="verwaltungStore.filialenDownload()"

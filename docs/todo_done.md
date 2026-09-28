@@ -297,7 +297,7 @@ bleibt ausgeschlossen und die Sitzung des Masters bleibt erhalten.
 
 - src/app/commons/models/domain/benutzer.ts
 - src/app/commons/models/domain/datenzugriff.ts
-- src/app/components/datenzugriff-auswahl/
+- src/app/components/data-selectors/datenzugriff-selector/
 - src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/
 - src/app/services/domain/benutzer.service.ts
 - src/app/stores/app/stammdaten.store.ts
@@ -425,7 +425,7 @@ verändert.
       lesend anzeigen.
 - [x] Den Bereich `systemverwaltung` aus der unveränderlichen Rolle ableiten: für Master fest aktiviert, für Office und Filiale
       fest deaktiviert.
-- [x] Vorhandene `DatenzugriffAuswahl` wiederverwenden und rollenabhängige Validierung aus der Benutzeranlage übernehmen.
+- [x] Den vorhandenen `DatenzugriffSelector` wiederverwenden und rollenabhängige Validierung aus der Benutzeranlage übernehmen.
 - [x] Firebase-Service um das Aktualisieren von `benutzerprofil/{uid}` erweitern.
 - [x] Beim Speichern `aktualisiertAm` mit einem Server-Timestamp setzen.
 - [x] Aktualisierten Eintrag ohne erneutes Laden in die Store-Liste übernehmen.
@@ -1530,7 +1530,7 @@ dieser Verknüpfung getrennt.
 
 - src/app/commons/models/domain/benutzer.ts
 - src/app/commons/models/domain/mitarbeiter.ts
-- src/app/components/datenzugriff-auswahl/
+- src/app/components/data-selectors/datenzugriff-selector/
 - src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/
 - src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.spec.ts
 - src/app/services/domain/benutzer.service.ts

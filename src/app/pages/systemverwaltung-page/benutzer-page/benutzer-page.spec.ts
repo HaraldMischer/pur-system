@@ -4,7 +4,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';
 import { FormGroupDirective } from '@angular/forms';
 import { By } from '@angular/platform-browser';
-import { DatenzugriffAuswahl } from '../../../components/datenzugriff-auswahl/datenzugriff-auswahl';
+import { DatenzugriffSelector } from '../../../components/data-selectors/datenzugriff-selector/datenzugriff-selector';
 import { TestBed } from '@angular/core/testing';
 
 import { DatenzugriffService } from '../../../services/domain/datenzugriff.service';
@@ -211,8 +211,8 @@ describe('BenutzerPage', () => {
     await render();
     expect(component.benutzerForm.controls.firmaMitarbeiterId.disabled).toBe(true);
 
-    const datenAuswahl = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
-      .componentInstance as DatenzugriffAuswahl;
+    const datenAuswahl = fixture.debugElement.query(By.directive(DatenzugriffSelector))
+      .componentInstance as DatenzugriffSelector;
     datenAuswahl.selectUnternehmer('u');
     await render();
     datenAuswahl.selectFirmen([datenAuswahl.getFirmaSchluessel('u', 'f')]);
@@ -230,7 +230,7 @@ describe('BenutzerPage', () => {
     expect(
       Array.from(
         (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
-          'app-datenzugriff-auswahl mat-label',
+          'app-datenzugriff-selector mat-label',
         ),
       ).map((label) => label.textContent?.trim()),
     ).toEqual(['Unternehmer', 'Firmen', 'Mitarbeiter']);
@@ -261,8 +261,8 @@ describe('BenutzerPage', () => {
 
     fixture.componentInstance.benutzerForm.controls.userRole.setValue('mitarbeiter');
     await render();
-    const datenAuswahl = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
-      .componentInstance as DatenzugriffAuswahl;
+    const datenAuswahl = fixture.debugElement.query(By.directive(DatenzugriffSelector))
+      .componentInstance as DatenzugriffSelector;
     datenAuswahl.selectUnternehmer('u');
     await render();
     datenAuswahl.selectFirmen([datenAuswahl.getFirmaSchluessel('u', 'f')]);
@@ -436,8 +436,8 @@ describe('BenutzerPage', () => {
       },
     });
     await render();
-    const auswahl = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
-      .componentInstance as DatenzugriffAuswahl;
+    const auswahl = fixture.debugElement.query(By.directive(DatenzugriffSelector))
+      .componentInstance as DatenzugriffSelector;
     auswahl.selectUnternehmer('u');
     await render();
     auswahl.selectFirmen([auswahl.getFirmaSchluessel('u', 'f')]);
@@ -464,8 +464,8 @@ describe('BenutzerPage', () => {
       anzeigename: 'Test',
       passwort: 'SicheresPasswort123!',
     });
-    const component = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
-      .componentInstance as DatenzugriffAuswahl;
+    const component = fixture.debugElement.query(By.directive(DatenzugriffSelector))
+      .componentInstance as DatenzugriffSelector;
     expect(component.unternehmer().map((u) => u.id)).toEqual(['u']);
     component.selectUnternehmer('u');
     await render();
@@ -482,7 +482,7 @@ describe('BenutzerPage', () => {
     component.selectFiliale(key, 'b', true);
     await render();
     expect(fixture.componentInstance.verwaltungStore.filialen()).toEqual({ [key]: ['b'] });
-    const auswahl = fixture.nativeElement.querySelector('app-datenzugriff-auswahl') as HTMLElement;
+    const auswahl = fixture.nativeElement.querySelector('app-datenzugriff-selector') as HTMLElement;
     expect(auswahl.closest('.pur-form__group')).not.toBeNull();
     expect(auswahl.closest('fieldset')).toBeNull();
     expect(auswahl.querySelectorAll('mat-select')).toHaveLength(3);
@@ -581,15 +581,15 @@ describe('BenutzerPage', () => {
       fixture.detectChanges();
     }
     await render();
-    const initial = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
-      .componentInstance as DatenzugriffAuswahl;
+    const initial = fixture.debugElement.query(By.directive(DatenzugriffSelector))
+      .componentInstance as DatenzugriffSelector;
     expect(initial.unternehmerMehrfach()).toBe(false);
     expect(initial.firmenMehrfach()).toBe(false);
     expect(initial.filialenMehrfach()).toBe(false);
     page.benutzerForm.controls.userRole.setValue('office');
     await render();
-    const office = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
-      .componentInstance as DatenzugriffAuswahl;
+    const office = fixture.debugElement.query(By.directive(DatenzugriffSelector))
+      .componentInstance as DatenzugriffSelector;
     expect(office).not.toBe(initial);
     expect(office.unternehmerMehrfach()).toBe(false);
     expect(office.firmenMehrfach()).toBe(true);
@@ -608,8 +608,8 @@ describe('BenutzerPage', () => {
     await render();
     expect(page.verwaltungStore.unternehmerIds()).toEqual([]);
     expect(page.verwaltungStore.zugriffe()).toEqual({});
-    const branch = fixture.debugElement.query(By.directive(DatenzugriffAuswahl))
-      .componentInstance as DatenzugriffAuswahl;
+    const branch = fixture.debugElement.query(By.directive(DatenzugriffSelector))
+      .componentInstance as DatenzugriffSelector;
     expect(branch).not.toBe(office);
     expect(branch.filialenMehrfach()).toBe(false);
     expect(page.datenAuswahlGueltig()).toBe(false);
@@ -622,7 +622,7 @@ describe('BenutzerPage', () => {
     expect(page.datenAuswahlGueltig()).toBe(false);
     page.benutzerForm.controls.userRole.setValue('master');
     await render();
-    expect(fixture.debugElement.query(By.directive(DatenzugriffAuswahl))).toBeNull();
+    expect(fixture.debugElement.query(By.directive(DatenzugriffSelector))).toBeNull();
     expect(page.verwaltungStore.zugriffe()).toEqual({});
     expect(page.datenAuswahlGueltig()).toBe(true);
   });

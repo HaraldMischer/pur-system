@@ -1,0 +1,18 @@
+<!-- pur-system/src/app/components/data-selectors/mitarbeiter-selector/mitarbeiter-selector.html -->
+
+<mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+  <mat-label>Mitarbeiter</mat-label>
+  <mat-select
+    [value]="selectedMitarbeiter()?.id ?? null"
+    [disabled]="disabled() || mitarbeiter().length === 0"
+    (selectionChange)="selectMitarbeiter($event.value)"
+  >
+    @for (eintrag of mitarbeiter(); track eintrag.id) {
+      <mat-option [value]="eintrag.id">
+        {{ eintrag.person.vorname }} {{ eintrag.person.nachname }}
+      </mat-option>
+    } @empty {
+      <mat-option disabled>Keine Mitarbeiter verfügbar</mat-option>
+    }
+  </mat-select>
+</mat-form-field>

@@ -39,7 +39,7 @@ import {
   TWaehlbarerAppBereich,
 } from '../../../../commons/utils/benutzer/erlaubte-bereiche';
 import { BenutzerVerwaltungStore } from '../../../../stores/domain/benutzer-verwaltung.store';
-import { DatenzugriffAuswahl } from '../../../../components/datenzugriff-auswahl/datenzugriff-auswahl';
+import { DatenzugriffSelector } from '../../../../components/data-selectors/datenzugriff-selector/datenzugriff-selector';
 
 // ===== Top-Level Helper =====================
 
@@ -64,7 +64,7 @@ function namensbestandteilValidator(control: AbstractControl): ValidationErrors 
 @Component({
   selector: 'app-benutzer-anlage',
   imports: [
-    DatenzugriffAuswahl,
+    DatenzugriffSelector,
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
