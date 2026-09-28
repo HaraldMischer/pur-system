@@ -103,6 +103,7 @@ describe('BenutzerVerwaltungService', () => {
     ]);
     expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith(
       'unternehmer/u-1/firma/f-1/mitarbeiter',
+      'networkOnly',
     );
     expect(httpsCallableMock).not.toHaveBeenCalled();
   });

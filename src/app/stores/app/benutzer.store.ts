@@ -3,18 +3,21 @@
 import { DestroyRef, computed, inject, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+
+import { environment } from '../../../environments/environment';
 import { TAppBereich } from '../../commons/models/app/app-bereich';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { AuthService } from '../../services/firebase/auth.service';
 import { BenutzerService } from '../../services/domain/benutzer.service';
-import { StammdatenStore } from './stammdaten.store';
 
 // ===== Top-Level Helper =====================
 
 export type TBenutzerSnapshot = {
+  readonly benutzerId: string | null;
   readonly benutzerProfil: IBenutzerProfilDokument | null;
   readonly isAuthenticated: boolean;
   readonly inProgress: boolean;
@@ -24,6 +27,7 @@ export type TBenutzerSnapshot = {
 type TBenutzerState = TBenutzerSnapshot;
 
 const initialState: TBenutzerState = {
+  benutzerId: null,
   benutzerProfil: null,
   isAuthenticated: false,
   inProgress: false,
@@ -67,7 +71,6 @@ export const BenutzerStore = signalStore(
       store,
       authService = inject(AuthService),
       benutzerService = inject(BenutzerService),
-      stammdatenStore = inject(StammdatenStore),
       debugLogService = inject(DebugLogService),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),
@@ -75,8 +78,11 @@ export const BenutzerStore = signalStore(
       let authStateInitialisiert = false;
       let profilBenutzerId: string | null = null;
       let profilGeneration = 0;
-      let profilAuftrag: { uid: string; promise: Promise<IBenutzerProfilDokument | null> } | null =
-        null;
+      let profilAuftrag: {
+        uid: string;
+        strategie: TFirestoreLesestrategie;
+        promise: Promise<IBenutzerProfilDokument | null>;
+      } | null = null;
       let profilBeobachtung: { uid: string; unsubscribe: () => void } | null = null;
 
       // ===== Methoden: Laden ======================
@@ -85,23 +91,29 @@ export const BenutzerStore = signalStore(
        * Lädt das Benutzerprofil einmalig für eine UID und teilt parallel laufende Aufträge.
        *
        * @param uid - UID des angemeldeten Firebase-Benutzers.
+       * @param strategie - Datenquellenstrategie für das Benutzerprofil.
+       * @param erzwingen - Erzwingt einen neuen Auftrag auch bei einem bereits bestätigten Ergebnis.
        * @returns Das geladene beziehungsweise bereits im Store vorhandene Benutzerprofil.
        * @throws Gibt Fehler des Profilladens an die aufrufende Stelle weiter.
        */
-      function loadBenutzerProfil(uid: string): Promise<IBenutzerProfilDokument | null> {
+      function loadBenutzerProfil(
+        uid: string,
+        strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.benutzerprofil,
+        erzwingen = false,
+      ): Promise<IBenutzerProfilDokument | null> {
         startBenutzerProfilBeobachtung(uid);
 
-        if (profilBenutzerId === uid && !profilAuftrag) {
+        if (!erzwingen && profilBenutzerId === uid && !profilAuftrag) {
           return Promise.resolve(store.benutzerProfil());
         }
-        if (profilAuftrag?.uid === uid) {
+        if (!erzwingen && profilAuftrag?.uid === uid && profilAuftrag.strategie === strategie) {
           return profilAuftrag.promise;
         }
 
         const generation = ++profilGeneration;
         patchState(store, { inProgress: true, error: null });
-        const promise = executeBenutzerProfilLoad(uid, generation);
-        profilAuftrag = { uid, promise };
+        const promise = executeBenutzerProfilLoad(uid, strategie, generation);
+        profilAuftrag = { uid, strategie, promise };
         return promise;
       }
 
@@ -120,8 +132,8 @@ export const BenutzerStore = signalStore(
           .subscribe(async (benutzer) => {
             if (!benutzer) {
               resetBenutzerProfilCache();
-              stammdatenStore.reset();
               patchState(store, {
+                benutzerId: null,
                 benutzerProfil: null,
                 isAuthenticated: false,
                 inProgress: false,
@@ -130,7 +142,11 @@ export const BenutzerStore = signalStore(
               return;
             }
 
-            patchState(store, { isAuthenticated: true, error: null });
+            patchState(store, {
+              benutzerId: benutzer.uid,
+              isAuthenticated: true,
+              error: null,
+            });
 
             try {
               await loadBenutzerProfil(benutzer.uid);
@@ -157,7 +173,10 @@ export const BenutzerStore = signalStore(
           debugLogService.log('Authentifizierung', 'Benutzer angemeldet', {
             uid: credential.user.uid,
           });
-          patchState(store, { isAuthenticated: true });
+          patchState(store, {
+            benutzerId: credential.user.uid,
+            isAuthenticated: true,
+          });
           startBenutzerProfilBeobachtung(credential.user.uid);
           await loadBenutzerProfil(credential.user.uid);
         } catch (error: unknown) {
@@ -179,8 +198,11 @@ export const BenutzerStore = signalStore(
         try {
           await authService.logout();
           resetBenutzerProfilCache();
-          stammdatenStore.reset();
-          patchState(store, { benutzerProfil: null, isAuthenticated: false });
+          patchState(store, {
+            benutzerId: null,
+            benutzerProfil: null,
+            isAuthenticated: false,
+          });
         } catch (error: unknown) {
           patchState(store, { error: getFirebaseErrorMessage(error) });
           throw error;
@@ -277,7 +299,6 @@ export const BenutzerStore = signalStore(
        */
       function reset(): void {
         resetBenutzerProfilCache();
-        stammdatenStore.reset();
         patchState(store, initialState);
       }
 
@@ -288,6 +309,7 @@ export const BenutzerStore = signalStore(
        */
       function snapshot(): TBenutzerSnapshot {
         return untracked(() => ({
+          benutzerId: store.benutzerId(),
           benutzerProfil: store.benutzerProfil(),
           isAuthenticated: store.isAuthenticated(),
           inProgress: store.inProgress(),
@@ -299,10 +321,11 @@ export const BenutzerStore = signalStore(
 
       async function executeBenutzerProfilLoad(
         uid: string,
+        strategie: TFirestoreLesestrategie,
         generation: number,
       ): Promise<IBenutzerProfilDokument | null> {
         try {
-          const benutzerProfil = await benutzerService.getBenutzerProfil(uid);
+          const benutzerProfil = await benutzerService.getBenutzerProfil(uid, strategie);
           debugLogService.logDatenflussTitel('1. BENUTZERPROFIL ');
           debugLogService.logDatenGeladen(
             'Benutzerprofil',
@@ -312,11 +335,6 @@ export const BenutzerStore = signalStore(
           if (generation === profilGeneration) {
             profilBenutzerId = uid;
             patchState(store, { benutzerProfil });
-            if (benutzerProfil?.aktiv) {
-              await stammdatenStore.loadStammdaten(uid, benutzerProfil);
-            } else {
-              stammdatenStore.reset();
-            }
           }
           return benutzerProfil;
         } catch (error: unknown) {
@@ -343,7 +361,6 @@ export const BenutzerStore = signalStore(
           profilGeneration++;
           profilBenutzerId = null;
           profilAuftrag = null;
-          stammdatenStore.reset();
           patchState(store, { benutzerProfil: null, error: null });
         }
         profilBeobachtung = {
@@ -370,35 +387,8 @@ export const BenutzerStore = signalStore(
           return;
         }
 
-        const vorherigesProfil = store.benutzerProfil();
         profilBenutzerId = uid;
         patchState(store, { benutzerProfil, error: null });
-
-        if (!benutzerProfil?.aktiv) {
-          stammdatenStore.reset();
-          return;
-        }
-
-        if (hatDatenzugriffGeaendert(vorherigesProfil, benutzerProfil)) {
-          stammdatenStore.reset();
-        }
-        void stammdatenStore.loadStammdaten(uid, benutzerProfil);
-      }
-
-      function hatDatenzugriffGeaendert(
-        vorherigesProfil: IBenutzerProfilDokument | null,
-        benutzerProfil: IBenutzerProfilDokument,
-      ): boolean {
-        if (!vorherigesProfil?.aktiv) {
-          return false;
-        }
-
-        return (
-          vorherigesProfil.userRole !== benutzerProfil.userRole ||
-          JSON.stringify(vorherigesProfil.erlaubteBereiche) !==
-            JSON.stringify(benutzerProfil.erlaubteBereiche) ||
-          JSON.stringify(vorherigesProfil.zugriffe) !== JSON.stringify(benutzerProfil.zugriffe)
-        );
       }
 
       function stopBenutzerProfilBeobachtung(): void {

@@ -2,6 +2,7 @@
 
 import { Injectable, inject } from '@angular/core';
 
+import { environment } from '../../../environments/environment';
 import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
@@ -13,6 +14,7 @@ import {
   IMitarbeiterEintrag,
   TMitarbeiterRolle,
 } from '../../commons/models/domain/mitarbeiter';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { EGender, IPerson } from '../../commons/models/domain/person';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 
@@ -21,12 +23,19 @@ import { FirestoreDbService } from '../firebase/firestore-db.service';
 const MITARBEITER_ROLLEN: readonly TMitarbeiterRolle[] = ['service', 'kasse', 'admin'];
 const GESCHLECHTER = new Set<string>(Object.values(EGender));
 
-function mapMitarbeiterEintrag(id: string, daten: Record<string, unknown>): IMitarbeiterEintrag {
+function mapMitarbeiterEintrag(
+  unternehmerId: string,
+  firmaId: string,
+  id: string,
+  daten: Record<string, unknown>,
+): IMitarbeiterEintrag {
   const person = mapPerson(daten['person']);
   const rolle = daten['rolle'];
 
   return {
     id,
+    unternehmerId,
+    firmaId,
     person,
     rolle: isMitarbeiterRolle(rolle) ? rolle : 'service',
     filialIds: getDokumentIds(daten['filialIds']),
@@ -110,6 +119,7 @@ export class MitarbeiterService {
    * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
    * @param firmaId - Die Dokument-ID der übergeordneten Firma.
    * @param filialId - Optionale Filial-ID zur Begrenzung eines Filialkontos.
+   * @param strategie - Datenquellenstrategie für den Ladevorgang.
    * @returns Die nach Nachname und Vorname sortierten Mitarbeiter.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
@@ -117,6 +127,7 @@ export class MitarbeiterService {
     unternehmerId: string,
     firmaId: string,
     filialId?: string,
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
   ): Promise<IMitarbeiterEintrag[]> {
     const collectionPath = FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId);
     const dokumente = filialId
@@ -124,11 +135,17 @@ export class MitarbeiterService {
           collectionPath,
           'filialIds',
           filialId,
+          strategie,
         )
-      : await this.firestoreDbService.loadCollection<Record<string, unknown>>(collectionPath);
+      : await this.firestoreDbService.loadCollection<Record<string, unknown>>(
+          collectionPath,
+          strategie,
+        );
 
     return sortMitarbeiter(
-      dokumente.map((dokument) => mapMitarbeiterEintrag(dokument.id, dokument.daten)),
+      dokumente.map((dokument) => {
+        return mapMitarbeiterEintrag(unternehmerId, firmaId, dokument.id, dokument.daten);
+      }),
     );
   }
 

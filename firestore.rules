@@ -180,6 +180,14 @@ service cloud.firestore {
         && profil().zugriffe[unternehmerId][firmaId] is list;
     }
 
+    function darfMitarbeiterUnternehmerLesen(unternehmerId) {
+      return isMitarbeiter()
+        && profil().zugriffe is map
+        && unternehmerId in profil().zugriffe
+        && profil().zugriffe[unternehmerId] is map
+        && profil().zugriffe[unternehmerId].size() > 0;
+    }
+
     // ===============================================================================
     // 1. Fachliche Daten der Unternehmensstruktur
     // ===============================================================================
@@ -187,10 +195,12 @@ service cloud.firestore {
     match /unternehmer/{unternehmerId} {
       allow read, create, update: if isMaster();
       allow read: if darfUnternehmerLesen(unternehmerId);
+      allow read: if darfMitarbeiterUnternehmerLesen(unternehmerId);
 
       match /firma/{firmaId} {
         allow read, create, update: if isMaster();
         allow read: if darfFirmaLesen(unternehmerId, firmaId);
+        allow read: if darfMitarbeiterFirmaLesen(unternehmerId, firmaId);
         allow update: if isOffice() && darfFirmaLesen(unternehmerId, firmaId);
 
         match /filiale/{filialId} {

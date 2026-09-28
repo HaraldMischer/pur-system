@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './guards/auth.guard';
 import { bereichGuard } from './guards/bereich.guard';
+import { initialisierungGuard } from './guards/initialisierung.guard';
 import { masterGuard } from './guards/master.guard';
 import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
 import { verwaltungGuard } from './guards/verwaltung.guard';
@@ -14,6 +15,15 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/auth/login-page/login-page').then((m) => m.LoginPage),
   },
   {
+    path: 'initialisierungsfehler',
+    title: 'Initialisierungsfehler',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/initialisierungsfehler-page/initialisierungsfehler-page').then(
+        (m) => m.InitialisierungsfehlerPage,
+      ),
+  },
+  {
     path: '',
     pathMatch: 'full',
     redirectTo: 'dashboard',
@@ -21,7 +31,7 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     title: 'Dashboard',
-    canActivate: [authGuard, bereichGuard],
+    canActivate: [authGuard, initialisierungGuard, bereichGuard],
     data: { bereich: 'dashboard' },
     loadComponent: () =>
       import('./pages/dashboard-page/dashboard-page').then((m) => m.DashboardPage),
@@ -29,14 +39,14 @@ export const routes: Routes = [
   {
     path: 'schichtplan',
     title: 'Schichtplan',
-    canActivate: [authGuard, bereichGuard],
+    canActivate: [authGuard, initialisierungGuard, bereichGuard],
     data: { bereich: 'schichtplan' },
     loadComponent: () =>
       import('./pages/schichtplan-page/schichtplan-page').then((m) => m.SchichtplanPage),
   },
   {
     path: 'mitarbeiter',
-    canActivate: [authGuard, bereichGuard],
+    canActivate: [authGuard, initialisierungGuard, bereichGuard],
     data: { bereich: 'mitarbeiter' },
     children: [
       {
@@ -58,22 +68,22 @@ export const routes: Routes = [
   {
     path: 'passwort',
     title: 'Passwort ändern',
-    canActivate: [authGuard],
+    canActivate: [authGuard, initialisierungGuard],
     loadComponent: () =>
       import('./pages/auth/passwort-page/passwort-page').then((m) => m.PasswortPage),
   },
   {
     path: 'verwaltung',
     title: 'Verwaltung',
-    canActivate: [authGuard, bereichGuard, verwaltungGuard],
+    canActivate: [authGuard, initialisierungGuard, bereichGuard, verwaltungGuard],
     data: { bereich: 'verwaltung' },
     loadComponent: () =>
       import('./pages/verwaltung-page/verwaltung-page').then((m) => m.VerwaltungPage),
   },
   {
     path: 'systemverwaltung',
-    canActivate: [authGuard, bereichGuard, masterGuard],
-    canActivateChild: [authGuard, bereichGuard, masterGuard],
+    canActivate: [authGuard, initialisierungGuard, bereichGuard, masterGuard],
+    canActivateChild: [authGuard, initialisierungGuard, bereichGuard, masterGuard],
     data: { bereich: 'systemverwaltung' },
     children: [
       {

@@ -84,6 +84,7 @@ describe('FirmaService', () => {
     });
     expect(firestoreDbServiceMock.loadDocument).toHaveBeenCalledWith(
       'unternehmer/unternehmer-1/firma/firma-1',
+      'networkOnly',
     );
   });
 
@@ -133,6 +134,7 @@ describe('FirmaService', () => {
     ]);
     expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith(
       'unternehmer/unternehmer-1/firma',
+      'networkOnly',
     );
   });
 

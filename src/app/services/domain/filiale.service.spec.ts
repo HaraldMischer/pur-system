@@ -82,6 +82,7 @@ describe('FilialeService', () => {
     });
     expect(firestoreDbServiceMock.loadDocument).toHaveBeenCalledWith(
       'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1',
+      'networkOnly',
     );
   });
 
@@ -121,6 +122,7 @@ describe('FilialeService', () => {
     ]);
     expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith(
       'unternehmer/unternehmer-1/firma/firma-1/filiale',
+      'networkOnly',
     );
   });
 

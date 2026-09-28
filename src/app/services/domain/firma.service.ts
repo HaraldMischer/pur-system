@@ -2,6 +2,7 @@
 
 import { Injectable, inject } from '@angular/core';
 
+import { environment } from '../../../environments/environment';
 import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
@@ -12,6 +13,7 @@ import {
   IFirmaAktualisierung,
   IFirmaEintrag,
 } from '../../commons/models/domain/firma';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
 
@@ -77,12 +79,17 @@ export class FirmaService {
    * Lädt alle Firmen eines Unternehmers und bildet sie als sortierte Domäneneinträge ab.
    *
    * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+   * @param strategie - Datenquellenstrategie für den Ladevorgang.
    * @returns Die nach Anzeigename sortierten Firmen.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
-  async loadFirmen(unternehmerId: string): Promise<IFirmaEintrag[]> {
+  async loadFirmen(
+    unternehmerId: string,
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+  ): Promise<IFirmaEintrag[]> {
     const dokumente = await this.firestoreDbService.loadCollection<Record<string, unknown>>(
       FIRESTORE_COLLECTION_PATHS.firmen(unternehmerId),
+      strategie,
     );
 
     return dokumente
@@ -95,12 +102,18 @@ export class FirmaService {
    *
    * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
    * @param firmaId - Die Dokument-ID der Firma.
+   * @param strategie - Datenquellenstrategie für den Ladevorgang.
    * @returns Der kompakte Firmeneintrag oder `null`, wenn das Dokument nicht existiert.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
-  async loadFirmaEintrag(unternehmerId: string, firmaId: string): Promise<IFirmaEintrag | null> {
+  async loadFirmaEintrag(
+    unternehmerId: string,
+    firmaId: string,
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+  ): Promise<IFirmaEintrag | null> {
     const dokument = await this.firestoreDbService.loadDocument<Record<string, unknown>>(
       FIRESTORE_DOCUMENT_PATHS.firma(unternehmerId, firmaId),
+      strategie,
     );
 
     return dokument ? mapFirmaEintrag(dokument.id, dokument.daten) : null;

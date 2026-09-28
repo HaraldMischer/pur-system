@@ -52,7 +52,10 @@ describe('BenutzerService', () => {
 
     const result = await service.getBenutzerProfil('benutzer-123');
 
-    expect(firestoreDbServiceMock.loadDocument).toHaveBeenCalledWith('benutzerprofil/benutzer-123');
+    expect(firestoreDbServiceMock.loadDocument).toHaveBeenCalledWith(
+      'benutzerprofil/benutzer-123',
+      'networkOnly',
+    );
     expect(result).toEqual(profil);
   });
 
@@ -211,7 +214,10 @@ describe('BenutzerService', () => {
         zugriffe: { u: { f: ['b'] } },
       }),
     ]);
-    expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith('benutzerprofil');
+    expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith(
+      'benutzerprofil',
+      'networkOnly',
+    );
   });
 
   it('should update editable profile data with a server timestamp', async () => {

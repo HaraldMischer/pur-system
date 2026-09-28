@@ -2,6 +2,7 @@
 
 import { Injectable, inject } from '@angular/core';
 
+import { environment } from '../../../environments/environment';
 import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
@@ -11,6 +12,7 @@ import {
   IUnternehmerAnlageErgebnis,
   IUnternehmerEintrag,
 } from '../../commons/models/domain/unternehmer';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
 
@@ -39,12 +41,16 @@ export class UnternehmerService {
   /**
    * Lädt alle Unternehmer und bildet sie als sortierte Domäneneinträge ab.
    *
+   * @param strategie - Datenquellenstrategie für den Ladevorgang.
    * @returns Die nach Anzeigename sortierten Unternehmer.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
-  async loadUnternehmer(): Promise<IUnternehmerEintrag[]> {
+  async loadUnternehmer(
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+  ): Promise<IUnternehmerEintrag[]> {
     const dokumente = await this.firestoreDbService.loadCollection<Record<string, unknown>>(
       FIRESTORE_COLLECTION_PATHS.unternehmer,
+      strategie,
     );
 
     return dokumente
@@ -56,12 +62,17 @@ export class UnternehmerService {
    * Lädt einen Unternehmer gezielt über seine Dokument-ID.
    *
    * @param unternehmerId - Die Dokument-ID des Unternehmers.
+   * @param strategie - Datenquellenstrategie für den Ladevorgang.
    * @returns Der kompakte Unternehmereintrag oder `null`, wenn das Dokument nicht existiert.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
-  async loadUnternehmerEintrag(unternehmerId: string): Promise<IUnternehmerEintrag | null> {
+  async loadUnternehmerEintrag(
+    unternehmerId: string,
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+  ): Promise<IUnternehmerEintrag | null> {
     const dokument = await this.firestoreDbService.loadDocument<Record<string, unknown>>(
       FIRESTORE_DOCUMENT_PATHS.unternehmer(unternehmerId),
+      strategie,
     );
 
     return dokument ? mapUnternehmerEintrag(dokument.id, dokument.daten) : null;

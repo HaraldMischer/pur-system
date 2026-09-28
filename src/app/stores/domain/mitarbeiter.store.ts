@@ -3,6 +3,8 @@
 import { DestroyRef, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
+import { environment } from '../../../environments/environment';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import {
   IMitarbeiterAktualisierung,
   IMitarbeiterAnlage,
@@ -10,18 +12,24 @@ import {
   IMitarbeiterEintrag,
 } from '../../commons/models/domain/mitarbeiter';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
+import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { MitarbeiterService } from '../../services/domain/mitarbeiter.service';
 
 // ===== Top-Level Helper =====================
 
-export type TMitarbeiterSnapshot = {
-  readonly mitarbeiter: readonly IMitarbeiterEintrag[];
-  readonly unternehmerId: string | null;
-  readonly firmaId: string | null;
+export type TMitarbeiterKontextBestand = {
+  readonly unternehmerId: string;
+  readonly firmaId: string;
   readonly filialId: string | null;
+  readonly mitarbeiter: readonly IMitarbeiterEintrag[];
   readonly download: boolean;
   readonly isLoaded: boolean;
+  readonly error: string | null;
+};
+
+export type TMitarbeiterSnapshot = {
+  readonly kontexte: Readonly<Record<string, TMitarbeiterKontextBestand>>;
   readonly inProgress: boolean;
   readonly error: string | null;
 };
@@ -29,15 +37,14 @@ export type TMitarbeiterSnapshot = {
 type TMitarbeiterState = TMitarbeiterSnapshot;
 
 const initialState: TMitarbeiterState = {
-  mitarbeiter: [],
-  unternehmerId: null,
-  firmaId: null,
-  filialId: null,
-  download: false,
-  isLoaded: false,
+  kontexte: {},
   inProgress: false,
   error: null,
 };
+
+function getKontextSchluessel(unternehmerId: string, firmaId: string, filialId?: string): string {
+  return JSON.stringify([unternehmerId, firmaId, filialId ?? null]);
+}
 
 function sortMitarbeiter(
   mitarbeiter: readonly IMitarbeiterEintrag[],
@@ -55,99 +62,83 @@ export const MitarbeiterStore = signalStore(
     (
       store,
       mitarbeiterService = inject(MitarbeiterService),
+      debugLogService = inject(DebugLogService),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),
     ) => {
       let generation = 0;
+      const ladeauftraege = new Map<string, { generation: number; promise: Promise<void> }>();
 
       // ===== Methoden: Laden ======================
 
       /**
-       * Lädt die Mitarbeiter einer Firma und aktualisiert die sortierte Mitarbeiterliste.
+       * Lädt die Mitarbeiter eines Firmen- oder Filialkontexts in den Sitzungsspeicher.
        *
-       * @param unternehmerId - Die Dokument-ID des ausgewählten Unternehmers.
-       * @param firmaId - Die Dokument-ID der ausgewählten Firma.
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der übergeordneten Firma.
        * @param filialId - Optionale Filial-ID zur Begrenzung eines Filialkontos.
+       * @param strategie - Datenquellenstrategie für den Ladevorgang.
        * @returns Ein Promise, das nach dem vollständigen Laden abgeschlossen ist.
        * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
        */
-      async function loadMitarbeiter(
+      function loadMitarbeiter(
         unternehmerId: string,
         firmaId: string,
         filialId?: string,
+        strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
       ): Promise<void> {
-        const gleicherKontext =
-          store.unternehmerId() === unternehmerId &&
-          store.firmaId() === firmaId &&
-          store.filialId() === (filialId ?? null);
-        if (gleicherKontext && (store.download() || store.isLoaded())) return;
+        const schluessel = getKontextSchluessel(unternehmerId, firmaId, filialId);
+        const auftragSchluessel = JSON.stringify([schluessel, strategie]);
+        const vorhandenerKontext = store.kontexte()[schluessel];
+        if (vorhandenerKontext?.isLoaded) {
+          return Promise.resolve();
+        }
 
-        const aktuelleGeneration = ++generation;
-        patchState(store, {
-          mitarbeiter: [],
+        const laufenderAuftrag = ladeauftraege.get(auftragSchluessel);
+        if (laufenderAuftrag) {
+          return laufenderAuftrag.promise;
+        }
+
+        const aktuelleGeneration = generation;
+        setKontext(schluessel, {
           unternehmerId,
           firmaId,
           filialId: filialId ?? null,
+          mitarbeiter: [],
           download: true,
           isLoaded: false,
           error: null,
         });
-        try {
-          const mitarbeiter = await mitarbeiterService.loadMitarbeiter(
-            unternehmerId,
-            firmaId,
-            filialId,
-          );
-          if (
-            aktuelleGeneration === generation &&
-            store.unternehmerId() === unternehmerId &&
-            store.firmaId() === firmaId &&
-            store.filialId() === (filialId ?? null)
-          ) {
-            patchState(store, {
-              mitarbeiter: sortMitarbeiter(mitarbeiter),
-              isLoaded: true,
-            });
-          }
-        } catch (error: unknown) {
-          if (
-            aktuelleGeneration === generation &&
-            store.unternehmerId() === unternehmerId &&
-            store.firmaId() === firmaId &&
-            store.filialId() === (filialId ?? null)
-          ) {
-            patchState(store, { error: getFirebaseErrorMessage(error) });
-          }
-          throw error;
-        } finally {
-          if (
-            aktuelleGeneration === generation &&
-            store.unternehmerId() === unternehmerId &&
-            store.firmaId() === firmaId &&
-            store.filialId() === (filialId ?? null)
-          ) {
-            patchState(store, { download: false });
-          }
-        }
+        const promise = executeLoad(
+          schluessel,
+          unternehmerId,
+          firmaId,
+          filialId,
+          strategie,
+          aktuelleGeneration,
+        );
+        ladeauftraege.set(auftragSchluessel, { generation: aktuelleGeneration, promise });
+        return promise;
       }
 
       // ===== Methoden: Schreiben ==================
 
       /**
-       * Legt einen Mitarbeiter unter der geladenen Firma an und aktualisiert die Liste.
+       * Legt einen Mitarbeiter unter einem eindeutig geladenen Firmenkontext an.
        *
        * @param unternehmerId - Die Dokument-ID des ausgewählten Unternehmers.
        * @param firmaId - Die Dokument-ID der ausgewählten Firma.
        * @param anlage - Die Daten des neu anzulegenden Mitarbeiters.
        * @returns Das Anlageergebnis mit der erzeugten Dokument-ID.
-       * @throws Wenn die Mitarbeiterliste nicht passend geladen ist oder das Speichern fehlschlägt.
+       * @throws Wenn der Firmenkontext nicht eindeutig geladen ist oder das Speichern fehlschlägt.
        */
       async function createMitarbeiter(
         unternehmerId: string,
         firmaId: string,
         anlage: IMitarbeiterAnlage,
       ): Promise<IMitarbeiterAnlageErgebnis> {
-        pruefeGeladenenKontext(unternehmerId, firmaId);
+        const [schluessel, kontext] = getEindeutigenFirmenkontext(unternehmerId, firmaId);
+        const aktuelleGeneration = generation;
 
         patchState(store, { inProgress: true, error: null });
         try {
@@ -156,25 +147,37 @@ export const MitarbeiterStore = signalStore(
             firmaId,
             anlage,
           );
+          if (aktuelleGeneration !== generation) {
+            return ergebnis;
+          }
           const mitarbeiter: IMitarbeiterEintrag = {
             ...anlage,
             id: ergebnis.id,
+            unternehmerId,
+            firmaId,
             aktiv: true,
           };
-          patchState(store, {
-            mitarbeiter: sortMitarbeiter([...store.mitarbeiter(), mitarbeiter]),
-          });
+          if (!kontext.filialId || mitarbeiter.filialIds.includes(kontext.filialId)) {
+            setKontext(schluessel, {
+              ...kontext,
+              mitarbeiter: sortMitarbeiter([...kontext.mitarbeiter, mitarbeiter]),
+            });
+          }
           return ergebnis;
         } catch (error: unknown) {
-          patchState(store, { error: getFirebaseErrorMessage(error) });
+          if (aktuelleGeneration === generation) {
+            patchState(store, { error: getFirebaseErrorMessage(error) });
+          }
           throw error;
         } finally {
-          patchState(store, { inProgress: false });
+          if (aktuelleGeneration === generation) {
+            patchState(store, { inProgress: false });
+          }
         }
       }
 
       /**
-       * Aktualisiert einen Mitarbeiter der geladenen Firma und ersetzt ihn in der Liste.
+       * Aktualisiert einen Mitarbeiter innerhalb seines eindeutig geladenen Firmenkontexts.
        *
        * @param unternehmerId - Die Dokument-ID des ausgewählten Unternehmers.
        * @param firmaId - Die Dokument-ID der ausgewählten Firma.
@@ -189,10 +192,11 @@ export const MitarbeiterStore = signalStore(
         mitarbeiterId: string,
         aktualisierung: IMitarbeiterAktualisierung,
       ): Promise<void> {
-        pruefeGeladenenKontext(unternehmerId, firmaId);
-        if (!store.mitarbeiter().some((eintrag) => eintrag.id === mitarbeiterId)) {
-          throw new Error('Der Mitarbeiter ist nicht in der geladenen Liste enthalten.');
+        const [schluessel, kontext] = getEindeutigenFirmenkontext(unternehmerId, firmaId);
+        if (!kontext.mitarbeiter.some((eintrag) => eintrag.id === mitarbeiterId)) {
+          throw new Error('Der Mitarbeiter ist nicht im geladenen Firmenkontext enthalten.');
         }
+        const aktuelleGeneration = generation;
 
         patchState(store, { inProgress: true, error: null });
         try {
@@ -202,22 +206,36 @@ export const MitarbeiterStore = signalStore(
             mitarbeiterId,
             aktualisierung,
           );
-          const mitarbeiter = store.mitarbeiter().map((eintrag) => {
-            return eintrag.id === mitarbeiterId
-              ? { id: mitarbeiterId, ...aktualisierung }
-              : eintrag;
+          if (aktuelleGeneration !== generation) {
+            return;
+          }
+          const mitarbeiter = kontext.mitarbeiter
+            .map((eintrag) => {
+              return eintrag.id === mitarbeiterId
+                ? { id: mitarbeiterId, unternehmerId, firmaId, ...aktualisierung }
+                : eintrag;
+            })
+            .filter((eintrag) => {
+              return !kontext.filialId || eintrag.filialIds.includes(kontext.filialId);
+            });
+          setKontext(schluessel, {
+            ...kontext,
+            mitarbeiter: sortMitarbeiter(mitarbeiter),
           });
-          patchState(store, { mitarbeiter: sortMitarbeiter(mitarbeiter) });
         } catch (error: unknown) {
-          patchState(store, { error: getFirebaseErrorMessage(error) });
+          if (aktuelleGeneration === generation) {
+            patchState(store, { error: getFirebaseErrorMessage(error) });
+          }
           throw error;
         } finally {
-          patchState(store, { inProgress: false });
+          if (aktuelleGeneration === generation) {
+            patchState(store, { inProgress: false });
+          }
         }
       }
 
       /**
-       * Löscht einen Mitarbeiter der geladenen Firma und entfernt ihn aus der Liste.
+       * Löscht einen Mitarbeiter aus seinem eindeutig geladenen Firmenkontext.
        *
        * @param unternehmerId - Die Dokument-ID des ausgewählten Unternehmers.
        * @param firmaId - Die Dokument-ID der ausgewählten Firma.
@@ -230,37 +248,113 @@ export const MitarbeiterStore = signalStore(
         firmaId: string,
         mitarbeiterId: string,
       ): Promise<void> {
-        pruefeGeladenenKontext(unternehmerId, firmaId);
-        if (!store.mitarbeiter().some((eintrag) => eintrag.id === mitarbeiterId)) {
-          throw new Error('Der Mitarbeiter ist nicht in der geladenen Liste enthalten.');
+        const [schluessel, kontext] = getEindeutigenFirmenkontext(unternehmerId, firmaId);
+        if (!kontext.mitarbeiter.some((eintrag) => eintrag.id === mitarbeiterId)) {
+          throw new Error('Der Mitarbeiter ist nicht im geladenen Firmenkontext enthalten.');
         }
+        const aktuelleGeneration = generation;
 
         patchState(store, { inProgress: true, error: null });
         try {
           await mitarbeiterService.deleteMitarbeiter(unternehmerId, firmaId, mitarbeiterId);
-          patchState(store, {
-            mitarbeiter: store.mitarbeiter().filter((eintrag) => eintrag.id !== mitarbeiterId),
+          if (aktuelleGeneration !== generation) {
+            return;
+          }
+          setKontext(schluessel, {
+            ...kontext,
+            mitarbeiter: kontext.mitarbeiter.filter((eintrag) => {
+              return eintrag.id !== mitarbeiterId;
+            }),
           });
         } catch (error: unknown) {
-          patchState(store, { error: getFirebaseErrorMessage(error) });
+          if (aktuelleGeneration === generation) {
+            patchState(store, { error: getFirebaseErrorMessage(error) });
+          }
           throw error;
         } finally {
-          patchState(store, { inProgress: false });
+          if (aktuelleGeneration === generation) {
+            patchState(store, { inProgress: false });
+          }
         }
       }
 
       // ===== Methoden: Sonstige Aktionen ==========
 
       /**
-       * Setzt die Mitarbeiterliste und ihren Firmenkontext zurück.
+       * Liefert die Mitarbeiter eines Firmen- oder Filialkontexts.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der Firma.
+       * @param filialId - Optionale Filial-ID des Kontexts.
+       * @returns Die im Kontext vorhandenen Mitarbeiter.
+       */
+      function getMitarbeiter(
+        unternehmerId: string,
+        firmaId: string,
+        filialId?: string,
+      ): readonly IMitarbeiterEintrag[] {
+        return getKontext(unternehmerId, firmaId, filialId)?.mitarbeiter ?? [];
+      }
+
+      /**
+       * Prüft, ob ein Firmen- oder Filialkontext vollständig geladen wurde.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der Firma.
+       * @param filialId - Optionale Filial-ID des Kontexts.
+       * @returns `true`, wenn der Kontext vollständig geladen wurde.
+       */
+      function isMitarbeiterKontextLoaded(
+        unternehmerId: string,
+        firmaId: string,
+        filialId?: string,
+      ): boolean {
+        return getKontext(unternehmerId, firmaId, filialId)?.isLoaded ?? false;
+      }
+
+      /**
+       * Prüft, ob ein Firmen- oder Filialkontext gerade geladen wird.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der Firma.
+       * @param filialId - Optionale Filial-ID des Kontexts.
+       * @returns `true`, wenn der Kontext gerade geladen wird.
+       */
+      function isMitarbeiterKontextLoading(
+        unternehmerId: string,
+        firmaId: string,
+        filialId?: string,
+      ): boolean {
+        return getKontext(unternehmerId, firmaId, filialId)?.download ?? false;
+      }
+
+      /**
+       * Liefert den Ladefehler eines Firmen- oder Filialkontexts.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der Firma.
+       * @param filialId - Optionale Filial-ID des Kontexts.
+       * @returns Die Fehlermeldung des Kontexts oder `null`.
+       */
+      function getMitarbeiterKontextError(
+        unternehmerId: string,
+        firmaId: string,
+        filialId?: string,
+      ): string | null {
+        return getKontext(unternehmerId, firmaId, filialId)?.error ?? null;
+      }
+
+      /**
+       * Setzt sämtliche sitzungsbezogenen Mitarbeiterkontexte zurück.
        */
       function resetMitarbeiter(): void {
         generation += 1;
+        ladeauftraege.clear();
         patchState(store, initialState);
       }
 
       /**
-       * Entfernt die aktuelle Fehlermeldung des Mitarbeiter-Stores.
+       * Entfernt die aktuelle Fehlermeldung eines Schreibvorgangs.
        */
       function clearError(): void {
         patchState(store, { error: null });
@@ -273,25 +367,102 @@ export const MitarbeiterStore = signalStore(
        */
       function snapshot(): TMitarbeiterSnapshot {
         return untracked(() => ({
-          mitarbeiter: store.mitarbeiter(),
-          unternehmerId: store.unternehmerId(),
-          firmaId: store.firmaId(),
-          filialId: store.filialId(),
-          download: store.download(),
-          isLoaded: store.isLoaded(),
+          kontexte: store.kontexte(),
           inProgress: store.inProgress(),
           error: store.error(),
         }));
       }
 
-      function pruefeGeladenenKontext(unternehmerId: string, firmaId: string): void {
-        if (
-          !store.isLoaded() ||
-          store.unternehmerId() !== unternehmerId ||
-          store.firmaId() !== firmaId
-        ) {
-          throw new Error('Die Mitarbeiter müssen vor dem Schreiben vollständig geladen werden.');
+      // ===== Interne Helfer =======================
+
+      async function executeLoad(
+        schluessel: string,
+        unternehmerId: string,
+        firmaId: string,
+        filialId: string | undefined,
+        strategie: TFirestoreLesestrategie,
+        aktuelleGeneration: number,
+      ): Promise<void> {
+        try {
+          const mitarbeiter = await mitarbeiterService.loadMitarbeiter(
+            unternehmerId,
+            firmaId,
+            filialId,
+            strategie,
+          );
+          if (aktuelleGeneration !== generation) {
+            return;
+          }
+          const sortierteMitarbeiter = sortMitarbeiter(mitarbeiter);
+          debugLogService.logDatenGeladen('Mitarbeiter', sortierteMitarbeiter.length, {
+            unternehmerId,
+            firmaId,
+            filialId: filialId ?? null,
+            mitarbeiter: sortierteMitarbeiter,
+          });
+          setKontext(schluessel, {
+            unternehmerId,
+            firmaId,
+            filialId: filialId ?? null,
+            mitarbeiter: sortierteMitarbeiter,
+            download: false,
+            isLoaded: true,
+            error: null,
+          });
+        } catch (error: unknown) {
+          if (aktuelleGeneration === generation) {
+            const kontext = store.kontexte()[schluessel];
+            if (kontext) {
+              setKontext(schluessel, {
+                ...kontext,
+                download: false,
+                error: getFirebaseErrorMessage(error),
+              });
+            }
+          }
+          throw error;
+        } finally {
+          const auftragSchluessel = JSON.stringify([schluessel, strategie]);
+          if (ladeauftraege.get(auftragSchluessel)?.generation === aktuelleGeneration) {
+            ladeauftraege.delete(auftragSchluessel);
+          }
         }
+      }
+
+      function getKontext(
+        unternehmerId: string,
+        firmaId: string,
+        filialId?: string,
+      ): TMitarbeiterKontextBestand | undefined {
+        return store.kontexte()[getKontextSchluessel(unternehmerId, firmaId, filialId)];
+      }
+
+      function getEindeutigenFirmenkontext(
+        unternehmerId: string,
+        firmaId: string,
+      ): readonly [string, TMitarbeiterKontextBestand] {
+        const kontexte = Object.entries(store.kontexte()).filter(([, kontext]) => {
+          return (
+            kontext.unternehmerId === unternehmerId &&
+            kontext.firmaId === firmaId &&
+            kontext.isLoaded
+          );
+        });
+        if (kontexte.length !== 1) {
+          throw new Error(
+            'Die Mitarbeiter müssen vor dem Schreiben in einem eindeutigen Firmenkontext vollständig geladen werden.',
+          );
+        }
+        return kontexte[0];
+      }
+
+      function setKontext(schluessel: string, kontext: TMitarbeiterKontextBestand): void {
+        patchState(store, {
+          kontexte: {
+            ...store.kontexte(),
+            [schluessel]: kontext,
+          },
+        });
       }
 
       const unregisterSnapshot = storeSnapshotService.registerStoreSnapshot(
@@ -305,6 +476,10 @@ export const MitarbeiterStore = signalStore(
         createMitarbeiter,
         updateMitarbeiter,
         deleteMitarbeiter,
+        getMitarbeiter,
+        isMitarbeiterKontextLoaded,
+        isMitarbeiterKontextLoading,
+        getMitarbeiterKontextError,
         resetMitarbeiter,
         clearError,
         snapshot,

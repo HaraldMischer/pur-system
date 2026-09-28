@@ -74,7 +74,7 @@ Betroffene Dateien:
 - package-lock.json
 - src/app/app.config.ts
 - src/environments/environment.ts
-- src/environments/environment.prod.ts
+- src/environments/environment.office-prod.ts
 - src/environments/firebase-config.ts
 - src/app/commons/tokens/firebase.tokens.ts
 - src/app/services/firebase/
@@ -606,7 +606,7 @@ hier weder angelegt noch gelöscht werden.
 
 > **Historischer Stand:** Dieses Todo dokumentiert die damalige Trennung zwischen Office-Webanwendung und Filial-PWA. Der
 > aktuelle Stand umfasst vier getrennte PWA-Varianten für Master, Office, Filiale und Mitarbeiter und ist in den
-> [PWA-Konfigurationen](./pwa-konfigurationen.md) beschrieben.
+> [PWA-Konfigurationen](./matrix-pwa-konfigurationen.md) beschrieben.
 
 ### Ziel
 
@@ -645,7 +645,7 @@ werden durch diesen Schritt weder dauerhaft gespeichert noch für Offline-Schrei
 - src/app/services/firebase/firestore-db.service.ts
 - src/app/services/firebase/firestore-db.service.spec.ts
 - src/environments/environment.ts
-- src/environments/environment.prod.ts
+- src/environments/environment.office-prod.ts
 - firebase.json
 - docs/projekt-plan.md
 - docs/projekt-stand.md
@@ -657,11 +657,11 @@ Neu hinzuzufügen:
 - public/manifests/pur-filiale/manifest.webmanifest
 - public/icons/
 - public/fonts/
-- docs/pwa-konfigurationen.md
+- docs/matrix-pwa-konfigurationen.md
 - src/app/services/core/netzwerk-status.service.ts
 - src/app/services/core/pwa-update.service.ts
 - src/app/services/core/pwa-update.service.spec.ts
-- src/environments/environment.pwa-prod.ts
+- src/environments/environment.filiale-prod.ts
 
 ### Schritt 1: PWA-Grundlage einrichten
 
@@ -761,7 +761,7 @@ Todos. Sie werden später fachlich geplant und in eigenen Todos umgesetzt.
 
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/pwa-konfigurationen.md
+- docs/matrix-pwa-konfigurationen.md
 
 #### Schritt 1: Rolle und Anmeldung festlegen
 
@@ -801,7 +801,7 @@ Todos. Sie werden später fachlich geplant und in eigenen Todos umgesetzt.
 - [x] Prüfen, dass aus Todo 7 keine vorgezogene Entscheidung zu Mitarbeiterdaten, Filialzuordnungen, Dienstplänen oder Push
       hervorgeht.
 - [x] Offene fachliche Folgethemen ausdrücklich festhalten und nicht als bereits entschieden darstellen.
-- [x] `projekt-stand.md` und `pwa-konfigurationen.md` an den entschiedenen Zielstand anpassen.
+- [x] `projekt-stand.md` und `matrix-pwa-konfigurationen.md` an den entschiedenen Zielstand anpassen.
 
 #### Erledigt, wenn
 
@@ -892,7 +892,7 @@ bereits reservierte Hosting-Site wird erst veröffentlicht, wenn die Rollen- und
 - package.json
 - src/app/app.config.ts
 - docs/projekt-stand.md
-- docs/pwa-konfigurationen.md
+- docs/matrix-pwa-konfigurationen.md
 
 Neu hinzuzufügen:
 
@@ -923,7 +923,7 @@ Neu hinzuzufügen:
 - [x] PWA auf einem unterstützten Desktop- und einem physischen Mobilgerät installieren und eigenständig starten.
 - [x] Office-, Filial- und Mitarbeiter-Builds sowie ihre getrennten Hosting-Ziele gemeinsam prüfen.
 - [x] Mitarbeiter-Site erst nach Abschluss von 7.2 deployen und anschließend Hosting-Header sowie Updateverhalten prüfen.
-- [x] `projekt-stand.md` und `pwa-konfigurationen.md` nach der Umsetzung aktualisieren.
+- [x] `projekt-stand.md` und `matrix-pwa-konfigurationen.md` nach der Umsetzung aktualisieren.
 - [x] `npm test` und alle Produktionsbuilds erfolgreich ausführen.
 
 #### Erledigt, wenn
@@ -1544,7 +1544,7 @@ dieser Verknüpfung getrennt.
 - functions/src/index.ts
 - firestore.rules
 - rules-tests/firestore.rules.test.mjs
-- docs/berechtigungs-matrizen.md
+- docs/matrix-berechtigungen.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
 
@@ -1589,7 +1589,7 @@ dieser Verknüpfung getrennt.
 - [x] Benutzeranlage mit allen vier Auth-Rollen auf unverändertes beziehungsweise neues Verhalten prüfen.
 - [x] Nach Umsetzung der Mitarbeiteranlage aus Todo 13 einen Test-Firmenmitarbeiter anlegen und dessen Verknüpfung mit einem
       realen Testkonto kontrolliert prüfen, ohne einen produktiven Mitarbeiterzugang unbeabsichtigt zu verändern.
-- [x] `berechtigungs-matrizen.md`, `projekt-plan.md` und `projekt-stand.md` nach der Umsetzung aktualisieren.
+- [x] `matrix-berechtigungen.md`, `projekt-plan.md` und `projekt-stand.md` nach der Umsetzung aktualisieren.
 - [x] `npm test` und `npm run build` erfolgreich ausführen.
 
 ### Erledigt, wenn
@@ -1605,3 +1605,389 @@ dieser Verknüpfung getrennt.
 - [x] Fehler hinterlassen weder einen halbfertigen Auth-Benutzer noch eine verwaiste oder doppelte Verknüpfung.
 - [x] Bestehende Benutzerrollen und ihre Anlageabläufe bleiben funktionsfähig.
 - [x] Automatisierte Tests, Produktionsbuild und kontrollierte manuelle Prüfung sind erfolgreich.
+
+## 16. Todo: Benutzerabhängige Firestore-Ladestrategie umsetzen
+
+Die in der [Datenladematrix](./matrix-datenladen.md) festgelegte Aufgabenteilung wird schrittweise umgesetzt. Der Sitzungsstart
+wird aus dem `BenutzerStore` herausgelöst, der Ladeumfang zentral aus Rolle und Zugriffen bestimmt und die Datenquelle abhängig
+von der Auslieferungsvariante gemäß der [Cache- und Betriebsartenmatrix](./matrix-cache-strategien.md) gewählt.
+
+### 16.1 AppInitialisierungService einführen
+
+#### Ziel
+
+Der `AppInitialisierungService` bildet den einzigen Einstiegspunkt für den Sitzungsstart. Er initialisiert den `BenutzerStore`,
+koordiniert das Laden der zwingenden Stammdaten und stellt einen eindeutigen Initialisierungszustand bereit.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- docs/projekt-stand.md
+- docs/todo_next.md
+- src/app/app.ts
+- src/app/app.spec.ts
+- src/app/stores/app/benutzer.store.ts
+- src/app/stores/app/benutzer.store.spec.ts
+
+Neu hinzuzufügen:
+
+- src/app/commons/models/app/app-initialisierung.types.ts
+- src/app/services/core/app-initialisierung.service.ts
+- src/app/services/core/app-initialisierung.service.spec.ts
+
+#### Schritt 1: Öffentlichen Initialisierungszustand anlegen
+
+- [x] Die Zustände `idle`, `loading`, `ready` und `error` einschließlich eines konkreten Fehlers modellieren.
+- [x] Den Initialisierungszustand ausschließlich über den `AppInitialisierungService` bereitstellen.
+- [x] Eine öffentliche Wiederholungsaktion für eine fehlgeschlagene Initialisierung vorsehen.
+
+#### Schritt 2: Sitzungsstart zentralisieren
+
+- [x] In `app.ts` einmalig den `AppInitialisierungService` statt direkt den `BenutzerStore` starten.
+- [x] Den `BenutzerStore` durch den Service initialisieren und dessen Authentifizierungs- und Profilzustand beobachten.
+- [x] Das Laden von Stammdaten aus dem `BenutzerStore` entfernen.
+- [x] Ohne angemeldeten Benutzer oder aktives Profil den Zustand und die sitzungsbezogenen Daten zurücksetzen.
+- [x] Ergebnisse eines veralteten Initialisierungsauftrags nach Abmeldung, Benutzer- oder Kontextwechsel verwerfen.
+
+#### Tests und Abschluss
+
+- [x] Service-Tests für Start, Abmeldung, aktives und inaktives Profil, Fehler und Wiederholung ergänzen.
+- [x] Store-Tests an die Trennung von Profilbeobachtung und Stammdateninitialisierung anpassen.
+- [x] App-Test auf den einmaligen Start über den `AppInitialisierungService` umstellen.
+
+#### Erledigt, wenn
+
+- [x] Die App besitzt genau einen Einstiegspunkt für den Sitzungsstart.
+- [x] Der `BenutzerStore` beobachtet ausschließlich Authentifizierung und Benutzerprofil.
+- [x] Der Initialisierungszustand ist eindeutig und öffentlich auswertbar.
+- [x] Veraltete Initialisierungsergebnisse können keinen neuen Sitzungskontext überschreiben.
+
+### 16.2 MitarbeiterStore für mehrere Firmenkontexte erweitern
+
+#### Ziel
+
+Der `MitarbeiterStore` kann die beim Sitzungsstart benötigten Mitarbeiter mehrerer Firmen gleichzeitig halten. Seitenbezogene
+Lade- und Schreibabläufe für einen ausgewählten Firmenkontext bleiben weiterhin eindeutig möglich.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- docs/projekt-stand.md
+- docs/todo_next.md
+- src/app/commons/models/domain/mitarbeiter.ts
+- src/app/services/core/app-initialisierung.service.ts
+- src/app/services/core/app-initialisierung.service.spec.ts
+- src/app/services/domain/mitarbeiter.service.ts
+- src/app/services/domain/mitarbeiter.service.spec.ts
+- src/app/stores/domain/mitarbeiter.store.ts
+- src/app/stores/domain/mitarbeiter.store.spec.ts
+- src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page.html
+- src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page.ts
+- src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page.spec.ts
+- src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-card/mitarbeiter-card.spec.ts
+- src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog.ts
+- src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog.spec.ts
+
+#### Schritt 1: Mehrere Mitarbeiterkontexte abbilden
+
+- [x] Mitarbeiterbestände eindeutig nach Unternehmer, Firma und optionaler Filiale zuordnen.
+- [x] Für jeden Eintrag den zum späteren Lesen und Schreiben erforderlichen Unternehmenskontext erhalten.
+- [x] Einen vollständig geladenen Kontext von einem geladenen, aber leeren Ergebnis unterscheiden.
+- [x] Den gesamten sitzungsbezogenen Mitarbeiterbestand bei Abmeldung oder Benutzerwechsel zurücksetzen.
+
+#### Schritt 2: Laden und bestehende Fachseite anpassen
+
+- [x] Mehrere Firmenkontexte laden, ohne einen zuvor geladenen Bestand zu überschreiben.
+- [x] Identische laufende oder bereits vollständig geladene Kontexte nicht erneut laden.
+- [x] Veraltete Ladeergebnisse nach einem Kontextwechsel verwerfen.
+- [x] Die Mitarbeiterliste weiterhin auf den für die Seite ausgewählten Firmen- und Filialkontext begrenzen.
+- [x] Bestehende Anlage-, Bearbeitungs- und Löschvorgänge auf einen eindeutigen Firmenkontext beschränken.
+
+#### Tests und Abschluss
+
+- [x] Store-Tests für mehrere Firmen, Filialfilter, leere Ergebnisse, Fehler und Zurücksetzen ergänzen.
+- [x] Bestehende Tests der Mitarbeiterliste und Schreibvorgänge an das neue Zustandsmodell anpassen.
+
+#### Erledigt, wenn
+
+- [x] Mitarbeiter mehrerer Firmen können gleichzeitig im Store gehalten werden.
+- [x] Filialkonten sehen im ausgewählten Kontext nur Mitarbeiter mit der eigenen Filial-ID.
+- [x] Schreibvorgänge verwenden weiterhin einen eindeutig geladenen Firmenkontext.
+- [x] Ein Benutzer- oder Kontextwechsel kann keine fremden oder veralteten Mitarbeiterdaten übernehmen.
+
+### 16.3 StammdatenLadeservice und Rollenlogik umsetzen
+
+#### Ziel
+
+Der `StammdatenLadeservice` erzeugt aus dem aktiven Benutzerprofil den vollständigen Ladeplan und beauftragt die fachlichen
+Stores mit den für diese Sitzung zwingend benötigten Stammdaten.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- docs/matrix-datenladen.md
+- docs/projekt-stand.md
+- docs/todo_next.md
+- src/app/commons/utils/errors/firebase-error-message.ts
+- src/app/commons/utils/errors/firebase-error-message.spec.ts
+- src/app/stores/app/stammdaten.store.ts
+- src/app/stores/app/stammdaten.store.spec.ts
+- src/app/stores/domain/mitarbeiter.store.ts
+- src/app/stores/domain/mitarbeiter.store.spec.ts
+- src/app/services/core/app-initialisierung.service.ts
+- src/app/services/core/app-initialisierung.service.spec.ts
+
+Neu hinzuzufügen:
+
+- src/app/services/core/stammdaten-ladeservice.ts
+- src/app/services/core/stammdaten-ladeservice.spec.ts
+
+#### Schritt 1: Rollenabhängigen Ladeplan bilden
+
+- [x] Für `master` alle Unternehmer, Firmen, Filialen, Benutzerprofile und Mitarbeiter aller Firmen einplanen.
+- [x] Für `office` die zugeordneten Unternehmer, Firmen und Filialen sowie die Mitarbeiter der zugeordneten Firmen einplanen.
+- [x] Für `filiale` den zugeordneten Unternehmer, die Firma und die Filiale sowie die Mitarbeiter mit passender `filialIds`
+      einplanen.
+- [x] Für `mitarbeiter` den zugeordneten Unternehmer und die Firma sowie alle Mitarbeiter dieser Firma einplanen.
+- [x] Fehlende oder widersprüchliche Pflichtzuordnungen als Initialisierungsfehler behandeln.
+
+#### Schritt 2: Fachliche Ladevorgänge koordinieren
+
+- [x] Die Rollenlogik aus dem `StammdatenStore` in den `StammdatenLadeservice` verschieben.
+- [x] Hierarchie-, Benutzerprofil- und Mitarbeiterdaten über die zuständigen Stores laden.
+- [x] Abhängige Ladevorgänge in fachlich notwendiger Reihenfolge und unabhängige Ladevorgänge parallel ausführen.
+- [x] Abschluss oder Fehler des gesamten zwingenden Ladeplans an den `AppInitialisierungService` zurückgeben.
+- [x] Bei Änderungen von `userRole` oder `zugriffe` einen neuen Ladeplan für den geänderten Kontext ausführen.
+
+#### Tests und Abschluss
+
+- [x] Für jede Benutzerrolle den erzeugten Ladeplan und die beauftragten Store-Aufrufe testen.
+- [x] Fehler einzelner zwingender Ladevorgänge und Änderungen des Benutzerkontexts testen.
+- [x] Sicherstellen, dass Feature-Daten nicht beim Sitzungsstart geladen werden.
+
+#### Erledigt, wenn
+
+- [x] Der benutzerabhängige Ladeumfang wird an genau einer Stelle bestimmt.
+- [x] Alle vier Rollen laden ausschließlich die in der Strategie festgelegten Stammdaten.
+- [x] Der Initialisierungsstatus wird erst nach Abschluss aller zwingenden Ladevorgänge `ready`.
+- [x] Rollen- und Zugriffsänderungen führen zu einem neuen, abgegrenzten Ladeplan.
+
+### 16.4 Guards und Initialisierungsfehlerseite anbinden
+
+#### Ziel
+
+Geschützte Navigation wartet auf die Sitzungsinitialisierung. Ein fehlgeschlagener zwingender Ladevorgang führt auf eine eigene
+Fehlerseite, von der aus die Initialisierung wiederholt oder die Firebase-Sitzung beendet werden kann.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- docs/projekt-stand.md
+- docs/todo_next.md
+- src/app/app.routes.ts
+- src/app/app.routes.spec.ts
+- src/app/guards/bereich.guard.ts
+- src/app/guards/bereich.guard.spec.ts
+- src/app/guards/guard-navigation.ts
+- src/app/guards/guard-navigation.spec.ts
+- src/app/guards/master.guard.ts
+- src/app/guards/master.guard.spec.ts
+- src/app/guards/mitarbeiter-verwaltung.guard.ts
+- src/app/guards/mitarbeiter-verwaltung.guard.spec.ts
+- src/app/guards/verwaltung.guard.ts
+- src/app/guards/verwaltung.guard.spec.ts
+
+Neu hinzuzufügen:
+
+- src/app/guards/initialisierung.guard.ts
+- src/app/guards/initialisierung.guard.spec.ts
+- src/app/pages/initialisierungsfehler-page/initialisierungsfehler-page.ts
+- src/app/pages/initialisierungsfehler-page/initialisierungsfehler-page.html
+- src/app/pages/initialisierungsfehler-page/initialisierungsfehler-page.scss
+- src/app/pages/initialisierungsfehler-page/initialisierungsfehler-page.spec.ts
+
+#### Schritt 1: Navigation an den Initialisierungszustand binden
+
+- [x] Authentifizierung, Profilstatus, Initialisierung, Bereichsfreigabe und Rollenprüfung in eindeutiger Reihenfolge auswerten.
+- [x] Während `loading` auf den Abschluss warten, ohne parallele Profil- oder Stammdatenabfragen aus Guards zu starten.
+- [x] Bei `error` zur Route `/initialisierungsfehler` weiterleiten und die ursprünglich angeforderte URL erhalten.
+- [x] Die Fehlerroute nur durch die Firebase-Anmeldung und nicht durch eine erfolgreiche Initialisierung schützen.
+
+#### Schritt 2: Fehlerseite umsetzen
+
+- [x] Den konkreten Initialisierungsfehler verständlich innerhalb der App-Shell anzeigen.
+- [x] Eine Wiederholung über den `AppInitialisierungService` anbieten.
+- [x] Nach erfolgreicher Wiederholung die ursprünglich angeforderte Route öffnen.
+- [x] Eine Abmeldung als sicheren Ausweg bereitstellen.
+
+#### Tests und Abschluss
+
+- [x] Guard-Tests für `idle`, `loading`, `ready`, `error`, Abmeldung und fehlende Berechtigungen ergänzen.
+- [x] Routing- und Seitentests für Wiederholung, Rücknavigation und Abmeldung ergänzen.
+- [x] Prüfen, dass Guards und Fehlerseite keine eigenen fachlichen Firestore-Abfragen ausführen.
+
+#### Erledigt, wenn
+
+- [x] Geschützte Fachrouten werden erst nach erfolgreicher Initialisierung geöffnet.
+- [x] Initialisierungsfehler erzeugen keine Weiterleitungsschleife.
+- [x] Wiederholung und Abmeldung sind von der Fehlerseite aus möglich.
+- [x] Die ursprünglich angeforderte Route wird nach erfolgreicher Wiederholung geöffnet.
+
+### 16.5 Cache- und Lesestrategien umsetzen
+
+#### Ziel
+
+Die Auslieferungsvariante legt beim App-Start die Firestore-Cache-Art fest. Der `FirestoreDbService` führt Lesevorgänge nach
+einer expliziten Datenquellenstrategie aus, ohne Benutzerrollen oder fachliche Berechtigungen zu kennen.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- src/app/app.config.ts
+- src/app/commons/tokens/firebase.tokens.ts
+- src/app/services/core/app-initialisierung.service.ts
+- src/app/services/core/app-initialisierung.service.spec.ts
+- src/app/services/core/stammdaten-ladeservice.ts
+- src/app/services/core/stammdaten-ladeservice.spec.ts
+- src/app/services/firebase/firestore-db.service.ts
+- src/app/services/firebase/firestore-db.service.spec.ts
+- src/app/services/firebase/benutzer-verwaltung.service.ts
+- src/app/services/firebase/benutzer-verwaltung.service.spec.ts
+- src/app/services/domain/benutzer.service.ts
+- src/app/services/domain/benutzer.service.spec.ts
+- src/app/services/domain/unternehmer.service.ts
+- src/app/services/domain/unternehmer.service.spec.ts
+- src/app/services/domain/firma.service.ts
+- src/app/services/domain/firma.service.spec.ts
+- src/app/services/domain/filiale.service.ts
+- src/app/services/domain/filiale.service.spec.ts
+- src/app/services/domain/mitarbeiter.service.ts
+- src/app/services/domain/mitarbeiter.service.spec.ts
+- src/app/stores/app/benutzer.store.ts
+- src/app/stores/app/benutzer.store.spec.ts
+- src/app/stores/app/stammdaten.store.ts
+- src/app/stores/app/stammdaten.store.spec.ts
+- src/app/stores/domain/mitarbeiter.store.ts
+- src/app/stores/domain/mitarbeiter.store.spec.ts
+- src/environments/environment.ts
+- src/environments/environment.office-prod.ts
+- src/environments/environment.master-prod.ts
+- src/environments/environment.filiale-prod.ts
+- src/environments/environment.mitarbeiter-prod.ts
+- docs/projekt-stand.md
+- docs/matrix-cache-strategien.md
+- docs/todo_next.md
+
+Neu hinzuzufügen:
+
+- src/app/commons/models/app/firestore-lesestrategie.types.ts
+- src/environments/environment.spec.ts
+
+#### Schritt 1: Cache-Art je Auslieferungsvariante konfigurieren
+
+- [x] Die Cache-Art als explizite Environment-Einstellung modellieren.
+- [x] Für Pur Filiale `persistentLocalCache` konfigurieren.
+- [x] Für Pur Master, Pur Office, Pur Mitarbeiter und Entwicklung `memoryLocalCache` konfigurieren.
+- [x] Firestore in `app.config.ts` genau einmal mit der konfigurierten Cache-Art initialisieren.
+- [x] Bei Abmeldung oder Benutzerwechsel verhindern, dass ein nachfolgender Benutzer Daten des vorherigen Sitzungskontexts nutzt.
+
+#### Schritt 2: Datenquellenstrategien technisch bereitstellen
+
+- [x] `cacheFirst`, `networkOnly`, `networkFirst` und `cacheOnly` typisieren und im `FirestoreDbService` umsetzen.
+- [x] Dokument-, Collection- und Query-Abfragen mit der jeweils angeforderten Strategie ausführen.
+- [x] Bei `networkFirst` nur bei einem technischen Serverfehler auf einen vorhandenen Cache-Wert zurückfallen.
+- [x] Gleichzeitige identische Leseaufträge nur bei gleichem Pfad, gleicher Query und gleicher Strategie zusammenführen.
+- [x] Firestore-Fehler unverändert an den aufrufenden fachlichen Service weitergeben.
+
+#### Schritt 3: Strategien fachlich zuweisen
+
+- [x] Pur Filiale lädt das Benutzerprofil mit `networkFirst` und Stammdaten mit `cacheFirst`.
+- [x] Erzwungene Neuladevorgänge verwenden `networkOnly`.
+- [x] Die übrigen Auslieferungsvarianten verwenden für Profil und Stammdaten `networkOnly`.
+- [x] `cacheOnly` nur für einen ausdrücklich festgelegten Offline-Ablauf verwenden.
+- [x] Keine Offline-Schreib- oder Synchronisationslogik in diesem Todo einführen.
+
+#### Tests und Abschluss
+
+- [x] Service-Tests für Treffer und Fehlschlag jeder Lesestrategie ergänzen.
+- [x] Die Auswahl der Cache-Art für alle Environment-Dateien prüfen.
+- [x] Profil- und Stammdatenzugriffe jeder Auslieferungsvariante mit der erwarteten Strategie testen.
+- [x] Benutzertrennung bei Abmeldung und Benutzerwechsel testen.
+
+#### Erledigt, wenn
+
+- [x] Nur Pur Filiale verwendet einen persistenten lokalen Firestore-Cache.
+- [x] Jede technische Leseoperation verwendet eine explizite und getestete Datenquellenstrategie.
+- [x] Der `FirestoreDbService` enthält keine Rollen- oder Bereichslogik.
+- [x] Cache-Daten eines vorherigen Sitzungskontexts werden nicht durch einen nachfolgenden Benutzer übernommen.
+
+### 16.6 Gesamtablauf prüfen und dokumentieren
+
+#### Ziel
+
+Der vollständige Sitzungsstart funktioniert für alle Benutzerrollen und Auslieferungsvarianten. Dokumentation und Todo-Stand
+werden erst nach erfolgreicher technischer und manueller Prüfung auf den tatsächlich erreichten Stand gebracht.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- docs/matrix-datenladen.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/matrix-cache-strategien.md
+- docs/todo_next.md
+- docs/todo_done.md
+- src/app/services/core/debug-log.service.ts
+- src/app/services/core/debug-log.service.spec.ts
+- src/environments/environment.ts
+- src/environments/environment.office-prod.ts
+- src/environments/environment.master-prod.ts
+- src/environments/environment.filiale-prod.ts
+- src/environments/environment.mitarbeiter-prod.ts
+
+Neu hinzuzufügen:
+
+- src/app/commons/constants/app.constants.ts
+
+#### Schritt 1: Rollen und Zustandsübergänge integriert prüfen
+
+- [x] Den Sitzungsstart für `master`, `office`, `filiale` und `mitarbeiter` mit gültigen Zuordnungen prüfen.
+- [x] Inaktives und fehlendes Profil, ungültige Zugriffe, Ladefehler, Wiederholung und Abmeldung prüfen.
+- [x] Rollen- und Zugriffsänderungen während einer Sitzung prüfen.
+- [x] Prüfen, dass Feature-Daten weiterhin erst beim Öffnen ihres App-Bereichs geladen werden.
+
+#### Schritt 2: Cache-Verhalten der Builds prüfen
+
+- [x] Pur Master, Pur Office und Pur Mitarbeiter auf flüchtigen Firestore-Cache prüfen.
+- [x] Pur Filiale auf persistenten Cache, erneuten Start, Cache-Fallback und erzwungenes Neuladen prüfen.
+- [x] Abmeldung und anschließende Anmeldung eines anderen Benutzers auf sichere Datentrennung prüfen.
+- [x] Sicherstellen, dass durch dieses Todo keine Offline-Schreibfunktion freigegeben wurde.
+
+#### Tests und Abschluss
+
+- [x] `npm test` ohne Watch-Modus erfolgreich ausführen.
+- [x] `npm run build:master`, `npm run build:office`, `npm run build:filiale` und `npm run build:mitarbeiter` erfolgreich
+      ausführen.
+- [x] Den vollständigen Ablauf mit den vier vorgesehenen Benutzerrollen manuell prüfen:
+  - [x] Master anmelden und vollständige Struktur-, Benutzerprofil- und Mitarbeiterdaten prüfen.
+  - [x] Office anmelden und die Begrenzung auf zugeordnete Firmen einschließlich ihrer Mitarbeiter prüfen.
+  - [x] Filiale online anmelden, vollständig laden, die App beenden und ohne Netzwerk erneut starten.
+  - [x] Bei Pur Filiale Cache-Fallback, erzwungenes Neuladen und die verständliche Fehleranzeige ohne Netzwerk prüfen.
+  - [x] Mitarbeiter anmelden und die zugeordnete Firma einschließlich ihrer Mitarbeiter prüfen.
+  - [x] Abmelden und anschließend einen anderen Benutzer anmelden; es dürfen keine Daten der vorherigen Sitzung sichtbar sein.
+- [x] `projekt-stand.md` auf den tatsächlich umgesetzten Stand aktualisieren.
+- [x] Abweichungen zwischen Umsetzung und den fachlich zugehörigen Matrixdateien bereinigen.
+- [x] Das vollständig abgeschlossene Haupttodo unter Erhalt aller Erledigt-Markierungen nach `todo_done.md` verschieben.
+
+#### Erledigt, wenn
+
+- [x] Der Sitzungsstart ist für alle vier Rollen eindeutig, reproduzierbar und fehlerbehandelt.
+- [x] Rollenabhängiger Ladeumfang und buildabhängige Cache-Art entsprechen der dokumentierten Strategie.
+- [x] Automatisierte Tests, alle vier Produktionsbuilds und die manuelle Prüfung sind erfolgreich.
+- [x] Projektstand und Todo-Dokumentation entsprechen der tatsächlichen Umsetzung.

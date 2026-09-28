@@ -16,8 +16,10 @@ import {
   collectionData,
   deleteDoc,
   doc,
-  getDoc,
-  getDocs,
+  getDocFromCache,
+  getDocFromServer,
+  getDocsFromCache,
+  getDocsFromServer,
   onSnapshot,
   query,
   serverTimestamp,
@@ -76,10 +78,37 @@ export const FIRESTORE_DOC = new InjectionToken<typeof doc>('FIRESTORE_DOC', {
   factory: () => doc,
 });
 
-export const FIRESTORE_GET_DOC = new InjectionToken<typeof getDoc>('FIRESTORE_GET_DOC', {
-  providedIn: 'root',
-  factory: () => getDoc,
-});
+export const FIRESTORE_GET_DOC_FROM_CACHE = new InjectionToken<typeof getDocFromCache>(
+  'FIRESTORE_GET_DOC_FROM_CACHE',
+  {
+    providedIn: 'root',
+    factory: () => getDocFromCache,
+  },
+);
+
+export const FIRESTORE_GET_DOC_FROM_SERVER = new InjectionToken<typeof getDocFromServer>(
+  'FIRESTORE_GET_DOC_FROM_SERVER',
+  {
+    providedIn: 'root',
+    factory: () => getDocFromServer,
+  },
+);
+
+export const FIRESTORE_GET_DOCS_FROM_CACHE = new InjectionToken<typeof getDocsFromCache>(
+  'FIRESTORE_GET_DOCS_FROM_CACHE',
+  {
+    providedIn: 'root',
+    factory: () => getDocsFromCache,
+  },
+);
+
+export const FIRESTORE_GET_DOCS_FROM_SERVER = new InjectionToken<typeof getDocsFromServer>(
+  'FIRESTORE_GET_DOCS_FROM_SERVER',
+  {
+    providedIn: 'root',
+    factory: () => getDocsFromServer,
+  },
+);
 
 export const FIRESTORE_DELETE_DOC = new InjectionToken<typeof deleteDoc>('FIRESTORE_DELETE_DOC', {
   providedIn: 'root',
@@ -120,11 +149,6 @@ export const FIRESTORE_WHERE = new InjectionToken<typeof where>('FIRESTORE_WHERE
 export const HTTPS_CALLABLE = new InjectionToken<typeof httpsCallable>('HTTPS_CALLABLE', {
   providedIn: 'root',
   factory: () => httpsCallable,
-});
-
-export const FIRESTORE_GET_DOCS = new InjectionToken<typeof getDocs>('FIRESTORE_GET_DOCS', {
-  providedIn: 'root',
-  factory: () => getDocs,
 });
 
 export const FIRESTORE_ADD_DOC = new InjectionToken<typeof addDoc>('FIRESTORE_ADD_DOC', {

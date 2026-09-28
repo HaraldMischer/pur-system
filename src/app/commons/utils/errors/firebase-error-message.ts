@@ -6,6 +6,8 @@ const FALLBACK_ERROR_MESSAGE = 'Die Aktion konnte nicht ausgeführt werden.';
 
 const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
   'app/offline': 'Diese Aktion benötigt eine Internetverbindung.',
+  'app/invalid-user-profile':
+    'Das Benutzerprofil enthält unvollständige oder widersprüchliche Datenzugriffe.',
   unavailable: 'Die Daten sind gerade nicht erreichbar. Bitte versuche es erneut.',
   'auth/invalid-credential': 'Anmeldename oder Passwort ist nicht korrekt.',
   'auth/invalid-email': 'Anmeldename oder Passwort ist nicht korrekt.',

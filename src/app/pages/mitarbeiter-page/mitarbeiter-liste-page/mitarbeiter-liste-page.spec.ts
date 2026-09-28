@@ -16,6 +16,8 @@ import { MitarbeiterListePage } from './mitarbeiter-liste-page';
 describe('MitarbeiterListePage', () => {
   const mitarbeiter: IMitarbeiterEintrag = {
     id: 'm-1',
+    unternehmerId: 'u-1',
+    firmaId: 'f-1',
     person: {
       vorname: 'Mia',
       nachname: 'Muster',
@@ -66,13 +68,12 @@ describe('MitarbeiterListePage', () => {
     getFilialen: ReturnType<typeof vi.fn>;
   };
   let mitarbeiterStoreMock: {
-    mitarbeiter: typeof mitarbeiterSignal;
-    download: typeof download;
-    isLoaded: typeof isLoaded;
-    error: typeof error;
     inProgress: typeof inProgress;
     loadMitarbeiter: ReturnType<typeof vi.fn>;
-    resetMitarbeiter: ReturnType<typeof vi.fn>;
+    getMitarbeiter: ReturnType<typeof vi.fn>;
+    isMitarbeiterKontextLoading: ReturnType<typeof vi.fn>;
+    isMitarbeiterKontextLoaded: ReturnType<typeof vi.fn>;
+    getMitarbeiterKontextError: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -100,19 +101,22 @@ describe('MitarbeiterListePage', () => {
       getFilialen: vi.fn().mockReturnValue([{ id: 'b-1', anzeigename: 'Filiale 1' }]),
     };
     mitarbeiterStoreMock = {
-      mitarbeiter: mitarbeiterSignal,
-      download,
-      isLoaded,
-      error,
       inProgress,
       loadMitarbeiter: vi.fn().mockImplementation(async () => {
         mitarbeiterSignal.set([mitarbeiter]);
         isLoaded.set(true);
       }),
-      resetMitarbeiter: vi.fn().mockImplementation(() => {
-        mitarbeiterSignal.set([]);
-        isLoaded.set(false);
-        error.set(null);
+      getMitarbeiter: vi.fn().mockImplementation(() => {
+        return mitarbeiterSignal();
+      }),
+      isMitarbeiterKontextLoading: vi.fn().mockImplementation(() => {
+        return download();
+      }),
+      isMitarbeiterKontextLoaded: vi.fn().mockImplementation(() => {
+        return isLoaded();
+      }),
+      getMitarbeiterKontextError: vi.fn().mockImplementation(() => {
+        return error();
       }),
     };
 

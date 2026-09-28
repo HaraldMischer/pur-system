@@ -196,7 +196,12 @@ export class MitarbeiterBearbeitenDialog {
         this.dialogDaten.mitarbeiter.id,
         aktualisierung,
       );
-      this.dialogRef.close({ id: this.dialogDaten.mitarbeiter.id, ...aktualisierung });
+      this.dialogRef.close({
+        id: this.dialogDaten.mitarbeiter.id,
+        unternehmerId: this.dialogDaten.unternehmerId,
+        firmaId: this.dialogDaten.firmaId,
+        ...aktualisierung,
+      });
     } catch {
       // Der Store stellt die benutzerfreundliche Fehlermeldung bereit.
     } finally {

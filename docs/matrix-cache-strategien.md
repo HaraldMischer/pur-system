@@ -1,0 +1,55 @@
+<!-- pur-system/docs/matrix-cache-strategien.md -->
+
+# Matrix: Cache-Strategien und Betriebsarten
+
+Diese Übersicht trennt die technische Auslieferungsvariante von Benutzerrolle und Datenrechten. Eine Auslieferungsvariante
+gewährt keine zusätzlichen Berechtigungen.
+
+## 1. Cache- und Datenquellenmatrix
+
+| Auslieferungsvariante | Cache-Art              | Benutzerprofil | Stammdaten    | Wiederholung  |
+| --------------------- | ---------------------- | -------------- | ------------- | ------------- |
+| Pur Master            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` |
+| Pur Office            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` |
+| Pur Filiale           | `persistentLocalCache` | `networkFirst` | `cacheFirst`  | `networkOnly` |
+| Pur Mitarbeiter       | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` |
+| Entwicklung           | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` |
+
+### Zusatzbedingungen
+
+- Die Cache-Art wird durch die Auslieferungsvariante und nicht durch die Benutzerrolle festgelegt.
+- `cacheOnly` wird technisch unterstützt, ist derzeit aber keinem regulären Startablauf zugeordnet.
+- Der persistente Cache gewährt keine zusätzlichen Berechtigungen.
+- Offline-Schreibvorgänge und eine spätere Synchronisation sind nicht Bestandteil der Ladestrategie.
+
+## 2. Online- und Offline-Betriebsarten
+
+| Merkmal                      | Pur Master                                | Pur Office                                | Pur Filiale                               | Pur Mitarbeiter                           |
+| ---------------------------- | ----------------------------------------- | ----------------------------------------- | ----------------------------------------- | ----------------------------------------- |
+| Vorgesehene Verwendung       | Systemverwaltung                          | Büro                                      | Filialrechner                             | Mitarbeiter-Handy                         |
+| Installation                 | als PWA vorgesehen                        | als PWA vorgesehen                        | als PWA vorgesehen und geprüft            | als PWA vorgesehen und geprüft            |
+| Offline-App-Shell            | ja                                        | ja                                        | ja                                        | ja                                        |
+| Fachliche Daten online       | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten |
+| Dauerhafte Offline-Fachdaten | nein                                      | nein                                      | begrenzter Lesecache                      | nein                                      |
+| Offline-Änderungen           | vorerst nein                              | vorerst nein                              | vorerst nein                              | vorerst nein                              |
+
+Der persistente Firestore-Lesecache ist ausschließlich für Pur Filiale umgesetzt. Er umfasst das bestätigte Benutzerprofil und
+die durch den benutzerabhängigen Ladeplan angeforderten Stammdaten. Die anderen Varianten verwenden einen flüchtigen Cache.
+
+## 3. Bedeutung der Betriebsarten
+
+- **Online-Fachdaten:** Die Anwendung lädt oder ändert Daten direkt über Firebase. Benutzerprofil, Backend und Firestore Rules
+  prüfen die Berechtigung.
+- **Dauerhafte Offline-Fachdaten:** Online geladene Fachdaten werden bewusst lokal gespeichert, damit sie bei einem späteren
+  Start ohne Verbindung angezeigt werden können.
+- **Offline-Änderungen:** Änderungen werden ohne Verbindung erfasst und nach der Wiederherstellung der Verbindung kontrolliert
+  übertragen.
+- **Offline-App-Shell:** Anwendungscode, Styles, Schriften und Icons können ohne Verbindung starten. Daraus folgt keine
+  Verfügbarkeit fachlicher Daten.
+
+## 4. Grundentscheidungen
+
+- Pur Filiale verwendet als einzige Variante einen persistenten Firestore-Lesecache.
+- Die Offline-App-Shell bleibt vom Firestore-Lesecache getrennt.
+- Offline-Änderungen und eine spätere Synchronisation sind nicht vorgesehen.
+- Benutzerrolle und Zugriffe bestimmen den fachlichen Datenraum unabhängig von der Auslieferungsvariante.

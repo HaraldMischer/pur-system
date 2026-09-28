@@ -2,14 +2,14 @@
 
 import { TestBed } from '@angular/core/testing';
 
-import { DebugLogService } from './debug-log.service';
+import { DebugLogService, isLocalhost } from './debug-log.service';
 
 describe('DebugLogService', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('should write categorized debug messages in development mode', () => {
+  it('should write categorized debug messages on localhost', () => {
     const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
     const service = TestBed.inject(DebugLogService);
     const details = { pfad: 'unternehmer' };
@@ -37,5 +37,13 @@ describe('DebugLogService', () => {
       '* Unternehmer geladen............... (1)',
       details,
     );
+  });
+
+  it('should recognize only local hostnames', () => {
+    expect(isLocalhost('localhost')).toBe(true);
+    expect(isLocalhost('127.0.0.1')).toBe(true);
+    expect(isLocalhost('::1')).toBe(true);
+    expect(isLocalhost('pur-filiale.web.app')).toBe(false);
+    expect(isLocalhost('192.168.1.10')).toBe(false);
   });
 });

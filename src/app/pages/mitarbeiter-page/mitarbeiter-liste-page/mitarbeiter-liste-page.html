@@ -58,9 +58,9 @@
   <section class="pur-page-section">
     <header class="pur-page-section__header">
       <h2 class="pur-page-section__title">Mitarbeiterliste</h2>
-      @if (mitarbeiterStore.isLoaded()) {
+      @if (mitarbeiterIsLoaded()) {
         <span class="pur-page-section__meta">
-          {{ mitarbeiterStore.mitarbeiter().length }}
+          {{ mitarbeiter().length }}
         </span>
       }
     </header>
@@ -69,16 +69,16 @@
       <p class="pur-page-section__message" role="status">
         Wähle eine Firma, um deren Mitarbeiter anzuzeigen.
       </p>
-    } @else if (mitarbeiterStore.download()) {
+    } @else if (mitarbeiterDownload()) {
       <p class="pur-page-section__message" role="status">Mitarbeiter werden geladen.</p>
-    } @else if (mitarbeiterStore.error(); as error) {
+    } @else if (mitarbeiterError(); as error) {
       <div class="mitarbeiter-liste-page__error">
         <p class="pur-form__error" role="alert">{{ error }}</p>
         <button matButton="outlined" type="button" (click)="retryLoadMitarbeiter()">
           Erneut laden
         </button>
       </div>
-    } @else if (mitarbeiterStore.isLoaded()) {
+    } @else if (mitarbeiterIsLoaded()) {
       <div class="mitarbeiter-liste-page__grid">
         <mat-card class="mitarbeiter-liste-page__add-card" appearance="outlined">
           <button
@@ -91,14 +91,14 @@
             Mitarbeiter hinzufügen
           </button>
         </mat-card>
-        @for (mitarbeiter of mitarbeiterStore.mitarbeiter(); track mitarbeiter.id) {
+        @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
           <app-mitarbeiter-card
             [mitarbeiter]="mitarbeiter"
             (bearbeiten)="openMitarbeiterBearbeitenDialog($event)"
           />
         }
       </div>
-      @if (mitarbeiterStore.mitarbeiter().length === 0) {
+      @if (mitarbeiter().length === 0) {
         <p class="pur-page-section__empty-state" role="status">
           Die Firma hat noch keine Mitarbeiter.
         </p>

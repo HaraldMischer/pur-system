@@ -4,7 +4,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
-import { APP_VERSION } from '../../../commons/constants/app-version.constant';
+import { APP_VERSION } from '../../../commons/constants/app.constants';
 import { IBenutzerProfilDokument, TUserRole } from '../../../commons/models/domain/benutzer';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { AppSidenav } from './app-sidenav';

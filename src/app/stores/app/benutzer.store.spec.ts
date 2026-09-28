@@ -9,7 +9,6 @@ import { DebugLogService } from '../../services/core/debug-log.service';
 import { AuthService } from '../../services/firebase/auth.service';
 import { BenutzerService } from '../../services/domain/benutzer.service';
 import { BenutzerStore } from './benutzer.store';
-import { StammdatenStore } from './stammdaten.store';
 
 describe('BenutzerStore', () => {
   let authServiceMock: {
@@ -20,11 +19,6 @@ describe('BenutzerStore', () => {
   let benutzerServiceMock: {
     getBenutzerProfil: ReturnType<typeof vi.fn>;
     observeBenutzerProfil: ReturnType<typeof vi.fn>;
-  };
-  let stammdatenStoreMock: {
-    isLoaded: ReturnType<typeof vi.fn>;
-    loadStammdaten: ReturnType<typeof vi.fn>;
-    reset: ReturnType<typeof vi.fn>;
   };
   let debugLogServiceMock: {
     log: ReturnType<typeof vi.fn>;
@@ -67,11 +61,6 @@ describe('BenutzerStore', () => {
         },
       ),
     };
-    stammdatenStoreMock = {
-      isLoaded: vi.fn().mockReturnValue(false),
-      loadStammdaten: vi.fn().mockResolvedValue(undefined),
-      reset: vi.fn(),
-    };
     debugLogServiceMock = {
       log: vi.fn(),
       logDatenflussTitel: vi.fn(),
@@ -84,7 +73,6 @@ describe('BenutzerStore', () => {
         { provide: DebugLogService, useValue: debugLogServiceMock },
         { provide: AuthService, useValue: authServiceMock },
         { provide: BenutzerService, useValue: benutzerServiceMock },
-        { provide: StammdatenStore, useValue: stammdatenStoreMock },
       ],
     });
   });
@@ -92,8 +80,8 @@ describe('BenutzerStore', () => {
   it('should start with an empty state', () => {
     const store = TestBed.inject(BenutzerStore);
 
+    expect(store.benutzerId()).toBeNull();
     expect(store.benutzerProfil()).toBeNull();
-    expect(store.isAuthenticated()).toBe(false);
     expect(store.isAuthenticated()).toBe(false);
     expect(store.inProgress()).toBe(false);
     expect(store.error()).toBeNull();
@@ -107,6 +95,7 @@ describe('BenutzerStore', () => {
     const store = TestBed.inject(BenutzerStore);
 
     expect(store.snapshot()).toEqual({
+      benutzerId: null,
       benutzerProfil: null,
       isAuthenticated: false,
       inProgress: false,
@@ -116,6 +105,7 @@ describe('BenutzerStore', () => {
     store.setBenutzerProfil(profil);
 
     expect(store.snapshot()).toEqual({
+      benutzerId: null,
       benutzerProfil: profil,
       isAuthenticated: false,
       inProgress: false,
@@ -129,18 +119,21 @@ describe('BenutzerStore', () => {
     await store.login('test-master', 'secret-password');
 
     expect(authServiceMock.login).toHaveBeenCalledWith('test-master', 'secret-password');
-    expect(benutzerServiceMock.getBenutzerProfil).toHaveBeenCalledWith('benutzer-123');
+    expect(benutzerServiceMock.getBenutzerProfil).toHaveBeenCalledWith(
+      'benutzer-123',
+      'networkOnly',
+    );
     expect(benutzerServiceMock.observeBenutzerProfil).toHaveBeenCalledWith(
       'benutzer-123',
       expect.any(Function),
       expect.any(Function),
     );
     expect(store.isAuthenticated()).toBe(true);
+    expect(store.benutzerId()).toBe('benutzer-123');
     expect(store.benutzerProfil()).toBe(profil);
     expect(store.isLoggedIn()).toBe(true);
     expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith('1. BENUTZERPROFIL ');
     expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith('Benutzerprofil', 1, profil);
-    expect(stammdatenStoreMock.loadStammdaten).toHaveBeenCalledWith('benutzer-123', profil);
   });
 
   it('should share parallel profile loads and reuse the loaded profile', async () => {
@@ -164,6 +157,19 @@ describe('BenutzerStore', () => {
 
     expect(benutzerServiceMock.getBenutzerProfil).toHaveBeenCalledOnce();
     expect(store.benutzerProfil()).toBe(profil);
+  });
+
+  it('should force a new network profile load for a manual retry', async () => {
+    const store = TestBed.inject(BenutzerStore);
+
+    await store.loadBenutzerProfil('benutzer-123');
+    await store.loadBenutzerProfil('benutzer-123', 'networkOnly', true);
+
+    expect(benutzerServiceMock.getBenutzerProfil).toHaveBeenCalledTimes(2);
+    expect(benutzerServiceMock.getBenutzerProfil).toHaveBeenLastCalledWith(
+      'benutzer-123',
+      'networkOnly',
+    );
   });
 
   it('should expose permission helpers for areas, companies and branches', () => {
@@ -190,26 +196,24 @@ describe('BenutzerStore', () => {
     await store.logout();
 
     expect(authServiceMock.logout).toHaveBeenCalledOnce();
-    expect(stammdatenStoreMock.reset).toHaveBeenCalled();
     expect(profilListener[0].unsubscribe).toHaveBeenCalledOnce();
+    expect(store.benutzerId()).toBeNull();
+    expect(store.isAuthenticated()).toBe(false);
     expect(store.benutzerProfil()).toBeNull();
   });
 
-  it('should update the profile in real time and reset data when it becomes inactive', async () => {
+  it('should update the profile in real time', async () => {
     const store = TestBed.inject(BenutzerStore);
     await store.login('test-office', 'secret-password');
-    stammdatenStoreMock.reset.mockClear();
 
     profilListener[0].next({ ...profil, aktiv: false });
 
     expect(store.benutzerProfil()).toEqual({ ...profil, aktiv: false });
     expect(store.istInaktiv()).toBe(true);
-    expect(stammdatenStoreMock.reset).toHaveBeenCalledOnce();
 
     profilListener[0].next(profil);
 
     expect(store.istInaktiv()).toBe(false);
-    expect(stammdatenStoreMock.loadStammdaten).toHaveBeenLastCalledWith('benutzer-123', profil);
   });
 
   it('should preserve the last profile when the real-time listener fails', async () => {
@@ -243,7 +247,7 @@ describe('BenutzerStore', () => {
 
     expect(profilListener.map((listener) => listener.uid)).toEqual(['benutzer-1', 'benutzer-2']);
     expect(profilListener[0].unsubscribe).toHaveBeenCalledOnce();
-    expect(stammdatenStoreMock.reset).toHaveBeenCalled();
+    expect(store.benutzerId()).toBe('benutzer-2');
   });
 
   it('should store a friendly error when login fails', async () => {

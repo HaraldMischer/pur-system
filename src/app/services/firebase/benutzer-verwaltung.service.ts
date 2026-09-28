@@ -68,6 +68,7 @@ export class BenutzerVerwaltungService {
   ): Promise<IMitarbeiterAuswahl[]> {
     const dokumente = await this.firestoreDbService.loadCollection<Record<string, unknown>>(
       FIRESTORE_COLLECTION_PATHS.mitarbeiter(anfrage.unternehmerId, anfrage.firmaId),
+      'networkOnly',
     );
     return mapMitarbeiterAuswahl(dokumente);
   }

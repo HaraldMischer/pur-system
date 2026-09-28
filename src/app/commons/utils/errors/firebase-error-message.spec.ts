@@ -21,6 +21,14 @@ describe('getFirebaseErrorMessage', () => {
     expect(message).toBe('Diese Aktion benötigt eine Internetverbindung.');
   });
 
+  it('should return a friendly message for an invalid user profile', () => {
+    const message = getFirebaseErrorMessage({ code: 'app/invalid-user-profile' });
+
+    expect(message).toBe(
+      'Das Benutzerprofil enthält unvollständige oder widersprüchliche Datenzugriffe.',
+    );
+  });
+
   it('should return the fallback message for unknown errors', () => {
     const message = getFirebaseErrorMessage({ code: 'unknown-error' });
 

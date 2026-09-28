@@ -3,7 +3,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  OnDestroy,
   OnInit,
   Signal,
   computed,
@@ -42,7 +41,7 @@ import { MitarbeiterCard } from './mitarbeiter-card/mitarbeiter-card';
   styleUrl: './mitarbeiter-liste-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MitarbeiterListePage implements OnInit, OnDestroy {
+export class MitarbeiterListePage implements OnInit {
   // ===== Interne Dependency Injection =========
 
   private readonly dialog = inject(MatDialog);
@@ -72,6 +71,46 @@ export class MitarbeiterListePage implements OnInit, OnDestroy {
       hatMitarbeiterVerwaltungszugriffAufFirma(profil, unternehmerId, firmaId),
     );
   });
+  readonly mitarbeiter: Signal<readonly IMitarbeiterEintrag[]> = computed(() => {
+    const kontext = this.getSelectedMitarbeiterKontext();
+    return kontext
+      ? this.mitarbeiterStore.getMitarbeiter(
+          kontext.unternehmerId,
+          kontext.firmaId,
+          kontext.filialId,
+        )
+      : [];
+  });
+  readonly mitarbeiterDownload: Signal<boolean> = computed(() => {
+    const kontext = this.getSelectedMitarbeiterKontext();
+    return kontext
+      ? this.mitarbeiterStore.isMitarbeiterKontextLoading(
+          kontext.unternehmerId,
+          kontext.firmaId,
+          kontext.filialId,
+        )
+      : false;
+  });
+  readonly mitarbeiterIsLoaded: Signal<boolean> = computed(() => {
+    const kontext = this.getSelectedMitarbeiterKontext();
+    return kontext
+      ? this.mitarbeiterStore.isMitarbeiterKontextLoaded(
+          kontext.unternehmerId,
+          kontext.firmaId,
+          kontext.filialId,
+        )
+      : false;
+  });
+  readonly mitarbeiterError: Signal<string | null> = computed(() => {
+    const kontext = this.getSelectedMitarbeiterKontext();
+    return kontext
+      ? this.mitarbeiterStore.getMitarbeiterKontextError(
+          kontext.unternehmerId,
+          kontext.firmaId,
+          kontext.filialId,
+        )
+      : null;
+  });
 
   // ===== Lifecycle Hooks ======================
 
@@ -83,13 +122,6 @@ export class MitarbeiterListePage implements OnInit, OnDestroy {
     if (unternehmer.length === 1) {
       void this.selectUnternehmer(unternehmer[0].id);
     }
-  }
-
-  /**
-   * Entfernt beim Verlassen der Seite den geladenen Firmenkontext.
-   */
-  ngOnDestroy(): void {
-    this.mitarbeiterStore.resetMitarbeiter();
   }
 
   // ===== Öffentliche Aktionen =================
@@ -105,7 +137,6 @@ export class MitarbeiterListePage implements OnInit, OnDestroy {
       .some((eintrag) => eintrag.id === unternehmerId)
       ? unternehmerId
       : null;
-    this.mitarbeiterStore.resetMitarbeiter();
     this.selectedUnternehmerId.set(selectedUnternehmerId);
     this.selectedFirmaId.set(null);
 
@@ -125,7 +156,6 @@ export class MitarbeiterListePage implements OnInit, OnDestroy {
     const selectedFirmaId = this.firmen().some((eintrag) => eintrag.id === firmaId)
       ? firmaId
       : null;
-    this.mitarbeiterStore.resetMitarbeiter();
     this.selectedFirmaId.set(selectedFirmaId);
 
     if (unternehmerId && selectedFirmaId) {
@@ -149,7 +179,6 @@ export class MitarbeiterListePage implements OnInit, OnDestroy {
     const firmaId = this.selectedFirmaId();
     if (!unternehmerId || !firmaId) return;
 
-    this.mitarbeiterStore.resetMitarbeiter();
     try {
       await this.mitarbeiterStore.loadMitarbeiter(
         unternehmerId,
@@ -182,7 +211,7 @@ export class MitarbeiterListePage implements OnInit, OnDestroy {
       !kontext ||
       !this.darfSchreiben() ||
       this.mitarbeiterStore.inProgress() ||
-      !this.mitarbeiterStore.mitarbeiter().some((eintrag) => eintrag.id === mitarbeiter.id)
+      !this.mitarbeiter().some((eintrag) => eintrag.id === mitarbeiter.id)
     ) {
       return;
     }
@@ -200,6 +229,24 @@ export class MitarbeiterListePage implements OnInit, OnDestroy {
 
     const filialIds = profil.zugriffe[unternehmerId]?.[firmaId];
     return Array.isArray(filialIds) && filialIds.length === 1 ? filialIds[0] : undefined;
+  }
+
+  private getSelectedMitarbeiterKontext(): {
+    unternehmerId: string;
+    firmaId: string;
+    filialId?: string;
+  } | null {
+    const unternehmerId = this.selectedUnternehmerId();
+    const firmaId = this.selectedFirmaId();
+    if (!unternehmerId || !firmaId) {
+      return null;
+    }
+
+    return {
+      unternehmerId,
+      firmaId,
+      filialId: this.getMitarbeiterFilialId(unternehmerId, firmaId),
+    };
   }
 
   private getDialogKontext(): {

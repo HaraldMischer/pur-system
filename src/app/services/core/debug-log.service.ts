@@ -1,8 +1,8 @@
 // pur-system/src/app/services/core/debug-log.service.ts
 
-import { Injectable, isDevMode } from '@angular/core';
+import { Injectable } from '@angular/core';
 
-import { environment } from '../../../environments/environment';
+import { LOCALHOST_DEBUG_LOG_ENABLED } from '../../commons/constants/app.constants';
 
 export type TDebugLogKategorie = 'Authentifizierung' | 'Firestore' | 'Laden' | 'Store';
 
@@ -13,11 +13,16 @@ function formatDatenzeile(bezeichnung: string, anzahl: number): string {
   return `* ${text.padEnd(34, '.')} (${anzahl})`;
 }
 
+export function isLocalhost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+}
+
 @Injectable({ providedIn: 'root' })
 export class DebugLogService {
   // ===== Öffentliche Werte ====================
 
-  readonly isEnabled = isDevMode() && environment.debugLog;
+  readonly isEnabled =
+    LOCALHOST_DEBUG_LOG_ENABLED && isLocalhost(globalThis.location?.hostname ?? '');
 
   // ===== Öffentliche Aktionen =================
 

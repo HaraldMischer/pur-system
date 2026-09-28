@@ -82,6 +82,8 @@ describe('MitarbeiterService', () => {
     await expect(service.loadMitarbeiter('unternehmer-1', 'firma-1')).resolves.toEqual([
       {
         id: 'a',
+        unternehmerId: 'unternehmer-1',
+        firmaId: 'firma-1',
         person: { ...anlage.person, vorname: 'Anton', nachname: 'Albrecht' },
         rolle: 'kasse',
         filialIds: [],
@@ -89,6 +91,8 @@ describe('MitarbeiterService', () => {
       },
       {
         id: 'z',
+        unternehmerId: 'unternehmer-1',
+        firmaId: 'firma-1',
         person: { ...anlage.person, vorname: 'Zoe', nachname: 'Zimmer' },
         rolle: 'service',
         filialIds: ['filiale-2', 'filiale-1'],
@@ -97,6 +101,7 @@ describe('MitarbeiterService', () => {
     ]);
     expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith(
       'unternehmer/unternehmer-1/firma/firma-1/mitarbeiter',
+      'networkOnly',
     );
   });
 
@@ -123,6 +128,8 @@ describe('MitarbeiterService', () => {
     await expect(service.loadMitarbeiter('u', 'f')).resolves.toEqual([
       {
         id: 'm-1',
+        unternehmerId: 'u',
+        firmaId: 'f',
         person: {
           vorname: '',
           nachname: 'Test',
@@ -145,6 +152,7 @@ describe('MitarbeiterService', () => {
       'unternehmer/u/firma/f/mitarbeiter',
       'filialIds',
       'b-1',
+      'networkOnly',
     );
     expect(firestoreDbServiceMock.loadCollection).not.toHaveBeenCalled();
   });

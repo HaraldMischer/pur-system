@@ -3,10 +3,8 @@
 import { DestroyRef, Injector, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
-import {
-  IBenutzerProfilDokument,
-  IBenutzerProfilEintrag,
-} from '../../commons/models/domain/benutzer';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
+import { IBenutzerProfilEintrag, TBenutzerZugriffe } from '../../commons/models/domain/benutzer';
 import { IFirmaEintrag } from '../../commons/models/domain/firma';
 import { IFilialeEintrag } from '../../commons/models/domain/filiale';
 import { IUnternehmerEintrag } from '../../commons/models/domain/unternehmer';
@@ -24,6 +22,13 @@ type TFirmenNachUnternehmer = Readonly<Record<string, readonly IFirmaEintrag[]>>
 type TFilialenNachFirma = Readonly<
   Record<string, Readonly<Record<string, readonly IFilialeEintrag[]>>>
 >;
+
+export type TStammdatenLadeauftrag = {
+  readonly alleStrukturdaten: boolean;
+  readonly zugriffe: TBenutzerZugriffe;
+  readonly benutzerprofile: boolean;
+  readonly lesestrategie: TFirestoreLesestrategie;
+};
 
 export type TStammdatenSnapshot = {
   readonly benutzerId: string | null;
@@ -49,10 +54,6 @@ const initialState: TStammdatenState = {
   error: null,
 };
 
-function istVorhanden<T>(eintrag: T | null): eintrag is T {
-  return eintrag !== null;
-}
-
 function sortEintraege<T extends { anzeigename: string }>(eintraege: readonly T[]): readonly T[] {
   return [...eintraege].sort((a, b) => a.anzeigename.localeCompare(b.anzeigename, 'de'));
 }
@@ -74,6 +75,33 @@ function getFilialenAnzahl(filialenNachFirma: TFilialenNachFirma): number {
   }, 0);
 }
 
+function getLadeauftragKontext(ladeauftrag: TStammdatenLadeauftrag): string {
+  const zugriffe = Object.entries(ladeauftrag.zugriffe)
+    .sort(([ersteId], [zweiteId]) => ersteId.localeCompare(zweiteId))
+    .map(([unternehmerId, firmen]) => {
+      const firmenKontext = Object.entries(firmen)
+        .sort(([ersteId], [zweiteId]) => ersteId.localeCompare(zweiteId))
+        .map(([firmaId, filialIds]) => {
+          return [firmaId, [...filialIds].sort()];
+        });
+      return [unternehmerId, firmenKontext];
+    });
+
+  return JSON.stringify([
+    ladeauftrag.alleStrukturdaten,
+    ladeauftrag.benutzerprofile,
+    ladeauftrag.lesestrategie,
+    zugriffe,
+  ]);
+}
+
+function requireEintrag<T>(eintrag: T | null): T {
+  if (!eintrag) {
+    throw { code: 'app/invalid-user-profile' };
+  }
+  return eintrag;
+}
+
 export const StammdatenStore = signalStore(
   { providedIn: 'root', protectedState: true } as const,
   withState<TStammdatenState>(initialState),
@@ -86,26 +114,29 @@ export const StammdatenStore = signalStore(
       storeSnapshotService = inject(StoreSnapshotService),
     ) => {
       let generation = 0;
-      let ladeauftrag: { benutzerId: string; promise: Promise<void> } | null = null;
+      let geladenerKontext: string | null = null;
+      let laufenderLadeauftrag: { kontext: string; promise: Promise<void> } | null = null;
 
       // ===== Methoden: Laden ======================
 
       /**
-       * Lädt die für ein Benutzerprofil erlaubten Stammdaten einmalig für die Sitzung.
-       *
-       * Master erhalten alle Unternehmer, Firmen, Filialen und Benutzerprofile. Andere Rollen
-       * erhalten ausschließlich die in ihrem Profil freigegebenen Unternehmensdaten.
+       * Lädt die durch einen rollenunabhängigen Ladeauftrag festgelegten Stammdaten.
        *
        * @param benutzerId - UID des angemeldeten Benutzers.
-       * @param profil - Das bereits geladene Benutzerprofil mit den erlaubten Datenzugriffen.
+       * @param ladeauftrag - Technische Auswahl der zu ladenden Struktur- und Profildaten.
        * @returns Ein Promise, das nach Abschluss der Stammdateninitialisierung beendet ist.
+       * @throws Gibt Ladefehler oder fehlende zugeordnete Dokumente weiter.
        */
-      function loadStammdaten(benutzerId: string, profil: IBenutzerProfilDokument): Promise<void> {
-        if (store.benutzerId() === benutzerId && store.isLoaded()) {
+      function loadStammdaten(
+        benutzerId: string,
+        ladeauftrag: TStammdatenLadeauftrag,
+      ): Promise<void> {
+        const kontext = JSON.stringify([benutzerId, getLadeauftragKontext(ladeauftrag)]);
+        if (store.benutzerId() === benutzerId && store.isLoaded() && geladenerKontext === kontext) {
           return Promise.resolve();
         }
-        if (ladeauftrag?.benutzerId === benutzerId) {
-          return ladeauftrag.promise;
+        if (laufenderLadeauftrag?.kontext === kontext) {
+          return laufenderLadeauftrag.promise;
         }
 
         const aktuell = ++generation;
@@ -114,8 +145,8 @@ export const StammdatenStore = signalStore(
           benutzerId,
           download: true,
         });
-        const promise = executeLoad(benutzerId, profil, aktuell);
-        ladeauftrag = { benutzerId, promise };
+        const promise = executeLoad(benutzerId, ladeauftrag, kontext, aktuell);
+        laufenderLadeauftrag = { kontext, promise };
         return promise;
       }
 
@@ -272,7 +303,8 @@ export const StammdatenStore = signalStore(
        */
       function reset(): void {
         generation++;
-        ladeauftrag = null;
+        geladenerKontext = null;
+        laufenderLadeauftrag = null;
         patchState(store, initialState);
       }
 
@@ -298,29 +330,22 @@ export const StammdatenStore = signalStore(
 
       async function executeLoad(
         benutzerId: string,
-        profil: IBenutzerProfilDokument,
+        ladeauftrag: TStammdatenLadeauftrag,
+        kontext: string,
         aktuell: number,
       ): Promise<void> {
         try {
           const benutzerService = injector.get(BenutzerService);
-          debugLogService.logDatenflussTitel(`2. STAMMDATEN | ${profil.userRole.toUpperCase()} `);
-          const unternehmer = await loadUnternehmer(profil);
-          debugLogService.logDatenGeladen('Unternehmer', unternehmer.length, unternehmer);
-          const firmenNachUnternehmer = await loadFirmen(profil, unternehmer);
-          debugLogService.logDatenGeladen(
-            'Firmen',
-            getFirmenAnzahl(firmenNachUnternehmer),
-            firmenNachUnternehmer,
-          );
-          const filialenNachFirma = await loadFilialen(profil, firmenNachUnternehmer);
-          debugLogService.logDatenGeladen(
-            'Filialen',
-            getFilialenAnzahl(filialenNachFirma),
-            filialenNachFirma,
-          );
-          const benutzerprofile =
-            profil.userRole === 'master' ? await benutzerService.loadBenutzerProfile() : [];
-          if (profil.userRole === 'master') {
+          debugLogService.logDatenflussTitel('2. STAMMDATEN ');
+          const benutzerprofilePromise = ladeauftrag.benutzerprofile
+            ? benutzerService.loadBenutzerProfile(ladeauftrag.lesestrategie)
+            : Promise.resolve([]);
+          const [strukturdaten, benutzerprofile] = await Promise.all([
+            loadStrukturdaten(ladeauftrag),
+            benutzerprofilePromise,
+          ]);
+          const { unternehmer, firmenNachUnternehmer, filialenNachFirma } = strukturdaten;
+          if (ladeauftrag.benutzerprofile) {
             debugLogService.logDatenGeladen(
               'Benutzerprofile',
               benutzerprofile.length,
@@ -329,6 +354,7 @@ export const StammdatenStore = signalStore(
           }
 
           if (aktuell !== generation || store.benutzerId() !== benutzerId) return;
+          geladenerKontext = kontext;
           patchState(store, {
             unternehmer,
             firmenNachUnternehmer,
@@ -346,46 +372,77 @@ export const StammdatenStore = signalStore(
             isLoaded: false,
             error: getFirebaseErrorMessage(error),
           });
+          throw error;
         } finally {
-          if (ladeauftrag?.benutzerId === benutzerId) {
-            ladeauftrag = null;
+          if (laufenderLadeauftrag?.kontext === kontext) {
+            laufenderLadeauftrag = null;
           }
         }
       }
 
+      async function loadStrukturdaten(ladeauftrag: TStammdatenLadeauftrag): Promise<{
+        unternehmer: readonly IUnternehmerEintrag[];
+        firmenNachUnternehmer: TFirmenNachUnternehmer;
+        filialenNachFirma: TFilialenNachFirma;
+      }> {
+        const unternehmer = await loadUnternehmer(ladeauftrag);
+        debugLogService.logDatenGeladen('Unternehmer', unternehmer.length, unternehmer);
+        const firmenNachUnternehmer = await loadFirmen(ladeauftrag, unternehmer);
+        debugLogService.logDatenGeladen(
+          'Firmen',
+          getFirmenAnzahl(firmenNachUnternehmer),
+          firmenNachUnternehmer,
+        );
+        const filialenNachFirma = await loadFilialen(ladeauftrag, firmenNachUnternehmer);
+        debugLogService.logDatenGeladen(
+          'Filialen',
+          getFilialenAnzahl(filialenNachFirma),
+          filialenNachFirma,
+        );
+        return { unternehmer, firmenNachUnternehmer, filialenNachFirma };
+      }
+
       async function loadUnternehmer(
-        profil: IBenutzerProfilDokument,
+        ladeauftrag: TStammdatenLadeauftrag,
       ): Promise<readonly IUnternehmerEintrag[]> {
         const unternehmerService = injector.get(UnternehmerService);
-        if (profil.userRole === 'master') {
-          return unternehmerService.loadUnternehmer();
+        if (ladeauftrag.alleStrukturdaten) {
+          return unternehmerService.loadUnternehmer(ladeauftrag.lesestrategie);
         }
 
         const eintraege = await Promise.all(
-          Object.keys(profil.zugriffe).map((unternehmerId) => {
-            return unternehmerService.loadUnternehmerEintrag(unternehmerId);
+          Object.keys(ladeauftrag.zugriffe).map(async (unternehmerId) => {
+            return requireEintrag(
+              await unternehmerService.loadUnternehmerEintrag(
+                unternehmerId,
+                ladeauftrag.lesestrategie,
+              ),
+            );
           }),
         );
-        return sortEintraege(eintraege.filter(istVorhanden));
+        return sortEintraege(eintraege);
       }
 
       async function loadFirmen(
-        profil: IBenutzerProfilDokument,
+        ladeauftrag: TStammdatenLadeauftrag,
         unternehmer: readonly IUnternehmerEintrag[],
       ): Promise<TFirmenNachUnternehmer> {
         const firmaService = injector.get(FirmaService);
         const listen = await Promise.all(
           unternehmer.map(async (eintrag) => {
-            const firmen =
-              profil.userRole === 'master'
-                ? await firmaService.loadFirmen(eintrag.id)
-                : (
-                    await Promise.all(
-                      Object.keys(profil.zugriffe[eintrag.id] ?? {}).map((firmaId) => {
-                        return firmaService.loadFirmaEintrag(eintrag.id, firmaId);
-                      }),
-                    )
-                  ).filter(istVorhanden);
+            const firmen = ladeauftrag.alleStrukturdaten
+              ? await firmaService.loadFirmen(eintrag.id, ladeauftrag.lesestrategie)
+              : await Promise.all(
+                  Object.keys(ladeauftrag.zugriffe[eintrag.id] ?? {}).map(async (firmaId) => {
+                    return requireEintrag(
+                      await firmaService.loadFirmaEintrag(
+                        eintrag.id,
+                        firmaId,
+                        ladeauftrag.lesestrategie,
+                      ),
+                    );
+                  }),
+                );
             return [eintrag.id, sortEintraege(firmen)] as const;
           }),
         );
@@ -393,7 +450,7 @@ export const StammdatenStore = signalStore(
       }
 
       async function loadFilialen(
-        profil: IBenutzerProfilDokument,
+        ladeauftrag: TStammdatenLadeauftrag,
         firmenNachUnternehmer: TFirmenNachUnternehmer,
       ): Promise<TFilialenNachFirma> {
         const filialeService = injector.get(FilialeService);
@@ -401,20 +458,26 @@ export const StammdatenStore = signalStore(
           Object.entries(firmenNachUnternehmer).map(async ([unternehmerId, firmen]) => {
             const firmaListen = await Promise.all(
               firmen.map(async (firma) => {
-                const filialen =
-                  profil.userRole === 'master'
-                    ? await filialeService.loadFilialen(unternehmerId, firma.id)
-                    : (
-                        await Promise.all(
-                          (profil.zugriffe[unternehmerId]?.[firma.id] ?? []).map((filialeId) => {
-                            return filialeService.loadFilialeEintrag(
+                const filialen = ladeauftrag.alleStrukturdaten
+                  ? await filialeService.loadFilialen(
+                      unternehmerId,
+                      firma.id,
+                      ladeauftrag.lesestrategie,
+                    )
+                  : await Promise.all(
+                      (ladeauftrag.zugriffe[unternehmerId]?.[firma.id] ?? []).map(
+                        async (filialeId) => {
+                          return requireEintrag(
+                            await filialeService.loadFilialeEintrag(
                               unternehmerId,
                               firma.id,
                               filialeId,
-                            );
-                          }),
-                        )
-                      ).filter(istVorhanden);
+                              ladeauftrag.lesestrategie,
+                            ),
+                          );
+                        },
+                      ),
+                    );
                 return [firma.id, sortEintraege(filialen)] as const;
               }),
             );

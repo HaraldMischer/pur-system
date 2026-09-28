@@ -2,7 +2,7 @@
 
 import { TAppBereich } from '../commons/models/app/app-bereich';
 import { IBenutzerProfilDokument, TUserRole } from '../commons/models/domain/benutzer';
-import { getErlaubteStartRoute } from './guard-navigation';
+import { getErlaubteStartRoute, getInitialisierungsRueckkehrUrl } from './guard-navigation';
 
 function createProfil(
   userRole: TUserRole,
@@ -74,4 +74,19 @@ describe('getErlaubteStartRoute', () => {
 
     expect(getErlaubteStartRoute(profil)).toBeNull();
   });
+});
+
+describe('getInitialisierungsRueckkehrUrl', () => {
+  it('should preserve a valid internal route including query parameters', () => {
+    expect(getInitialisierungsRueckkehrUrl('/mitarbeiter/liste?filter=aktiv')).toBe(
+      '/mitarbeiter/liste?filter=aktiv',
+    );
+  });
+
+  it.each([null, '', 'https://example.com', '//example.com', '/login', '/initialisierungsfehler'])(
+    'should replace the unsafe return URL %s with the dashboard',
+    (returnUrl) => {
+      expect(getInitialisierungsRueckkehrUrl(returnUrl)).toBe('/dashboard');
+    },
+  );
 });

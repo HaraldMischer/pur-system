@@ -2,6 +2,7 @@
 
 import { authGuard } from './guards/auth.guard';
 import { bereichGuard } from './guards/bereich.guard';
+import { initialisierungGuard } from './guards/initialisierung.guard';
 import { masterGuard } from './guards/master.guard';
 import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
 import { verwaltungGuard } from './guards/verwaltung.guard';
@@ -11,6 +12,7 @@ describe('app routes', () => {
   it('should define titles for all routed pages', () => {
     const expectedTitles = new Map([
       ['login', 'Anmelden'],
+      ['initialisierungsfehler', 'Initialisierungsfehler'],
       ['dashboard', 'Dashboard'],
       ['schichtplan', 'Schichtplan'],
       ['passwort', 'Passwort ändern'],
@@ -27,7 +29,7 @@ describe('app routes', () => {
     const redirectRoute = mitarbeiterRoute?.children?.find((route) => route.path === '');
     const listeRoute = mitarbeiterRoute?.children?.find((route) => route.path === 'liste');
 
-    expect(mitarbeiterRoute?.canActivate).toEqual([authGuard, bereichGuard]);
+    expect(mitarbeiterRoute?.canActivate).toEqual([authGuard, initialisierungGuard, bereichGuard]);
     expect(mitarbeiterRoute?.data?.['bereich']).toBe('mitarbeiter');
     expect(mitarbeiterRoute?.loadComponent).toBeUndefined();
     expect(redirectRoute).toEqual({ path: '', pathMatch: 'full', redirectTo: 'liste' });
@@ -42,11 +44,19 @@ describe('app routes', () => {
     expect(loginRoute?.data?.['layout']).toBe('auth');
   });
 
+  it('should protect the initialization error route only by authentication', () => {
+    const fehlerRoute = routes.find((route) => route.path === 'initialisierungsfehler');
+
+    expect(fehlerRoute?.canActivate).toEqual([authGuard]);
+    expect(fehlerRoute?.data?.['layout']).toBeUndefined();
+    expect(fehlerRoute?.loadComponent).toBeDefined();
+  });
+
   it('should protect the password route by authentication', () => {
     const passwordRoute = routes.find((route) => route.path === 'passwort');
 
     expect(passwordRoute).toBeDefined();
-    expect(passwordRoute?.canActivate).toEqual([authGuard]);
+    expect(passwordRoute?.canActivate).toEqual([authGuard, initialisierungGuard]);
     expect(passwordRoute?.loadComponent).toBeDefined();
   });
 
@@ -55,8 +65,18 @@ describe('app routes', () => {
 
     expect(systemverwaltungRoute).toBeDefined();
     expect(systemverwaltungRoute?.data?.['bereich']).toBe('systemverwaltung');
-    expect(systemverwaltungRoute?.canActivate).toEqual([authGuard, bereichGuard, masterGuard]);
-    expect(systemverwaltungRoute?.canActivateChild).toEqual([authGuard, bereichGuard, masterGuard]);
+    expect(systemverwaltungRoute?.canActivate).toEqual([
+      authGuard,
+      initialisierungGuard,
+      bereichGuard,
+      masterGuard,
+    ]);
+    expect(systemverwaltungRoute?.canActivateChild).toEqual([
+      authGuard,
+      initialisierungGuard,
+      bereichGuard,
+      masterGuard,
+    ]);
     expect(systemverwaltungRoute?.loadComponent).toBeUndefined();
   });
 
@@ -91,7 +111,12 @@ describe('app routes', () => {
 
     expect(verwaltungRoute).toBeDefined();
     expect(verwaltungRoute?.data?.['bereich']).toBe('verwaltung');
-    expect(verwaltungRoute?.canActivate).toEqual([authGuard, bereichGuard, verwaltungGuard]);
+    expect(verwaltungRoute?.canActivate).toEqual([
+      authGuard,
+      initialisierungGuard,
+      bereichGuard,
+      verwaltungGuard,
+    ]);
     expect(verwaltungRoute?.loadComponent).toBeDefined();
   });
 });

@@ -1,0 +1,16 @@
+// pur-system/src/app/pages/initialisierungsfehler-page/initialisierungsfehler-page.scss
+
+.initialisierungsfehler-page {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+
+  &__fehler {
+    font-weight: 500;
+  }
+
+  &__aktionen {
+    gap: 8px;
+    padding: 16px;
+  }
+}

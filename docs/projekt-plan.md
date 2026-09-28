@@ -56,8 +56,8 @@ bereitgestellt.
 - Guards verwenden den Authentifizierungs-, Profil- und Initialisierungszustand. Eine geschützte Route wird erst geöffnet, wenn
   die zwingend benötigten Stammdaten geladen sind. Ein Initialisierungsfehler führt auf eine eigene Fehlerseite mit Wiederholung
   und Abmeldung.
-- Die vollständige Aufgabenteilung, Rollenmatrix und Ladereihenfolge stehen in der
-  [Firestore-Ladestrategie](./firestore-ladestrategie.md).
+- Die kompakte Verantwortungs- und Rollenübersicht steht in der [Datenladematrix](./matrix-datenladen.md).
+  Cache- und Betriebsarten stehen in der [Cache- und Betriebsartenmatrix](./matrix-cache-strategien.md).
 - Schreibvorgänge bleiben von der Ladestrategie getrennt. Offline-Schreibvorgänge und eine spätere Synchronisation werden erst
   bei einem konkreten fachlichen Bedarf ausdrücklich geplant.
 
@@ -82,9 +82,9 @@ Bedarf separat geplant. Der Produktname „Pur Mitarbeiter“ bezeichnet dabei n
 Die Mitarbeiter-App erzeugt keine zusätzliche Rollenbeschränkung. Auch dort bestimmen `erlaubteBereiche` die sichtbaren und
 erreichbaren Bereiche. Besondere administrative Routen bleiben zusätzlich durch ihre vorhandenen Rollenguards geschützt.
 
-Die konkreten Build-, Hosting- und Service-Worker-Einstellungen sind in den [PWA-Konfigurationen](./pwa-konfigurationen.md)
-zusammengefasst. Die vorgesehene Verwendung und das fachliche Online-/Offline-Verhalten stehen in den
-[PWA-Betriebsarten](./pwa-betriebsarten.md).
+Die konkreten Build-, Hosting- und Service-Worker-Einstellungen stehen in der
+[PWA-Konfigurationsmatrix](./matrix-pwa-konfigurationen.md). Die vorgesehene Verwendung und das fachliche
+Online-/Offline-Verhalten stehen in der [Cache- und Betriebsartenmatrix](./matrix-cache-strategien.md).
 
 ### Updates und Service Worker
 
@@ -307,10 +307,10 @@ abhängige Auswahl.
 
 ### Laden und Validierung
 
-Das Laden erfolgt nach der Anmeldung zentral über den `StammdatenStore`. Der `BenutzerVerwaltungStore` stellt daraus die
-abhängigen Auswahllisten zusammen; der `DatenzugriffService` bleibt als abgesicherter Ladeweg verfügbar, falls die
-Sitzungsinitialisierung nicht erfolgreich abgeschlossen wurde. Die Benutzeranlage muss Unternehmer-, Firmen- und Filialzuordnung
-serverseitig prüfen. Bestehende Benutzerprofile müssen bei der Erweiterung des Berechtigungsmodells berücksichtigt werden.
+Das Laden der sitzungsbezogenen Stammdaten erfolgt nach der Anmeldung zentral über den `AppInitialisierungService` und den
+`StammdatenLadeservice`. Der `StammdatenStore` hält die geladene Unternehmensstruktur; der `BenutzerVerwaltungStore` stellt daraus
+die abhängigen Auswahllisten zusammen. Die Benutzeranlage muss Unternehmer-, Firmen- und Filialzuordnung serverseitig prüfen.
+Bestehende Benutzerprofile müssen bei der Erweiterung des Berechtigungsmodells berücksichtigt werden.
 
 Die Auswahl ist an lesende Firebase-Abfragen und den Anlage-Payload angebunden. Office-/Filialkonten benötigen bei der Anlage
 mindestens eine vollständige Datenzuordnung; Master dürfen mit einer leeren Zugriffs-Map angelegt werden. Die Function prüft die

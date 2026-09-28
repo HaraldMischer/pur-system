@@ -6,7 +6,12 @@ import {
 } from '@angular/core';
 import { FirebaseApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
-import { getFirestore, provideFirestore } from '@angular/fire/firestore';
+import {
+  initializeFirestore,
+  memoryLocalCache,
+  persistentLocalCache,
+  provideFirestore,
+} from '@angular/fire/firestore';
 import { getFunctions, provideFunctions } from '@angular/fire/functions';
 import { provideRouter } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
@@ -25,7 +30,12 @@ export const appConfig: ApplicationConfig = {
     }),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth()),
-    provideFirestore(() => getFirestore(inject(FirebaseApp))),
+    provideFirestore(() =>
+      initializeFirestore(inject(FirebaseApp), {
+        localCache:
+          environment.firestoreCache === 'persistent' ? persistentLocalCache() : memoryLocalCache(),
+      }),
+    ),
     provideFunctions(() => getFunctions(inject(FirebaseApp), 'europe-west1')),
   ],
 };

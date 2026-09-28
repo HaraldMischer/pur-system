@@ -8,8 +8,10 @@ import {
   FIRESTORE_COLLECTION,
   FIRESTORE_DELETE_DOC,
   FIRESTORE_DOC,
-  FIRESTORE_GET_DOC,
-  FIRESTORE_GET_DOCS,
+  FIRESTORE_GET_DOC_FROM_CACHE,
+  FIRESTORE_GET_DOC_FROM_SERVER,
+  FIRESTORE_GET_DOCS_FROM_CACHE,
+  FIRESTORE_GET_DOCS_FROM_SERVER,
   FIRESTORE_ON_SNAPSHOT,
   FIRESTORE_QUERY,
   FIRESTORE_SERVER_TIMESTAMP,
@@ -25,8 +27,10 @@ describe('FirestoreDbService', () => {
   const collectionMock = vi.fn().mockReturnValue('collection-ref');
   const docMock = vi.fn().mockReturnValue('document-ref');
   const deleteDocMock = vi.fn();
-  const getDocsMock = vi.fn();
-  const getDocMock = vi.fn();
+  const getDocsFromCacheMock = vi.fn();
+  const getDocsFromServerMock = vi.fn();
+  const getDocFromCacheMock = vi.fn();
+  const getDocFromServerMock = vi.fn();
   const addDocMock = vi.fn();
   const onSnapshotMock = vi.fn();
   const queryMock = vi.fn().mockReturnValue('query-ref');
@@ -50,8 +54,10 @@ describe('FirestoreDbService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getDocsMock.mockResolvedValue({ docs: [] });
-    getDocMock.mockResolvedValue({ exists: () => false });
+    getDocsFromCacheMock.mockRejectedValue({ code: 'unavailable' });
+    getDocsFromServerMock.mockResolvedValue({ docs: [] });
+    getDocFromCacheMock.mockRejectedValue({ code: 'unavailable' });
+    getDocFromServerMock.mockResolvedValue({ exists: () => false });
     addDocMock.mockResolvedValue({ id: 'neu-123' });
     deleteDocMock.mockResolvedValue(undefined);
     onSnapshotMock.mockImplementation(
@@ -71,8 +77,10 @@ describe('FirestoreDbService', () => {
         { provide: FIRESTORE_COLLECTION, useValue: collectionMock },
         { provide: FIRESTORE_DELETE_DOC, useValue: deleteDocMock },
         { provide: FIRESTORE_DOC, useValue: docMock },
-        { provide: FIRESTORE_GET_DOC, useValue: getDocMock },
-        { provide: FIRESTORE_GET_DOCS, useValue: getDocsMock },
+        { provide: FIRESTORE_GET_DOC_FROM_CACHE, useValue: getDocFromCacheMock },
+        { provide: FIRESTORE_GET_DOC_FROM_SERVER, useValue: getDocFromServerMock },
+        { provide: FIRESTORE_GET_DOCS_FROM_CACHE, useValue: getDocsFromCacheMock },
+        { provide: FIRESTORE_GET_DOCS_FROM_SERVER, useValue: getDocsFromServerMock },
         { provide: FIRESTORE_ON_SNAPSHOT, useValue: onSnapshotMock },
         { provide: FIRESTORE_QUERY, useValue: queryMock },
         { provide: FIRESTORE_SERVER_TIMESTAMP, useValue: serverTimestampMock },
@@ -88,78 +96,200 @@ describe('FirestoreDbService', () => {
   });
 
   it('should load a collection with document ids', async () => {
-    getDocsMock.mockResolvedValue({
+    getDocsFromServerMock.mockResolvedValue({
       docs: [{ id: 'dokument-1', data: () => ({ anzeigename: 'Eintrag' }) }],
     });
     const service = TestBed.inject(FirestoreDbService);
 
-    await expect(service.loadCollection('unternehmer')).resolves.toEqual([
+    await expect(service.loadCollection('unternehmer', 'networkOnly')).resolves.toEqual([
       { id: 'dokument-1', daten: { anzeigename: 'Eintrag' } },
     ]);
     expect(trackLoadMock).toHaveBeenCalledWith(expect.any(Function));
     expect(collectionMock).toHaveBeenCalledWith(firestoreMock, 'unternehmer');
-    expect(getDocsMock).toHaveBeenCalledWith('collection-ref');
+    expect(getDocsFromServerMock).toHaveBeenCalledWith('collection-ref');
   });
 
   it('should share parallel collection loads for the same path', async () => {
     let resolveSnapshot!: (value: { docs: [] }) => void;
-    getDocsMock.mockReturnValue(
+    getDocsFromServerMock.mockReturnValue(
       new Promise<{ docs: [] }>((resolve) => {
         resolveSnapshot = resolve;
       }),
     );
     const service = TestBed.inject(FirestoreDbService);
 
-    const ersterAuftrag = service.loadCollection('unternehmer');
-    const zweiterAuftrag = service.loadCollection('unternehmer');
+    const ersterAuftrag = service.loadCollection('unternehmer', 'networkOnly');
+    const zweiterAuftrag = service.loadCollection('unternehmer', 'networkOnly');
 
     expect(ersterAuftrag).toBe(zweiterAuftrag);
     expect(trackLoadMock).toHaveBeenCalledOnce();
-    expect(getDocsMock).toHaveBeenCalledOnce();
+    expect(getDocsFromServerMock).toHaveBeenCalledOnce();
 
     resolveSnapshot({ docs: [] });
     await Promise.all([ersterAuftrag, zweiterAuftrag]);
-    await service.loadCollection('unternehmer');
+    await service.loadCollection('unternehmer', 'networkOnly');
 
     expect(trackLoadMock).toHaveBeenCalledTimes(2);
-    expect(getDocsMock).toHaveBeenCalledTimes(2);
+    expect(getDocsFromServerMock).toHaveBeenCalledTimes(2);
   });
 
   it('should load a collection filtered by an array value', async () => {
-    getDocsMock.mockResolvedValue({
+    getDocsFromServerMock.mockResolvedValue({
       docs: [{ id: 'm-1', data: () => ({ filialIds: ['b-1'] }) }],
     });
     const service = TestBed.inject(FirestoreDbService);
 
     await expect(
-      service.loadCollectionByArrayValue('unternehmer/u/firma/f/mitarbeiter', 'filialIds', 'b-1'),
+      service.loadCollectionByArrayValue(
+        'unternehmer/u/firma/f/mitarbeiter',
+        'filialIds',
+        'b-1',
+        'networkOnly',
+      ),
     ).resolves.toEqual([{ id: 'm-1', daten: { filialIds: ['b-1'] } }]);
     expect(whereMock).toHaveBeenCalledWith('filialIds', 'array-contains', 'b-1');
     expect(queryMock).toHaveBeenCalledWith('collection-ref', 'where-constraint');
-    expect(getDocsMock).toHaveBeenCalledWith('query-ref');
+    expect(getDocsFromServerMock).toHaveBeenCalledWith('query-ref');
   });
 
   it('should load an existing document', async () => {
-    getDocMock.mockResolvedValue({
+    getDocFromServerMock.mockResolvedValue({
       id: 'dokument-1',
       exists: () => true,
       data: () => ({ anzeigename: 'Eintrag' }),
     });
     const service = TestBed.inject(FirestoreDbService);
 
-    await expect(service.loadDocument('unternehmer/dokument-1')).resolves.toEqual({
+    await expect(service.loadDocument('unternehmer/dokument-1', 'networkOnly')).resolves.toEqual({
       id: 'dokument-1',
       daten: { anzeigename: 'Eintrag' },
     });
     expect(trackLoadMock).toHaveBeenCalledWith(expect.any(Function));
     expect(docMock).toHaveBeenCalledWith(firestoreMock, 'unternehmer/dokument-1');
-    expect(getDocMock).toHaveBeenCalledWith('document-ref');
+    expect(getDocFromServerMock).toHaveBeenCalledWith('document-ref');
   });
 
   it('should return null for a missing document', async () => {
     const service = TestBed.inject(FirestoreDbService);
 
-    await expect(service.loadDocument('unternehmer/unbekannt')).resolves.toBeNull();
+    await expect(service.loadDocument('unternehmer/unbekannt', 'networkOnly')).resolves.toBeNull();
+  });
+
+  it('should read exclusively from cache with cacheOnly', async () => {
+    getDocsFromCacheMock.mockResolvedValue({
+      docs: [{ id: 'cache-1', data: () => ({ quelle: 'cache' }) }],
+    });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadCollection('unternehmer', 'cacheOnly')).resolves.toEqual([
+      { id: 'cache-1', daten: { quelle: 'cache' } },
+    ]);
+    expect(getDocsFromServerMock).not.toHaveBeenCalled();
+  });
+
+  it('should use a populated cache before the server with cacheFirst', async () => {
+    getDocFromCacheMock.mockResolvedValue({
+      id: 'cache-1',
+      exists: () => true,
+      data: () => ({ quelle: 'cache' }),
+    });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadDocument('unternehmer/cache-1', 'cacheFirst')).resolves.toEqual({
+      id: 'cache-1',
+      daten: { quelle: 'cache' },
+    });
+    expect(getDocFromServerMock).not.toHaveBeenCalled();
+  });
+
+  it('should use the server when cacheFirst has no collection data', async () => {
+    getDocsFromCacheMock.mockResolvedValue({ docs: [] });
+    getDocsFromServerMock.mockResolvedValue({
+      docs: [{ id: 'server-1', data: () => ({ quelle: 'server' }) }],
+    });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadCollection('unternehmer', 'cacheFirst')).resolves.toEqual([
+      { id: 'server-1', daten: { quelle: 'server' } },
+    ]);
+    expect(getDocsFromCacheMock).toHaveBeenCalledOnce();
+    expect(getDocsFromServerMock).toHaveBeenCalledOnce();
+  });
+
+  it('should fall back to cache after a technical networkFirst server error', async () => {
+    getDocFromServerMock.mockRejectedValue({ code: 'firestore/unavailable' });
+    getDocFromCacheMock.mockResolvedValue({
+      id: 'cache-1',
+      exists: () => true,
+      data: () => ({ quelle: 'cache' }),
+    });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadDocument('unternehmer/cache-1', 'networkFirst')).resolves.toEqual({
+      id: 'cache-1',
+      daten: { quelle: 'cache' },
+    });
+  });
+
+  it('should preserve a non-technical networkFirst server error without reading cache', async () => {
+    const error = { code: 'permission-denied' };
+    getDocFromServerMock.mockRejectedValue(error);
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadDocument('unternehmer/verboten', 'networkFirst')).rejects.toBe(error);
+    expect(getDocFromCacheMock).not.toHaveBeenCalled();
+  });
+
+  it('should preserve a networkOnly server error', async () => {
+    const error = { code: 'permission-denied' };
+    getDocsFromServerMock.mockRejectedValue(error);
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadCollection('unternehmer', 'networkOnly')).rejects.toBe(error);
+    expect(getDocsFromCacheMock).not.toHaveBeenCalled();
+  });
+
+  it('should preserve a cacheOnly cache error', async () => {
+    const error = { code: 'unavailable' };
+    getDocsFromCacheMock.mockRejectedValue(error);
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadCollection('unternehmer', 'cacheOnly')).rejects.toBe(error);
+    expect(getDocsFromServerMock).not.toHaveBeenCalled();
+  });
+
+  it('should preserve the server error when cacheFirst cannot load data', async () => {
+    const error = { code: 'permission-denied' };
+    getDocsFromCacheMock.mockRejectedValue({ code: 'unavailable' });
+    getDocsFromServerMock.mockRejectedValue(error);
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadCollection('unternehmer', 'cacheFirst')).rejects.toBe(error);
+  });
+
+  it('should preserve the server error when the networkFirst cache fallback fails', async () => {
+    const error = { code: 'firestore/unavailable' };
+    getDocFromServerMock.mockRejectedValue(error);
+    getDocFromCacheMock.mockRejectedValue({ code: 'unavailable' });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(service.loadDocument('unternehmer/cache-fehlt', 'networkFirst')).rejects.toBe(
+      error,
+    );
+  });
+
+  it('should not share parallel requests with different reading strategies', async () => {
+    getDocsFromCacheMock.mockResolvedValue({ docs: [] });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await Promise.all([
+      service.loadCollection('unternehmer', 'networkOnly'),
+      service.loadCollection('unternehmer', 'cacheOnly'),
+    ]);
+
+    expect(trackLoadMock).toHaveBeenCalledTimes(2);
+    expect(getDocsFromServerMock).toHaveBeenCalledOnce();
+    expect(getDocsFromCacheMock).toHaveBeenCalledOnce();
   });
 
   it('should delete a document while tracking the write', async () => {
@@ -178,25 +308,25 @@ describe('FirestoreDbService', () => {
 
   it('should share parallel document loads for the same path', async () => {
     let resolveSnapshot!: (value: { exists: () => false }) => void;
-    getDocMock.mockReturnValue(
+    getDocFromServerMock.mockReturnValue(
       new Promise<{ exists: () => false }>((resolve) => {
         resolveSnapshot = resolve;
       }),
     );
     const service = TestBed.inject(FirestoreDbService);
 
-    const ersterAuftrag = service.loadDocument('unternehmer/dokument-1');
-    const zweiterAuftrag = service.loadDocument('unternehmer/dokument-1');
+    const ersterAuftrag = service.loadDocument('unternehmer/dokument-1', 'networkOnly');
+    const zweiterAuftrag = service.loadDocument('unternehmer/dokument-1', 'networkOnly');
 
     expect(ersterAuftrag).toBe(zweiterAuftrag);
     expect(trackLoadMock).toHaveBeenCalledOnce();
-    expect(getDocMock).toHaveBeenCalledOnce();
+    expect(getDocFromServerMock).toHaveBeenCalledOnce();
 
     resolveSnapshot({ exists: () => false });
     await Promise.all([ersterAuftrag, zweiterAuftrag]);
 
     expect(trackLoadMock).toHaveBeenCalledOnce();
-    expect(getDocMock).toHaveBeenCalledOnce();
+    expect(getDocFromServerMock).toHaveBeenCalledOnce();
   });
 
   it('should observe document updates and return the unsubscribe function', () => {

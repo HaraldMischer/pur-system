@@ -237,10 +237,12 @@ test('active employee account reads employees only within the assigned company',
   });
 
   await assertSucceeds(getDoc(doc(db, 'benutzerprofil/scoped')));
+  await assertSucceeds(getDoc(doc(db, unternehmerPath)));
+  await assertSucceeds(getDoc(doc(db, firmaPath)));
   await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
   await assertSucceeds(getDoc(doc(db, andererMitarbeiterPath)));
   await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
-  for (const path of [unternehmerPath, firmaPath, filialePath, legacyBranchPath, 'other/doc']) {
+  for (const path of [nichtZugeordneteFirmaPath, filialePath, legacyBranchPath, 'other/doc']) {
     await assertFails(getDoc(doc(db, path)));
   }
   await assertFails(getDoc(doc(db, nichtZugeordneterMitarbeiterPath)));

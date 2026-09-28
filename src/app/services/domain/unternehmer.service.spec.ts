@@ -73,7 +73,10 @@ describe('UnternehmerService', () => {
       anzeigename: 'Unternehmer Nord',
       nummer: 3,
     });
-    expect(firestoreDbServiceMock.loadDocument).toHaveBeenCalledWith('unternehmer/unternehmer-1');
+    expect(firestoreDbServiceMock.loadDocument).toHaveBeenCalledWith(
+      'unternehmer/unternehmer-1',
+      'networkOnly',
+    );
   });
 
   it('should return null for a missing assigned entrepreneur', async () => {
@@ -95,7 +98,10 @@ describe('UnternehmerService', () => {
       { id: 'b', anzeigename: 'Beta', nummer: 2 },
       { id: 'z', anzeigename: 'z', nummer: 0 },
     ]);
-    expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith('unternehmer');
+    expect(firestoreDbServiceMock.loadCollection).toHaveBeenCalledWith(
+      'unternehmer',
+      'networkOnly',
+    );
   });
 
   it('should create an active entrepreneur with server timestamps', async () => {

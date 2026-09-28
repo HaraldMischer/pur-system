@@ -1,21 +1,17 @@
 // pur-system/src/app/guards/verwaltung.guard.spec.ts
 
-import { User } from '@angular/fire/auth';
+import { WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, UrlTree } from '@angular/router';
-import { of } from 'rxjs';
 
 import { IBenutzerProfilDokument } from '../commons/models/domain/benutzer';
-import { AuthService } from '../services/firebase/auth.service';
 import { BenutzerStore } from '../stores/app/benutzer.store';
 import { verwaltungGuard } from './verwaltung.guard';
 
 describe('verwaltungGuard', () => {
-  let authServiceMock: {
-    getAuthState: ReturnType<typeof vi.fn>;
-  };
+  let benutzerProfil: WritableSignal<IBenutzerProfilDokument | null>;
   let benutzerStoreMock: {
-    loadBenutzerProfil: ReturnType<typeof vi.fn>;
+    benutzerProfil: WritableSignal<IBenutzerProfilDokument | null>;
   };
   let routerMock: {
     createUrlTree: ReturnType<typeof vi.fn>;
@@ -31,11 +27,9 @@ describe('verwaltungGuard', () => {
       erlaubteBereiche: ['verwaltung'],
       zugriffe: {},
     };
-    authServiceMock = {
-      getAuthState: vi.fn().mockReturnValue(of({ uid: 'benutzer-123' } as User)),
-    };
+    benutzerProfil = signal(profil);
     benutzerStoreMock = {
-      loadBenutzerProfil: vi.fn().mockResolvedValue(profil),
+      benutzerProfil,
     };
     routerMock = {
       createUrlTree: vi.fn().mockReturnValue({} as UrlTree),
@@ -43,7 +37,6 @@ describe('verwaltungGuard', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        { provide: AuthService, useValue: authServiceMock },
         { provide: BenutzerStore, useValue: benutzerStoreMock },
         { provide: Router, useValue: routerMock },
       ],
@@ -51,7 +44,7 @@ describe('verwaltungGuard', () => {
   });
 
   it.each(['office', 'master'] as const)('should allow an active %s user', async (userRole) => {
-    benutzerStoreMock.loadBenutzerProfil.mockResolvedValue({ ...profil, userRole });
+    benutzerProfil.set({ ...profil, userRole });
 
     const result = await TestBed.runInInjectionContext(() =>
       verwaltungGuard({} as never, {} as never),
@@ -62,7 +55,7 @@ describe('verwaltungGuard', () => {
 
   it('should redirect a branch user to dashboard', async () => {
     const dashboardUrlTree = {} as UrlTree;
-    benutzerStoreMock.loadBenutzerProfil.mockResolvedValue({
+    benutzerProfil.set({
       ...profil,
       userRole: 'filiale',
       erlaubteBereiche: ['dashboard', 'verwaltung'],
@@ -79,7 +72,7 @@ describe('verwaltungGuard', () => {
 
   it('should redirect a branch user without dashboard to an allowed area', async () => {
     const schichtplanUrlTree = {} as UrlTree;
-    benutzerStoreMock.loadBenutzerProfil.mockResolvedValue({
+    benutzerProfil.set({
       ...profil,
       userRole: 'filiale',
       erlaubteBereiche: ['verwaltung', 'schichtplan'],
@@ -96,7 +89,7 @@ describe('verwaltungGuard', () => {
 
   it('should redirect to login when no user is signed in', async () => {
     const loginUrlTree = {} as UrlTree;
-    authServiceMock.getAuthState.mockReturnValue(of(null));
+    benutzerProfil.set(null);
     routerMock.createUrlTree.mockReturnValue(loginUrlTree);
 
     const result = await TestBed.runInInjectionContext(() =>
@@ -109,7 +102,7 @@ describe('verwaltungGuard', () => {
 
   it('should redirect an inactive user to login', async () => {
     const loginUrlTree = {} as UrlTree;
-    benutzerStoreMock.loadBenutzerProfil.mockResolvedValue({ ...profil, aktiv: false });
+    benutzerProfil.set({ ...profil, aktiv: false });
     routerMock.createUrlTree.mockReturnValue(loginUrlTree);
 
     const result = await TestBed.runInInjectionContext(() =>

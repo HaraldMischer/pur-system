@@ -1,0 +1,26 @@
+<!-- pur-system/src/app/pages/initialisierungsfehler-page/initialisierungsfehler-page.html -->
+
+<section class="pur-page initialisierungsfehler-page">
+  <mat-card class="pur-card">
+    <mat-card-header>
+      <mat-card-title>Sitzung konnte nicht initialisiert werden</mat-card-title>
+      <mat-card-subtitle>Die für diesen Benutzer erforderlichen Daten fehlen.</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <p class="initialisierungsfehler-page__fehler" role="alert">{{ error() }}</p>
+      <p>Du kannst den Ladevorgang erneut versuchen oder dich sicher abmelden.</p>
+    </mat-card-content>
+
+    <mat-card-actions class="initialisierungsfehler-page__aktionen" align="end">
+      <button matButton="outlined" type="button" [disabled]="inProgress()" (click)="logout()">
+        <mat-icon aria-hidden="true">logout</mat-icon>
+        {{ wirdAbgemeldet() ? 'Abmeldung läuft' : 'Abmelden' }}
+      </button>
+      <button matButton="filled" type="button" [disabled]="inProgress()" (click)="retry()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        {{ wirdWiederholt() ? 'Wird erneut geladen' : 'Erneut versuchen' }}
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</section>

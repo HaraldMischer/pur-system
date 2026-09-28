@@ -7,6 +7,7 @@ import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
 
 import { AppToolbar } from './components/app-shell/app-toolbar/app-toolbar';
+import { AppInitialisierungService } from './services/core/app-initialisierung.service';
 import { BenutzerStore } from './stores/app/benutzer.store';
 import { App } from './app';
 
@@ -18,7 +19,6 @@ class AuthTestPage {}
 describe('App', () => {
   let benutzerStoreMock: {
     benutzerProfil: ReturnType<typeof vi.fn>;
-    initAuthState: ReturnType<typeof vi.fn>;
     isAuthenticated: ReturnType<typeof vi.fn>;
     inProgress: ReturnType<typeof vi.fn>;
     logout: ReturnType<typeof vi.fn>;
@@ -26,17 +26,22 @@ describe('App', () => {
     istInaktiv: WritableSignal<boolean>;
     istMaster: ReturnType<typeof vi.fn>;
   };
+  let appInitialisierungServiceMock: {
+    init: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     benutzerStoreMock = {
       benutzerProfil: vi.fn().mockReturnValue(null),
-      initAuthState: vi.fn(),
       isAuthenticated: vi.fn().mockReturnValue(false),
       inProgress: vi.fn().mockReturnValue(false),
       logout: vi.fn().mockResolvedValue(undefined),
       darfBereichNutzen: vi.fn().mockReturnValue(true),
       istInaktiv: signal(false),
       istMaster: vi.fn().mockReturnValue(true),
+    };
+    appInitialisierungServiceMock = {
+      init: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -49,6 +54,7 @@ describe('App', () => {
             data: { layout: 'auth' },
           },
         ]),
+        { provide: AppInitialisierungService, useValue: appInitialisierungServiceMock },
         { provide: BenutzerStore, useValue: benutzerStoreMock },
       ],
     }).compileComponents();
@@ -60,10 +66,10 @@ describe('App', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('should initialize the auth state', () => {
+  it('should initialize the app session', () => {
     TestBed.createComponent(App);
 
-    expect(benutzerStoreMock.initAuthState).toHaveBeenCalledOnce();
+    expect(appInitialisierungServiceMock.init).toHaveBeenCalledOnce();
   });
 
   it('should render the app shell', () => {

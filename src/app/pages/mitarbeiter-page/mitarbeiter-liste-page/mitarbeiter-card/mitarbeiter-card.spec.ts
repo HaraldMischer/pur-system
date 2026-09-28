@@ -8,6 +8,8 @@ import { MitarbeiterCard } from './mitarbeiter-card';
 describe('MitarbeiterCard', () => {
   const mitarbeiter: IMitarbeiterEintrag = {
     id: 'm-1',
+    unternehmerId: 'u-1',
+    firmaId: 'f-1',
     person: {
       vorname: 'Mia',
       nachname: 'Muster',

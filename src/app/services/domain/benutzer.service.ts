@@ -2,6 +2,7 @@
 
 import { Injectable, inject } from '@angular/core';
 
+import { environment } from '../../../environments/environment';
 import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
@@ -13,6 +14,7 @@ import {
   TBenutzerZugriffe,
   TUserRole,
 } from '../../commons/models/domain/benutzer';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { buildErlaubteBereiche } from '../../commons/utils/benutzer/erlaubte-bereiche';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 
@@ -34,12 +36,17 @@ export class BenutzerService {
    * Lädt das Benutzerprofil für die übergebene Firebase-Auth-UID.
    *
    * @param uid - UID des angemeldeten Firebase-Benutzers.
+   * @param strategie - Datenquellenstrategie für das eigene Benutzerprofil.
    * @returns Das normalisierte Benutzerprofil oder `null`, wenn kein Profil existiert.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
-  async getBenutzerProfil(uid: string): Promise<IBenutzerProfilDokument | null> {
+  async getBenutzerProfil(
+    uid: string,
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.benutzerprofil,
+  ): Promise<IBenutzerProfilDokument | null> {
     const dokument = await this.firestoreDbService.loadDocument<TBenutzerProfilRohdaten>(
       FIRESTORE_DOCUMENT_PATHS.benutzerprofil(uid),
+      strategie,
     );
 
     if (!dokument) {
@@ -74,12 +81,16 @@ export class BenutzerService {
   /**
    * Lädt alle Benutzerprofile für die Systemverwaltung.
    *
+   * @param strategie - Datenquellenstrategie für die Benutzerprofile.
    * @returns Die nach Anzeigename sortierten Profile einschließlich ihrer Dokument-ID als UID.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
-  async loadBenutzerProfile(): Promise<IBenutzerProfilEintrag[]> {
+  async loadBenutzerProfile(
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+  ): Promise<IBenutzerProfilEintrag[]> {
     const dokumente = await this.firestoreDbService.loadCollection<TBenutzerProfilRohdaten>(
       FIRESTORE_COLLECTION_PATHS.benutzerprofile,
+      strategie,
     );
 
     return dokumente

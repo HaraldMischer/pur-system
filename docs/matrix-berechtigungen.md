@@ -1,12 +1,10 @@
-<!-- pur-system/docs/berechtigungs-matrizen.md -->
+<!-- pur-system/docs/matrix-berechtigungen.md -->
 
-# Berechtigungsmatrizen
+# Matrix: Berechtigungen
 
-Dieses Dokument bietet einen schnellen Überblick über die zentralen Berechtigungen der Anwendung. Es wird gemeinsam mit der
-Anwendung erweitert, sobald neue Rollen, App-Bereiche, Collections oder fachliche Zugriffsbedingungen hinzukommen.
-
-Die vollständigen fachlichen Bedingungen und Sonderfälle stehen im [Projektplan](./projekt-plan.md). Der aktuelle
-Implementierungs-, Test- und Deploymentstand steht im [Projektstand](./projekt-stand.md).
+Diese Übersicht zeigt die zentralen Datenrechte und App-Bereichsfreigaben. Vollständige fachliche Bedingungen und Sonderfälle
+stehen im [Projektplan](./projekt-plan.md). Der aktuelle Implementierungs-, Test- und Deploymentstand steht im
+[Projektstand](./projekt-stand.md).
 
 ## 1. Collection-Matrix
 
@@ -31,8 +29,8 @@ Die Collection-Matrix zeigt, welche Aktionen eine Benutzerrolle grundsätzlich a
 | ------------------------------------------------------------------------------ | -------- | --------- | ------------------------ | ------------- | ------------ |
 | `benutzerprofil/{uid}`                                                         | R/C/U    | R `eigen` | R `eigen`                | R `eigen`     | –            |
 | `benutzerprofil/{uid}/{subcollection}/{document=**}`                           | R/C/U/D  | –         | –                        | –             | –            |
-| `unternehmer/{unternehmerId}`                                                  | R/C/U/D  | R         | R                        | –             | –            |
-| `unternehmer/{unternehmerId}/firma/{firmaId}`                                  | R/C/U/D  | R/U       | R                        | –             | –            |
+| `unternehmer/{unternehmerId}`                                                  | R/C/U/D  | R         | R                        | R             | –            |
+| `unternehmer/{unternehmerId}/firma/{firmaId}`                                  | R/C/U/D  | R/U       | R                        | R             | –            |
 | `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}`               | R/C/U/D  | R/U       | R                        | –             | –            |
 | `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/{document=**}` | R/C/U    | R         | R                        | –             | –            |
 | `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`      | R/C/U/D  | R/C/U     | R `Firma`, C/U `Filiale` | R `Firma`     | –            |
@@ -55,7 +53,7 @@ Die Collection-Matrix zeigt, welche Aktionen eine Benutzerrolle grundsätzlich a
   gezielt die Mitarbeiter der eigenen Filiale und darf nur diese anlegen oder bearbeiten.
 - Mit einem Benutzerkonto verknüpfte Mitarbeiter dürfen nicht gelöscht werden.
 - `filiale` ist genau einem Unternehmer, einer Firma und einer Filiale zugeordnet.
-- `mitarbeiter` liest fachliche Mitarbeiter der im Profil zugewiesenen Firma.
+- `mitarbeiter` liest den zugeordneten Unternehmer, die zugeordnete Firma und deren fachliche Mitarbeiter.
 - `master` verwaltet fachliche Mitarbeiter aller Firmen.
 - Legacy-Konten sind authentifizierte Konten ohne `benutzerprofil` und greifen ausschließlich auf `purCustomers` und `purUser`
   einschließlich ihrer Untercollections zu.

@@ -38,7 +38,7 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `Pur-System`.
 - Das Layout reagiert auf kleinere Bildschirmbreiten.
 - Die Sidebar enthält den Bereich Systemverwaltung für berechtigte Master-Benutzer.
-- Die Sidebar zeigt die zentral in `app-version.constant.ts` gepflegte Anwendungsversion. Der aktuelle Stand ist `1.0.0`.
+- Die Sidebar zeigt die zentral in `app.constants.ts` gepflegte Anwendungsversion. Der aktuelle Stand ist `1.0.0`.
 
 ## Seiten und Routen
 
@@ -63,29 +63,50 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Firebase und AngularFire sind installiert.
 - Firebase-Konfiguration liegt unter `src/environments`.
 - Firebase App, Auth, Firestore und Functions werden in `app.config.ts` bereitgestellt.
-- Firestore verwendet derzeit ausschließlich den standardmäßigen nicht persistenten Speicher; eine dauerhafte lokale
-  Firestore-Datenhaltung ist nicht aktiviert.
+- Die Cache-Art wird beim App-Start aus der Auslieferungsvariante gewählt. Pur Filiale verwendet
+  `persistentLocalCache`; Pur Master, Pur Office, Pur Mitarbeiter und die Entwicklungsumgebung verwenden `memoryLocalCache`.
 - Firebase Tokens für Auth sowie lesende, beobachtende und schreibende Firestore-Zugriffe sind vorbereitet.
+- Fachliche Ladeprotokolle sind über einen zentralen Schalter ausschließlich für `localhost`, `127.0.0.1` und `::1` freigegeben.
+  Dadurch zeigen auch lokal gestartete Produktionsbuilds ihren Datenfluss; auf den veröffentlichten Hosting-Adressen bleiben die
+  Protokolle deaktiviert.
 - Technische Firebase-Anbindungen liegen unter `src/app/services/firebase`; fachliche Services liegen getrennt unter
   `src/app/services/domain`.
-- Der technische `FirestoreDbService` kapselt Collection-Lesen, Dokument-Lesen, Dokumentbeobachtung, Anlegen,
-  Merge-Aktualisieren, Server-Zeitstempel und den Angular-Injection-Kontext.
+- Der technische `FirestoreDbService` kapselt Collection-, Query- und Dokument-Lesen mit den expliziten Strategien
+  `cacheFirst`, `networkOnly`, `networkFirst` und `cacheOnly`, außerdem Dokumentbeobachtung, Anlegen, Merge-Aktualisieren,
+  Server-Zeitstempel und den Angular-Injection-Kontext. Ein `networkFirst`-Rückfall auf den Cache erfolgt nur bei technischen
+  Serverfehlern; Berechtigungsfehler werden unverändert weitergegeben.
 - Firestore-Collection- und Dokumentpfade für Benutzerprofile, Unternehmer, Firmen und Filialen werden zentral in
   `firebase.constants.ts` erzeugt.
 - `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
   sondern greifen über den `FirestoreDbService` zu.
-- Der app-weite `StammdatenStore` initialisiert nach dem Benutzerprofil einmalig die für die Sitzung erlaubten Unternehmer-,
-  Firmen- und Filialdaten; Master laden zusätzlich alle Benutzerprofile.
+- Der `AppInitialisierungService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
+  Profilbeobachtung des `BenutzerStore`, stellt die Zustände `idle`, `loading`, `ready` und `error` bereit und bietet bei Fehlern
+  eine Wiederholung an. Änderungen an Rolle, Zugriffen oder persönlicher Mitarbeiterzuordnung grenzen einen neuen
+  Initialisierungskontext ab; veraltete Ladeergebnisse werden nicht übernommen.
+- Der `BenutzerStore` beobachtet ausschließlich Firebase Auth und das eigene Benutzerprofil. Der `StammdatenLadeservice` bildet
+  zentral aus `userRole`, `zugriffe` und der persönlichen Mitarbeiterzuordnung den zwingenden Ladeplan. Er beauftragt den
+  rollenunabhängigen `StammdatenStore` sowie den `MitarbeiterStore`; erst nach Abschluss aller Aufträge meldet der
+  `AppInitialisierungService` die Sitzung als `ready`.
+- Master laden die vollständige Unternehmenshierarchie, alle Benutzerprofile und die Mitarbeiter aller Firmen. Office lädt die
+  zugeordneten Hierarchiedaten und alle Mitarbeiter der zugeordneten Firmen. Filiale lädt ihre eindeutige Hierarchie und nur die
+  Mitarbeiter mit ihrer Filial-ID. Mitarbeiter lädt den zugeordneten Unternehmer und die Firma sowie alle Mitarbeiter dieser
+  Firma. Fehlende oder widersprüchliche Pflichtzuordnungen brechen die Initialisierung ab.
 - Verwaltung, Systemverwaltung und Datenzugriffsauswahl verwenden den gemeinsamen Sitzungsbestand. Er wird bei Neuanlagen direkt
   aktualisiert und bei Logout oder Benutzerwechsel zurückgesetzt.
 - Der `GlobalBannerService` verwaltet einen zentralen Bannerzustand mit Darstellungsart, Text und Quelle. Die
   `GlobalBanner`-Component ist unterhalb der Toolbar in die App-Shell eingebunden. Ein neuer Banner ersetzt den bisherigen;
   `clearIfSource()` verhindert, dass eine fachliche Quelle den Hinweis einer anderen Quelle entfernt.
-- Offline-Ladestrategien, Pending-Sync, Migrationen und Batch-Schreibvorgänge aus der Altanwendung wurden bewusst noch nicht
-  übernommen.
-- Fachliche Daten werden derzeit in allen Auslieferungsvarianten ausschließlich online verwendet. Eine dauerhafte
-  Offline-Speicherung fachlicher Daten, Offline-Änderungen und eine spätere Synchronisation sind nicht umgesetzt. Die
-  Offline-App-Shell aller vier PWA-Builds bleibt davon getrennt.
+- Pur Filiale lädt das Benutzerprofil mit `networkFirst` und Stammdaten mit `cacheFirst`. Alle anderen Varianten verwenden für
+  beide Datenarten `networkOnly`; erzwungene Wiederholungen verwenden ebenfalls `networkOnly`. `cacheOnly` ist technisch
+  vorhanden, aber keinem fachlichen Ablauf zugewiesen.
+- Abmeldung und Benutzerwechsel setzen die sitzungsbezogenen Stores und laufenden Ladeaufträge zurück. Der persistente
+  Firestore-Cache von Pur Filiale bleibt gerätebezogen erhalten und wird anschließend nur über den Ladeplan des neu bestätigten
+  Profils gelesen.
+- Ein aus dem Cache gemeldetes Benutzerprofil startet noch keine Stammdateninitialisierung, solange dessen initialer
+  `networkFirst`-Ladevorgang nicht abgeschlossen ist. Dadurch kann ein gecachter Profilstand die Sitzung nicht vorzeitig als
+  `ready` freigeben.
+- Offline-Schreibvorgänge, Pending-Sync, Migrationen und Batch-Schreibvorgänge aus der Altanwendung wurden bewusst noch nicht
+  übernommen. Die Offline-App-Shell aller vier PWA-Builds bleibt davon getrennt.
 - Es gibt keine öffentliche Selbstregistrierung.
 
 ## Login und Benutzerberechtigungen
@@ -124,6 +145,13 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Der Bereich Systemverwaltung ist im Client durch `erlaubteBereiche` und `userRole: master` geschützt.
 - Verweigert ein Bereichs- oder Rollenguard eine Route, wird bevorzugt zum erlaubten Dashboard und andernfalls zum ersten für die
   Rolle tatsächlich erreichbaren Bereich umgeleitet. Ist kein Bereich erreichbar, führt die Ausweichnavigation zum Login.
+- Geschützte Fachrouten prüfen nacheinander Firebase-Authentifizierung, Sitzungsinitialisierung, Bereichsfreigabe und
+  gegebenenfalls die fachliche Rolle. Die Guards verwenden das zentral geladene Benutzerprofil und starten keine eigenen Profil-
+  oder Stammdatenabfragen. Während der Initialisierung wartet die Navigation auf deren Abschluss.
+- Schlägt ein zwingender Ladevorgang fehl, führt die Navigation innerhalb der App-Shell zur Route `/initialisierungsfehler` und
+  erhält die ursprünglich angeforderte URL. Dort kann der Benutzer die Initialisierung wiederholen oder sich abmelden. Nach
+  einer erfolgreichen Wiederholung wird die ursprüngliche Route geöffnet; die Fehlerroute selbst setzt nur eine
+  Firebase-Anmeldung voraus und erzeugt deshalb keine Initialisierungsschleife.
 - Datenstruktur-Anlage und Benutzerverwaltung besitzen getrennte Unterrouten mit eigenen Toolbar-Titeln. Der bisherige gemeinsame
   Seitencontainer wurde entfernt; die `BenutzerPage` enthält Benutzeranlage und Bearbeitung vorhandener Benutzerprofile.
 - Das Formular gliedert sich in Zugangsdaten, erlaubte Bereiche und Datenzugriff. Alle Gruppen verwenden `div`-Elemente mit
@@ -182,16 +210,23 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Push-Benachrichtigungen werden bei fachlichem Bedarf separat geplant. `erlaubteBereiche` steuert nur verfügbare App-Funktionen.
 - Das fachliche Mitarbeiter-Domänenmodell und sein Datenzugriff sind lokal umgesetzt. Mitarbeiter liegen unter
   `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`. Der Service lädt, erstellt, aktualisiert und löscht
-  Mitarbeiter; der Domain-Store bildet Lade-, Schreib- und Fehlerzustände sowie den aktuellen Firmenkontext ab.
-- Die lokalen Firestore Rules erlauben Office- und Filialkonten die vereinbarten Lese-, Anlage- und Aktualisierungszugriffe
+  Mitarbeiter. Geladene Einträge behalten ihre Unternehmer- und Firmen-ID als fachlichen Kontext.
+- Der `MitarbeiterStore` hält mehrere Firmen- und Filialkontexte gleichzeitig. Jeder Kontext besitzt eigene Lade-, Abschluss- und
+  Fehlerzustände; dadurch bleibt auch ein vollständig geladenes leeres Ergebnis eindeutig. Identische laufende oder bereits
+  geladene Kontexte werden nicht erneut geladen. Ein zentraler Sitzungsreset verwirft sämtliche Mitarbeiterkontexte und schützt
+  vor der Übernahme veralteter Ladeergebnisse.
+- Die produktiven Firestore Rules erlauben Office- und Filialkonten die vereinbarten Lese-, Anlage- und Aktualisierungszugriffe
   innerhalb ihres Firmen- beziehungsweise Filialbereichs. Filialkonten dürfen Mitarbeiter ihrer Firma lesen, laden mit ihrer
   Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
   Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
   `erlaubteBereiche`. Die Löschmethode ist in Service und Store vorhanden; verknüpfte Mitarbeiter sind durch Rules vor Löschung
-  geschützt. Eine Löschaktion in der Oberfläche ist noch nicht angebunden. Diese Änderungen sind noch nicht produktiv deployed.
+  geschützt. Eine Löschaktion in der Oberfläche ist noch nicht angebunden. Die aktuellen Rules wurden am 28.09.2026 produktiv
+  deployed.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie übernimmt eindeutige Unternehmer- und Firmenzuordnungen
-  automatisch, erlaubt andernfalls die Auswahl aus den geladenen Stammdaten und zeigt Mitarbeiter als kompakte Cards mit Rolle,
-  Aktivstatus und Anzahl der Filialzuordnungen. Lade-, Fehler- und Leerzustände werden separat dargestellt.
+  automatisch, erlaubt andernfalls die Auswahl aus den geladenen Stammdaten und zeigt ausschließlich den ausgewählten Firmen-
+  beziehungsweise Filialkontext. Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden
+  als kompakte Cards mit Rolle, Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben
+  je Kontext unterscheidbar.
 - Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
   Bearbeitungsdialog. Beide Reactive Forms erfassen Person, vollständige Adresse, optionale Kontakt- und Personendaten,
   betriebliche Rolle und optionale Filialzuordnungen. Der Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer,
@@ -270,8 +305,9 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Das eigene Masterprofil kann nicht deaktiviert werden. Die Benutzerrolle ist für sämtliche Profile unveränderlich. Dieser
   Selbstschutz sowie die weiteren unveränderlichen Profilfelder sind zusätzlich durch Firestore Rules abgesichert.
 - Änderungen am aktuell angemeldeten Profil werden über den Echtzeit-Listener unmittelbar in den lokalen Benutzer-Store
-  übernommen. Bei einer Deaktivierung werden die sitzungsbezogenen Stammdaten zurückgesetzt und der `GlobalBannerService` zeigt
-  unter der Toolbar den nicht ausblendbaren Hinweis „Dieses Profil ist inaktiv. Bitte wende dich an einen Administrator.“. Ein
+  übernommen. Bei einer Deaktivierung setzt der `AppInitialisierungService` die sitzungsbezogenen Stammdaten zurück und der
+  `GlobalBannerService` zeigt unter der Toolbar den nicht ausblendbaren Hinweis „Dieses Profil ist inaktiv. Bitte wende dich an
+  einen Administrator.“. Ein
   Listenerfehler verändert den zuletzt bestätigten Aktivstatus nicht. Es erfolgt keine automatische Abmeldung; die vorhandenen
   Guards sichern neue fachliche Navigationen weiterhin ab, während die authentifizierte Passwortseite erreichbar bleibt.
 
@@ -413,7 +449,7 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   zugehörige Firebase-Hosting-Site veröffentlicht.
 - Master-, Office-, Filial- und Mitarbeiter-Build verwenden jeweils eine eigene Produktkennung im Web-App-Manifest. Die
   vorhandenen PWA- und Maskable-Icons werden gemeinsam genutzt.
-- Die neue Angular-Konfiguration `mitarbeiter` ergänzt den Produktionsbuild zur Kombination `production,mitarbeiter`. Sie erzeugt
+- Die neue Angular-Konfiguration `mitarbeiter` ergänzt die Office-Basiskonfiguration zur Kombination `office,mitarbeiter`. Sie erzeugt
   `dist/pur-mitarbeiter/browser` mit aktiviertem Angular Service Worker, eigenem Produktions-Environment und dem Manifest „Pur
   Mitarbeiter“. `npm run pwa:pur-mitarbeiter` stellt den Build lokal auf Port `8083` bereit.
 - Das Hosting-Target `mitarbeiter` ist mit der Firebase-Site `pur-mitarbeiter` verbunden. Der Hosting-Block verwendet
@@ -426,8 +462,8 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   produktiven Header wurden nach dem Mitarbeiter-Deployment für `/`, `/login`, Manifest, `ngsw.json`, `ngsw-worker.js` und eine
   gehashte Hauptdatei geprüft.
 - Eine Übersicht der tatsächlich eingerichteten lokalen und produktiven Varianten steht in den
-  [PWA-Konfigurationen](./pwa-konfigurationen.md). Die vorgesehene Verwendung und das fachliche Online-/Offline-Verhalten stehen
-  in den [PWA-Betriebsarten](./pwa-betriebsarten.md).
+  [PWA-Konfigurationen](./matrix-pwa-konfigurationen.md). Die vorgesehene Verwendung und das fachliche
+  Online-/Offline-Verhalten stehen in der [Cache- und Betriebsartenmatrix](./matrix-cache-strategien.md).
 - Bei einer fehlerhaften PWA-Version wird ausschließlich die betroffene Hosting-Site in der Firebase Console auf die letzte
   funktionierende Veröffentlichung zurückgesetzt. Hilft dieses Rollback wegen eines fehlerhaften Service Workers nicht, wird als
   letzte Notfallmaßnahme für die betroffene Site der von Angular erzeugte `safety-worker.js` unter der bisherigen URL
@@ -466,21 +502,24 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Die ursprüngliche Rolle `mitarbeiter` und ihre freie Bereichszuweisung sind in Function und Rules deployed. Die neue eindeutige
   Verknüpfung mit einem Firma-Mitarbeiter ist lokal umgesetzt. Die aktualisierten Rules erlauben die Bearbeitung von Anzeigename,
   Aktivstatus und Bereichen eines verknüpften Mitarbeiterprofils, verhindern aber Änderungen an `zugriffe` und
-  `firmaMitarbeiterId` und gewähren Lesezugriff auf Mitarbeiter der zugewiesenen Firma. Diese Rules-Änderung ist noch nicht
-  produktiv deployed.
+  `firmaMitarbeiterId` und gewähren Lesezugriff auf die zugeordnete Unternehmensstruktur sowie die Mitarbeiter der zugewiesenen
+  Firma. Diese Rules-Änderung wurde am 28.09.2026 produktiv deployed und mit einem realen Mitarbeiterkonto geprüft.
 - Der Git-Push der aktuellen Änderungen ist kein Firebase-Deployment.
 
 ## Tests und Build
 
-Am 27.09.2026 für den aktuellen Stand erfolgreich geprüft:
+Am 28.09.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 431 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
+- 498 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
   konsistenter
   Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,
   Filial- und Benutzerprofil-Bearbeitung, fachlichem Mitarbeiter-Service und -Store, Mitarbeiterlistenroute, Rollenprüfung und
-  Mitarbeiter-Cards, Anlage- und Bearbeitungsdialogen, Echtzeitbeobachtung des eigenen Profils sowie globalem Banner-Service,
-  Inaktivhinweis und sichtbarer Anwendungsversion.
+  Mitarbeiter-Cards, Anlage- und Bearbeitungsdialogen, mehreren gleichzeitig gehaltenen Mitarbeiterkontexten,
+  benutzerabhängigen Stammdatenladeplänen für alle vier Rollen, Echtzeitbeobachtung des eigenen Profils, zentralem
+  Sitzungsstart mit Initialisierungszustand, wartender Navigation, Fehlerseite, Wiederholung und Rücknavigation sowie globalem
+  Banner-Service, Inaktivhinweis, sichtbarer Anwendungsversion, allen vier Firestore-Lesestrategien, buildabhängiger Cache-Art,
+  erzwungenem Server-Neuladen und Benutzertrennung.
 - Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
 - Datenstruktur-Anlage und Benutzerverwaltung wurden unter ihren getrennten Systemverwaltungsrouten auf Desktop und einem
   kleinen Viewport erfolgreich manuell geprüft.
@@ -498,8 +537,13 @@ Am 27.09.2026 für den aktuellen Stand erfolgreich geprüft:
   jeweils passende Manifest, zehn erreichbare App-Icons, lokale Roboto- und Material-Icon-Schriften, `ngsw.json`,
   `ngsw-worker.js` und die Ressourcengruppen `app`, `fonts` und `assets`. Die Builds benötigen in der Codex-Umgebung Zugriff
   außerhalb der Sandbox, weil der native `esbuild`-Prozess innerhalb der eingeschränkten Umgebung mit Exit-Code 134 beendet wird.
-  Der aktuelle Standard-Produktionsbuild ist erfolgreich. Das initiale Bundle liegt bei rund 1,58 MB. Das zugehörige Warnlimit
-  beträgt 1,60 MB und das Fehlerlimit 1,70 MB.
+  Alle vier Produktionsbuilds sind für den aktuellen Stand erfolgreich. Das initiale Bundle liegt bei rund 1,66 MB und
+  überschreitet damit das Warnlimit von 1,60 MB um rund 60 kB; das Fehlerlimit von 1,70 MB wird nicht überschritten.
+- Rollenladepläne, Zustandswechsel, Benutzertrennung, Cache-Auswahl und Lesestrategien sind automatisiert geprüft. Die manuelle
+  Abnahme mit realen Master-, Office-, Filial- und Mitarbeiterkonten war erfolgreich. Pur Filiale wurde zusätzlich mit
+  persistentem Cache, Offline-Neustart, fehlendem Cache, verständlicher Fehleranzeige und erzwungenem Server-Neuladen geprüft.
+  Auch der Wechsel zwischen zwei Benutzern übernahm keine Daten des vorherigen Sitzungskontexts. Umsetzungstodo 16 ist damit
+  abgeschlossen.
 - Die Mitarbeiter-App-Shell wurde lokal nach vollständigem Beenden des Webservers in Desktop- und mobiler Viewport-Größe
   erfolgreich aus dem Service-Worker-Cache neu geladen. Die veröffentlichte Login-Seite wurde ohne Browserfehler geladen. Pur
   Mitarbeiter wurde anschließend erfolgreich auf dem Desktop und auf einem physischen iPhone installiert und jeweils als

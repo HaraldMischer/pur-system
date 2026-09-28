@@ -3,13 +3,16 @@
 import { EnvironmentInjector, Injectable, inject, runInInjectionContext } from '@angular/core';
 import { DocumentData, FieldValue, Firestore } from '@angular/fire/firestore';
 
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import {
   FIRESTORE_ADD_DOC,
   FIRESTORE_COLLECTION,
   FIRESTORE_DELETE_DOC,
   FIRESTORE_DOC,
-  FIRESTORE_GET_DOC,
-  FIRESTORE_GET_DOCS,
+  FIRESTORE_GET_DOC_FROM_CACHE,
+  FIRESTORE_GET_DOC_FROM_SERVER,
+  FIRESTORE_GET_DOCS_FROM_CACHE,
+  FIRESTORE_GET_DOCS_FROM_SERVER,
   FIRESTORE_ON_SNAPSHOT,
   FIRESTORE_QUERY,
   FIRESTORE_SERVER_TIMESTAMP,
@@ -24,6 +27,16 @@ export interface IFirestoreDokument<T extends DocumentData> {
   daten: T;
 }
 
+const TECHNISCHE_SERVERFEHLER = new Set([
+  'aborted',
+  'cancelled',
+  'deadline-exceeded',
+  'internal',
+  'resource-exhausted',
+  'unavailable',
+  'unknown',
+]);
+
 @Injectable({ providedIn: 'root' })
 export class FirestoreDbService {
   // ===== Interne Dependency Injection =========
@@ -34,8 +47,10 @@ export class FirestoreDbService {
   private readonly collection = inject(FIRESTORE_COLLECTION);
   private readonly deleteDoc = inject(FIRESTORE_DELETE_DOC);
   private readonly doc = inject(FIRESTORE_DOC);
-  private readonly getDoc = inject(FIRESTORE_GET_DOC);
-  private readonly getDocs = inject(FIRESTORE_GET_DOCS);
+  private readonly getDocFromCache = inject(FIRESTORE_GET_DOC_FROM_CACHE);
+  private readonly getDocFromServer = inject(FIRESTORE_GET_DOC_FROM_SERVER);
+  private readonly getDocsFromCache = inject(FIRESTORE_GET_DOCS_FROM_CACHE);
+  private readonly getDocsFromServer = inject(FIRESTORE_GET_DOCS_FROM_SERVER);
   private readonly onSnapshot = inject(FIRESTORE_ON_SNAPSHOT);
   private readonly query = inject(FIRESTORE_QUERY);
   private readonly loadingService = inject(LoadingService);
@@ -54,15 +69,30 @@ export class FirestoreDbService {
    * Lädt alle Dokumente einer Firestore-Collection.
    *
    * @param collectionPath - Vollständiger Pfad der Collection.
+   * @param strategie - Festgelegte Datenquelle und Rückfallstrategie.
    * @returns Dokument-IDs und unveränderte Firestore-Daten.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
-  loadCollection<T extends DocumentData>(collectionPath: string): Promise<IFirestoreDokument<T>[]> {
-    return this.getOrCreateLeseauftrag(`collection:${collectionPath}`, () => {
+  loadCollection<T extends DocumentData>(
+    collectionPath: string,
+    strategie: TFirestoreLesestrategie,
+  ): Promise<IFirestoreDokument<T>[]> {
+    return this.getOrCreateLeseauftrag(`collection:${collectionPath}:${strategie}`, () => {
       return this.loadingService.trackLoad(async () => {
         const snapshot = await this.runInContext(() => {
           const collectionRef = this.collection(this.firestore, collectionPath);
-          return this.getDocs(collectionRef);
+          return this.loadMitStrategie(
+            strategie,
+            () => {
+              return this.getDocsFromCache(collectionRef);
+            },
+            () => {
+              return this.getDocsFromServer(collectionRef);
+            },
+            (wert) => {
+              return wert.docs.length > 0;
+            },
+          );
         });
 
         return snapshot.docs.map((dokument) => {
@@ -81,6 +111,7 @@ export class FirestoreDbService {
    * @param collectionPath - Vollständiger Pfad der Collection.
    * @param feld - Name des zu filternden Array-Felds.
    * @param wert - Im Array enthaltener Vergleichswert.
+   * @param strategie - Festgelegte Datenquelle und Rückfallstrategie.
    * @returns Dokument-IDs und unveränderte Firestore-Daten.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
@@ -88,14 +119,26 @@ export class FirestoreDbService {
     collectionPath: string,
     feld: string,
     wert: unknown,
+    strategie: TFirestoreLesestrategie,
   ): Promise<IFirestoreDokument<T>[]> {
-    const auftragKey = `collection-array:${collectionPath}:${feld}:${JSON.stringify(wert)}`;
+    const auftragKey = `collection-array:${collectionPath}:${feld}:${JSON.stringify(wert)}:${strategie}`;
     return this.getOrCreateLeseauftrag(auftragKey, () => {
       return this.loadingService.trackLoad(async () => {
         const snapshot = await this.runInContext(() => {
           const collectionRef = this.collection(this.firestore, collectionPath);
           const queryRef = this.query(collectionRef, this.where(feld, 'array-contains', wert));
-          return this.getDocs(queryRef);
+          return this.loadMitStrategie(
+            strategie,
+            () => {
+              return this.getDocsFromCache(queryRef);
+            },
+            () => {
+              return this.getDocsFromServer(queryRef);
+            },
+            (ergebnis) => {
+              return ergebnis.docs.length > 0;
+            },
+          );
         });
 
         return snapshot.docs.map((dokument) => {
@@ -112,17 +155,30 @@ export class FirestoreDbService {
    * Lädt ein einzelnes Firestore-Dokument.
    *
    * @param documentPath - Vollständiger Pfad des Dokuments.
+   * @param strategie - Festgelegte Datenquelle und Rückfallstrategie.
    * @returns Dokument-ID und Daten oder `null`, wenn das Dokument nicht existiert.
    * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
    */
   loadDocument<T extends DocumentData>(
     documentPath: string,
+    strategie: TFirestoreLesestrategie,
   ): Promise<IFirestoreDokument<T> | null> {
-    return this.getOrCreateLeseauftrag(`document:${documentPath}`, () => {
+    return this.getOrCreateLeseauftrag(`document:${documentPath}:${strategie}`, () => {
       return this.loadingService.trackLoad(async () => {
         const snapshot = await this.runInContext(() => {
           const documentRef = this.doc(this.firestore, documentPath);
-          return this.getDoc(documentRef);
+          return this.loadMitStrategie(
+            strategie,
+            () => {
+              return this.getDocFromCache(documentRef);
+            },
+            () => {
+              return this.getDocFromServer(documentRef);
+            },
+            (wert) => {
+              return wert.exists();
+            },
+          );
         });
 
         if (!snapshot.exists()) {
@@ -256,6 +312,53 @@ export class FirestoreDbService {
     });
     this.laufendeLeseauftraege.set(key, auftrag);
     return auftrag;
+  }
+
+  private async loadMitStrategie<T>(
+    strategie: TFirestoreLesestrategie,
+    loadCache: () => Promise<T>,
+    loadServer: () => Promise<T>,
+    hatCacheWert: (wert: T) => boolean,
+  ): Promise<T> {
+    if (strategie === 'networkOnly') {
+      return loadServer();
+    }
+    if (strategie === 'cacheOnly') {
+      return loadCache();
+    }
+    if (strategie === 'cacheFirst') {
+      try {
+        const cacheWert = await loadCache();
+        if (hatCacheWert(cacheWert)) {
+          return cacheWert;
+        }
+      } catch {
+        // Ein fehlender Cache-Eintrag wird anschließend vom Server geladen.
+      }
+      return loadServer();
+    }
+
+    try {
+      return await loadServer();
+    } catch (error: unknown) {
+      if (!this.istTechnischerServerfehler(error)) {
+        throw error;
+      }
+      try {
+        return await loadCache();
+      } catch {
+        throw error;
+      }
+    }
+  }
+
+  private istTechnischerServerfehler(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null || !('code' in error)) {
+      return false;
+    }
+
+    const code = String(error.code).replace(/^firestore\//, '');
+    return TECHNISCHE_SERVERFEHLER.has(code);
   }
 
   private runInContext<T>(aktion: () => T): T {

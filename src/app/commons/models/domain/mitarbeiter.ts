@@ -37,6 +37,8 @@ export interface IMitarbeiterAnlageErgebnis {
 
 export interface IMitarbeiterEintrag extends IMitarbeiterAnlage {
   id: string;
+  unternehmerId: string;
+  firmaId: string;
   aktiv: boolean;
 }
 
