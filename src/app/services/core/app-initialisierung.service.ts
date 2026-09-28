@@ -6,6 +6,7 @@ import { TAppInitialisierungsstatus } from '../../commons/models/app/app-initial
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
+import { AppKontextStore } from '../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../stores/app/benutzer.store';
 import { StammdatenLadeservice } from './stammdaten-ladeservice';
 
@@ -16,6 +17,7 @@ export class AppInitialisierungService {
   // ===== Interne Dependency Injection =========
 
   private readonly _benutzerStore = inject(BenutzerStore);
+  private readonly _appKontextStore = inject(AppKontextStore);
   private readonly _stammdatenLadeservice = inject(StammdatenLadeservice);
 
   // ===== Interner State =======================
@@ -192,6 +194,7 @@ export class AppInitialisierungService {
         return;
       }
 
+      this._appKontextStore.initialize();
       this._abgeschlossenerKontext = kontext;
       this._status.set('ready');
       this._error.set(null);
@@ -216,6 +219,7 @@ export class AppInitialisierungService {
     this._generation++;
     this._abgeschlossenerKontext = null;
     this._laufenderAuftrag = null;
+    this._appKontextStore.reset();
     this._stammdatenLadeservice.reset();
   }
 

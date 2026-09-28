@@ -1,0 +1,16 @@
+<!-- pur-system/src/app/components/data-selectors/firma-selector/firma-selector.html -->
+
+<mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+  <mat-label>Firma</mat-label>
+  <mat-select
+    [value]="selectedFirma()?.id ?? null"
+    [disabled]="disabled() || firmen().length === 0"
+    (selectionChange)="selectFirma($event.value)"
+  >
+    @for (eintrag of firmen(); track eintrag.id) {
+      <mat-option [value]="eintrag.id">{{ eintrag.anzeigename }}</mat-option>
+    } @empty {
+      <mat-option disabled>Keine Firmen verfügbar</mat-option>
+    }
+  </mat-select>
+</mat-form-field>

@@ -1,0 +1,19 @@
+<!-- pur-system/src/app/components/data-selectors/filiale-selector/filiale-selector.html -->
+
+<mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+  <mat-label>Filiale</mat-label>
+  <mat-select
+    [value]="selectedValue()"
+    [disabled]="disabled() || filialen().length === 0"
+    (selectionChange)="selectFilialKontext($event.value)"
+  >
+    @if (filialen().length > 0) {
+      <mat-option [value]="alleFilialenWert">Alle Filialen</mat-option>
+    }
+    @for (eintrag of filialen(); track eintrag.id) {
+      <mat-option [value]="eintrag.id">{{ eintrag.anzeigename }}</mat-option>
+    } @empty {
+      <mat-option disabled>Keine Filialen verfügbar</mat-option>
+    }
+  </mat-select>
+</mat-form-field>

@@ -1,0 +1,16 @@
+<!-- pur-system/src/app/components/data-selectors/unternehmer-selector/unternehmer-selector.html -->
+
+<mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+  <mat-label>Unternehmer</mat-label>
+  <mat-select
+    [value]="selectedUnternehmer()?.id ?? null"
+    [disabled]="disabled() || unternehmer().length === 0"
+    (selectionChange)="selectUnternehmer($event.value)"
+  >
+    @for (eintrag of unternehmer(); track eintrag.id) {
+      <mat-option [value]="eintrag.id">{{ eintrag.anzeigename }}</mat-option>
+    } @empty {
+      <mat-option disabled>Keine Unternehmer verfügbar</mat-option>
+    }
+  </mat-select>
+</mat-form-field>

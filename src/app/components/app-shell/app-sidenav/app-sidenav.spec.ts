@@ -1,12 +1,20 @@
 // pur-system/src/app/components/app-shell/app-sidenav/app-sidenav.spec.ts
 
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
 
 import { APP_VERSION } from '../../../commons/constants/app.constants';
+import { TFilialKontext } from '../../../commons/models/app/app-kontext.types';
 import { IBenutzerProfilDokument, TUserRole } from '../../../commons/models/domain/benutzer';
+import { IFirmaEintrag } from '../../../commons/models/domain/firma';
+import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { IUnternehmerEintrag } from '../../../commons/models/domain/unternehmer';
+import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
+import { StammdatenStore } from '../../../stores/app/stammdaten.store';
+import { FilialeSelector } from '../../data-selectors/filiale-selector/filiale-selector';
 import { AppSidenav } from './app-sidenav';
 
 function createProfil(userRole: TUserRole): IBenutzerProfilDokument {
@@ -33,8 +41,37 @@ describe('AppSidenav', () => {
   let benutzerStoreMock: {
     benutzerProfil: ReturnType<typeof vi.fn>;
   };
+  const unternehmer = signal<readonly IUnternehmerEintrag[]>([]);
+  const stammdatenDownload = signal(false);
+  const selectedUnternehmer = signal<IUnternehmerEintrag | null>(null);
+  const firmen = signal<readonly IFirmaEintrag[]>([]);
+  const selectedFirma = signal<IFirmaEintrag | null>(null);
+  const filialen = signal<readonly IFilialeEintrag[]>([]);
+  const filialKontext = signal<TFilialKontext>(null);
+  const appKontextStoreMock = {
+    selectedUnternehmer,
+    firmen,
+    selectedFirma,
+    filialen,
+    filialKontext,
+    selectUnternehmer: vi.fn(),
+    selectFirma: vi.fn(),
+    selectFilialKontext: vi.fn(),
+  };
+  const stammdatenStoreMock = {
+    unternehmer,
+    download: stammdatenDownload,
+  };
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+    unternehmer.set([]);
+    stammdatenDownload.set(false);
+    selectedUnternehmer.set(null);
+    firmen.set([]);
+    selectedFirma.set(null);
+    filialen.set([]);
+    filialKontext.set(null);
     benutzerStoreMock = {
       benutzerProfil: vi.fn().mockReturnValue(createProfil('master')),
     };
@@ -50,7 +87,9 @@ describe('AppSidenav', () => {
           { path: 'systemverwaltung', component: AppSidenavHost },
           { path: 'passwort', component: AppSidenavHost },
         ]),
+        { provide: AppKontextStore, useValue: appKontextStoreMock },
         { provide: BenutzerStore, useValue: benutzerStoreMock },
+        { provide: StammdatenStore, useValue: stammdatenStoreMock },
       ],
     }).compileComponents();
   });
@@ -112,6 +151,44 @@ describe('AppSidenav', () => {
     expect(navigationText).toContain('Systemverwaltung');
   });
 
+  it('should render all context selectors for a master', async () => {
+    const fixture = TestBed.createComponent(AppSidenavHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('app-unternehmer-selector')).not.toBeNull();
+    expect(compiled.querySelector('app-firma-selector')).not.toBeNull();
+    expect(compiled.querySelector('app-filiale-selector')).not.toBeNull();
+  });
+
+  it('should keep the branch selector disabled', async () => {
+    const fixture = TestBed.createComponent(AppSidenavHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const filialeSelector = fixture.debugElement.query(By.directive(FilialeSelector))
+      .componentInstance as FilialeSelector;
+
+    expect(filialeSelector.disabled()).toBe(true);
+  });
+
+  it('should forward context selections to the app context store', () => {
+    const fixture = TestBed.createComponent(AppSidenavHost);
+    fixture.detectChanges();
+    const sidenav = fixture.debugElement.children[0].componentInstance as AppSidenav;
+    const unternehmerEintrag = { id: 'u1', nummer: 1, anzeigename: 'Unternehmer' };
+
+    sidenav.selectUnternehmer(unternehmerEintrag);
+    sidenav.selectFirma(null);
+    sidenav.selectFilialKontext({ typ: 'alle' });
+
+    expect(appKontextStoreMock.selectUnternehmer).toHaveBeenCalledWith(unternehmerEintrag);
+    expect(appKontextStoreMock.selectFirma).toHaveBeenCalledWith(null);
+    expect(appKontextStoreMock.selectFilialKontext).toHaveBeenCalledWith({ typ: 'alle' });
+  });
+
   it('should expand system administration and show both child routes for master', () => {
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
@@ -163,6 +240,9 @@ describe('AppSidenav', () => {
     expect(navigationText).toContain('Mitarbeiter');
     expect(navigationText).toContain('Verwaltung');
     expect(navigationText).not.toContain('Systemverwaltung');
+    expect(compiled.querySelector('app-unternehmer-selector')).toBeNull();
+    expect(compiled.querySelector('app-firma-selector')).toBeNull();
+    expect(compiled.querySelector('app-filiale-selector')).toBeNull();
   });
 
   it.each([

@@ -1,59 +1,6 @@
 <!-- pur-system/src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page.html -->
 
 <section class="pur-page pur-page--limited mitarbeiter-liste-page">
-  <!-- Firmenauswahl -->
-  <section class="pur-page-section">
-    <header class="pur-page-section__header">
-      <h2 class="pur-page-section__title">Firma wählen</h2>
-    </header>
-
-    <div class="pur-form pur-form--flex">
-      <!-- Unternehmer -->
-      <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
-        <mat-label>Unternehmer</mat-label>
-        <mat-select
-          [value]="selectedUnternehmerId()"
-          [disabled]="stammdatenStore.download() || stammdatenStore.unternehmer().length === 0"
-          (selectionChange)="selectUnternehmer($event.value)"
-        >
-          @for (unternehmer of stammdatenStore.unternehmer(); track unternehmer.id) {
-            <mat-option [value]="unternehmer.id">{{ unternehmer.anzeigename }}</mat-option>
-          } @empty {
-            <mat-option disabled>Keine Unternehmer verfügbar</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
-      <!-- Firma -->
-      <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
-        <mat-label>Firma</mat-label>
-        <mat-select
-          [value]="selectedFirmaId()"
-          [disabled]="!selectedUnternehmerId() || firmen().length === 0"
-          (selectionChange)="selectFirma($event.value)"
-        >
-          @for (firma of firmen(); track firma.id) {
-            <mat-option [value]="firma.id">{{ firma.anzeigename }}</mat-option>
-          } @empty {
-            <mat-option disabled>Keine Firmen verfügbar</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </div>
-
-    @if (stammdatenStore.error(); as error) {
-      <p class="pur-form__error" role="alert">{{ error }}</p>
-    } @else if (stammdatenStore.isLoaded() && stammdatenStore.unternehmer().length === 0) {
-      <p class="pur-page-section__empty-state" role="status">
-        Dem Benutzer sind keine Unternehmer und Firmen zugeordnet.
-      </p>
-    } @else if (selectedUnternehmerId() && firmen().length === 0) {
-      <p class="pur-page-section__empty-state" role="status">
-        Dem gewählten Unternehmer sind keine Firmen zugeordnet.
-      </p>
-    }
-  </section>
-
   <!-- Mitarbeiterliste -->
   <section class="pur-page-section">
     <header class="pur-page-section__header">
@@ -65,7 +12,7 @@
       }
     </header>
 
-    @if (!selectedFirmaId()) {
+    @if (!appKontextStore.selectedFirma()) {
       <p class="pur-page-section__message" role="status">
         Wähle eine Firma, um deren Mitarbeiter anzuzeigen.
       </p>

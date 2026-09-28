@@ -305,6 +305,17 @@ bei aktivierter Unternehmer-Mehrfachauswahl und mehr als einem ausgewählten Unt
 Firmen-Mehrfachauswahl und mehr als einer ausgewählten Firma. Beim Abwählen eines übergeordneten Eintrags entfällt dessen
 abhängige Auswahl.
 
+Für den seitenübergreifenden Arbeitskontext hält der `AppKontextStore` den ausgewählten Unternehmer, die ausgewählte Firma und
+den Filialkontext. Er leitet seine verfügbaren Einträge aus dem `StammdatenStore` ab und hält selbst keine fachlichen Stammdaten.
+Nach der Sitzungsinitialisierung wird der erste verfügbare Unternehmer, dessen erste Firma und bei vorhandenen Filialen der
+Kontext `Alle Filialen` gesetzt. Ein Unternehmerwechsel wählt entsprechend wieder dessen erste Firma und alle zugehörigen
+Filialen aus.
+
+Master ändern Unternehmer und Firma über wiederverwendbare Selektoren in der Sidebar. Der Filial-Selektor bleibt zunächst
+sichtbar, zeigt den vollständigen Filialkontext und ist deaktiviert, bis eine fachliche Seite die Auswahl einer einzelnen Filiale
+benötigt. Fachseiten wie die Mitarbeiterliste verwenden den zentralen Arbeitskontext und führen keine davon unabhängige
+Unternehmer- oder Firmenauswahl.
+
 ### Laden und Validierung
 
 Das Laden der sitzungsbezogenen Stammdaten erfolgt nach der Anmeldung zentral über den `AppInitialisierungService` und den

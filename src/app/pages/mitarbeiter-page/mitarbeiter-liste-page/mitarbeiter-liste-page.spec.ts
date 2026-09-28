@@ -5,7 +5,10 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 
 import { IBenutzerProfilDokument } from '../../../commons/models/domain/benutzer';
+import { IFirmaEintrag } from '../../../commons/models/domain/firma';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
+import { IUnternehmerEintrag } from '../../../commons/models/domain/unternehmer';
+import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { StammdatenStore } from '../../../stores/app/stammdaten.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
@@ -33,18 +36,22 @@ describe('MitarbeiterListePage', () => {
     filialIds: [],
     aktiv: true,
   };
-  const unternehmer = signal([{ id: 'u-1', nummer: 1, anzeigename: 'Unternehmer' }]);
-  const firmen = [
-    {
-      id: 'f-1',
-      nummer: 1,
-      anzeigename: 'Firma',
-      firmenname: 'Firma GmbH',
-      adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
-      kontakt: {},
-      aktiv: true,
-    },
-  ];
+  const unternehmer: IUnternehmerEintrag = {
+    id: 'u-1',
+    nummer: 1,
+    anzeigename: 'Unternehmer',
+  };
+  const firma: IFirmaEintrag = {
+    id: 'f-1',
+    nummer: 1,
+    anzeigename: 'Firma',
+    firmenname: 'Firma GmbH',
+    adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
+    kontakt: {},
+    aktiv: true,
+  };
+  const selectedUnternehmer = signal<IUnternehmerEintrag | null>(unternehmer);
+  const selectedFirma = signal<IFirmaEintrag | null>(firma);
   const mitarbeiterSignal = signal<IMitarbeiterEintrag[]>([]);
   const download = signal(false);
   const isLoaded = signal(false);
@@ -59,14 +66,7 @@ describe('MitarbeiterListePage', () => {
     zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
   });
   let dialogMock: { open: ReturnType<typeof vi.fn> };
-  let stammdatenStoreMock: {
-    unternehmer: typeof unternehmer;
-    download: ReturnType<typeof signal<boolean>>;
-    isLoaded: ReturnType<typeof signal<boolean>>;
-    error: ReturnType<typeof signal<string | null>>;
-    getFirmen: ReturnType<typeof vi.fn>;
-    getFilialen: ReturnType<typeof vi.fn>;
-  };
+  let stammdatenStoreMock: { getFilialen: ReturnType<typeof vi.fn> };
   let mitarbeiterStoreMock: {
     inProgress: typeof inProgress;
     loadMitarbeiter: ReturnType<typeof vi.fn>;
@@ -77,7 +77,8 @@ describe('MitarbeiterListePage', () => {
   };
 
   beforeEach(() => {
-    unternehmer.set([{ id: 'u-1', nummer: 1, anzeigename: 'Unternehmer' }]);
+    selectedUnternehmer.set(unternehmer);
+    selectedFirma.set(firma);
     mitarbeiterSignal.set([]);
     download.set(false);
     isLoaded.set(false);
@@ -93,11 +94,6 @@ describe('MitarbeiterListePage', () => {
     });
     dialogMock = { open: vi.fn() };
     stammdatenStoreMock = {
-      unternehmer,
-      download: signal(false),
-      isLoaded: signal(true),
-      error: signal(null),
-      getFirmen: vi.fn().mockReturnValue(firmen),
       getFilialen: vi.fn().mockReturnValue([{ id: 'b-1', anzeigename: 'Filiale 1' }]),
     };
     mitarbeiterStoreMock = {
@@ -124,6 +120,10 @@ describe('MitarbeiterListePage', () => {
       imports: [MitarbeiterListePage],
       providers: [
         { provide: MatDialog, useValue: dialogMock },
+        {
+          provide: AppKontextStore,
+          useValue: { selectedUnternehmer, selectedFirma },
+        },
         { provide: BenutzerStore, useValue: { benutzerProfil } },
         { provide: StammdatenStore, useValue: stammdatenStoreMock },
         { provide: MitarbeiterStore, useValue: mitarbeiterStoreMock },
@@ -156,7 +156,7 @@ describe('MitarbeiterListePage', () => {
     );
   });
 
-  it('should select a single company automatically and render its employees', async () => {
+  it('should load and render employees for the selected app context', async () => {
     const fixture = TestBed.createComponent(MitarbeiterListePage);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -164,6 +164,18 @@ describe('MitarbeiterListePage', () => {
 
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledWith('u-1', 'f-1', undefined);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Mia Muster');
+  });
+
+  it('should load employees again after the selected company changes', async () => {
+    const fixture = TestBed.createComponent(MitarbeiterListePage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    selectedFirma.set({ ...firma, id: 'f-2', anzeigename: 'Zweite Firma' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenLastCalledWith('u-1', 'f-2', undefined);
   });
 
   it('should load only employees of the assigned branch for a branch account', async () => {
@@ -178,11 +190,8 @@ describe('MitarbeiterListePage', () => {
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledWith('u-1', 'f-1', 'b-1');
   });
 
-  it('should wait for a company selection when multiple companies are available', async () => {
-    stammdatenStoreMock.getFirmen.mockReturnValue([
-      ...firmen,
-      { ...firmen[0], id: 'f-2', anzeigename: 'Zweite Firma' },
-    ]);
+  it('should wait while the app context contains no company', async () => {
+    selectedFirma.set(null);
     const fixture = TestBed.createComponent(MitarbeiterListePage);
     fixture.detectChanges();
     await fixture.whenStable();

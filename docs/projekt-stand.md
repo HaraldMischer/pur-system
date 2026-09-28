@@ -39,6 +39,11 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Das Layout reagiert auf kleinere Bildschirmbreiten.
 - Die Sidebar enthält den Bereich Systemverwaltung für berechtigte Master-Benutzer.
 - Die Sidebar zeigt die zentral in `app.constants.ts` gepflegte Anwendungsversion. Der aktuelle Stand ist `1.0.0`.
+- Der `AppKontextStore` hält den seitenübergreifenden Arbeitskontext aus Unternehmer, Firma und Filialumfang. Nach dem Laden der
+  Stammdaten wählt er den ersten verfügbaren Unternehmer, dessen erste Firma und bei vorhandenen Filialen `Alle Filialen` aus.
+  Ein Wechsel des Unternehmers oder der Firma stellt diesen vollständigen Kontext erneut her.
+- Master können Unternehmer und Firma über wiederverwendbare Selektoren in der Sidebar wechseln. Der Filial-Selektor zeigt den
+  Kontext `Alle Filialen`, bleibt aber bis zu einem konkreten fachlichen Bedarf deaktiviert.
 
 ## Seiten und Routen
 
@@ -222,11 +227,11 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `erlaubteBereiche`. Die Löschmethode ist in Service und Store vorhanden; verknüpfte Mitarbeiter sind durch Rules vor Löschung
   geschützt. Eine Löschaktion in der Oberfläche ist noch nicht angebunden. Die aktuellen Rules wurden am 28.09.2026 produktiv
   deployed.
-- Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie übernimmt eindeutige Unternehmer- und Firmenzuordnungen
-  automatisch, erlaubt andernfalls die Auswahl aus den geladenen Stammdaten und zeigt ausschließlich den ausgewählten Firmen-
-  beziehungsweise Filialkontext. Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden
-  als kompakte Cards mit Rolle, Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben
-  je Kontext unterscheidbar.
+- Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
+  `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
+  passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
+  Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden als kompakte Cards mit Rolle,
+  Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben je Kontext unterscheidbar.
 - Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
   Bearbeitungsdialog. Beide Reactive Forms erfassen Person, vollständige Adresse, optionale Kontakt- und Personendaten,
   betriebliche Rolle und optionale Filialzuordnungen. Der Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer,

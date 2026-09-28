@@ -3,23 +3,20 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  OnInit,
   Signal,
   computed,
+  effect,
   inject,
-  signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
-import { IFirmaEintrag } from '../../../commons/models/domain/firma';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
+import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { StammdatenStore } from '../../../stores/app/stammdaten.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
@@ -29,41 +26,39 @@ import { MitarbeiterCard } from './mitarbeiter-card/mitarbeiter-card';
 
 @Component({
   selector: 'app-mitarbeiter-liste-page',
-  imports: [
-    MatButtonModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatSelectModule,
-    MitarbeiterCard,
-  ],
+  imports: [MatButtonModule, MatCardModule, MatIconModule, MitarbeiterCard],
   templateUrl: './mitarbeiter-liste-page.html',
   styleUrl: './mitarbeiter-liste-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MitarbeiterListePage implements OnInit {
+export class MitarbeiterListePage {
   // ===== Interne Dependency Injection =========
 
   private readonly dialog = inject(MatDialog);
+  readonly appKontextStore = inject(AppKontextStore);
   readonly benutzerStore = inject(BenutzerStore);
   readonly stammdatenStore = inject(StammdatenStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
 
-  // ===== Interner State =======================
+  // ===== Interne Ableitungen ==================
 
-  readonly selectedUnternehmerId = signal<string | null>(null);
-  readonly selectedFirmaId = signal<string | null>(null);
+  private readonly loadMitarbeiterEffect = effect(() => {
+    const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
+    const firmaId = this.appKontextStore.selectedFirma()?.id;
+    const filialId =
+      unternehmerId && firmaId ? this.getMitarbeiterFilialId(unternehmerId, firmaId) : undefined;
+
+    if (unternehmerId && firmaId) {
+      void this.loadMitarbeiter(unternehmerId, firmaId, filialId);
+    }
+  });
 
   // ===== Öffentliche Ableitungen ==============
 
-  readonly firmen: Signal<readonly IFirmaEintrag[]> = computed(() => {
-    const unternehmerId = this.selectedUnternehmerId();
-    return unternehmerId ? this.stammdatenStore.getFirmen(unternehmerId) : [];
-  });
   readonly darfSchreiben: Signal<boolean> = computed(() => {
     const profil = this.benutzerStore.benutzerProfil();
-    const unternehmerId = this.selectedUnternehmerId();
-    const firmaId = this.selectedFirmaId();
+    const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
+    const firmaId = this.appKontextStore.selectedFirma()?.id;
     return Boolean(
       profil &&
       unternehmerId &&
@@ -112,82 +107,21 @@ export class MitarbeiterListePage implements OnInit {
       : null;
   });
 
-  // ===== Lifecycle Hooks ======================
-
-  /**
-   * Übernimmt eindeutige Unternehmer- und Firmenzuordnungen automatisch.
-   */
-  ngOnInit(): void {
-    const unternehmer = this.stammdatenStore.unternehmer();
-    if (unternehmer.length === 1) {
-      void this.selectUnternehmer(unternehmer[0].id);
-    }
-  }
-
   // ===== Öffentliche Aktionen =================
-
-  /**
-   * Wählt einen erlaubten Unternehmer aus und setzt die abhängige Firmenauswahl zurück.
-   *
-   * @param unternehmerId - Die ausgewählte Unternehmer-ID.
-   */
-  async selectUnternehmer(unternehmerId: string | null): Promise<void> {
-    const selectedUnternehmerId = this.stammdatenStore
-      .unternehmer()
-      .some((eintrag) => eintrag.id === unternehmerId)
-      ? unternehmerId
-      : null;
-    this.selectedUnternehmerId.set(selectedUnternehmerId);
-    this.selectedFirmaId.set(null);
-
-    const firmen = this.firmen();
-    if (firmen.length === 1) {
-      await this.selectFirma(firmen[0].id);
-    }
-  }
-
-  /**
-   * Wählt eine erlaubte Firma aus und lädt deren Mitarbeiter.
-   *
-   * @param firmaId - Die ausgewählte Firmen-ID.
-   */
-  async selectFirma(firmaId: string | null): Promise<void> {
-    const unternehmerId = this.selectedUnternehmerId();
-    const selectedFirmaId = this.firmen().some((eintrag) => eintrag.id === firmaId)
-      ? firmaId
-      : null;
-    this.selectedFirmaId.set(selectedFirmaId);
-
-    if (unternehmerId && selectedFirmaId) {
-      try {
-        await this.mitarbeiterStore.loadMitarbeiter(
-          unternehmerId,
-          selectedFirmaId,
-          this.getMitarbeiterFilialId(unternehmerId, selectedFirmaId),
-        );
-      } catch {
-        // Der MitarbeiterStore stellt die Fehlermeldung für die Oberfläche bereit.
-      }
-    }
-  }
 
   /**
    * Lädt die Mitarbeiter der ausgewählten Firma erneut.
    */
   async retryLoadMitarbeiter(): Promise<void> {
-    const unternehmerId = this.selectedUnternehmerId();
-    const firmaId = this.selectedFirmaId();
+    const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
+    const firmaId = this.appKontextStore.selectedFirma()?.id;
     if (!unternehmerId || !firmaId) return;
 
-    try {
-      await this.mitarbeiterStore.loadMitarbeiter(
-        unternehmerId,
-        firmaId,
-        this.getMitarbeiterFilialId(unternehmerId, firmaId),
-      );
-    } catch {
-      // Der MitarbeiterStore stellt die Fehlermeldung für die Oberfläche bereit.
-    }
+    await this.loadMitarbeiter(
+      unternehmerId,
+      firmaId,
+      this.getMitarbeiterFilialId(unternehmerId, firmaId),
+    );
   }
 
   /**
@@ -236,8 +170,8 @@ export class MitarbeiterListePage implements OnInit {
     firmaId: string;
     filialId?: string;
   } | null {
-    const unternehmerId = this.selectedUnternehmerId();
-    const firmaId = this.selectedFirmaId();
+    const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
+    const firmaId = this.appKontextStore.selectedFirma()?.id;
     if (!unternehmerId || !firmaId) {
       return null;
     }
@@ -256,12 +190,10 @@ export class MitarbeiterListePage implements OnInit {
     firmaName: string;
     filialen: readonly IFilialeEintrag[];
   } | null {
-    const unternehmerId = this.selectedUnternehmerId();
-    const firmaId = this.selectedFirmaId();
-    const unternehmer = this.stammdatenStore
-      .unternehmer()
-      .find((eintrag) => eintrag.id === unternehmerId);
-    const firma = this.firmen().find((eintrag) => eintrag.id === firmaId);
+    const unternehmer = this.appKontextStore.selectedUnternehmer();
+    const firma = this.appKontextStore.selectedFirma();
+    const unternehmerId = unternehmer?.id;
+    const firmaId = firma?.id;
     if (!unternehmerId || !firmaId || !unternehmer || !firma) return null;
 
     return {
@@ -271,5 +203,17 @@ export class MitarbeiterListePage implements OnInit {
       firmaName: firma.anzeigename,
       filialen: this.stammdatenStore.getFilialen(unternehmerId, firmaId),
     };
+  }
+
+  private async loadMitarbeiter(
+    unternehmerId: string,
+    firmaId: string,
+    filialId?: string,
+  ): Promise<void> {
+    try {
+      await this.mitarbeiterStore.loadMitarbeiter(unternehmerId, firmaId, filialId);
+    } catch {
+      // Der MitarbeiterStore stellt die Fehlermeldung für die Oberfläche bereit.
+    }
   }
 }

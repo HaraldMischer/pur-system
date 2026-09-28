@@ -4,6 +4,7 @@ import { WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
+import { AppKontextStore } from '../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../stores/app/benutzer.store';
 import { AppInitialisierungService } from './app-initialisierung.service';
 import { StammdatenLadeservice } from './stammdaten-ladeservice';
@@ -25,6 +26,10 @@ describe('AppInitialisierungService', () => {
   };
   let stammdatenLadeserviceMock: {
     loadStammdaten: ReturnType<typeof vi.fn>;
+    reset: ReturnType<typeof vi.fn>;
+  };
+  let appKontextStoreMock: {
+    initialize: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
   };
   let profil: IBenutzerProfilDokument;
@@ -56,10 +61,15 @@ describe('AppInitialisierungService', () => {
       loadStammdaten: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn(),
     };
+    appKontextStoreMock = {
+      initialize: vi.fn(),
+      reset: vi.fn(),
+    };
 
     TestBed.configureTestingModule({
       providers: [
         AppInitialisierungService,
+        { provide: AppKontextStore, useValue: appKontextStoreMock },
         { provide: BenutzerStore, useValue: benutzerStoreMock },
         { provide: StammdatenLadeservice, useValue: stammdatenLadeserviceMock },
       ],
@@ -115,6 +125,7 @@ describe('AppInitialisierungService', () => {
       expect(service.status()).toBe('ready');
     });
     expect(stammdatenLadeserviceMock.loadStammdaten).toHaveBeenCalledWith('benutzer-1', profil);
+    expect(appKontextStoreMock.initialize).toHaveBeenCalledOnce();
     expect(service.error()).toBeNull();
   });
 
@@ -312,6 +323,7 @@ describe('AppInitialisierungService', () => {
       expect(service.status()).toBe('ready');
     });
     expect(stammdatenLadeserviceMock.reset).toHaveBeenCalled();
+    expect(appKontextStoreMock.reset).toHaveBeenCalled();
   });
 
   function setAktivesProfil(wert: IBenutzerProfilDokument = profil): void {
