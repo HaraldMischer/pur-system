@@ -147,7 +147,7 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(component.benutzerForm.controls.aktiv.disabled).toBe(true);
   });
 
-  it('should update selected employee account areas while keeping data scopes empty', async () => {
+  it('should update selected employee account areas while preserving its company assignment', async () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
         profil: {
@@ -155,7 +155,8 @@ describe('BenutzerBearbeitenDialog', () => {
           uid: 'mitarbeiter-1',
           userRole: 'mitarbeiter',
           erlaubteBereiche: ['dashboard'],
-          zugriffe: { u: { f: ['b'] } },
+          zugriffe: { u: { f: [] } },
+          firmaMitarbeiterId: 'm-1',
         },
       },
     });
@@ -188,7 +189,7 @@ describe('BenutzerBearbeitenDialog', () => {
       anzeigename: 'Mitarbeiter Neu',
       aktiv: true,
       erlaubteBereiche: ['dashboard', 'schichtplan'],
-      zugriffe: {},
+      zugriffe: { u: { f: [] } },
     });
   });
 

@@ -192,9 +192,11 @@ export class BenutzerBearbeitenDialog {
       aktiv: value.aktiv,
       erlaubteBereiche,
       zugriffe:
-        this.profil.userRole === 'master' || this.profil.userRole === 'mitarbeiter'
+        this.profil.userRole === 'master'
           ? {}
-          : this.getZugriffe(),
+          : this.profil.userRole === 'mitarbeiter'
+            ? this.profil.zugriffe
+            : this.getZugriffe(),
     };
   }
 

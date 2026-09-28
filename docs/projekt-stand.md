@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 27.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -311,6 +311,19 @@ Stand: 27.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Seiten zeigen keine zusätzlichen allgemeinen Ladetexte mehr. Fachliche Fehler- und Leerzustände bleiben direkt im jeweiligen
   Seitenbereich sichtbar.
 
+## Netzwerkstatus
+
+- Der `NetzwerkStatusService` berücksichtigt zunächst `navigator.onLine` und prüft zusätzlich die Erreichbarkeit der aktuellen
+  Hosting-Seite über einen ungecachten Aufruf von `/health.json`.
+- Die Health-Prüfung läuft beim Start, nach den Browser-Ereignissen `online` und `offline` sowie alle 30 Sekunden. Ein Aufruf wird
+  nach drei Sekunden abgebrochen und dann als offline gewertet.
+- Die Datei `health.json` wird in allen vier Auslieferungsvarianten bereitgestellt und von Firebase Hosting ausdrücklich mit
+  `Cache-Control: no-store` ausgeliefert. Der Angular Service Worker nimmt sie nicht in seinen Ressourcen-Cache auf.
+- Die Prüfung bestätigt die Erreichbarkeit der Hosting-Seite, nicht die Verfügbarkeit einzelner Firebase-Dienste. Fehler von
+  Auth, Firestore, Functions oder Storage werden weiterhin durch den jeweiligen Dienstaufruf behandelt.
+- `assertOnline()` bricht verbindungsabhängige Aktionen anhand des zuletzt bestätigten Netzwerkstatus mit einem einheitlichen
+  Offline-Fehler ab. Die Toolbar zeigt einen Offline-Status und eine zeitlich begrenzte Wieder-online-Meldung an.
+
 ## Datenzugriff-Auswahl mit Firebase
 
 - Die wiederverwendbare Component liegt unter `src/app/components/datenzugriff-auswahl`; ihre Auswahlmodelle liegen in
@@ -392,8 +405,10 @@ Stand: 27.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Deployment-Skript sind eingerichtet; die Site wurde am 26.09.2026 erstmals erfolgreich veröffentlicht.
 - Die zusätzliche Firebase-Hosting-Site `pur-mitarbeiter.web.app` wurde am 25.09.2026 für die persönliche Mitarbeiter-PWA
   reserviert und erstmals erfolgreich veröffentlicht. Hosting-Target, eigener Build und Deployment-Skript sind eingerichtet.
-- Die Hosting-Targets `master`, `office`, `filiale` und `mitarbeiter` verwenden getrennte Build-Verzeichnisse. Eigene
-  Deploy-Skripte bauen vor dem Deployment jeweils die passende Variante und verlangen eine Bestätigung.
+- Die Hosting-Targets `master`, `office`, `filiale` und `mitarbeiter` verwenden getrennte Build-Verzeichnisse. Die fünf npm-Befehle
+  für einzelne oder gemeinsame Hosting-Deployments verwenden zentral `scripts/deploy-hostings.sh`, bauen vor dem Deployment die
+  ausgewählten Varianten und verlangen eine Bestätigung. `npm run deploy:pur-all` veröffentlicht ausschließlich die vier
+  Hosting-Ziele; Firestore Rules und Functions bleiben davon unberührt.
 - Master, Office, Filiale und Mitarbeiter wurden am 26.09.2026 mit ihren getrennten PWA-Builds erfolgreich auf die jeweils
   zugehörige Firebase-Hosting-Site veröffentlicht.
 - Master-, Office-, Filial- und Mitarbeiter-Build verwenden jeweils eine eigene Produktkennung im Web-App-Manifest. Die

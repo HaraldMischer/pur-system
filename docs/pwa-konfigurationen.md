@@ -48,6 +48,12 @@ Die Benutzerrolle hat keinen Einfluss auf seine Aktivierung.
 | `office`       | `pur-office`      | `npm run deploy:pur-office`      |
 | `filiale`      | `pur-filiale`     | `npm run deploy:pur-filiale`     |
 | `mitarbeiter`  | `pur-mitarbeiter` | `npm run deploy:pur-mitarbeiter` |
+| alle vier      | alle vier Sites   | `npm run deploy:pur-all`         |
+
+Die fünf npm-Deploy-Befehle verwenden gemeinsam `scripts/deploy-hostings.sh`. Das Skript validiert das Hosting-Ziel, verlangt vor
+dem Build eine Bestätigung und veröffentlicht ausschließlich die ausgewählten Hosting-Targets. `npm run deploy:pur-all` erstellt
+alle vier Produktionsbuilds und veröffentlicht `master`, `office`, `filiale` und `mitarbeiter` gemeinsam. Firestore Rules und
+Functions werden durch diese Befehle nicht deployed.
 
 Die Hosting-Adresse bestimmt über den dort veröffentlichten Build die technische Auslieferungsvariante. Die Benutzerrolle bestimmt
 davon getrennt Navigation, Berechtigungen und Datenzugriff innerhalb der Anwendung.

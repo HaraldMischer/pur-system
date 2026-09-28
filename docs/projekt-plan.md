@@ -34,21 +34,32 @@ bereitgestellt.
 ### Architektur-Schichten
 
 - Components enthalten UI und einfache Formular- oder Interaktionslogik.
-- Stores halten App-State, Lade- und Fehlerzustände und orchestrieren Service-Aufrufe.
+- Stores halten App-State sowie Lade- und Fehlerzustände. Fachliche Stores beauftragen die für ihre Daten zuständigen Services.
 - Fachliche Services kapseln Domänen-Mapping, Sortierung und fachlich benannte Datenoperationen.
+- Der `AppInitialisierungService` koordiniert den Sitzungsstart. Er initialisiert den `BenutzerStore`, wartet auf ein aktives
+  Benutzerprofil und stößt anschließend das Laden der zwingend benötigten Stammdaten an.
+- Der `StammdatenLadeservice` bestimmt anhand von `userRole` und `zugriffe`, welche Stammdaten für die aktuelle Sitzung benötigt
+  werden. Die konkreten Daten werden weiterhin durch die fachlichen Stores und Services geladen und gehalten.
 - Der technische `FirestoreDbService` kapselt direkte AngularFire-Aufrufe, den Angular-Injection-Kontext, die globale
-  Registrierung lesender Ladevorgänge und Echtzeit-Listener für einzelne Dokumente.
+  Registrierung lesender Ladevorgänge, die auswählbare Datenquellenstrategie und Echtzeit-Listener für einzelne Dokumente.
 - Firestore-Collection- und Dokumentpfade werden zentral erzeugt und nicht in fachlichen Services zusammengesetzt.
-- Der bevorzugte Datenfluss ist `Component -> Store -> fachlicher Service -> FirestoreDbService -> Firebase/Firestore`.
+- Der Sitzungsstart folgt dem Datenfluss
+  `App -> AppInitialisierungService -> BenutzerStore -> StammdatenLadeservice -> fachliche Stores und Services`.
+- Fachliche Ladevorgänge folgen dem Datenfluss
+  `Component oder StammdatenLadeservice -> Store -> fachlicher Service -> FirestoreDbService -> Firebase/Firestore`.
 - Der app-weite `GlobalBannerService` verwaltet genau einen globalen Hinweis. Die zugehörige App-Shell-Component stellt Art,
   Text und semantische Live-Rolle unterhalb der Toolbar dar. Fachliche Zustände bleiben in ihren Stores und werden in der
   App-Shell auf den Banner-Zustand abgebildet.
-- Der app-weite `StammdatenStore` lädt nach dem Benutzerprofil einmalig die für die Sitzung erlaubten Unternehmer, Firmen und
-  Filialen. Für Master werden zusätzlich alle Benutzerprofile geladen. Feature-Stores verwenden diesen Sitzungsbestand und lösen
-  bei Routenwechseln keine erneuten Stammdatenabfragen aus.
-- Fachliche Daten werden zunächst ausschließlich online gelesen und geändert. Dauerhafte lokale Speicherung,
-  Synchronisationsstatus und Offline-Schreibvorgänge werden erst bei einem konkreten fachlichen Bedarf pro Datenart ausdrücklich
-  festgelegt und über die zentrale Datenzugriffsschicht gekapselt.
+- Die beim Sitzungsstart benötigten Unternehmer, Firmen, Filialen, Benutzerprofile und Mitarbeiter richten sich nach der Rolle
+  und den Datenzugriffen des angemeldeten Benutzers. Bereits vollständig geladene Daten desselben Benutzer- und Fachkontexts
+  werden innerhalb der Sitzung nicht erneut geladen.
+- Guards verwenden den Authentifizierungs-, Profil- und Initialisierungszustand. Eine geschützte Route wird erst geöffnet, wenn
+  die zwingend benötigten Stammdaten geladen sind. Ein Initialisierungsfehler führt auf eine eigene Fehlerseite mit Wiederholung
+  und Abmeldung.
+- Die vollständige Aufgabenteilung, Rollenmatrix und Ladereihenfolge stehen in der
+  [Firestore-Ladestrategie](./firestore-ladestrategie.md).
+- Schreibvorgänge bleiben von der Ladestrategie getrennt. Offline-Schreibvorgänge und eine spätere Synchronisation werden erst
+  bei einem konkreten fachlichen Bedarf ausdrücklich geplant.
 
 ## PWA- und Offline-Strategie
 
@@ -86,19 +97,24 @@ Firestore-Daten nicht automatisch offline verfügbar.
 
 ### Fachliche Online- und Offline-Nutzung
 
-Fachliche Daten werden in Pur Master, Pur Office, Pur Filiale und Pur Mitarbeiter zunächst ausschließlich online gelesen und
-geändert. Es werden keine fachlichen Daten bewusst dauerhaft für einen späteren Offline-Aufruf gespeichert und keine
-Offline-Änderungen zur späteren Synchronisation zugelassen.
+Pur Master, Pur Office, Pur Mitarbeiter und die Entwicklungsumgebung verwenden einen flüchtigen Firestore-Cache. Pur Filiale
+verwendet einen persistenten lokalen Firestore-Cache, damit bereits bestätigte Profildaten und Stammdaten auf dem vorgesehenen
+Filialgerät erneut gelesen werden können. Die Cache-Art wird beim App-Start durch die Auslieferungsvariante festgelegt und nicht
+nachträglich anhand der geladenen Benutzerrolle gewechselt.
 
-Das eigene Dokument `benutzerprofil/{uid}` wird während einer wiederhergestellten oder neu gestarteten Anmeldung in Echtzeit
-beobachtet. Diese Beobachtung verwendet nur den nicht persistenten Firestore-Speicher. Startet die Anwendung ohne Verbindung,
-bleibt die von Firebase Auth wiederhergestellte Anmeldung bestehen; nach der nächsten Serververbindung übernimmt der Listener den
-aktuellen Profilstand. Ein inaktives eigenes Profil wird über den globalen Banner-Service app-weit durch einen nicht
-ausblendbaren Hinweis angezeigt. Ein Listenerfehler allein ändert den zuletzt bestätigten Aktivstatus nicht.
+Der `FirestoreDbService` unterstützt die Lesestrategien `cacheFirst`, `networkOnly`, `networkFirst` und `cacheOnly`. Pur Filiale
+lädt das eigene Benutzerprofil mit `networkFirst` und Stammdaten mit `cacheFirst`; ein ausdrücklich erzwungener Neuladevorgang
+verwendet `networkOnly`. Die übrigen Auslieferungsvarianten verwenden `networkOnly`. `cacheOnly` bleibt ausdrücklich definierten
+Offline-Abläufen vorbehalten.
 
-Eine spätere Ausnahme wird erst bei einem konkreten fachlichen Bedarf einzeln für Datenart, Benutzerrolle, Auslieferungsvariante
-und Aktion entschieden. Dabei werden insbesondere Schutzbedarf, Benutzertrennung, veraltete Daten, Berechtigungsänderungen,
-Synchronisation und Konfliktbehandlung berücksichtigt.
+Das eigene Dokument `benutzerprofil/{uid}` wird während der Sitzung zusätzlich in Echtzeit beobachtet. Ein inaktives eigenes
+Profil wird über den globalen Banner-Service app-weit durch einen nicht ausblendbaren Hinweis angezeigt. Ein Listenerfehler
+allein ändert den zuletzt bestätigten Aktivstatus nicht.
+
+Lokal gespeicherte Daten sind keine Berechtigungsquelle und ersetzen keine aktuellen Firestore Rules. Bei Abmeldung oder
+Benutzerwechsel muss verhindert werden, dass ein nachfolgender Benutzer Daten aus dem vorherigen Sitzungskontext übernimmt.
+Offline-Schreibvorgänge und eine spätere Synchronisation sind nicht Bestandteil dieser Ladestrategie und bleiben zunächst
+ausgeschlossen.
 
 ## Auth und Berechtigungen
 

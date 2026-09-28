@@ -6,6 +6,10 @@
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "headers": [
         {
+          "source": "/health.json",
+          "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
+        },
+        {
           "source": "**",
           "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
         },
@@ -41,6 +45,10 @@
       "public": "dist/pur-master/browser",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "headers": [
+        {
+          "source": "/health.json",
+          "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
+        },
         {
           "source": "**",
           "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
@@ -78,6 +86,10 @@
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "headers": [
         {
+          "source": "/health.json",
+          "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
+        },
+        {
           "source": "**",
           "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
         },
@@ -113,6 +125,10 @@
       "public": "dist/pur-mitarbeiter/browser",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "headers": [
+        {
+          "source": "/health.json",
+          "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
+        },
         {
           "source": "**",
           "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]

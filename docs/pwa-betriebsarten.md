@@ -21,6 +21,23 @@ stehen ausschließlich in den [PWA-Konfigurationen](./pwa-konfigurationen.md).
 | Dauerhafte Offline-Fachdaten | vorerst nein                              | vorerst nein                              | vorerst nein                              | vorerst nein                              |
 | Offline-Änderungen           | vorerst nein                              | vorerst nein                              | vorerst nein                              | vorerst nein                              |
 
+Die dauerhafte lokale Firestore-Datenhaltung ist noch nicht umgesetzt. Die geplante Einführung wird im offenen Umsetzungstodo
+zur benutzerabhängigen Firestore-Ladestrategie geführt.
+
+## Geplante Lesestrategie
+
+| Merkmal                       | Pur Master        | Pur Office        | Pur Filiale           | Pur Mitarbeiter   |
+| ----------------------------- | ----------------- | ----------------- | --------------------- | ----------------- |
+| Firestore-Cache               | flüchtig          | flüchtig          | persistent            | flüchtig          |
+| Benutzerprofil                | `networkOnly`     | `networkOnly`     | `networkFirst`        | `networkOnly`     |
+| Stammdaten                    | `networkOnly`     | `networkOnly`     | `cacheFirst`          | `networkOnly`     |
+| Erzwungener Neuladevorgang    | `networkOnly`     | `networkOnly`     | `networkOnly`         | `networkOnly`     |
+| Allgemeiner Offline-Lesezugriff | nicht vorgesehen | nicht vorgesehen | ausdrücklich begrenzt | nicht vorgesehen |
+
+Die Auslieferungsvariante legt die Cache-Art beim App-Start fest. Benutzerrolle und `zugriffe` bestimmen weiterhin nur, welche
+Daten geladen werden dürfen. Ein persistenter Cache gewährt keine zusätzlichen Berechtigungen und ist keine Alternative zu den
+Firestore Rules.
+
 ## Bedeutung der Betriebsarten
 
 - **Online-Fachdaten:** Die Anwendung lädt oder ändert Daten direkt über Firebase. Benutzerprofil, Backend und Firestore Rules
@@ -32,15 +49,15 @@ stehen ausschließlich in den [PWA-Konfigurationen](./pwa-konfigurationen.md).
 - **Offline-App-Shell:** Anwendungscode, Styles, Schriften und Icons können ohne Verbindung starten. Daraus folgt keine
   Verfügbarkeit fachlicher Daten.
 
-## Derzeitige Grundentscheidung
+## Grundentscheidung
 
-Fachliche Daten werden in Pur Master, Pur Office, Pur Filiale und Pur Mitarbeiter vorerst ausschließlich online verwendet. Eine
-dauerhafte Speicherung fachlicher Daten, Offline-Änderungen und eine spätere Synchronisation sind zunächst in keiner
-Auslieferungsvariante vorgesehen.
+Der aktuelle Stand bleibt bis zur Umsetzung vollständig online. Ziel ist ein persistenter Lesecache ausschließlich für Pur
+Filiale. Die übrigen Auslieferungsvarianten verwenden weiterhin nur einen flüchtigen Cache und laden fachliche Daten vom Server.
 
-Die Offline-App-Shell aller vier PWAs bleibt davon getrennt: Die Anwendung kann ohne Verbindung starten, für Anmeldung und
-fachliche Datenzugriffe wird jedoch eine Internetverbindung benötigt.
+Die Offline-App-Shell aller vier PWAs bleibt davon getrennt. Auch der geplante persistente Lesecache für Pur Filiale umfasst nur
+ausdrücklich festgelegte Profildaten und Stammdaten. Offline-Änderungen und eine spätere Synchronisation sind weiterhin nicht
+vorgesehen.
 
-Eine spätere Offline-Freigabe wird erst bei einem konkreten fachlichen Bedarf je Datenart, Benutzerrolle, Auslieferungsvariante
-und Aktion entschieden. Weitere technische Einzelheiten stehen in den [PWA-Konfigurationen](./pwa-konfigurationen.md); die
-zurückgestellte fachliche Entscheidung steht in den [späteren Todos](./todo_spaeter.md).
+Weitere technische Einzelheiten stehen in den [PWA-Konfigurationen](./pwa-konfigurationen.md). Die geplante Datenquellensteuerung
+steht in der [Firestore-Ladestrategie](./firestore-ladestrategie.md); Offline-Schreibvorgänge bleiben in den
+[späteren Todos](./todo_spaeter.md) zurückgestellt.
