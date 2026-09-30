@@ -132,8 +132,10 @@ describe('BenutzerStore', () => {
     expect(store.benutzerId()).toBe('benutzer-123');
     expect(store.benutzerProfil()).toBe(profil);
     expect(store.isLoggedIn()).toBe(true);
-    expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith('1. BENUTZERPROFIL ');
-    expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith('Benutzerprofil', 1, profil);
+    expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith(
+      '1. BENUTZERPROFIL - OFFICE ',
+    );
+    expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith('Benutzerprofil', 1);
   });
 
   it('should share parallel profile loads and reuse the loaded profile', async () => {

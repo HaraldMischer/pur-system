@@ -326,12 +326,9 @@ export const BenutzerStore = signalStore(
       ): Promise<IBenutzerProfilDokument | null> {
         try {
           const benutzerProfil = await benutzerService.getBenutzerProfil(uid, strategie);
-          debugLogService.logDatenflussTitel('1. BENUTZERPROFIL ');
-          debugLogService.logDatenGeladen(
-            'Benutzerprofil',
-            benutzerProfil ? 1 : 0,
-            benutzerProfil ?? undefined,
-          );
+          const rollenTitel = benutzerProfil ? ` - ${benutzerProfil.userRole.toUpperCase()}` : '';
+          debugLogService.logDatenflussTitel(`1. BENUTZERPROFIL${rollenTitel} `);
+          debugLogService.logDatenGeladen('Benutzerprofil', benutzerProfil ? 1 : 0);
           if (generation === profilGeneration) {
             profilBenutzerId = uid;
             patchState(store, { benutzerProfil });

@@ -2,7 +2,6 @@
 
 import { TestBed } from '@angular/core/testing';
 
-import { DebugLogService } from '../../services/core/debug-log.service';
 import { BenutzerService } from '../../services/domain/benutzer.service';
 import { FilialeService } from '../../services/domain/filiale.service';
 import { FirmaService } from '../../services/domain/firma.service';
@@ -28,10 +27,6 @@ describe('StammdatenStore', () => {
   let filialeServiceMock: {
     loadFilialen: ReturnType<typeof vi.fn>;
     loadFilialeEintrag: ReturnType<typeof vi.fn>;
-  };
-  let debugLogServiceMock: {
-    logDatenflussTitel: ReturnType<typeof vi.fn>;
-    logDatenGeladen: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -70,15 +65,9 @@ describe('StammdatenStore', () => {
           return { id, nummer: 1, anzeigename: 'Filiale' };
         }),
     };
-    debugLogServiceMock = {
-      logDatenflussTitel: vi.fn(),
-      logDatenGeladen: vi.fn(),
-    };
-
     TestBed.configureTestingModule({
       providers: [
         StammdatenStore,
-        { provide: DebugLogService, useValue: debugLogServiceMock },
         { provide: BenutzerService, useValue: benutzerServiceMock },
         { provide: UnternehmerService, useValue: unternehmerServiceMock },
         { provide: FirmaService, useValue: firmaServiceMock },
@@ -98,30 +87,12 @@ describe('StammdatenStore', () => {
 
     expect(unternehmerServiceMock.loadUnternehmer).toHaveBeenCalledOnce();
     expect(firmaServiceMock.loadFirmen).toHaveBeenCalledWith('u-1', 'networkOnly');
-    expect(filialeServiceMock.loadFilialen).toHaveBeenCalledWith(
-      'u-1',
-      'f-1',
-      'networkOnly',
-    );
+    expect(filialeServiceMock.loadFilialen).toHaveBeenCalledWith('u-1', 'f-1', 'networkOnly');
     expect(benutzerServiceMock.loadBenutzerProfile).toHaveBeenCalledOnce();
     expect(store.getFirmen('u-1')).toHaveLength(1);
     expect(store.getFilialen('u-1', 'f-1')).toHaveLength(1);
     expect(store.benutzerprofile()).toHaveLength(1);
     expect(store.isLoaded()).toBe(true);
-    expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith('2. STAMMDATEN ');
-    expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith(
-      'Unternehmer',
-      1,
-      expect.any(Array),
-    );
-    expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith(
-      'Benutzerprofile',
-      1,
-      expect.any(Array),
-    );
-    expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith(
-      'STAMMDATEN VOLLSTÄNDIG GELADEN ',
-    );
   });
 
   it('should load only documents selected by an assigned structure request', async () => {
@@ -140,11 +111,7 @@ describe('StammdatenStore', () => {
       'u-1',
       'networkOnly',
     );
-    expect(firmaServiceMock.loadFirmaEintrag).toHaveBeenCalledWith(
-      'u-1',
-      'f-1',
-      'networkOnly',
-    );
+    expect(firmaServiceMock.loadFirmaEintrag).toHaveBeenCalledWith('u-1', 'f-1', 'networkOnly');
     expect(filialeServiceMock.loadFilialeEintrag).toHaveBeenCalledWith(
       'u-1',
       'f-1',

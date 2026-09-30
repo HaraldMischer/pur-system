@@ -61,17 +61,10 @@ export class DebugLogService {
    *
    * @param bezeichnung - Fachliche Bezeichnung der geladenen Daten.
    * @param anzahl - Anzahl der geladenen Einträge.
-   * @param details - Optionale strukturierte Daten für die einklappbare Konsolenansicht.
    */
-  logDatenGeladen(bezeichnung: string, anzahl: number, details?: unknown): void {
+  logDatenGeladen(bezeichnung: string, anzahl: number): void {
     if (!this.isEnabled) return;
 
-    const nachricht = formatDatenzeile(bezeichnung, anzahl);
-    if (details === undefined) {
-      console.log(nachricht);
-      return;
-    }
-
-    console.log(nachricht, details);
+    console.log(formatDatenzeile(bezeichnung, anzahl));
   }
 }

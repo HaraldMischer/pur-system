@@ -12,7 +12,6 @@ import {
   IMitarbeiterEintrag,
 } from '../../commons/models/domain/mitarbeiter';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
-import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { MitarbeiterService } from '../../services/domain/mitarbeiter.service';
 
@@ -62,7 +61,6 @@ export const MitarbeiterStore = signalStore(
     (
       store,
       mitarbeiterService = inject(MitarbeiterService),
-      debugLogService = inject(DebugLogService),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),
     ) => {
@@ -394,12 +392,6 @@ export const MitarbeiterStore = signalStore(
             return;
           }
           const sortierteMitarbeiter = sortMitarbeiter(mitarbeiter);
-          debugLogService.logDatenGeladen('Mitarbeiter', sortierteMitarbeiter.length, {
-            unternehmerId,
-            firmaId,
-            filialId: filialId ?? null,
-            mitarbeiter: sortierteMitarbeiter,
-          });
           setKontext(schluessel, {
             unternehmerId,
             firmaId,

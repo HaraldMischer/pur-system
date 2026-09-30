@@ -23,20 +23,15 @@ describe('DebugLogService', () => {
   it('should write readable initial data flow results through console log', () => {
     const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const service = TestBed.inject(DebugLogService);
-    const details = [{ id: 'u-1', anzeigename: 'Unternehmer' }];
 
     service.logDatenflussTitel('2. STAMMDATEN | MASTER ');
-    service.logDatenGeladen('Unternehmer', 1, details);
+    service.logDatenGeladen('Unternehmer', 1);
 
     expect(consoleLogSpy).toHaveBeenNthCalledWith(
       1,
       '\n******* 2. STAMMDATEN | MASTER *******************',
     );
-    expect(consoleLogSpy).toHaveBeenNthCalledWith(
-      2,
-      '* Unternehmer geladen............... (1)',
-      details,
-    );
+    expect(consoleLogSpy).toHaveBeenNthCalledWith(2, '* Unternehmer geladen............... (1)');
   });
 
   it('should recognize only local hostnames', () => {

@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -96,6 +96,13 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   zugeordneten Hierarchiedaten und alle Mitarbeiter der zugeordneten Firmen. Filiale lädt ihre eindeutige Hierarchie und nur die
   Mitarbeiter mit ihrer Filial-ID. Mitarbeiter lädt den zugeordneten Unternehmer und die Firma sowie alle Mitarbeiter dieser
   Firma. Fehlende oder widersprüchliche Pflichtzuordnungen brechen die Initialisierung ab.
+- Das fachliche Ladeprotokoll führt alle zwingenden Daten in einem gemeinsamen Stammdaten-Abschnitt. Unabhängige Aufträge
+  bleiben parallel und werden auch im Fehlerfall vollständig abgewartet. Beim Master wird zunächst die vollständige
+  Unternehmensstruktur geladen, weil daraus erst die Mitarbeiteraufträge für alle Firmen entstehen. Nach erfolgreichem
+  Abschluss gibt der `StammdatenLadeservice` ausschließlich die Anzahl der Einträge fest als Benutzerprofile, Unternehmer,
+  Firmen, Filialen und Mitarbeiter aus. Nicht benötigte Datenarten werden ausgelassen. Mitarbeiterkontexte werden nach
+  Unternehmer und Firma sortiert. Die Abschlussmeldung folgt erst nach dem vollständigen Ladeplan. Dateninhalte können im
+  Entwicklungsmodus getrennt über den Store-Snapshot-Button der Toolbar ausgegeben werden.
 - Verwaltung, Systemverwaltung und Datenzugriffsauswahl verwenden den gemeinsamen Sitzungsbestand. Er wird bei Neuanlagen direkt
   aktualisiert und bei Logout oder Benutzerwechsel zurückgesetzt.
 - Der `GlobalBannerService` verwaltet einen zentralen Bannerzustand mit Darstellungsart, Text und Quelle. Die
@@ -103,10 +110,12 @@ Stand: 28.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `clearIfSource()` verhindert, dass eine fachliche Quelle den Hinweis einer anderen Quelle entfernt.
 - Pur Filiale lädt das Benutzerprofil mit `networkFirst` und Stammdaten mit `cacheFirst`. Alle anderen Varianten verwenden für
   beide Datenarten `networkOnly`; erzwungene Wiederholungen verwenden ebenfalls `networkOnly`. `cacheOnly` ist technisch
-  vorhanden, aber keinem fachlichen Ablauf zugewiesen.
-- Abmeldung und Benutzerwechsel setzen die sitzungsbezogenen Stores und laufenden Ladeaufträge zurück. Der persistente
-  Firestore-Cache von Pur Filiale bleibt gerätebezogen erhalten und wird anschließend nur über den Ladeplan des neu bestätigten
-  Profils gelesen.
+  vorhanden, aber keinem fachlichen Ablauf zugewiesen. Ein leerer Collection- oder Query-Cache beziehungsweise ein nicht
+  vorhandenes Dokument gilt bei `cacheFirst` als Cache-Miss und löst eine Serveranfrage aus.
+- Abmeldung und Benutzerwechsel setzen die sitzungsbezogenen Stores zurück und machen den bisherigen Initialisierungskontext
+  ungültig. Bereits laufende Firestore-Anfragen werden nicht technisch abgebrochen; verspätete Ergebnisse eines veralteten
+  Store-Kontexts werden nicht übernommen. Der persistente Firestore-Cache von Pur Filiale bleibt gerätebezogen erhalten und
+  wird anschließend nur über den Ladeplan des neu bestätigten Profils gelesen.
 - Ein aus dem Cache gemeldetes Benutzerprofil startet noch keine Stammdateninitialisierung, solange dessen initialer
   `networkFirst`-Ladevorgang nicht abgeschlossen ist. Dadurch kann ein gecachter Profilstand die Sitzung nicht vorzeitig als
   `ready` freigeben.

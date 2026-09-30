@@ -104,8 +104,10 @@ nachträglich anhand der geladenen Benutzerrolle gewechselt.
 
 Der `FirestoreDbService` unterstützt die Lesestrategien `cacheFirst`, `networkOnly`, `networkFirst` und `cacheOnly`. Pur Filiale
 lädt das eigene Benutzerprofil mit `networkFirst` und Stammdaten mit `cacheFirst`; ein ausdrücklich erzwungener Neuladevorgang
-verwendet `networkOnly`. Die übrigen Auslieferungsvarianten verwenden `networkOnly`. `cacheOnly` bleibt ausdrücklich definierten
-Offline-Abläufen vorbehalten.
+verwendet `networkOnly`. Die übrigen Auslieferungsvarianten verwenden `networkOnly`. `cacheOnly` ist technisch vorhanden, aber
+derzeit keinem fachlichen Ablauf zugeordnet. Bei `cacheFirst` gilt ein leerer Collection- oder Query-Cache beziehungsweise ein
+nicht vorhandenes Dokument als Cache-Miss und führt zu einer Serveranfrage. `networkFirst` fällt ausschließlich bei technischen
+Serverfehlern auf den Cache zurück.
 
 Das eigene Dokument `benutzerprofil/{uid}` wird während der Sitzung zusätzlich in Echtzeit beobachtet. Ein inaktives eigenes
 Profil wird über den globalen Banner-Service app-weit durch einen nicht ausblendbaren Hinweis angezeigt. Ein Listenerfehler

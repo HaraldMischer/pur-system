@@ -9,7 +9,6 @@ import { IFirmaEintrag } from '../../commons/models/domain/firma';
 import { IFilialeEintrag } from '../../commons/models/domain/filiale';
 import { IUnternehmerEintrag } from '../../commons/models/domain/unternehmer';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
-import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { BenutzerService } from '../../services/domain/benutzer.service';
 import { FilialeService } from '../../services/domain/filiale.service';
@@ -58,23 +57,6 @@ function sortEintraege<T extends { anzeigename: string }>(eintraege: readonly T[
   return [...eintraege].sort((a, b) => a.anzeigename.localeCompare(b.anzeigename, 'de'));
 }
 
-function getFirmenAnzahl(firmenNachUnternehmer: TFirmenNachUnternehmer): number {
-  return Object.values(firmenNachUnternehmer).reduce((anzahl, firmen) => {
-    return anzahl + firmen.length;
-  }, 0);
-}
-
-function getFilialenAnzahl(filialenNachFirma: TFilialenNachFirma): number {
-  return Object.values(filialenNachFirma).reduce((gesamt, firmen) => {
-    return (
-      gesamt +
-      Object.values(firmen).reduce((anzahl, filialen) => {
-        return anzahl + filialen.length;
-      }, 0)
-    );
-  }, 0);
-}
-
 function getLadeauftragKontext(ladeauftrag: TStammdatenLadeauftrag): string {
   const zugriffe = Object.entries(ladeauftrag.zugriffe)
     .sort(([ersteId], [zweiteId]) => ersteId.localeCompare(zweiteId))
@@ -109,7 +91,6 @@ export const StammdatenStore = signalStore(
     (
       store,
       injector = inject(Injector),
-      debugLogService = inject(DebugLogService),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),
     ) => {
@@ -336,7 +317,6 @@ export const StammdatenStore = signalStore(
       ): Promise<void> {
         try {
           const benutzerService = injector.get(BenutzerService);
-          debugLogService.logDatenflussTitel('2. STAMMDATEN ');
           const benutzerprofilePromise = ladeauftrag.benutzerprofile
             ? benutzerService.loadBenutzerProfile(ladeauftrag.lesestrategie)
             : Promise.resolve([]);
@@ -345,13 +325,6 @@ export const StammdatenStore = signalStore(
             benutzerprofilePromise,
           ]);
           const { unternehmer, firmenNachUnternehmer, filialenNachFirma } = strukturdaten;
-          if (ladeauftrag.benutzerprofile) {
-            debugLogService.logDatenGeladen(
-              'Benutzerprofile',
-              benutzerprofile.length,
-              benutzerprofile,
-            );
-          }
 
           if (aktuell !== generation || store.benutzerId() !== benutzerId) return;
           geladenerKontext = kontext;
@@ -364,7 +337,6 @@ export const StammdatenStore = signalStore(
             isLoaded: true,
             error: null,
           });
-          debugLogService.logDatenflussTitel('STAMMDATEN VOLLSTÄNDIG GELADEN ');
         } catch (error: unknown) {
           if (aktuell !== generation || store.benutzerId() !== benutzerId) return;
           patchState(store, {
@@ -386,19 +358,8 @@ export const StammdatenStore = signalStore(
         filialenNachFirma: TFilialenNachFirma;
       }> {
         const unternehmer = await loadUnternehmer(ladeauftrag);
-        debugLogService.logDatenGeladen('Unternehmer', unternehmer.length, unternehmer);
         const firmenNachUnternehmer = await loadFirmen(ladeauftrag, unternehmer);
-        debugLogService.logDatenGeladen(
-          'Firmen',
-          getFirmenAnzahl(firmenNachUnternehmer),
-          firmenNachUnternehmer,
-        );
         const filialenNachFirma = await loadFilialen(ladeauftrag, firmenNachUnternehmer);
-        debugLogService.logDatenGeladen(
-          'Filialen',
-          getFilialenAnzahl(filialenNachFirma),
-          filialenNachFirma,
-        );
         return { unternehmer, firmenNachUnternehmer, filialenNachFirma };
       }
 

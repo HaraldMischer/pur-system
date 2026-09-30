@@ -22,6 +22,19 @@ gewährt keine zusätzlichen Berechtigungen.
 - Der persistente Cache gewährt keine zusätzlichen Berechtigungen.
 - Offline-Schreibvorgänge und eine spätere Synchronisation sind nicht Bestandteil der Ladestrategie.
 
+### Bedeutung der Lesestrategien
+
+| Strategie      | Tatsächliches Verhalten                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| `networkOnly`  | Liest ausschließlich vom Server und gibt dessen Ergebnis oder Fehler weiter.                                   |
+| `cacheOnly`    | Liest ausschließlich aus dem Firestore-Cache und führt keine Serveranfrage aus.                                |
+| `cacheFirst`   | Verwendet einen vorhandenen, nicht leeren Cache-Wert; andernfalls wird vom Server geladen.                      |
+| `networkFirst` | Liest zuerst vom Server und fällt nur bei einem technischen Serverfehler auf den Firestore-Cache zurück.        |
+
+Für `cacheFirst` gilt eine leere Collection oder Query beziehungsweise ein nicht vorhandenes Dokument als fehlender Cache-Wert.
+In diesem Fall wird auch bei einem zuvor aufgebauten Cache eine Serveranfrage ausgeführt. Berechtigungs- und andere
+nichttechnische Serverfehler lösen bei `networkFirst` keinen Cache-Rückfall aus.
+
 ## 2. Online- und Offline-Betriebsarten
 
 | Merkmal                      | Pur Master                                | Pur Office                                | Pur Filiale                               | Pur Mitarbeiter                           |

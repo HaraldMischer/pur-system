@@ -7,6 +7,7 @@ import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
 import { IUnternehmerEintrag } from '../../commons/models/domain/unternehmer';
 import { StammdatenStore } from '../../stores/app/stammdaten.store';
 import { MitarbeiterStore } from '../../stores/domain/mitarbeiter.store';
+import { DebugLogService } from './debug-log.service';
 import { StammdatenLadeservice } from './stammdaten-ladeservice';
 
 describe('StammdatenLadeservice', () => {
@@ -16,10 +17,16 @@ describe('StammdatenLadeservice', () => {
     getFirmen: ReturnType<typeof vi.fn>;
     loadStammdaten: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
+    snapshot: ReturnType<typeof vi.fn>;
   };
   let mitarbeiterStoreMock: {
+    getMitarbeiter: ReturnType<typeof vi.fn>;
     loadMitarbeiter: ReturnType<typeof vi.fn>;
     resetMitarbeiter: ReturnType<typeof vi.fn>;
+  };
+  let debugLogServiceMock: {
+    logDatenflussTitel: ReturnType<typeof vi.fn>;
+    logDatenGeladen: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -27,15 +34,40 @@ describe('StammdatenLadeservice', () => {
     stammdatenStoreMock = {
       unternehmer,
       getFirmen: vi.fn().mockReturnValue([
-        { id: 'f-1', nummer: 1, anzeigename: 'Firma 1' },
         { id: 'f-2', nummer: 2, anzeigename: 'Firma 2' },
+        { id: 'f-1', nummer: 1, anzeigename: 'Firma 1' },
       ]),
       loadStammdaten: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn(),
+      snapshot: vi.fn().mockReturnValue({
+        benutzerId: 'benutzer-1',
+        unternehmer: unternehmer(),
+        firmenNachUnternehmer: {
+          'u-1': [
+            { id: 'f-1', nummer: 1, anzeigename: 'Firma 1' },
+            { id: 'f-2', nummer: 2, anzeigename: 'Firma 2' },
+          ],
+        },
+        filialenNachFirma: {
+          'u-1': {
+            'f-1': [{ id: 'b-1', nummer: 1, anzeigename: 'Filiale 1' }],
+            'f-2': [{ id: 'b-2', nummer: 2, anzeigename: 'Filiale 2' }],
+          },
+        },
+        benutzerprofile: [{ uid: 'profil-1' }],
+        download: false,
+        isLoaded: true,
+        error: null,
+      }),
     };
     mitarbeiterStoreMock = {
+      getMitarbeiter: vi.fn().mockReturnValue([]),
       loadMitarbeiter: vi.fn().mockResolvedValue(undefined),
       resetMitarbeiter: vi.fn(),
+    };
+    debugLogServiceMock = {
+      logDatenflussTitel: vi.fn(),
+      logDatenGeladen: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -43,6 +75,7 @@ describe('StammdatenLadeservice', () => {
         StammdatenLadeservice,
         { provide: StammdatenStore, useValue: stammdatenStoreMock },
         { provide: MitarbeiterStore, useValue: mitarbeiterStoreMock },
+        { provide: DebugLogService, useValue: debugLogServiceMock },
       ],
     });
   });
@@ -82,6 +115,18 @@ describe('StammdatenLadeservice', () => {
       undefined,
       'networkOnly',
     );
+    expect(debugLogServiceMock.logDatenflussTitel.mock.calls).toEqual([
+      ['2. STAMMDATEN '],
+      ['STAMMDATEN VOLLSTÄNDIG GELADEN '],
+    ]);
+    expect(debugLogServiceMock.logDatenGeladen.mock.calls).toEqual([
+      ['Benutzerprofile', 1],
+      ['Unternehmer', 1],
+      ['Firmen', 2],
+      ['Filialen', 2],
+      ['Mitarbeiter | Firma 1', 0],
+      ['Mitarbeiter | Firma 2', 0],
+    ]);
   });
 
   it('should load assigned structure and all company employees for an office in parallel', async () => {

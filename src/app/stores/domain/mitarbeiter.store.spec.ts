@@ -7,7 +7,6 @@ import {
   IMitarbeiterAnlage,
   IMitarbeiterEintrag,
 } from '../../commons/models/domain/mitarbeiter';
-import { DebugLogService } from '../../services/core/debug-log.service';
 import { MitarbeiterService } from '../../services/domain/mitarbeiter.service';
 import { MitarbeiterStore } from './mitarbeiter.store';
 
@@ -49,10 +48,6 @@ describe('MitarbeiterStore', () => {
     updateMitarbeiter: ReturnType<typeof vi.fn>;
     deleteMitarbeiter: ReturnType<typeof vi.fn>;
   };
-  let debugLogServiceMock: {
-    logDatenGeladen: ReturnType<typeof vi.fn>;
-  };
-
   beforeEach(() => {
     mitarbeiterServiceMock = {
       loadMitarbeiter: vi.fn().mockResolvedValue([zulu, alpha]),
@@ -60,14 +55,9 @@ describe('MitarbeiterStore', () => {
       updateMitarbeiter: vi.fn().mockResolvedValue(undefined),
       deleteMitarbeiter: vi.fn().mockResolvedValue(undefined),
     };
-    debugLogServiceMock = {
-      logDatenGeladen: vi.fn(),
-    };
-
     TestBed.configureTestingModule({
       providers: [
         MitarbeiterStore,
-        { provide: DebugLogService, useValue: debugLogServiceMock },
         { provide: MitarbeiterService, useValue: mitarbeiterServiceMock },
       ],
     });
@@ -97,12 +87,6 @@ describe('MitarbeiterStore', () => {
     expect(store.getMitarbeiter('u', 'f')).toEqual([alpha, zulu]);
     expect(store.isMitarbeiterKontextLoaded('u', 'f')).toBe(true);
     expect(store.isMitarbeiterKontextLoading('u', 'f')).toBe(false);
-    expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith('Mitarbeiter', 2, {
-      unternehmerId: 'u',
-      firmaId: 'f',
-      filialId: null,
-      mitarbeiter: [alpha, zulu],
-    });
   });
 
   it('should retain employees from multiple company contexts', async () => {
