@@ -84,14 +84,14 @@ Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `firebase.constants.ts` erzeugt.
 - `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
   sondern greifen über den `FirestoreDbService` zu.
-- Der `AppInitialisierungService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
+- Der `AppSitzungsInitService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
   Profilbeobachtung des `BenutzerStore`, stellt die Zustände `idle`, `loading`, `ready` und `error` bereit und bietet bei Fehlern
   eine Wiederholung an. Änderungen an Rolle, Zugriffen oder persönlicher Mitarbeiterzuordnung grenzen einen neuen
   Initialisierungskontext ab; veraltete Ladeergebnisse werden nicht übernommen.
-- Der `BenutzerStore` beobachtet ausschließlich Firebase Auth und das eigene Benutzerprofil. Der `StammdatenLadeservice` bildet
+- Der `BenutzerStore` beobachtet ausschließlich Firebase Auth und das eigene Benutzerprofil. Der `AppDatenInitService` bildet
   zentral aus `userRole`, `zugriffe` und der persönlichen Mitarbeiterzuordnung den zwingenden Ladeplan. Er beauftragt den
   rollenunabhängigen `StammdatenStore` sowie den `MitarbeiterStore`; erst nach Abschluss aller Aufträge meldet der
-  `AppInitialisierungService` die Sitzung als `ready`.
+  `AppSitzungsInitService` die Sitzung als `ready`.
 - Master laden die vollständige Unternehmenshierarchie, alle Benutzerprofile und die Mitarbeiter aller Firmen. Office lädt die
   zugeordneten Hierarchiedaten und alle Mitarbeiter der zugeordneten Firmen. Filiale lädt ihre eindeutige Hierarchie und nur die
   Mitarbeiter mit ihrer Filial-ID. Mitarbeiter lädt den zugeordneten Unternehmer und die Firma sowie alle Mitarbeiter dieser
@@ -99,7 +99,7 @@ Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Das fachliche Ladeprotokoll führt alle zwingenden Daten in einem gemeinsamen Stammdaten-Abschnitt. Unabhängige Aufträge
   bleiben parallel und werden auch im Fehlerfall vollständig abgewartet. Beim Master wird zunächst die vollständige
   Unternehmensstruktur geladen, weil daraus erst die Mitarbeiteraufträge für alle Firmen entstehen. Nach erfolgreichem
-  Abschluss gibt der `StammdatenLadeservice` ausschließlich die Anzahl der Einträge fest als Benutzerprofile, Unternehmer,
+  Abschluss gibt der `AppDatenInitService` ausschließlich die Anzahl der Einträge fest als Benutzerprofile, Unternehmer,
   Firmen, Filialen und Mitarbeiter aus. Nicht benötigte Datenarten werden ausgelassen. Mitarbeiterkontexte werden nach
   Unternehmer und Firma sortiert. Die Abschlussmeldung folgt erst nach dem vollständigen Ladeplan. Dateninhalte können im
   Entwicklungsmodus getrennt über den Store-Snapshot-Button der Toolbar ausgegeben werden.
@@ -319,7 +319,7 @@ Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Das eigene Masterprofil kann nicht deaktiviert werden. Die Benutzerrolle ist für sämtliche Profile unveränderlich. Dieser
   Selbstschutz sowie die weiteren unveränderlichen Profilfelder sind zusätzlich durch Firestore Rules abgesichert.
 - Änderungen am aktuell angemeldeten Profil werden über den Echtzeit-Listener unmittelbar in den lokalen Benutzer-Store
-  übernommen. Bei einer Deaktivierung setzt der `AppInitialisierungService` die sitzungsbezogenen Stammdaten zurück und der
+  übernommen. Bei einer Deaktivierung setzt der `AppSitzungsInitService` die sitzungsbezogenen Stammdaten zurück und der
   `GlobalBannerService` zeigt unter der Toolbar den nicht ausblendbaren Hinweis „Dieses Profil ist inaktiv. Bitte wende dich an
   einen Administrator.“. Ein
   Listenerfehler verändert den zuletzt bestätigten Aktivstatus nicht. Es erfolgt keine automatische Abmeldung; die vorhandenen

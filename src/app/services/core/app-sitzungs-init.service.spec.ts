@@ -1,4 +1,4 @@
-// pur-system/src/app/services/core/app-initialisierung.service.spec.ts
+// pur-system/src/app/services/core/app-sitzungs-init.service.spec.ts
 
 import { WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -6,10 +6,10 @@ import { TestBed } from '@angular/core/testing';
 import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
 import { AppKontextStore } from '../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../stores/app/benutzer.store';
-import { AppInitialisierungService } from './app-initialisierung.service';
-import { StammdatenLadeservice } from './stammdaten-ladeservice';
+import { AppSitzungsInitService } from './app-sitzungs-init.service';
+import { AppDatenInitService } from './app-daten-init.service';
 
-describe('AppInitialisierungService', () => {
+describe('AppSitzungsInitService', () => {
   let benutzerId: WritableSignal<string | null>;
   let isAuthenticated: WritableSignal<boolean>;
   let benutzerProfil: WritableSignal<IBenutzerProfilDokument | null>;
@@ -24,7 +24,7 @@ describe('AppInitialisierungService', () => {
     initAuthState: ReturnType<typeof vi.fn>;
     loadBenutzerProfil: ReturnType<typeof vi.fn>;
   };
-  let stammdatenLadeserviceMock: {
+  let appDatenInitServiceMock: {
     loadStammdaten: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
   };
@@ -57,7 +57,7 @@ describe('AppInitialisierungService', () => {
       initAuthState: vi.fn(),
       loadBenutzerProfil: vi.fn(),
     };
-    stammdatenLadeserviceMock = {
+    appDatenInitServiceMock = {
       loadStammdaten: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn(),
     };
@@ -68,16 +68,16 @@ describe('AppInitialisierungService', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        AppInitialisierungService,
+        AppSitzungsInitService,
         { provide: AppKontextStore, useValue: appKontextStoreMock },
         { provide: BenutzerStore, useValue: benutzerStoreMock },
-        { provide: StammdatenLadeservice, useValue: stammdatenLadeserviceMock },
+        { provide: AppDatenInitService, useValue: appDatenInitServiceMock },
       ],
     });
   });
 
   it('should start the auth observation only once', () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
 
     service.init();
     service.init();
@@ -86,11 +86,11 @@ describe('AppInitialisierungService', () => {
     expect(benutzerStoreMock.initAuthState).toHaveBeenCalledOnce();
     expect(service.status()).toBe('idle');
     expect(service.error()).toBeNull();
-    expect(stammdatenLadeserviceMock.reset).toHaveBeenCalled();
+    expect(appDatenInitServiceMock.reset).toHaveBeenCalled();
   });
 
   it('should expose loading while the user profile is loading', () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     benutzerId.set('benutzer-1');
     isAuthenticated.set(true);
     profilDownload.set(true);
@@ -99,11 +99,11 @@ describe('AppInitialisierungService', () => {
     TestBed.tick();
 
     expect(service.status()).toBe('loading');
-    expect(stammdatenLadeserviceMock.loadStammdaten).not.toHaveBeenCalled();
+    expect(appDatenInitServiceMock.loadStammdaten).not.toHaveBeenCalled();
   });
 
   it('should not initialize cached profile data before profile loading has finished', () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil();
     profilDownload.set(true);
 
@@ -111,11 +111,11 @@ describe('AppInitialisierungService', () => {
     TestBed.tick();
 
     expect(service.status()).toBe('loading');
-    expect(stammdatenLadeserviceMock.loadStammdaten).not.toHaveBeenCalled();
+    expect(appDatenInitServiceMock.loadStammdaten).not.toHaveBeenCalled();
   });
 
   it('should load the required data for an active profile', async () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil();
 
     service.init();
@@ -124,25 +124,25 @@ describe('AppInitialisierungService', () => {
     await vi.waitFor(() => {
       expect(service.status()).toBe('ready');
     });
-    expect(stammdatenLadeserviceMock.loadStammdaten).toHaveBeenCalledWith('benutzer-1', profil);
+    expect(appDatenInitServiceMock.loadStammdaten).toHaveBeenCalledWith('benutzer-1', profil);
     expect(appKontextStoreMock.initialize).toHaveBeenCalledOnce();
     expect(service.error()).toBeNull();
   });
 
   it('should keep an inactive profile idle without loading data', () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil({ ...profil, aktiv: false });
 
     service.init();
     TestBed.tick();
 
     expect(service.status()).toBe('idle');
-    expect(stammdatenLadeserviceMock.reset).toHaveBeenCalled();
-    expect(stammdatenLadeserviceMock.loadStammdaten).not.toHaveBeenCalled();
+    expect(appDatenInitServiceMock.reset).toHaveBeenCalled();
+    expect(appDatenInitServiceMock.loadStammdaten).not.toHaveBeenCalled();
   });
 
   it('should expose a profile loading error', () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     benutzerId.set('benutzer-1');
     isAuthenticated.set(true);
     profilError.set('Das Benutzerprofil konnte nicht geladen werden.');
@@ -155,9 +155,9 @@ describe('AppInitialisierungService', () => {
   });
 
   it('should expose a data loading error', async () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil();
-    stammdatenLadeserviceMock.loadStammdaten.mockRejectedValue({ code: 'unavailable' });
+    appDatenInitServiceMock.loadStammdaten.mockRejectedValue({ code: 'unavailable' });
 
     service.init();
     TestBed.tick();
@@ -171,9 +171,9 @@ describe('AppInitialisierungService', () => {
   });
 
   it('should retry a failed data initialization', async () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil();
-    stammdatenLadeserviceMock.loadStammdaten
+    appDatenInitServiceMock.loadStammdaten
       .mockRejectedValueOnce({ code: 'unavailable' })
       .mockResolvedValueOnce(undefined);
 
@@ -187,8 +187,8 @@ describe('AppInitialisierungService', () => {
 
     expect(service.status()).toBe('ready');
     expect(service.error()).toBeNull();
-    expect(stammdatenLadeserviceMock.loadStammdaten).toHaveBeenCalledTimes(2);
-    expect(stammdatenLadeserviceMock.loadStammdaten).toHaveBeenLastCalledWith(
+    expect(appDatenInitServiceMock.loadStammdaten).toHaveBeenCalledTimes(2);
+    expect(appDatenInitServiceMock.loadStammdaten).toHaveBeenLastCalledWith(
       'benutzer-1',
       profil,
       'networkOnly',
@@ -196,7 +196,7 @@ describe('AppInitialisierungService', () => {
   });
 
   it('should retry a failed profile initialization', async () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     benutzerId.set('benutzer-1');
     isAuthenticated.set(true);
     profilError.set('Das Benutzerprofil konnte nicht geladen werden.');
@@ -221,14 +221,14 @@ describe('AppInitialisierungService', () => {
   });
 
   it('should reload data when role or access changes', async () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil();
     service.init();
     TestBed.tick();
     await vi.waitFor(() => {
       expect(service.status()).toBe('ready');
     });
-    stammdatenLadeserviceMock.loadStammdaten.mockClear();
+    appDatenInitServiceMock.loadStammdaten.mockClear();
 
     const geaendertesProfil: IBenutzerProfilDokument = {
       ...profil,
@@ -238,7 +238,7 @@ describe('AppInitialisierungService', () => {
     TestBed.tick();
 
     await vi.waitFor(() => {
-      expect(stammdatenLadeserviceMock.loadStammdaten).toHaveBeenCalledWith(
+      expect(appDatenInitServiceMock.loadStammdaten).toHaveBeenCalledWith(
         'benutzer-1',
         geaendertesProfil,
       );
@@ -247,14 +247,14 @@ describe('AppInitialisierungService', () => {
   });
 
   it('should reload data when the assigned employee changes', async () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil({ ...profil, userRole: 'mitarbeiter', firmaMitarbeiterId: 'm-1' });
     service.init();
     TestBed.tick();
     await vi.waitFor(() => {
       expect(service.status()).toBe('ready');
     });
-    stammdatenLadeserviceMock.loadStammdaten.mockClear();
+    appDatenInitServiceMock.loadStammdaten.mockClear();
 
     const geaendertesProfil: IBenutzerProfilDokument = {
       ...profil,
@@ -265,7 +265,7 @@ describe('AppInitialisierungService', () => {
     TestBed.tick();
 
     await vi.waitFor(() => {
-      expect(stammdatenLadeserviceMock.loadStammdaten).toHaveBeenCalledWith(
+      expect(appDatenInitServiceMock.loadStammdaten).toHaveBeenCalledWith(
         'benutzer-1',
         geaendertesProfil,
       );
@@ -275,14 +275,14 @@ describe('AppInitialisierungService', () => {
 
   it('should ignore a stale result after logout', async () => {
     let resolveLoad!: () => void;
-    stammdatenLadeserviceMock.loadStammdaten.mockImplementation(() => {
+    appDatenInitServiceMock.loadStammdaten.mockImplementation(() => {
       return new Promise<void>((resolve) => {
         resolveLoad = () => {
           resolve();
         };
       });
     });
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil();
     service.init();
     TestBed.tick();
@@ -300,15 +300,15 @@ describe('AppInitialisierungService', () => {
   });
 
   it('should reset session data before loading another user', async () => {
-    const service = TestBed.inject(AppInitialisierungService);
+    const service = TestBed.inject(AppSitzungsInitService);
     setAktivesProfil();
     service.init();
     TestBed.tick();
     await vi.waitFor(() => {
       expect(service.status()).toBe('ready');
     });
-    stammdatenLadeserviceMock.loadStammdaten.mockClear();
-    stammdatenLadeserviceMock.reset.mockClear();
+    appDatenInitServiceMock.loadStammdaten.mockClear();
+    appDatenInitServiceMock.reset.mockClear();
 
     const zweitesProfil = { ...profil, anzeigename: 'Zweiter Benutzer' };
     benutzerId.set('benutzer-2');
@@ -316,13 +316,13 @@ describe('AppInitialisierungService', () => {
     TestBed.tick();
 
     await vi.waitFor(() => {
-      expect(stammdatenLadeserviceMock.loadStammdaten).toHaveBeenCalledWith(
+      expect(appDatenInitServiceMock.loadStammdaten).toHaveBeenCalledWith(
         'benutzer-2',
         zweitesProfil,
       );
       expect(service.status()).toBe('ready');
     });
-    expect(stammdatenLadeserviceMock.reset).toHaveBeenCalled();
+    expect(appDatenInitServiceMock.reset).toHaveBeenCalled();
     expect(appKontextStoreMock.reset).toHaveBeenCalled();
   });
 

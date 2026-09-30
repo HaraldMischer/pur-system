@@ -19,7 +19,7 @@ import { environment } from '../environments/environment';
 import { AppSidenav } from './components/app-shell/app-sidenav/app-sidenav';
 import { AppToolbar } from './components/app-shell/app-toolbar/app-toolbar';
 import { GlobalBanner } from './components/app-shell/global-banner/global-banner';
-import { AppInitialisierungService } from './services/core/app-initialisierung.service';
+import { AppSitzungsInitService } from './services/core/app-sitzungs-init.service';
 import { GlobalBannerService } from './services/core/global-banner.service';
 import { BenutzerStore } from './stores/app/benutzer.store';
 
@@ -39,7 +39,7 @@ type TRoutenKontext = {
 })
 export class App {
   private readonly _breakpointObserver = inject(BreakpointObserver);
-  private readonly _appInitialisierungService = inject(AppInitialisierungService);
+  private readonly _appSitzungsInitService = inject(AppSitzungsInitService);
   private readonly _globalBannerService = inject(GlobalBannerService);
   private readonly _router = inject(Router);
 
@@ -65,7 +65,7 @@ export class App {
   );
 
   constructor() {
-    this._appInitialisierungService.init();
+    this._appSitzungsInitService.init();
     effect(() => {
       const istInaktiv = this.benutzerStore.istInaktiv();
       untracked(() => {

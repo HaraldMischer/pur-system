@@ -5,25 +5,25 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { filter, take } from 'rxjs';
 
-import { AppInitialisierungService } from '../services/core/app-initialisierung.service';
+import { AppSitzungsInitService } from '../services/core/app-sitzungs-init.service';
 import { BenutzerStore } from '../stores/app/benutzer.store';
 
 type TInitialisierungsentscheidung = true | UrlTree | null;
 
 export const initialisierungGuard: CanActivateFn = (_route, state) => {
-  const appInitialisierungService = inject(AppInitialisierungService);
+  const appSitzungsInitService = inject(AppSitzungsInitService);
   const benutzerStore = inject(BenutzerStore);
   const router = inject(Router);
   const entscheidung = computed<TInitialisierungsentscheidung>(() => {
     if (benutzerStore.istInaktiv()) {
       return router.createUrlTree(['/login']);
     }
-    if (appInitialisierungService.status() === 'error') {
+    if (appSitzungsInitService.status() === 'error') {
       return router.createUrlTree(['/initialisierungsfehler'], {
         queryParams: { returnUrl: state.url },
       });
     }
-    if (appInitialisierungService.status() === 'ready') {
+    if (appSitzungsInitService.status() === 'ready') {
       return true;
     }
     return null;

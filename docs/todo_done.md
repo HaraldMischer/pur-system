@@ -1612,11 +1612,11 @@ Die in der [Datenladematrix](./matrix-datenladen.md) festgelegte Aufgabenteilung
 wird aus dem `BenutzerStore` herausgelöst, der Ladeumfang zentral aus Rolle und Zugriffen bestimmt und die Datenquelle abhängig
 von der Auslieferungsvariante gemäß der [Cache- und Betriebsartenmatrix](./matrix-cache-strategien.md) gewählt.
 
-### 16.1 AppInitialisierungService einführen
+### 16.1 AppSitzungsInitService einführen
 
 #### Ziel
 
-Der `AppInitialisierungService` bildet den einzigen Einstiegspunkt für den Sitzungsstart. Er initialisiert den `BenutzerStore`,
+Der `AppSitzungsInitService` bildet den einzigen Einstiegspunkt für den Sitzungsstart. Er initialisiert den `BenutzerStore`,
 koordiniert das Laden der zwingenden Stammdaten und stellt einen eindeutigen Initialisierungszustand bereit.
 
 #### Betroffene Dateien
@@ -1633,18 +1633,18 @@ koordiniert das Laden der zwingenden Stammdaten und stellt einen eindeutigen Ini
 Neu hinzuzufügen:
 
 - src/app/commons/models/app/app-initialisierung.types.ts
-- src/app/services/core/app-initialisierung.service.ts
-- src/app/services/core/app-initialisierung.service.spec.ts
+- src/app/services/core/app-sitzungs-init.service.ts
+- src/app/services/core/app-sitzungs-init.service.spec.ts
 
 #### Schritt 1: Öffentlichen Initialisierungszustand anlegen
 
 - [x] Die Zustände `idle`, `loading`, `ready` und `error` einschließlich eines konkreten Fehlers modellieren.
-- [x] Den Initialisierungszustand ausschließlich über den `AppInitialisierungService` bereitstellen.
+- [x] Den Initialisierungszustand ausschließlich über den `AppSitzungsInitService` bereitstellen.
 - [x] Eine öffentliche Wiederholungsaktion für eine fehlgeschlagene Initialisierung vorsehen.
 
 #### Schritt 2: Sitzungsstart zentralisieren
 
-- [x] In `app.ts` einmalig den `AppInitialisierungService` statt direkt den `BenutzerStore` starten.
+- [x] In `app.ts` einmalig den `AppSitzungsInitService` statt direkt den `BenutzerStore` starten.
 - [x] Den `BenutzerStore` durch den Service initialisieren und dessen Authentifizierungs- und Profilzustand beobachten.
 - [x] Das Laden von Stammdaten aus dem `BenutzerStore` entfernen.
 - [x] Ohne angemeldeten Benutzer oder aktives Profil den Zustand und die sitzungsbezogenen Daten zurücksetzen.
@@ -1654,7 +1654,7 @@ Neu hinzuzufügen:
 
 - [x] Service-Tests für Start, Abmeldung, aktives und inaktives Profil, Fehler und Wiederholung ergänzen.
 - [x] Store-Tests an die Trennung von Profilbeobachtung und Stammdateninitialisierung anpassen.
-- [x] App-Test auf den einmaligen Start über den `AppInitialisierungService` umstellen.
+- [x] App-Test auf den einmaligen Start über den `AppSitzungsInitService` umstellen.
 
 #### Erledigt, wenn
 
@@ -1677,8 +1677,8 @@ Lade- und Schreibabläufe für einen ausgewählten Firmenkontext bleiben weiterh
 - docs/projekt-stand.md
 - docs/todo_next.md
 - src/app/commons/models/domain/mitarbeiter.ts
-- src/app/services/core/app-initialisierung.service.ts
-- src/app/services/core/app-initialisierung.service.spec.ts
+- src/app/services/core/app-sitzungs-init.service.ts
+- src/app/services/core/app-sitzungs-init.service.spec.ts
 - src/app/services/domain/mitarbeiter.service.ts
 - src/app/services/domain/mitarbeiter.service.spec.ts
 - src/app/stores/domain/mitarbeiter.store.ts
@@ -1717,11 +1717,11 @@ Lade- und Schreibabläufe für einen ausgewählten Firmenkontext bleiben weiterh
 - [x] Schreibvorgänge verwenden weiterhin einen eindeutig geladenen Firmenkontext.
 - [x] Ein Benutzer- oder Kontextwechsel kann keine fremden oder veralteten Mitarbeiterdaten übernehmen.
 
-### 16.3 StammdatenLadeservice und Rollenlogik umsetzen
+### 16.3 AppDatenInitService und Rollenlogik umsetzen
 
 #### Ziel
 
-Der `StammdatenLadeservice` erzeugt aus dem aktiven Benutzerprofil den vollständigen Ladeplan und beauftragt die fachlichen
+Der `AppDatenInitService` erzeugt aus dem aktiven Benutzerprofil den vollständigen Ladeplan und beauftragt die fachlichen
 Stores mit den für diese Sitzung zwingend benötigten Stammdaten.
 
 #### Betroffene Dateien
@@ -1737,13 +1737,13 @@ Stores mit den für diese Sitzung zwingend benötigten Stammdaten.
 - src/app/stores/app/stammdaten.store.spec.ts
 - src/app/stores/domain/mitarbeiter.store.ts
 - src/app/stores/domain/mitarbeiter.store.spec.ts
-- src/app/services/core/app-initialisierung.service.ts
-- src/app/services/core/app-initialisierung.service.spec.ts
+- src/app/services/core/app-sitzungs-init.service.ts
+- src/app/services/core/app-sitzungs-init.service.spec.ts
 
 Neu hinzuzufügen:
 
-- src/app/services/core/stammdaten-ladeservice.ts
-- src/app/services/core/stammdaten-ladeservice.spec.ts
+- src/app/services/core/app-daten-init.service.ts
+- src/app/services/core/app-daten-init.service.spec.ts
 
 #### Schritt 1: Rollenabhängigen Ladeplan bilden
 
@@ -1756,10 +1756,10 @@ Neu hinzuzufügen:
 
 #### Schritt 2: Fachliche Ladevorgänge koordinieren
 
-- [x] Die Rollenlogik aus dem `StammdatenStore` in den `StammdatenLadeservice` verschieben.
+- [x] Die Rollenlogik aus dem `StammdatenStore` in den `AppDatenInitService` verschieben.
 - [x] Hierarchie-, Benutzerprofil- und Mitarbeiterdaten über die zuständigen Stores laden.
 - [x] Abhängige Ladevorgänge in fachlich notwendiger Reihenfolge und unabhängige Ladevorgänge parallel ausführen.
-- [x] Abschluss oder Fehler des gesamten zwingenden Ladeplans an den `AppInitialisierungService` zurückgeben.
+- [x] Abschluss oder Fehler des gesamten zwingenden Ladeplans an den `AppSitzungsInitService` zurückgeben.
 - [x] Bei Änderungen von `userRole` oder `zugriffe` einen neuen Ladeplan für den geänderten Kontext ausführen.
 
 #### Tests und Abschluss
@@ -1820,7 +1820,7 @@ Neu hinzuzufügen:
 #### Schritt 2: Fehlerseite umsetzen
 
 - [x] Den konkreten Initialisierungsfehler verständlich innerhalb der App-Shell anzeigen.
-- [x] Eine Wiederholung über den `AppInitialisierungService` anbieten.
+- [x] Eine Wiederholung über den `AppSitzungsInitService` anbieten.
 - [x] Nach erfolgreicher Wiederholung die ursprünglich angeforderte Route öffnen.
 - [x] Eine Abmeldung als sicheren Ausweg bereitstellen.
 
@@ -1850,10 +1850,10 @@ einer expliziten Datenquellenstrategie aus, ohne Benutzerrollen oder fachliche B
 
 - src/app/app.config.ts
 - src/app/commons/tokens/firebase.tokens.ts
-- src/app/services/core/app-initialisierung.service.ts
-- src/app/services/core/app-initialisierung.service.spec.ts
-- src/app/services/core/stammdaten-ladeservice.ts
-- src/app/services/core/stammdaten-ladeservice.spec.ts
+- src/app/services/core/app-sitzungs-init.service.ts
+- src/app/services/core/app-sitzungs-init.service.spec.ts
+- src/app/services/core/app-daten-init.service.ts
+- src/app/services/core/app-daten-init.service.spec.ts
 - src/app/services/firebase/firestore-db.service.ts
 - src/app/services/firebase/firestore-db.service.spec.ts
 - src/app/services/firebase/benutzer-verwaltung.service.ts

@@ -7,7 +7,7 @@ import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
 
 import { AppToolbar } from './components/app-shell/app-toolbar/app-toolbar';
-import { AppInitialisierungService } from './services/core/app-initialisierung.service';
+import { AppSitzungsInitService } from './services/core/app-sitzungs-init.service';
 import { BenutzerStore } from './stores/app/benutzer.store';
 import { App } from './app';
 
@@ -26,7 +26,7 @@ describe('App', () => {
     istInaktiv: WritableSignal<boolean>;
     istMaster: ReturnType<typeof vi.fn>;
   };
-  let appInitialisierungServiceMock: {
+  let appSitzungsInitServiceMock: {
     init: ReturnType<typeof vi.fn>;
   };
 
@@ -40,7 +40,7 @@ describe('App', () => {
       istInaktiv: signal(false),
       istMaster: vi.fn().mockReturnValue(true),
     };
-    appInitialisierungServiceMock = {
+    appSitzungsInitServiceMock = {
       init: vi.fn(),
     };
 
@@ -54,7 +54,7 @@ describe('App', () => {
             data: { layout: 'auth' },
           },
         ]),
-        { provide: AppInitialisierungService, useValue: appInitialisierungServiceMock },
+        { provide: AppSitzungsInitService, useValue: appSitzungsInitServiceMock },
         { provide: BenutzerStore, useValue: benutzerStoreMock },
       ],
     }).compileComponents();
@@ -69,7 +69,7 @@ describe('App', () => {
   it('should initialize the app session', () => {
     TestBed.createComponent(App);
 
-    expect(appInitialisierungServiceMock.init).toHaveBeenCalledOnce();
+    expect(appSitzungsInitServiceMock.init).toHaveBeenCalledOnce();
   });
 
   it('should render the app shell', () => {

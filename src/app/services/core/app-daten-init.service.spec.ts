@@ -1,4 +1,4 @@
-// pur-system/src/app/services/core/stammdaten-ladeservice.spec.ts
+// pur-system/src/app/services/core/app-daten-init.service.spec.ts
 
 import { WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -8,9 +8,9 @@ import { IUnternehmerEintrag } from '../../commons/models/domain/unternehmer';
 import { StammdatenStore } from '../../stores/app/stammdaten.store';
 import { MitarbeiterStore } from '../../stores/domain/mitarbeiter.store';
 import { DebugLogService } from './debug-log.service';
-import { StammdatenLadeservice } from './stammdaten-ladeservice';
+import { AppDatenInitService } from './app-daten-init.service';
 
-describe('StammdatenLadeservice', () => {
+describe('AppDatenInitService', () => {
   let unternehmer: WritableSignal<readonly IUnternehmerEintrag[]>;
   let stammdatenStoreMock: {
     unternehmer: WritableSignal<readonly IUnternehmerEintrag[]>;
@@ -72,7 +72,7 @@ describe('StammdatenLadeservice', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        StammdatenLadeservice,
+        AppDatenInitService,
         { provide: StammdatenStore, useValue: stammdatenStoreMock },
         { provide: MitarbeiterStore, useValue: mitarbeiterStoreMock },
         { provide: DebugLogService, useValue: debugLogServiceMock },
@@ -87,7 +87,7 @@ describe('StammdatenLadeservice', () => {
         resolveStammdaten = resolve;
       }),
     );
-    const service = TestBed.inject(StammdatenLadeservice);
+    const service = TestBed.inject(AppDatenInitService);
 
     const pending = service.loadStammdaten('master-1', createProfil('master', {}));
 
@@ -142,7 +142,7 @@ describe('StammdatenLadeservice', () => {
         'f-2': ['b-2', 'b-3'],
       },
     };
-    const service = TestBed.inject(StammdatenLadeservice);
+    const service = TestBed.inject(AppDatenInitService);
 
     const pending = service.loadStammdaten('office-1', createProfil('office', zugriffe));
 
@@ -171,7 +171,7 @@ describe('StammdatenLadeservice', () => {
 
   it('should load only branch employees for a branch profile', async () => {
     const zugriffe = { 'u-1': { 'f-1': ['b-1'] } };
-    const service = TestBed.inject(StammdatenLadeservice);
+    const service = TestBed.inject(AppDatenInitService);
 
     await service.loadStammdaten('filiale-1', createProfil('filiale', zugriffe));
 
@@ -192,7 +192,7 @@ describe('StammdatenLadeservice', () => {
 
   it('should load all company employees for an employee profile', async () => {
     const zugriffe = { 'u-1': { 'f-1': [] } };
-    const service = TestBed.inject(StammdatenLadeservice);
+    const service = TestBed.inject(AppDatenInitService);
 
     await service.loadStammdaten(
       'mitarbeiter-1',
@@ -216,7 +216,7 @@ describe('StammdatenLadeservice', () => {
 
   it('should pass an explicitly selected strategy to every required store', async () => {
     const zugriffe = { 'u-1': { 'f-1': ['b-1'] } };
-    const service = TestBed.inject(StammdatenLadeservice);
+    const service = TestBed.inject(AppDatenInitService);
 
     await service.loadStammdaten('office-1', createProfil('office', zugriffe), 'cacheOnly');
 
@@ -249,7 +249,7 @@ describe('StammdatenLadeservice', () => {
       userRole: 'unbekannt' as IBenutzerProfilDokument['userRole'],
     },
   ])('should reject invalid profile assignments for $userRole', async (profil) => {
-    const service = TestBed.inject(StammdatenLadeservice);
+    const service = TestBed.inject(AppDatenInitService);
 
     await expect(service.loadStammdaten('benutzer-1', profil)).rejects.toEqual({
       code: 'app/invalid-user-profile',
@@ -261,7 +261,7 @@ describe('StammdatenLadeservice', () => {
 
   it('should propagate a required employee loading error', async () => {
     mitarbeiterStoreMock.loadMitarbeiter.mockRejectedValue({ code: 'unavailable' });
-    const service = TestBed.inject(StammdatenLadeservice);
+    const service = TestBed.inject(AppDatenInitService);
 
     await expect(
       service.loadStammdaten('office-1', createProfil('office', { 'u-1': { 'f-1': ['b-1'] } })),
@@ -269,7 +269,7 @@ describe('StammdatenLadeservice', () => {
   });
 
   it('should reset all stores managed by the loading service', () => {
-    const service = TestBed.inject(StammdatenLadeservice);
+    const service = TestBed.inject(AppDatenInitService);
 
     service.reset();
 

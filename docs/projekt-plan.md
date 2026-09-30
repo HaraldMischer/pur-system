@@ -36,17 +36,17 @@ bereitgestellt.
 - Components enthalten UI und einfache Formular- oder Interaktionslogik.
 - Stores halten App-State sowie Lade- und Fehlerzustände. Fachliche Stores beauftragen die für ihre Daten zuständigen Services.
 - Fachliche Services kapseln Domänen-Mapping, Sortierung und fachlich benannte Datenoperationen.
-- Der `AppInitialisierungService` koordiniert den Sitzungsstart. Er initialisiert den `BenutzerStore`, wartet auf ein aktives
+- Der `AppSitzungsInitService` koordiniert den Sitzungsstart. Er initialisiert den `BenutzerStore`, wartet auf ein aktives
   Benutzerprofil und stößt anschließend das Laden der zwingend benötigten Stammdaten an.
-- Der `StammdatenLadeservice` bestimmt anhand von `userRole` und `zugriffe`, welche Stammdaten für die aktuelle Sitzung benötigt
+- Der `AppDatenInitService` bestimmt anhand von `userRole` und `zugriffe`, welche Stammdaten für die aktuelle Sitzung benötigt
   werden. Die konkreten Daten werden weiterhin durch die fachlichen Stores und Services geladen und gehalten.
 - Der technische `FirestoreDbService` kapselt direkte AngularFire-Aufrufe, den Angular-Injection-Kontext, die globale
   Registrierung lesender Ladevorgänge, die auswählbare Datenquellenstrategie und Echtzeit-Listener für einzelne Dokumente.
 - Firestore-Collection- und Dokumentpfade werden zentral erzeugt und nicht in fachlichen Services zusammengesetzt.
 - Der Sitzungsstart folgt dem Datenfluss
-  `App -> AppInitialisierungService -> BenutzerStore -> StammdatenLadeservice -> fachliche Stores und Services`.
+  `App -> AppSitzungsInitService -> BenutzerStore -> AppDatenInitService -> fachliche Stores und Services`.
 - Fachliche Ladevorgänge folgen dem Datenfluss
-  `Component oder StammdatenLadeservice -> Store -> fachlicher Service -> FirestoreDbService -> Firebase/Firestore`.
+  `Component oder AppDatenInitService -> Store -> fachlicher Service -> FirestoreDbService -> Firebase/Firestore`.
 - Der app-weite `GlobalBannerService` verwaltet genau einen globalen Hinweis. Die zugehörige App-Shell-Component stellt Art,
   Text und semantische Live-Rolle unterhalb der Toolbar dar. Fachliche Zustände bleiben in ihren Stores und werden in der
   App-Shell auf den Banner-Zustand abgebildet.
@@ -325,8 +325,8 @@ Unternehmer- oder Firmenauswahl.
 
 ### Laden und Validierung
 
-Das Laden der sitzungsbezogenen Stammdaten erfolgt nach der Anmeldung zentral über den `AppInitialisierungService` und den
-`StammdatenLadeservice`. Der `StammdatenStore` hält die geladene Unternehmensstruktur; der `BenutzerVerwaltungStore` stellt daraus
+Das Laden der sitzungsbezogenen Stammdaten erfolgt nach der Anmeldung zentral über den `AppSitzungsInitService` und den
+`AppDatenInitService`. Der `StammdatenStore` hält die geladene Unternehmensstruktur; der `BenutzerVerwaltungStore` stellt daraus
 die abhängigen Auswahllisten zusammen. Die Benutzeranlage muss Unternehmer-, Firmen- und Filialzuordnung serverseitig prüfen.
 Bestehende Benutzerprofile müssen bei der Erweiterung des Berechtigungsmodells berücksichtigt werden.
 

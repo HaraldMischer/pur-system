@@ -7,7 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { AppInitialisierungService } from '../../services/core/app-initialisierung.service';
+import { AppSitzungsInitService } from '../../services/core/app-sitzungs-init.service';
 import { BenutzerStore } from '../../stores/app/benutzer.store';
 import { getInitialisierungsRueckkehrUrl } from '../../guards/guard-navigation';
 
@@ -24,7 +24,7 @@ export class InitialisierungsfehlerPage {
   // ===== Interne Dependency Injection =========
 
   private readonly _activatedRoute = inject(ActivatedRoute);
-  private readonly _appInitialisierungService = inject(AppInitialisierungService);
+  private readonly _appSitzungsInitService = inject(AppSitzungsInitService);
   private readonly _benutzerStore = inject(BenutzerStore);
   private readonly _router = inject(Router);
 
@@ -41,7 +41,7 @@ export class InitialisierungsfehlerPage {
   readonly error = computed(() => {
     return (
       this._aktionsfehler() ??
-      this._appInitialisierungService.error() ??
+      this._appSitzungsInitService.error() ??
       'Die erforderlichen Daten konnten nicht geladen werden.'
     );
   });
@@ -68,8 +68,8 @@ export class InitialisierungsfehlerPage {
     this._aktion.set('wiederholen');
     this._aktionsfehler.set(null);
     try {
-      await this._appInitialisierungService.retry();
-      if (this._appInitialisierungService.status() === 'ready') {
+      await this._appSitzungsInitService.retry();
+      if (this._appSitzungsInitService.status() === 'ready') {
         await this._router.navigateByUrl(this.getRueckkehrUrl());
       }
     } finally {

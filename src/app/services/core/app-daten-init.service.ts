@@ -1,15 +1,11 @@
-// pur-system/src/app/services/core/stammdaten-ladeservice.ts
+// pur-system/src/app/services/core/app-daten-init.service.ts
 
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { IBenutzerProfilDokument, TBenutzerZugriffe } from '../../commons/models/domain/benutzer';
-import {
-  StammdatenStore,
-  TStammdatenLadeauftrag,
-  TStammdatenSnapshot,
-} from '../../stores/app/stammdaten.store';
+import { StammdatenStore, TStammdatenLadeauftrag } from '../../stores/app/stammdaten.store';
 import { MitarbeiterStore } from '../../stores/domain/mitarbeiter.store';
 import { DebugLogService } from './debug-log.service';
 
@@ -30,15 +26,13 @@ type TStammdatenLadeplan = {
 const UNGUELTIGES_BENUTZERPROFIL = { code: 'app/invalid-user-profile' } as const;
 
 @Injectable({ providedIn: 'root' })
-export class StammdatenLadeservice {
+export class AppDatenInitService {
   // ===== Interne Dependency Injection =========
-
   private readonly _stammdatenStore = inject(StammdatenStore);
   private readonly _mitarbeiterStore = inject(MitarbeiterStore);
   private readonly _debugLogService = inject(DebugLogService);
 
   // ===== Öffentliche Aktionen =================
-
   /**
    * Lädt alle für das aktive Benutzerprofil zwingend benötigten Stammdaten.
    *
@@ -83,7 +77,6 @@ export class StammdatenLadeservice {
   }
 
   // ===== Interne Helfer =======================
-
   private erstelleLadeplan(
     profil: IBenutzerProfilDokument,
     strategie: TFirestoreLesestrategie,
@@ -285,52 +278,37 @@ export class StammdatenLadeservice {
     this._debugLogService.logDatenGeladen('Firmen', firmenAnzahl);
     this._debugLogService.logDatenGeladen('Filialen', filialenAnzahl);
 
-    for (const auftrag of this.sortMitarbeiterAuftraege(mitarbeiterAuftraege)) {
-      const mitarbeiter = this._mitarbeiterStore.getMitarbeiter(
-        auftrag.unternehmerId,
-        auftrag.firmaId,
-        auftrag.filialId,
-      );
-      const firma = stammdaten.firmenNachUnternehmer[auftrag.unternehmerId]?.find((eintrag) => {
-        return eintrag.id === auftrag.firmaId;
+    const mitarbeiterErgebnisse = mitarbeiterAuftraege
+      .map((auftrag) => {
+        const unternehmer = stammdaten.unternehmer.find((eintrag) => {
+          return eintrag.id === auftrag.unternehmerId;
+        });
+        const firma = stammdaten.firmenNachUnternehmer[auftrag.unternehmerId]?.find((eintrag) => {
+          return eintrag.id === auftrag.firmaId;
+        });
+        const firmaBezeichnung = firma?.anzeigename ?? auftrag.firmaId;
+        return {
+          unternehmerBezeichnung: unternehmer?.anzeigename ?? auftrag.unternehmerId,
+          firmaBezeichnung,
+          bezeichnung: `Mitarbeiter | ${firmaBezeichnung}`,
+          anzahl: this._mitarbeiterStore.getMitarbeiter(
+            auftrag.unternehmerId,
+            auftrag.firmaId,
+            auftrag.filialId,
+          ).length,
+        };
+      })
+      .sort((erster, zweiter) => {
+        return (
+          erster.unternehmerBezeichnung.localeCompare(zweiter.unternehmerBezeichnung, 'de') ||
+          erster.firmaBezeichnung.localeCompare(zweiter.firmaBezeichnung, 'de')
+        );
       });
-      this._debugLogService.logDatenGeladen(
-        `Mitarbeiter | ${firma?.anzeigename ?? auftrag.firmaId}`,
-        mitarbeiter.length,
-      );
+
+    for (const ergebnis of mitarbeiterErgebnisse) {
+      this._debugLogService.logDatenGeladen(ergebnis.bezeichnung, ergebnis.anzahl);
     }
 
     this._debugLogService.logDatenflussTitel('STAMMDATEN VOLLSTÄNDIG GELADEN ');
-  }
-
-  private sortMitarbeiterAuftraege(
-    auftraege: readonly TMitarbeiterLadeauftrag[],
-  ): TMitarbeiterLadeauftrag[] {
-    const stammdaten = this._stammdatenStore.snapshot();
-    return [...auftraege].sort((erster, zweiter) => {
-      return this.getMitarbeiterAuftragSortierwert(erster, stammdaten).localeCompare(
-        this.getMitarbeiterAuftragSortierwert(zweiter, stammdaten),
-        'de',
-      );
-    });
-  }
-
-  private getMitarbeiterAuftragSortierwert(
-    auftrag: TMitarbeiterLadeauftrag,
-    stammdaten: TStammdatenSnapshot,
-  ): string {
-    const unternehmer = stammdaten.unternehmer.find((eintrag) => {
-      return eintrag.id === auftrag.unternehmerId;
-    });
-    const firma = stammdaten.firmenNachUnternehmer[auftrag.unternehmerId]?.find((eintrag) => {
-      return eintrag.id === auftrag.firmaId;
-    });
-    return [
-      unternehmer?.anzeigename ?? auftrag.unternehmerId,
-      firma?.anzeigename ?? auftrag.firmaId,
-      auftrag.filialId ?? '',
-      auftrag.unternehmerId,
-      auftrag.firmaId,
-    ].join('\u0000');
   }
 }

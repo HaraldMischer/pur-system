@@ -10,8 +10,8 @@ Architektur und Datenfluss stehen im [Projektplan](./projekt-plan.md).
 | Baustein                      | Verantwortung                                                               |
 | ----------------------------- | --------------------------------------------------------------------------- |
 | `BenutzerStore`               | Beobachtet Firebase Auth und das eigene Benutzerprofil in Echtzeit.         |
-| `AppInitialisierungService`   | Koordiniert den Sitzungsstart und stellt den Initialisierungsstatus bereit. |
-| `StammdatenLadeservice`       | Bestimmt anhand von Rolle und Zugriffen den zwingenden Ladeumfang.          |
+| `AppSitzungsInitService`   | Koordiniert den Sitzungsstart und stellt den Initialisierungsstatus bereit. |
+| `AppDatenInitService`       | Bestimmt anhand von Rolle und Zugriffen den zwingenden Ladeumfang.          |
 | Fachliche Stores und Services | Laden, prüfen und halten konkrete Domänendaten.                             |
 | Guards und App-Shell          | Steuern Navigation und zeigen Lade- oder Fehlerzustände.                    |
 | `FirestoreDbService`          | Führt technische Firestore-Abfragen mit der vorgegebenen Lesestrategie aus. |
@@ -53,13 +53,13 @@ Architektur und Datenfluss stehen im [Projektplan](./projekt-plan.md).
 ## 4. Ausführung und Ladeprotokoll
 
 - Beim `master` wird zuerst die vollständige Unternehmensstruktur einschließlich der Benutzerprofile geladen. Erst danach
-  ermittelt der `StammdatenLadeservice` aus den geladenen Firmen die erforderlichen Mitarbeiteraufträge und führt diese parallel
+  ermittelt der `AppDatenInitService` aus den geladenen Firmen die erforderlichen Mitarbeiteraufträge und führt diese parallel
   aus.
 - Bei `office`, `filiale` und `mitarbeiter` stehen die Mitarbeiteraufträge bereits aus den Profilzugriffen fest. Deshalb werden
   die Unternehmensstruktur und die Mitarbeiter parallel geladen.
 - Parallele Aufträge werden vollständig abgewartet. Ist mindestens ein zwingender Auftrag fehlgeschlagen, wird der Ladeplan als
   Fehler beendet und es wird kein erfolgreiches Ladeergebnis protokolliert.
-- Nach erfolgreichem Abschluss protokolliert der `StammdatenLadeservice` ausschließlich die Anzahl der geladenen Einträge. Die
+- Nach erfolgreichem Abschluss protokolliert der `AppDatenInitService` ausschließlich die Anzahl der geladenen Einträge. Die
   Reihenfolge ist unabhängig von der tatsächlichen Abschlussreihenfolge fest: Benutzerprofile, Unternehmer, Firmen, Filialen
   und Mitarbeiter. Nicht benötigte Datenarten werden ausgelassen.
 - Mitarbeiterzeilen werden nach Unternehmer und Firma sortiert. Die Abschlussmeldung wird erst nach dem vollständigen Ladeplan

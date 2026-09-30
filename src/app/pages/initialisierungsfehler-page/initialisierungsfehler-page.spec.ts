@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 
-import { AppInitialisierungService } from '../../services/core/app-initialisierung.service';
+import { AppSitzungsInitService } from '../../services/core/app-sitzungs-init.service';
 import { BenutzerStore } from '../../stores/app/benutzer.store';
 import { InitialisierungsfehlerPage } from './initialisierungsfehler-page';
 
@@ -14,7 +14,7 @@ describe('InitialisierungsfehlerPage', () => {
   let status: ReturnType<typeof signal<'error' | 'ready'>>;
   let initialisierungsfehler: ReturnType<typeof signal<string | null>>;
   let benutzerfehler: ReturnType<typeof signal<string | null>>;
-  let appInitialisierungServiceMock: {
+  let appSitzungsInitServiceMock: {
     status: typeof status;
     error: typeof initialisierungsfehler;
     retry: ReturnType<typeof vi.fn>;
@@ -32,7 +32,7 @@ describe('InitialisierungsfehlerPage', () => {
     status = signal<'error' | 'ready'>('error');
     initialisierungsfehler = signal('Die Stammdaten konnten nicht geladen werden.');
     benutzerfehler = signal<string | null>(null);
-    appInitialisierungServiceMock = {
+    appSitzungsInitServiceMock = {
       status,
       error: initialisierungsfehler,
       retry: vi.fn().mockImplementation(async () => {
@@ -51,7 +51,7 @@ describe('InitialisierungsfehlerPage', () => {
     await TestBed.configureTestingModule({
       imports: [InitialisierungsfehlerPage],
       providers: [
-        { provide: AppInitialisierungService, useValue: appInitialisierungServiceMock },
+        { provide: AppSitzungsInitService, useValue: appSitzungsInitServiceMock },
         { provide: BenutzerStore, useValue: benutzerStoreMock },
         { provide: Router, useValue: routerMock },
         {
@@ -81,12 +81,12 @@ describe('InitialisierungsfehlerPage', () => {
   it('should return to the requested route after a successful retry', async () => {
     await fixture.componentInstance.retry();
 
-    expect(appInitialisierungServiceMock.retry).toHaveBeenCalledOnce();
+    expect(appSitzungsInitServiceMock.retry).toHaveBeenCalledOnce();
     expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/verwaltung?ansicht=firma');
   });
 
   it('should remain on the error page when retry fails again', async () => {
-    appInitialisierungServiceMock.retry.mockImplementation(async () => {
+    appSitzungsInitServiceMock.retry.mockImplementation(async () => {
       initialisierungsfehler.set('Der zweite Versuch ist fehlgeschlagen.');
     });
 

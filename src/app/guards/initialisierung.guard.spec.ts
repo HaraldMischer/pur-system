@@ -6,7 +6,7 @@ import { Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Observable, firstValueFrom } from 'rxjs';
 
 import { TAppInitialisierungsstatus } from '../commons/models/app/app-initialisierung.types';
-import { AppInitialisierungService } from '../services/core/app-initialisierung.service';
+import { AppSitzungsInitService } from '../services/core/app-sitzungs-init.service';
 import { BenutzerStore } from '../stores/app/benutzer.store';
 import { initialisierungGuard } from './initialisierung.guard';
 
@@ -25,7 +25,7 @@ describe('initialisierungGuard', () => {
     TestBed.configureTestingModule({
       providers: [
         {
-          provide: AppInitialisierungService,
+          provide: AppSitzungsInitService,
           useValue: { status },
         },
         {

@@ -1,4 +1,4 @@
-// pur-system/src/app/services/core/app-initialisierung.service.ts
+// pur-system/src/app/services/core/app-sitzungs-init.service.ts
 
 import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 
@@ -8,20 +8,18 @@ import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { AppKontextStore } from '../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../stores/app/benutzer.store';
-import { StammdatenLadeservice } from './stammdaten-ladeservice';
+import { AppDatenInitService } from './app-daten-init.service';
 
 const PROFIL_FEHLT_FEHLER = 'Für den angemeldeten Benutzer wurde kein Benutzerprofil gefunden.';
 
 @Injectable({ providedIn: 'root' })
-export class AppInitialisierungService {
+export class AppSitzungsInitService {
   // ===== Interne Dependency Injection =========
-
   private readonly _benutzerStore = inject(BenutzerStore);
   private readonly _appKontextStore = inject(AppKontextStore);
-  private readonly _stammdatenLadeservice = inject(StammdatenLadeservice);
+  private readonly _appDatenInitService = inject(AppDatenInitService);
 
   // ===== Interner State =======================
-
   private readonly _gestartet = signal(false);
   private readonly _status = signal<TAppInitialisierungsstatus>('idle');
   private readonly _error = signal<string | null>(null);
@@ -30,7 +28,6 @@ export class AppInitialisierungService {
   private _laufenderAuftrag: { kontext: string; promise: Promise<void> } | null = null;
 
   // ===== Öffentliche Werte ====================
-
   readonly status = this._status.asReadonly();
   readonly error = this._error.asReadonly();
 
@@ -57,7 +54,6 @@ export class AppInitialisierungService {
   }
 
   // ===== Öffentliche Aktionen =================
-
   /**
    * Startet einmalig die zentrale Initialisierung der Benutzersitzung.
    */
@@ -117,7 +113,6 @@ export class AppInitialisierungService {
   }
 
   // ===== Interne Helfer =======================
-
   private handleSitzungszustand(
     gestartet: boolean,
     benutzerId: string | null,
@@ -186,9 +181,9 @@ export class AppInitialisierungService {
   ): Promise<void> {
     try {
       if (strategie) {
-        await this._stammdatenLadeservice.loadStammdaten(benutzerId, profil, strategie);
+        await this._appDatenInitService.loadStammdaten(benutzerId, profil, strategie);
       } else {
-        await this._stammdatenLadeservice.loadStammdaten(benutzerId, profil);
+        await this._appDatenInitService.loadStammdaten(benutzerId, profil);
       }
       if (generation !== this._generation) {
         return;
@@ -220,7 +215,7 @@ export class AppInitialisierungService {
     this._abgeschlossenerKontext = null;
     this._laufenderAuftrag = null;
     this._appKontextStore.reset();
-    this._stammdatenLadeservice.reset();
+    this._appDatenInitService.reset();
   }
 
   private setError(error: string): void {
