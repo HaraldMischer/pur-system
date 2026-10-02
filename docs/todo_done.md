@@ -1754,6 +1754,9 @@ Neu hinzuzufügen:
 - [x] Für `mitarbeiter` den zugeordneten Unternehmer und die Firma sowie alle Mitarbeiter dieser Firma einplanen.
 - [x] Fehlende oder widersprüchliche Pflichtzuordnungen als Initialisierungsfehler behandeln.
 
+> Spätere Präzisierung: Der Mitarbeiterzugang lädt inzwischen nach dem eigenen Mitarbeiterdatensatz nur die zugeordneten
+> Filialen und deren Mitarbeiter mit einer gemeinsamen Abfrage. Der erledigte Punkt dokumentiert den damaligen Umsetzungsstand.
+
 #### Schritt 2: Fachliche Ladevorgänge koordinieren
 
 - [x] Die Rollenlogik aus dem `StammdatenStore` in den `AppDatenInitService` verschieben.

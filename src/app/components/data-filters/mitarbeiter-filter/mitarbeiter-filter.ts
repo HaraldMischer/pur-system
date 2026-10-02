@@ -1,4 +1,4 @@
-// pur-system/src/app/components/data-selectors/mitarbeiter-selector/mitarbeiter-selector.ts
+// pur-system/src/app/components/data-filters/mitarbeiter-filter/mitarbeiter-filter.ts
 
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,13 +7,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 
 @Component({
-  selector: 'app-mitarbeiter-selector',
+  selector: 'app-mitarbeiter-filter',
   imports: [MatFormFieldModule, MatSelectModule],
-  templateUrl: './mitarbeiter-selector.html',
-  styleUrl: './mitarbeiter-selector.scss',
+  templateUrl: './mitarbeiter-filter.html',
+  styleUrl: './mitarbeiter-filter.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MitarbeiterSelector {
+export class MitarbeiterFilter {
   // ===== Öffentliche API ======================
 
   readonly mitarbeiter = input.required<readonly IMitarbeiterEintrag[]>();

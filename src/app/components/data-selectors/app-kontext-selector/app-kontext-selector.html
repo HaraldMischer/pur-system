@@ -1,0 +1,32 @@
+<!-- pur-system/src/app/components/data-selectors/app-kontext-selector/app-kontext-selector.html -->
+
+<div class="app-kontext-selector">
+  @if (konfiguration().unternehmer !== 'hidden') {
+    <app-unternehmer-selector
+      [unternehmer]="unternehmer()"
+      [selectedUnternehmer]="selectedUnternehmer()"
+      [disabled]="stammdatenDownload() || konfiguration().unternehmer !== 'editable'"
+      (selectedUnternehmerChange)="selectUnternehmer($event)"
+    />
+  }
+  @if (konfiguration().firma !== 'hidden') {
+    <app-firma-selector
+      [firmen]="firmen()"
+      [selectedFirma]="selectedFirma()"
+      [disabled]="
+        stammdatenDownload() || !selectedUnternehmer() || konfiguration().firma !== 'editable'
+      "
+      (selectedFirmaChange)="selectFirma($event)"
+    />
+  }
+  @if (konfiguration().filiale !== 'hidden') {
+    <app-filiale-selector
+      [filialen]="filialen()"
+      [filialKontext]="filialKontext()"
+      [disabled]="
+        stammdatenDownload() || !selectedFirma() || konfiguration().filiale !== 'editable'
+      "
+      (filialKontextChange)="selectFilialKontext($event)"
+    />
+  }
+</div>

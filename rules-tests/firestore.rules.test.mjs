@@ -229,7 +229,7 @@ for (const role of ['office', 'filiale']) {
   });
 }
 
-test('active employee account reads employees only within the assigned company', async () => {
+test('active employee account reads direct company data only within the assigned company', async () => {
   const db = await seedProfile('mitarbeiter', {
     erlaubteBereiche: ['dashboard', 'schichtplan'],
     zugriffe: { 'u-1': { 'f-1': [] } },
@@ -239,10 +239,19 @@ test('active employee account reads employees only within the assigned company',
   await assertSucceeds(getDoc(doc(db, 'benutzerprofil/scoped')));
   await assertSucceeds(getDoc(doc(db, unternehmerPath)));
   await assertSucceeds(getDoc(doc(db, firmaPath)));
+  await assertSucceeds(getDoc(doc(db, filialePath)));
+  await assertSucceeds(getDoc(doc(db, nichtZugeordneteFilialePath)));
+  await assertSucceeds(getDocs(collection(db, `${firmaPath}/filiale`)));
   await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
   await assertSucceeds(getDoc(doc(db, andererMitarbeiterPath)));
   await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
-  for (const path of [nichtZugeordneteFirmaPath, filialePath, legacyBranchPath, 'other/doc']) {
+  for (const path of [
+    nichtZugeordneteFirmaPath,
+    'unternehmer/u-2/firma/f-1/filiale/b-1',
+    `${filialePath}/mitarbeiter/m-1`,
+    legacyBranchPath,
+    'other/doc',
+  ]) {
     await assertFails(getDoc(doc(db, path)));
   }
   await assertFails(getDoc(doc(db, nichtZugeordneterMitarbeiterPath)));

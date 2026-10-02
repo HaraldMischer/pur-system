@@ -1,11 +1,10 @@
-// pur-system/src/app/components/data-selectors/filiale-selector/filiale-selector.spec.ts
+// pur-system/src/app/components/data-selectors/app-kontext-selector/filiale-selector/filiale-selector.spec.ts
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSelect } from '@angular/material/select';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
-
-import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { IFilialeEintrag } from '../../../../commons/models/domain/filiale';
 import { FilialeSelector } from './filiale-selector';
 
 const FILIALEN: readonly IFilialeEintrag[] = [

@@ -1,11 +1,10 @@
-// pur-system/src/app/components/data-selectors/filiale-selector/filiale-selector.ts
+// pur-system/src/app/components/data-selectors/app-kontext-selector/filiale-selector/filiale-selector.ts
 
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-
-import { TFilialKontext } from '../../../commons/models/app/app-kontext.types';
-import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { TFilialKontext } from '../../../../commons/models/app/app-kontext.types';
+import { IFilialeEintrag } from '../../../../commons/models/domain/filiale';
 
 const ALLE_FILIALEN_WERT = '__alle_filialen__';
 

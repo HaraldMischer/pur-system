@@ -8,9 +8,11 @@ export type TDebugLogKategorie = 'Authentifizierung' | 'Firestore' | 'Laden' | '
 
 // ===== Top-Level Helper =====================
 
+const LOGZEILEN_TEXT_LAENGE = 45;
+
 function formatDatenzeile(bezeichnung: string, anzahl: number): string {
   const text = `${bezeichnung} geladen`;
-  return `* ${text.padEnd(34, '.')} (${anzahl})`;
+  return `* ${text.padEnd(LOGZEILEN_TEXT_LAENGE, '.')} (${anzahl})`;
 }
 
 export function isLocalhost(hostname: string): boolean {
@@ -53,7 +55,7 @@ export class DebugLogService {
   logDatenflussTitel(titel: string): void {
     if (!this.isEnabled) return;
 
-    console.log(`\n******* ${titel.padEnd(42, '*')}`);
+    console.log(`\n***** ${titel.padEnd(LOGZEILEN_TEXT_LAENGE, '*')}`);
   }
 
   /**

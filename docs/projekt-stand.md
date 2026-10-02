@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -94,8 +94,10 @@ Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `AppSitzungsInitService` die Sitzung als `ready`.
 - Master laden die vollständige Unternehmenshierarchie, alle Benutzerprofile und die Mitarbeiter aller Firmen. Office lädt die
   zugeordneten Hierarchiedaten und alle Mitarbeiter der zugeordneten Firmen. Filiale lädt ihre eindeutige Hierarchie und nur die
-  Mitarbeiter mit ihrer Filial-ID. Mitarbeiter lädt den zugeordneten Unternehmer und die Firma sowie alle Mitarbeiter dieser
-  Firma. Fehlende oder widersprüchliche Pflichtzuordnungen brechen die Initialisierung ab.
+  Mitarbeiter mit ihrer Filial-ID. Mitarbeiter lädt zunächst den zugeordneten Unternehmer und die Firma, danach den eigenen
+  aktiven Mitarbeiter über `firmaMitarbeiterId` und anschließend die in dessen `filialIds` referenzierten Filialen. Die
+  Mitarbeiter dieser Filialen werden mit einer gemeinsamen `array-contains-any`-Abfrage eindeutig geladen. Fehlende oder
+  widersprüchliche Pflichtzuordnungen brechen die Initialisierung ab.
 - Das fachliche Ladeprotokoll führt alle zwingenden Daten in einem gemeinsamen Stammdaten-Abschnitt. Unabhängige Aufträge
   bleiben parallel und werden auch im Fehlerfall vollständig abgewartet. Beim Master wird zunächst die vollständige
   Unternehmensstruktur geladen, weil daraus erst die Mitarbeiteraufträge für alle Firmen entstehen. Nach erfolgreichem
@@ -225,17 +227,18 @@ Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Das fachliche Mitarbeiter-Domänenmodell und sein Datenzugriff sind lokal umgesetzt. Mitarbeiter liegen unter
   `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`. Der Service lädt, erstellt, aktualisiert und löscht
   Mitarbeiter. Geladene Einträge behalten ihre Unternehmer- und Firmen-ID als fachlichen Kontext.
-- Der `MitarbeiterStore` hält mehrere Firmen- und Filialkontexte gleichzeitig. Jeder Kontext besitzt eigene Lade-, Abschluss- und
-  Fehlerzustände; dadurch bleibt auch ein vollständig geladenes leeres Ergebnis eindeutig. Identische laufende oder bereits
-  geladene Kontexte werden nicht erneut geladen. Ein zentraler Sitzungsreset verwirft sämtliche Mitarbeiterkontexte und schützt
-  vor der Übernahme veralteter Ladeergebnisse.
+- Der `MitarbeiterStore` hält mehrere Firmen-, Einzelfilial- und Mehrfilialkontexte gleichzeitig. Jeder Kontext besitzt eigene
+  Lade-, Abschluss- und Fehlerzustände; dadurch bleibt auch ein vollständig geladenes leeres Ergebnis eindeutig. Identische
+  laufende oder bereits geladene Kontexte werden nicht erneut geladen. Ein zentraler Sitzungsreset verwirft sämtliche
+  Mitarbeiterkontexte und schützt vor der Übernahme veralteter Ladeergebnisse.
 - Die produktiven Firestore Rules erlauben Office- und Filialkonten die vereinbarten Lese-, Anlage- und Aktualisierungszugriffe
   innerhalb ihres Firmen- beziehungsweise Filialbereichs. Filialkonten dürfen Mitarbeiter ihrer Firma lesen, laden mit ihrer
   Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
   Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
   `erlaubteBereiche`. Die Löschmethode ist in Service und Store vorhanden; verknüpfte Mitarbeiter sind durch Rules vor Löschung
-  geschützt. Eine Löschaktion in der Oberfläche ist noch nicht angebunden. Die aktuellen Rules wurden am 28.09.2026 produktiv
-  deployed.
+  geschützt. Eine Löschaktion in der Oberfläche ist noch nicht angebunden. Der am 28.09.2026 produktiv deployte Rules-Stand
+  enthielt bereits die Firmenrechte des Mitarbeiterzugangs. Die danach lokal ergänzte Leseberechtigung für direkte
+  Filialdokumente ist getestet, aber noch nicht deployed.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
   `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
   passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
@@ -378,9 +381,15 @@ Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 - Die wiederverwendbare Component liegt unter `src/app/components/data-selectors/datenzugriff-selector`; ihre Auswahlmodelle
   liegen in `src/app/commons/models/domain/datenzugriff.ts`.
-- Unter `src/app/components/data-selectors` liegen außerdem einfache Selektoren für Unternehmer, Firmen, Filialen und Mitarbeiter.
-  Sie erhalten vollständige Domäneneinträge und geben den ausgewählten Eintrag zurück. Der `MitarbeiterSelector` zeigt Vor- und
-  Nachname an, ist vollständig getestet und noch nicht in eine Fachseite oder ein Formular eingebunden.
+- Der `AppKontextSelector` liegt unter `src/app/components/data-selectors/app-kontext-selector`, verbindet den globalen
+  `AppKontextStore` mit der Sidebar und setzt sich aus internen Unternehmer-, Firmen- und Filial-Selektoren zusammen. Die drei
+  Unterkomponenten liegen in eigenen Unterordnern und werden außerhalb des `AppKontextSelector` nicht direkt verwendet. Über
+  eine typisierte Konfiguration unterstützt der Wrapper je Selektor die Modi `hidden`, `readonly` und `editable`. Die Sidebar
+  ermittelt die Konfiguration zentral aus Benutzerrolle und aktivem `data.bereich` der Route. Für Master sind Unternehmer und
+  Firma in allen Fachbereichen veränderbar; die Filiale ist nur im Mitarbeiterbereich sichtbar und veränderbar. Noch offene
+  Rollenkonfigurationen verwenden bis zu ihrer Festlegung vollständig verborgene Selektoren.
+- Der `MitarbeiterFilter` liegt unter `src/app/components/data-filters/mitarbeiter-filter`. Er zeigt Vor- und Nachname an, gibt
+  den ausgewählten vollständigen Mitarbeiter zurück, ist vollständig getestet und noch nicht in eine Fachseite eingebunden.
 - Die Systemverwaltungsseite lädt Unternehmer aus `unternehmer`, Firmen aus `firma` und Filialen aus `filiale`. Die produktiven
   Mock-Daten wurden entfernt. `UnternehmerService`, `FirmaService` und `FilialeService` kapseln Laden und Anlegen ihrer
   vollständigen Domäneneinträge. Das gemeinsame Datenzugriff-Auswahlmodell und die Firestore-Dokumente verwenden auf allen Ebenen
@@ -521,6 +530,9 @@ Stand: 30.09.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Aktivstatus und Bereichen eines verknüpften Mitarbeiterprofils, verhindern aber Änderungen an `zugriffe` und
   `firmaMitarbeiterId` und gewähren Lesezugriff auf die zugeordnete Unternehmensstruktur sowie die Mitarbeiter der zugewiesenen
   Firma. Diese Rules-Änderung wurde am 28.09.2026 produktiv deployed und mit einem realen Mitarbeiterkonto geprüft.
+- Die danach ergänzte Leseberechtigung des Mitarbeiterzugangs für direkte Filialdokumente seiner Firma ist lokal umgesetzt und
+  durch Emulator-Tests abgesichert, aber noch nicht produktiv deployed. Filial-Untercollections und Schreibzugriffe bleiben
+  gesperrt.
 - Der Git-Push der aktuellen Änderungen ist kein Firebase-Deployment.
 
 ## Tests und Build

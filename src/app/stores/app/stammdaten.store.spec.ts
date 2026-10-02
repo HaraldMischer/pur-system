@@ -122,6 +122,71 @@ describe('StammdatenStore', () => {
     expect(store.benutzerprofile()).toEqual([]);
   });
 
+  it('should add employee branches to an initialized company context', async () => {
+    filialeServiceMock.loadFilialeEintrag.mockImplementation(
+      async (_unternehmerId: string, _firmaId: string, id: string) => {
+        return {
+          id,
+          nummer: id === 'b-2' ? 2 : 1,
+          anzeigename: id === 'b-2' ? 'Zulu' : 'Alpha',
+        };
+      },
+    );
+    const store = TestBed.inject(StammdatenStore);
+    await store.loadStammdaten('mitarbeiter-1', {
+      alleStrukturdaten: false,
+      zugriffe: { 'u-1': { 'f-1': [] } },
+      benutzerprofile: false,
+      lesestrategie: 'networkOnly',
+    });
+
+    await store.loadFilialenNachIds(
+      'mitarbeiter-1',
+      'u-1',
+      'f-1',
+      ['b-2', 'b-1'],
+      'networkOnly',
+    );
+
+    expect(filialeServiceMock.loadFilialeEintrag).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      'b-2',
+      'networkOnly',
+    );
+    expect(filialeServiceMock.loadFilialeEintrag).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      'b-1',
+      'networkOnly',
+    );
+    expect(store.getFilialen('u-1', 'f-1').map((filiale) => filiale.id)).toEqual([
+      'b-1',
+      'b-2',
+    ]);
+    expect(store.isLoaded()).toBe(true);
+  });
+
+  it('should reject a missing employee branch document', async () => {
+    const store = TestBed.inject(StammdatenStore);
+    await store.loadStammdaten('mitarbeiter-1', {
+      alleStrukturdaten: false,
+      zugriffe: { 'u-1': { 'f-1': [] } },
+      benutzerprofile: false,
+      lesestrategie: 'networkOnly',
+    });
+    filialeServiceMock.loadFilialeEintrag.mockResolvedValue(null);
+
+    await expect(
+      store.loadFilialenNachIds('mitarbeiter-1', 'u-1', 'f-1', ['b-fehlt'], 'networkOnly'),
+    ).rejects.toEqual({ code: 'app/invalid-user-profile' });
+
+    expect(store.isLoaded()).toBe(false);
+    expect(store.error()).toBe(
+      'Das Benutzerprofil enthält unvollständige oder widersprüchliche Datenzugriffe.',
+    );
+  });
+
   it('should update cached entries and clear them on reset', async () => {
     const store = TestBed.inject(StammdatenStore);
     await store.loadStammdaten('master-1', alleLadeauftrag);

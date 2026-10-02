@@ -27,27 +27,10 @@
   </mat-card>
 
   <!-- Arbeitskontext -->
-  @defer (when istMaster()) {
-    <div class="app-sidenav__selectors">
-      <app-unternehmer-selector
-        [unternehmer]="unternehmer()"
-        [selectedUnternehmer]="selectedUnternehmer()"
-        [disabled]="stammdatenDownload()"
-        (selectedUnternehmerChange)="selectUnternehmer($event)"
-      />
-      <app-firma-selector
-        [firmen]="firmen()"
-        [selectedFirma]="selectedFirma()"
-        [disabled]="stammdatenDownload() || !selectedUnternehmer()"
-        (selectedFirmaChange)="selectFirma($event)"
-      />
-      <app-filiale-selector
-        [filialen]="filialen()"
-        [filialKontext]="filialKontext()"
-        [disabled]="true"
-        (filialKontextChange)="selectFilialKontext($event)"
-      />
-    </div>
+  @defer (when appKontextSelectorSichtbar()) {
+    @if (appKontextSelectorSichtbar()) {
+      <app-kontext-selector [konfiguration]="appKontextSelectorKonfiguration()" />
+    }
   }
 
   <!-- Hauptnavigation -->

@@ -150,6 +150,69 @@ export class MitarbeiterService {
   }
 
   /**
+   * Lädt die eindeutige Mitarbeitermenge mehrerer Filialen einer Firma.
+   *
+   * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+   * @param firmaId - Die Dokument-ID der übergeordneten Firma.
+   * @param filialIds - Filial-IDs, denen mindestens eine Mitarbeiterzuordnung entsprechen muss.
+   * @param strategie - Datenquellenstrategie für den Ladevorgang.
+   * @returns Die nach Nachname und Vorname sortierten Mitarbeiter ohne Mehrfachtreffer.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async loadMitarbeiterNachFilialen(
+    unternehmerId: string,
+    firmaId: string,
+    filialIds: readonly string[],
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+  ): Promise<IMitarbeiterEintrag[]> {
+    const eindeutigeFilialIds = [...new Set(filialIds)];
+    if (eindeutigeFilialIds.length === 0) {
+      return [];
+    }
+
+    const dokumente = await this.firestoreDbService.loadCollectionByAnyArrayValue<
+      Record<string, unknown>
+    >(
+      FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId),
+      'filialIds',
+      eindeutigeFilialIds,
+      strategie,
+    );
+
+    return sortMitarbeiter(
+      dokumente.map((dokument) => {
+        return mapMitarbeiterEintrag(unternehmerId, firmaId, dokument.id, dokument.daten);
+      }),
+    );
+  }
+
+  /**
+   * Lädt einen Mitarbeiter gezielt über seine Dokument-ID.
+   *
+   * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+   * @param firmaId - Die Dokument-ID der übergeordneten Firma.
+   * @param mitarbeiterId - Die Dokument-ID des Mitarbeiters.
+   * @param strategie - Datenquellenstrategie für den Ladevorgang.
+   * @returns Der Mitarbeiter oder `null`, wenn das Dokument nicht existiert.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async loadMitarbeiterEintrag(
+    unternehmerId: string,
+    firmaId: string,
+    mitarbeiterId: string,
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+  ): Promise<IMitarbeiterEintrag | null> {
+    const dokument = await this.firestoreDbService.loadDocument<Record<string, unknown>>(
+      FIRESTORE_DOCUMENT_PATHS.mitarbeiter(unternehmerId, firmaId, mitarbeiterId),
+      strategie,
+    );
+
+    return dokument
+      ? mapMitarbeiterEintrag(unternehmerId, firmaId, dokument.id, dokument.daten)
+      : null;
+  }
+
+  /**
    * Legt einen aktiven Mitarbeiter unter einer Firma an.
    *
    * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.

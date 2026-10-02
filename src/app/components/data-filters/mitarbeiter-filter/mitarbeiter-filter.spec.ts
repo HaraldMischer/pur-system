@@ -1,4 +1,4 @@
-// pur-system/src/app/components/data-selectors/mitarbeiter-selector/mitarbeiter-selector.spec.ts
+// pur-system/src/app/components/data-filters/mitarbeiter-filter/mitarbeiter-filter.spec.ts
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSelect } from '@angular/material/select';
@@ -6,7 +6,7 @@ import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
-import { MitarbeiterSelector } from './mitarbeiter-selector';
+import { MitarbeiterFilter } from './mitarbeiter-filter';
 
 const MITARBEITER: readonly IMitarbeiterEintrag[] = [
   {
@@ -49,15 +49,15 @@ const MITARBEITER: readonly IMitarbeiterEintrag[] = [
   },
 ];
 
-describe('MitarbeiterSelector', () => {
-  let fixture: ComponentFixture<MitarbeiterSelector>;
+describe('MitarbeiterFilter', () => {
+  let fixture: ComponentFixture<MitarbeiterFilter>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MitarbeiterSelector, NoopAnimationsModule],
+      imports: [MitarbeiterFilter, NoopAnimationsModule],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(MitarbeiterSelector);
+    fixture = TestBed.createComponent(MitarbeiterFilter);
     fixture.componentRef.setInput('mitarbeiter', MITARBEITER);
     fixture.detectChanges();
   });

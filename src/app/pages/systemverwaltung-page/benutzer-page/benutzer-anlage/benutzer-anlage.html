@@ -14,7 +14,7 @@
     (ngSubmit)="onSubmit()"
   >
     <!-- Zugangsdaten -->
-    <div class="pur-form__group zugangsdaten">
+    <div class="pur-form__group benutzer-anlage__zugangsdaten">
       <h2 class="pur-form__group-titel">Zugangsdaten</h2>
 
       <div class="pur-form pur-form--grid">
@@ -67,6 +67,8 @@
           </button>
           @if (benutzerForm.controls.passwort.hasError('required')) {
             <mat-error>Ein Anfangspasswort ist erforderlich.</mat-error>
+          } @else if (benutzerForm.controls.passwort.hasError('minlength')) {
+            <mat-error>Das Passwort muss mindestens 8 Zeichen lang sein.</mat-error>
           }
         </mat-form-field>
       </div>

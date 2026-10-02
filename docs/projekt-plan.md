@@ -196,10 +196,13 @@ bearbeiten. `zugriffe` und `firmaMitarbeiterId` bleiben unverändert. Die Zuordn
 nicht über die allgemeine Profilbearbeitung, sondern ausschließlich über eine eigene serverseitige Aktion geändert oder
 aufgehoben.
 
-Die Firmenzuordnung in `zugriffe` erlaubt einem Mitarbeiterzugang das Lesen der fachlichen Mitarbeiterdatensätze dieser Firma.
-Sein eigener Mitarbeiterdatensatz und dessen `filialIds` bilden die Grundlage für weitere persönliche Datenrechte,
-beispielsweise auf Dienstpläne bestimmter Filialen. `erlaubteBereiche` steuert ausschließlich, welche App-Funktionen geöffnet
-werden dürfen.
+Die Firmenzuordnung in `zugriffe` erlaubt einem Mitarbeiterzugang das Lesen des zugeordneten Unternehmers sowie der direkten
+Firmenstruktur mit Firma, Filialen und fachlichen Mitarbeiterdatensätzen. Filial-Untercollections und Schreibzugriffe bleiben
+gesperrt. Der tatsächliche initiale Ladeumfang ist enger: Der eigene Mitarbeiterdatensatz und dessen `filialIds` bestimmen die
+persönlich zugeordneten Filialen. Bei der Sitzungsinitialisierung werden nach dem eigenen Mitarbeiterdatensatz genau diese
+Filialstammdaten und mit einer gemeinsamen Abfrage die Mitarbeiter dieser Filialen geladen. Die `filialIds` bilden außerdem die
+Grundlage für weitere persönliche Datenrechte, beispielsweise auf Dienstpläne bestimmter Filialen. `erlaubteBereiche` steuert
+ausschließlich, welche App-Funktionen geöffnet werden dürfen.
 
 Bei der Anlage und Bearbeitung von Benutzerprofilen zeigt die Oberfläche die gemäß App-Bereich-Matrix optional wählbaren Bereiche
 rollenabhängig als Checkboxen. `dashboard` und `systemverwaltung` werden nicht als Checkboxen angeboten. Die Callable Function
@@ -307,10 +310,12 @@ bei aktivierter Unternehmer-Mehrfachauswahl und mehr als einem ausgewählten Unt
 Firmen-Mehrfachauswahl und mehr als einer ausgewählten Firma. Beim Abwählen eines übergeordneten Eintrags entfällt dessen
 abhängige Auswahl.
 
-Einfache fachliche Auswahlen werden als getrennte Components unter `components/data-selectors` bereitgestellt. Unternehmer-,
-Firmen-, Filial- und Mitarbeiter-Selektoren erhalten jeweils eine Liste vollständiger Domäneneinträge und geben den vollständig
-ausgewählten Eintrag oder `null` zurück. Der zusammengesetzte `DatenzugriffSelector` bleibt davon getrennt, weil er eine
-hierarchische Berechtigungszuordnung mit konfigurierbarer Einfach- und Mehrfachauswahl abbildet.
+Der `AppKontextSelector` verbindet den `AppKontextStore` mit den internen Unternehmer-, Firmen- und Filial-Selektoren. Diese
+Unterkomponenten liegen gemeinsam unter `components/data-selectors/app-kontext-selector`, erhalten vollständige
+Domäneneinträge und geben den ausgewählten Eintrag oder `null` zurück. Der zusammengesetzte `DatenzugriffSelector` bleibt davon
+getrennt, weil er eine hierarchische Berechtigungszuordnung mit konfigurierbarer Einfach- und Mehrfachauswahl abbildet. Der unter
+`components/data-filters` abgelegte `MitarbeiterFilter` begrenzt bei fachlichem Bedarf eine Page anhand eines ausgewählten
+Mitarbeiters und verändert den globalen App-Kontext nicht.
 
 Für den seitenübergreifenden Arbeitskontext hält der `AppKontextStore` den ausgewählten Unternehmer, die ausgewählte Firma und
 den Filialkontext. Er leitet seine verfügbaren Einträge aus dem `StammdatenStore` ab und hält selbst keine fachlichen Stammdaten.
@@ -318,9 +323,10 @@ Nach der Sitzungsinitialisierung wird der erste verfügbare Unternehmer, dessen 
 Kontext `Alle Filialen` gesetzt. Ein Unternehmerwechsel wählt entsprechend wieder dessen erste Firma und alle zugehörigen
 Filialen aus.
 
-Master ändern Unternehmer und Firma über wiederverwendbare Selektoren in der Sidebar. Der Filial-Selektor bleibt zunächst
-sichtbar, zeigt den vollständigen Filialkontext und ist deaktiviert, bis eine fachliche Seite die Auswahl einer einzelnen Filiale
-benötigt. Fachseiten wie die Mitarbeiterliste verwenden den zentralen Arbeitskontext und führen keine davon unabhängige
+Die Sidebar ermittelt aus Benutzerrolle und aktivem App-Bereich die zentrale Konfiguration des `AppKontextSelector`. Für Master
+sind Unternehmer und Firma in allen Fachbereichen veränderbar. Der Filial-Selektor ist nur im Mitarbeiterbereich sichtbar und
+veränderbar. Noch nicht festgelegte Rollen- und Bereichskombinationen verwenden als sicheren Fallback vollständig verborgene
+Selektoren. Fachseiten wie die Mitarbeiterliste verwenden den zentralen Arbeitskontext und führen keine davon unabhängige
 Unternehmer- oder Firmenauswahl.
 
 ### Laden und Validierung

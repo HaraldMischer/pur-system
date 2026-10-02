@@ -44,6 +44,7 @@ describe('MitarbeiterStore', () => {
   };
   let mitarbeiterServiceMock: {
     loadMitarbeiter: ReturnType<typeof vi.fn>;
+    loadMitarbeiterNachFilialen: ReturnType<typeof vi.fn>;
     createMitarbeiter: ReturnType<typeof vi.fn>;
     updateMitarbeiter: ReturnType<typeof vi.fn>;
     deleteMitarbeiter: ReturnType<typeof vi.fn>;
@@ -51,6 +52,7 @@ describe('MitarbeiterStore', () => {
   beforeEach(() => {
     mitarbeiterServiceMock = {
       loadMitarbeiter: vi.fn().mockResolvedValue([zulu, alpha]),
+      loadMitarbeiterNachFilialen: vi.fn().mockResolvedValue([zulu, alpha]),
       createMitarbeiter: vi.fn().mockResolvedValue({ id: 'm-neu' }),
       updateMitarbeiter: vi.fn().mockResolvedValue(undefined),
       deleteMitarbeiter: vi.fn().mockResolvedValue(undefined),
@@ -122,6 +124,22 @@ describe('MitarbeiterStore', () => {
     expect(store.getMitarbeiter('u', 'f', 'b-1')).toEqual([alpha, zulu]);
     expect(store.isMitarbeiterKontextLoaded('u', 'f', 'b-1')).toBe(true);
     expect(store.isMitarbeiterKontextLoaded('u', 'f')).toBe(false);
+  });
+
+  it('should load multiple branches into one shared employee context', async () => {
+    const store = TestBed.inject(MitarbeiterStore);
+
+    await store.loadMitarbeiterNachFilialen('u', 'f', ['b-2', 'b-1', 'b-2']);
+
+    expect(mitarbeiterServiceMock.loadMitarbeiterNachFilialen).toHaveBeenCalledOnce();
+    expect(mitarbeiterServiceMock.loadMitarbeiterNachFilialen).toHaveBeenCalledWith(
+      'u',
+      'f',
+      ['b-1', 'b-2'],
+      'networkOnly',
+    );
+    expect(store.getMitarbeiterNachFilialen('u', 'f', ['b-2', 'b-1'])).toEqual([alpha, zulu]);
+    expect(store.getMitarbeiter('u', 'f')).toEqual([]);
   });
 
   it('should share a pending load and reuse a fully loaded context', async () => {

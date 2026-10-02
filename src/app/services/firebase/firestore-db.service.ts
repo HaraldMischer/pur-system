@@ -152,6 +152,52 @@ export class FirestoreDbService {
   }
 
   /**
+   * Lädt Dokumente, deren Array-Feld mindestens einen der angegebenen Werte enthält.
+   *
+   * @param collectionPath - Vollständiger Pfad der Collection.
+   * @param feld - Name des zu filternden Array-Felds.
+   * @param werte - Im Array gesuchte Vergleichswerte.
+   * @param strategie - Festgelegte Datenquelle und Rückfallstrategie.
+   * @returns Dokument-IDs und unveränderte Firestore-Daten.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  loadCollectionByAnyArrayValue<T extends DocumentData>(
+    collectionPath: string,
+    feld: string,
+    werte: readonly unknown[],
+    strategie: TFirestoreLesestrategie,
+  ): Promise<IFirestoreDokument<T>[]> {
+    const auftragKey = `collection-array-any:${collectionPath}:${feld}:${JSON.stringify(werte)}:${strategie}`;
+    return this.getOrCreateLeseauftrag(auftragKey, () => {
+      return this.loadingService.trackLoad(async () => {
+        const snapshot = await this.runInContext(() => {
+          const collectionRef = this.collection(this.firestore, collectionPath);
+          const queryRef = this.query(collectionRef, this.where(feld, 'array-contains-any', werte));
+          return this.loadMitStrategie(
+            strategie,
+            () => {
+              return this.getDocsFromCache(queryRef);
+            },
+            () => {
+              return this.getDocsFromServer(queryRef);
+            },
+            (ergebnis) => {
+              return ergebnis.docs.length > 0;
+            },
+          );
+        });
+
+        return snapshot.docs.map((dokument) => {
+          return {
+            id: dokument.id,
+            daten: dokument.data() as T,
+          };
+        });
+      });
+    });
+  }
+
+  /**
    * Lädt ein einzelnes Firestore-Dokument.
    *
    * @param documentPath - Vollständiger Pfad des Dokuments.

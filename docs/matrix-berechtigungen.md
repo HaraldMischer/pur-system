@@ -31,7 +31,7 @@ Die Collection-Matrix zeigt, welche Aktionen eine Benutzerrolle grundsätzlich a
 | `benutzerprofil/{uid}/{subcollection}/{document=**}`                           | R/C/U/D  | –         | –                        | –             | –            |
 | `unternehmer/{unternehmerId}`                                                  | R/C/U/D  | R         | R                        | R             | –            |
 | `unternehmer/{unternehmerId}/firma/{firmaId}`                                  | R/C/U/D  | R/U       | R                        | R             | –            |
-| `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}`               | R/C/U/D  | R/U       | R                        | –             | –            |
+| `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}`               | R/C/U/D  | R/U       | R                        | R `Firma`     | –            |
 | `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/{document=**}` | R/C/U    | R         | R                        | –             | –            |
 | `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`      | R/C/U/D  | R/C/U     | R `Firma`, C/U `Filiale` | R `Firma`     | –            |
 | `purCustomers/{document=**}`                                                   | –        | –         | –                        | –             | R/C/U/D      |
@@ -41,8 +41,8 @@ Die Collection-Matrix zeigt, welche Aktionen eine Benutzerrolle grundsätzlich a
 
 - Das eigene Profil bleibt auch inaktiv lesbar; alle weiteren Rechte einer Pur-System-Rolle setzen ein aktives Profil voraus.
 - Was nicht in der Collection-Matrix steht, ist nicht erlaubt.
-- Die im Benutzerprofil hinterlegten `zugriffe` begrenzen erlaubte Aktionen zusätzlich auf die zugeordneten Unternehmer, Firmen
-  und Filialen.
+- Die im Benutzerprofil hinterlegten `zugriffe` begrenzen erlaubte Aktionen zusätzlich auf die rollenspezifisch zugeordneten
+  Unternehmer, Firmen und Filialen.
 - Benutzerprofile werden nur durch die Cloud Function angelegt.
 - Strukturdatensätze werden nur durch die Cloud Function rekursiv gelöscht; vorhandene Referenzen verhindern das Löschen.
 - Normale Datenzugriffe erfolgen clientseitig und werden durch Firestore Rules abgesichert. Technisch notwendige serverseitige
@@ -53,7 +53,9 @@ Die Collection-Matrix zeigt, welche Aktionen eine Benutzerrolle grundsätzlich a
   gezielt die Mitarbeiter der eigenen Filiale und darf nur diese anlegen oder bearbeiten.
 - Mit einem Benutzerkonto verknüpfte Mitarbeiter dürfen nicht gelöscht werden.
 - `filiale` ist genau einem Unternehmer, einer Firma und einer Filiale zugeordnet.
-- `mitarbeiter` liest den zugeordneten Unternehmer, die zugeordnete Firma und deren fachliche Mitarbeiter.
+- `mitarbeiter` liest den zugeordneten Unternehmer sowie die direkte Firmenstruktur mit Firma, Filialen und fachlichen
+  Mitarbeitern. Filial-Untercollections und Schreibzugriffe bleiben gesperrt. Der Client lädt beim Sitzungsstart nur die über den
+  eigenen Mitarbeiterdatensatz zugeordneten Filialen und deren Mitarbeiter.
 - `master` verwaltet fachliche Mitarbeiter aller Firmen.
 - Legacy-Konten sind authentifizierte Konten ohne `benutzerprofil` und greifen ausschließlich auf `purCustomers` und `purUser`
   einschließlich ihrer Untercollections zu.

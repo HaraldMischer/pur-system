@@ -14,6 +14,8 @@ describe('MitarbeiterService', () => {
   const firestoreDbServiceMock = {
     loadCollection: vi.fn(),
     loadCollectionByArrayValue: vi.fn(),
+    loadCollectionByAnyArrayValue: vi.fn(),
+    loadDocument: vi.fn(),
     createDocument: vi.fn(),
     updateDocument: vi.fn(),
     deleteDocument: vi.fn(),
@@ -41,6 +43,8 @@ describe('MitarbeiterService', () => {
     vi.clearAllMocks();
     firestoreDbServiceMock.loadCollection.mockResolvedValue([]);
     firestoreDbServiceMock.loadCollectionByArrayValue.mockResolvedValue([]);
+    firestoreDbServiceMock.loadCollectionByAnyArrayValue.mockResolvedValue([]);
+    firestoreDbServiceMock.loadDocument.mockResolvedValue(null);
     firestoreDbServiceMock.createDocument.mockResolvedValue('mitarbeiter-123');
     firestoreDbServiceMock.updateDocument.mockResolvedValue(undefined);
     firestoreDbServiceMock.deleteDocument.mockResolvedValue(undefined);
@@ -155,6 +159,78 @@ describe('MitarbeiterService', () => {
       'networkOnly',
     );
     expect(firestoreDbServiceMock.loadCollection).not.toHaveBeenCalled();
+  });
+
+  it('should load employees of multiple branches with one query', async () => {
+    firestoreDbServiceMock.loadCollectionByAnyArrayValue.mockResolvedValue([
+      {
+        id: 'm-1',
+        daten: {
+          ...anlage,
+          filialIds: ['b-1', 'b-2'],
+          aktiv: true,
+        },
+      },
+    ]);
+    const service = TestBed.inject(MitarbeiterService);
+
+    await expect(
+      service.loadMitarbeiterNachFilialen('u', 'f', ['b-2', 'b-1', 'b-2']),
+    ).resolves.toEqual([
+      {
+        ...anlage,
+        id: 'm-1',
+        unternehmerId: 'u',
+        firmaId: 'f',
+        filialIds: ['b-1', 'b-2'],
+        aktiv: true,
+      },
+    ]);
+    expect(firestoreDbServiceMock.loadCollectionByAnyArrayValue).toHaveBeenCalledOnce();
+    expect(firestoreDbServiceMock.loadCollectionByAnyArrayValue).toHaveBeenCalledWith(
+      'unternehmer/u/firma/f/mitarbeiter',
+      'filialIds',
+      ['b-2', 'b-1'],
+      'networkOnly',
+    );
+  });
+
+  it('should not query employees without assigned branches', async () => {
+    const service = TestBed.inject(MitarbeiterService);
+
+    await expect(service.loadMitarbeiterNachFilialen('u', 'f', [])).resolves.toEqual([]);
+    expect(firestoreDbServiceMock.loadCollectionByAnyArrayValue).not.toHaveBeenCalled();
+  });
+
+  it('should load and map a single employee document', async () => {
+    firestoreDbServiceMock.loadDocument.mockResolvedValue({
+      id: 'm-1',
+      daten: {
+        ...anlage,
+        filialIds: ['filiale-2', 'filiale-2', ' filiale-1 '],
+        aktiv: true,
+      },
+    });
+    const service = TestBed.inject(MitarbeiterService);
+
+    await expect(service.loadMitarbeiterEintrag('u', 'f', 'm-1', 'cacheOnly')).resolves.toEqual({
+      ...anlage,
+      id: 'm-1',
+      unternehmerId: 'u',
+      firmaId: 'f',
+      filialIds: ['filiale-2', 'filiale-1'],
+      aktiv: true,
+    });
+    expect(firestoreDbServiceMock.loadDocument).toHaveBeenCalledWith(
+      'unternehmer/u/firma/f/mitarbeiter/m-1',
+      'cacheOnly',
+    );
+  });
+
+  it('should return null for a missing employee document', async () => {
+    const service = TestBed.inject(MitarbeiterService);
+
+    await expect(service.loadMitarbeiterEintrag('u', 'f', 'm-1')).resolves.toBeNull();
   });
 
   it('should create an active employee with server timestamps', async () => {

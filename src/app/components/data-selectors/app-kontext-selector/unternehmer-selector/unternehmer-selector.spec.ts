@@ -1,11 +1,10 @@
-// pur-system/src/app/components/data-selectors/unternehmer-selector/unternehmer-selector.spec.ts
+// pur-system/src/app/components/data-selectors/app-kontext-selector/unternehmer-selector/unternehmer-selector.spec.ts
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSelect } from '@angular/material/select';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
-
-import { IUnternehmerEintrag } from '../../../commons/models/domain/unternehmer';
+import { IUnternehmerEintrag } from '../../../../commons/models/domain/unternehmer';
 import { UnternehmerSelector } from './unternehmer-selector';
 
 const UNTERNEHMER: readonly IUnternehmerEintrag[] = [

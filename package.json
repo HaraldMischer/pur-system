@@ -49,7 +49,7 @@
     "@angular/router": "^20.3.0",
     "@angular/service-worker": "^20.3.31",
     "@ngrx/signals": "^20.1.0",
-    "firebase": "^12.19.0",
+    "firebase": "^11.10.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
@@ -58,7 +58,7 @@
     "@angular/build": "^20.3.36",
     "@angular/cli": "^20.3.36",
     "@angular/compiler-cli": "^20.3.0",
-    "@firebase/rules-unit-testing": "^5.0.2",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "firebase-tools": "^14.27.0",
     "jsdom": "^27.0.1",
     "prettier": "^3.9.6",

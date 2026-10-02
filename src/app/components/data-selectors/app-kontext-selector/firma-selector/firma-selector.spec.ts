@@ -1,11 +1,10 @@
-// pur-system/src/app/components/data-selectors/firma-selector/firma-selector.spec.ts
+// pur-system/src/app/components/data-selectors/app-kontext-selector/firma-selector/firma-selector.spec.ts
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSelect } from '@angular/material/select';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
-
-import { IFirmaEintrag } from '../../../commons/models/domain/firma';
+import { IFirmaEintrag } from '../../../../commons/models/domain/firma';
 import { FirmaSelector } from './firma-selector';
 
 const FIRMEN: readonly IFirmaEintrag[] = [

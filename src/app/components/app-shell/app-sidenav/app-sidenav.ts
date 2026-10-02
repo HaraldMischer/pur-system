@@ -9,24 +9,21 @@ import {
   input,
   output,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
+import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
+import { filter, map } from 'rxjs';
+import { getAppKontextSelectorKonfiguration } from '../../../commons/constants/app-kontext-selector.constants';
 import { APP_VERSION } from '../../../commons/constants/app.constants';
-import { TFilialKontext } from '../../../commons/models/app/app-kontext.types';
+import { TAppBereich } from '../../../commons/models/app/app-bereich';
 import { INavigationLink, IRollenNavigation } from '../../../commons/models/app/navigation';
-import { IFirmaEintrag } from '../../../commons/models/domain/firma';
-import { IUnternehmerEintrag } from '../../../commons/models/domain/unternehmer';
 import { getSichtbareRollenNavigation } from '../../../commons/utils/navigation/rollen-navigation';
-import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
-import { StammdatenStore } from '../../../stores/app/stammdaten.store';
 import { environment } from '../../../../environments/environment';
-import { FilialeSelector } from '../../data-selectors/filiale-selector/filiale-selector';
-import { FirmaSelector } from '../../data-selectors/firma-selector/firma-selector';
-import { UnternehmerSelector } from '../../data-selectors/unternehmer-selector/unternehmer-selector';
+import { AppKontextSelector } from '../../data-selectors/app-kontext-selector/app-kontext-selector';
 import { AppSidenavFlatNavigation } from './app-sidenav-flat-navigation/app-sidenav-flat-navigation';
 import { AppSidenavNestedNavigation } from './app-sidenav-nested-navigation/app-sidenav-nested-navigation';
 
@@ -38,18 +35,41 @@ function isNavigationLink(
   return eintrag.typ === 'link';
 }
 
+function isAppBereich(value: unknown): value is TAppBereich {
+  return (
+    value === 'dashboard' ||
+    value === 'schichtplan' ||
+    value === 'mitarbeiter' ||
+    value === 'verwaltung' ||
+    value === 'systemverwaltung'
+  );
+}
+
+function getAktiverAppBereich(route: ActivatedRouteSnapshot): TAppBereich | null {
+  let aktuelleRoute: ActivatedRouteSnapshot | null = route;
+  let bereich: TAppBereich | null = null;
+
+  while (aktuelleRoute) {
+    const routeBereich: unknown = aktuelleRoute.data['bereich'];
+    if (isAppBereich(routeBereich)) {
+      bereich = routeBereich;
+    }
+    aktuelleRoute = aktuelleRoute.firstChild;
+  }
+
+  return bereich;
+}
+
 @Component({
   selector: 'app-sidenav',
   imports: [
+    AppKontextSelector,
     AppSidenavFlatNavigation,
     AppSidenavNestedNavigation,
-    FilialeSelector,
-    FirmaSelector,
     MatCardModule,
     MatIconModule,
     MatToolbarModule,
     MatTooltipModule,
-    UnternehmerSelector,
   ],
   templateUrl: './app-sidenav.html',
   styleUrl: './app-sidenav.scss',
@@ -58,18 +78,23 @@ function isNavigationLink(
 export class AppSidenav {
   // ===== Interne Dependency Injection =========
   private readonly _benutzerStore = inject(BenutzerStore);
-  private readonly _stammdatenStore = inject(StammdatenStore);
-  private readonly _appKontextStore = inject(AppKontextStore);
+  private readonly _router = inject(Router);
+
+  // ===== Interner State =======================
+  private readonly _aktiveRoute = toSignal(
+    this._router.events.pipe(
+      filter((event): event is NavigationEnd => {
+        return event instanceof NavigationEnd;
+      }),
+      map(() => {
+        return this._router.routerState.snapshot.root;
+      }),
+    ),
+    { initialValue: this._router.routerState.snapshot.root },
+  );
 
   // ===== Öffentliche API ======================
   readonly benutzerProfil = this._benutzerStore.benutzerProfil;
-  readonly unternehmer = this._stammdatenStore.unternehmer;
-  readonly stammdatenDownload = this._stammdatenStore.download;
-  readonly selectedUnternehmer = this._appKontextStore.selectedUnternehmer;
-  readonly firmen = this._appKontextStore.firmen;
-  readonly selectedFirma = this._appKontextStore.selectedFirma;
-  readonly filialen = this._appKontextStore.filialen;
-  readonly filialKontext = this._appKontextStore.filialKontext;
   readonly isHandset = input(false);
   readonly navigationSelected = output<void>();
 
@@ -84,8 +109,14 @@ export class AppSidenav {
     const profil = this.benutzerProfil();
     return profil ? getSichtbareRollenNavigation(profil) : null;
   });
-  readonly istMaster = computed(() => {
-    return this.benutzerProfil()?.userRole === 'master';
+  readonly appKontextSelectorKonfiguration = computed(() => {
+    const bereich = getAktiverAppBereich(this._aktiveRoute());
+    return getAppKontextSelectorKonfiguration(this.benutzerProfil()?.userRole, bereich);
+  });
+  readonly appKontextSelectorSichtbar = computed(() => {
+    return Object.values(this.appKontextSelectorKonfiguration()).some((modus) => {
+      return modus !== 'hidden';
+    });
   });
   readonly flacheNavigationEintraege: Signal<readonly INavigationLink[]> = computed(() => {
     return this.navigation()?.eintraege.filter(isNavigationLink) ?? [];
@@ -101,32 +132,5 @@ export class AppSidenav {
     }
 
     this.navigationSelected.emit();
-  }
-
-  /**
-   * Übernimmt den ausgewählten Unternehmer in den globalen App-Kontext.
-   *
-   * @param unternehmer - Der ausgewählte Unternehmer oder `null`.
-   */
-  selectUnternehmer(unternehmer: IUnternehmerEintrag | null): void {
-    this._appKontextStore.selectUnternehmer(unternehmer);
-  }
-
-  /**
-   * Übernimmt die ausgewählte Firma in den globalen App-Kontext.
-   *
-   * @param firma - Die ausgewählte Firma oder `null`.
-   */
-  selectFirma(firma: IFirmaEintrag | null): void {
-    this._appKontextStore.selectFirma(firma);
-  }
-
-  /**
-   * Übernimmt die konkrete oder übergreifende Filialauswahl in den globalen App-Kontext.
-   *
-   * @param filialKontext - Der ausgewählte Filialkontext oder `null`.
-   */
-  selectFilialKontext(filialKontext: TFilialKontext): void {
-    this._appKontextStore.selectFilialKontext(filialKontext);
   }
 }

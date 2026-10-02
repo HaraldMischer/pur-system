@@ -7,6 +7,7 @@ import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
 import { IUnternehmerEintrag } from '../../commons/models/domain/unternehmer';
 import { StammdatenStore } from '../../stores/app/stammdaten.store';
 import { MitarbeiterStore } from '../../stores/domain/mitarbeiter.store';
+import { MitarbeiterService } from '../domain/mitarbeiter.service';
 import { DebugLogService } from './debug-log.service';
 import { AppDatenInitService } from './app-daten-init.service';
 
@@ -15,14 +16,20 @@ describe('AppDatenInitService', () => {
   let stammdatenStoreMock: {
     unternehmer: WritableSignal<readonly IUnternehmerEintrag[]>;
     getFirmen: ReturnType<typeof vi.fn>;
+    loadFilialenNachIds: ReturnType<typeof vi.fn>;
     loadStammdaten: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
     snapshot: ReturnType<typeof vi.fn>;
   };
   let mitarbeiterStoreMock: {
     getMitarbeiter: ReturnType<typeof vi.fn>;
+    getMitarbeiterNachFilialen: ReturnType<typeof vi.fn>;
     loadMitarbeiter: ReturnType<typeof vi.fn>;
+    loadMitarbeiterNachFilialen: ReturnType<typeof vi.fn>;
     resetMitarbeiter: ReturnType<typeof vi.fn>;
+  };
+  let mitarbeiterServiceMock: {
+    loadMitarbeiterEintrag: ReturnType<typeof vi.fn>;
   };
   let debugLogServiceMock: {
     logDatenflussTitel: ReturnType<typeof vi.fn>;
@@ -37,6 +44,7 @@ describe('AppDatenInitService', () => {
         { id: 'f-2', nummer: 2, anzeigename: 'Firma 2' },
         { id: 'f-1', nummer: 1, anzeigename: 'Firma 1' },
       ]),
+      loadFilialenNachIds: vi.fn().mockResolvedValue(undefined),
       loadStammdaten: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn(),
       snapshot: vi.fn().mockReturnValue({
@@ -62,8 +70,31 @@ describe('AppDatenInitService', () => {
     };
     mitarbeiterStoreMock = {
       getMitarbeiter: vi.fn().mockReturnValue([]),
+      getMitarbeiterNachFilialen: vi.fn().mockReturnValue([{}, {}]),
       loadMitarbeiter: vi.fn().mockResolvedValue(undefined),
+      loadMitarbeiterNachFilialen: vi.fn().mockResolvedValue(undefined),
       resetMitarbeiter: vi.fn(),
+    };
+    mitarbeiterServiceMock = {
+      loadMitarbeiterEintrag: vi.fn().mockResolvedValue({
+        id: 'mitarbeiter-dokument-1',
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        person: {
+          vorname: 'Harry',
+          nachname: 'Mischer',
+          adresse: {
+            strasse: 'Musterstraße',
+            hausnummer: '1',
+            postleitzahl: '12345',
+            ort: 'Musterstadt',
+          },
+          kontakt: {},
+        },
+        rolle: 'service',
+        filialIds: ['b-2', 'b-1'],
+        aktiv: true,
+      }),
     };
     debugLogServiceMock = {
       logDatenflussTitel: vi.fn(),
@@ -75,6 +106,7 @@ describe('AppDatenInitService', () => {
         AppDatenInitService,
         { provide: StammdatenStore, useValue: stammdatenStoreMock },
         { provide: MitarbeiterStore, useValue: mitarbeiterStoreMock },
+        { provide: MitarbeiterService, useValue: mitarbeiterServiceMock },
         { provide: DebugLogService, useValue: debugLogServiceMock },
       ],
     });
@@ -129,7 +161,7 @@ describe('AppDatenInitService', () => {
     ]);
   });
 
-  it('should load assigned structure and all company employees for an office in parallel', async () => {
+  it('should load assigned structure before all company employees for an office', async () => {
     let resolveStammdaten!: () => void;
     stammdatenStoreMock.loadStammdaten.mockReturnValue(
       new Promise<void>((resolve) => {
@@ -152,6 +184,11 @@ describe('AppDatenInitService', () => {
       benutzerprofile: false,
       lesestrategie: 'networkOnly',
     });
+    expect(mitarbeiterStoreMock.loadMitarbeiter).not.toHaveBeenCalled();
+
+    resolveStammdaten();
+    await pending;
+
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledWith(
       'u-1',
       'f-1',
@@ -164,9 +201,6 @@ describe('AppDatenInitService', () => {
       undefined,
       'networkOnly',
     );
-
-    resolveStammdaten();
-    await pending;
   });
 
   it('should load only branch employees for a branch profile', async () => {
@@ -188,9 +222,12 @@ describe('AppDatenInitService', () => {
       'b-1',
       'networkOnly',
     );
+    expect(stammdatenStoreMock.loadStammdaten.mock.invocationCallOrder[0]).toBeLessThan(
+      mitarbeiterStoreMock.loadMitarbeiter.mock.invocationCallOrder[0],
+    );
   });
 
-  it('should load all company employees for an employee profile', async () => {
+  it('should load only employees of the assigned branches for an employee profile', async () => {
     const zugriffe = { 'u-1': { 'f-1': [] } };
     const service = TestBed.inject(AppDatenInitService);
 
@@ -205,13 +242,78 @@ describe('AppDatenInitService', () => {
       benutzerprofile: false,
       lesestrategie: 'networkOnly',
     });
-    expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledOnce();
-    expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledWith(
+    expect(mitarbeiterServiceMock.loadMitarbeiterEintrag).toHaveBeenCalledWith(
       'u-1',
       'f-1',
-      undefined,
+      'mitarbeiter-dokument-1',
       'networkOnly',
     );
+    expect(mitarbeiterStoreMock.loadMitarbeiter).not.toHaveBeenCalled();
+    expect(mitarbeiterStoreMock.loadMitarbeiterNachFilialen).toHaveBeenCalledOnce();
+    expect(mitarbeiterStoreMock.loadMitarbeiterNachFilialen).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      ['b-2', 'b-1'],
+      'networkOnly',
+    );
+    expect(stammdatenStoreMock.loadFilialenNachIds).toHaveBeenCalledWith(
+      'mitarbeiter-1',
+      'u-1',
+      'f-1',
+      ['b-2', 'b-1'],
+      'networkOnly',
+    );
+    expect(stammdatenStoreMock.loadStammdaten.mock.invocationCallOrder[0]).toBeLessThan(
+      mitarbeiterServiceMock.loadMitarbeiterEintrag.mock.invocationCallOrder[0],
+    );
+    expect(mitarbeiterServiceMock.loadMitarbeiterEintrag.mock.invocationCallOrder[0]).toBeLessThan(
+      stammdatenStoreMock.loadFilialenNachIds.mock.invocationCallOrder[0],
+    );
+    expect(stammdatenStoreMock.loadFilialenNachIds.mock.invocationCallOrder[0]).toBeLessThan(
+      mitarbeiterStoreMock.loadMitarbeiterNachFilialen.mock.invocationCallOrder[0],
+    );
+    expect(debugLogServiceMock.logDatenGeladen.mock.calls).toEqual([
+      ['Unternehmer', 1],
+      ['Firmen', 2],
+      ['Filialen', 2],
+      ['Mitarbeiter | Firma 1', 2],
+    ]);
+  });
+
+  it.each([null, { aktiv: false }])(
+    'should reject an employee profile without an active employee document',
+    async (mitarbeiter) => {
+      mitarbeiterServiceMock.loadMitarbeiterEintrag.mockResolvedValue(mitarbeiter);
+      const service = TestBed.inject(AppDatenInitService);
+
+      await expect(
+        service.loadStammdaten(
+          'mitarbeiter-1',
+          createProfil('mitarbeiter', { 'u-1': { 'f-1': [] } }, 'mitarbeiter-dokument-1'),
+        ),
+      ).rejects.toEqual({ code: 'app/invalid-user-profile' });
+
+      expect(stammdatenStoreMock.loadFilialenNachIds).not.toHaveBeenCalled();
+      expect(mitarbeiterStoreMock.loadMitarbeiter).not.toHaveBeenCalled();
+      expect(mitarbeiterStoreMock.loadMitarbeiterNachFilialen).not.toHaveBeenCalled();
+    },
+  );
+
+  it('should propagate an error while loading the own employee document', async () => {
+    const error = { code: 'unavailable' };
+    mitarbeiterServiceMock.loadMitarbeiterEintrag.mockRejectedValue(error);
+    const service = TestBed.inject(AppDatenInitService);
+
+    await expect(
+      service.loadStammdaten(
+        'mitarbeiter-1',
+        createProfil('mitarbeiter', { 'u-1': { 'f-1': [] } }, 'mitarbeiter-dokument-1'),
+      ),
+    ).rejects.toBe(error);
+
+    expect(stammdatenStoreMock.loadFilialenNachIds).not.toHaveBeenCalled();
+    expect(mitarbeiterStoreMock.loadMitarbeiter).not.toHaveBeenCalled();
+    expect(mitarbeiterStoreMock.loadMitarbeiterNachFilialen).not.toHaveBeenCalled();
   });
 
   it('should pass an explicitly selected strategy to every required store', async () => {
@@ -257,6 +359,7 @@ describe('AppDatenInitService', () => {
 
     expect(stammdatenStoreMock.loadStammdaten).not.toHaveBeenCalled();
     expect(mitarbeiterStoreMock.loadMitarbeiter).not.toHaveBeenCalled();
+    expect(mitarbeiterStoreMock.loadMitarbeiterNachFilialen).not.toHaveBeenCalled();
   });
 
   it('should propagate a required employee loading error', async () => {

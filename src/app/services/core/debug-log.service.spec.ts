@@ -29,9 +29,12 @@ describe('DebugLogService', () => {
 
     expect(consoleLogSpy).toHaveBeenNthCalledWith(
       1,
-      '\n******* 2. STAMMDATEN | MASTER *******************',
+      '\n***** 2. STAMMDATEN | MASTER **********************',
     );
-    expect(consoleLogSpy).toHaveBeenNthCalledWith(2, '* Unternehmer geladen............... (1)');
+    expect(consoleLogSpy).toHaveBeenNthCalledWith(
+      2,
+      '* Unternehmer geladen.......................... (1)',
+    );
   });
 
   it('should recognize only local hostnames', () => {

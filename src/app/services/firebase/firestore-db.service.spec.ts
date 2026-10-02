@@ -152,6 +152,25 @@ describe('FirestoreDbService', () => {
     expect(getDocsFromServerMock).toHaveBeenCalledWith('query-ref');
   });
 
+  it('should load a collection filtered by any array value', async () => {
+    getDocsFromServerMock.mockResolvedValue({
+      docs: [{ id: 'm-1', data: () => ({ filialIds: ['b-1', 'b-2'] }) }],
+    });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(
+      service.loadCollectionByAnyArrayValue(
+        'unternehmer/u/firma/f/mitarbeiter',
+        'filialIds',
+        ['b-1', 'b-2'],
+        'networkOnly',
+      ),
+    ).resolves.toEqual([{ id: 'm-1', daten: { filialIds: ['b-1', 'b-2'] } }]);
+    expect(whereMock).toHaveBeenCalledWith('filialIds', 'array-contains-any', ['b-1', 'b-2']);
+    expect(queryMock).toHaveBeenCalledWith('collection-ref', 'where-constraint');
+    expect(getDocsFromServerMock).toHaveBeenCalledWith('query-ref');
+  });
+
   it('should load an existing document', async () => {
     getDocFromServerMock.mockResolvedValue({
       id: 'dokument-1',

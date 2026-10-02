@@ -1,10 +1,9 @@
-// pur-system/src/app/components/data-selectors/unternehmer-selector/unternehmer-selector.ts
+// pur-system/src/app/components/data-selectors/app-kontext-selector/unternehmer-selector/unternehmer-selector.ts
 
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-
-import { IUnternehmerEintrag } from '../../../commons/models/domain/unternehmer';
+import { IUnternehmerEintrag } from '../../../../commons/models/domain/unternehmer';
 
 @Component({
   selector: 'app-unternehmer-selector',

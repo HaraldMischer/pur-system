@@ -131,6 +131,77 @@ export const StammdatenStore = signalStore(
         return promise;
       }
 
+      /**
+       * Lädt gezielt zusätzliche Filialen für einen bereits initialisierten Firmenkontext.
+       *
+       * @param benutzerId - UID des angemeldeten Benutzers.
+       * @param unternehmerId - ID des zugeordneten Unternehmers.
+       * @param firmaId - ID der zugeordneten Firma.
+       * @param filialIds - IDs der nachzuladenden Filialen.
+       * @param strategie - Datenquellenstrategie für den Ladevorgang.
+       * @returns Ein Promise, das nach dem vollständigen Laden abgeschlossen ist.
+       * @throws Gibt Ladefehler oder fehlende Filialdokumente weiter.
+       */
+      async function loadFilialenNachIds(
+        benutzerId: string,
+        unternehmerId: string,
+        firmaId: string,
+        filialIds: readonly string[],
+        strategie: TFirestoreLesestrategie,
+      ): Promise<void> {
+        if (store.benutzerId() !== benutzerId || !store.isLoaded()) {
+          throw { code: 'app/invalid-user-profile' };
+        }
+
+        const eindeutigeFilialIds = [...new Set(filialIds)];
+        if (eindeutigeFilialIds.length === 0) return;
+
+        const aktuell = generation;
+        patchState(store, { download: true, isLoaded: false, error: null });
+        try {
+          const filialeService = injector.get(FilialeService);
+          const filialen = await Promise.all(
+            eindeutigeFilialIds.map(async (filialId) => {
+              return requireEintrag(
+                await filialeService.loadFilialeEintrag(
+                  unternehmerId,
+                  firmaId,
+                  filialId,
+                  strategie,
+                ),
+              );
+            }),
+          );
+          if (aktuell !== generation || store.benutzerId() !== benutzerId) return;
+
+          const nachgeladeneIds = new Set(filialen.map((filiale) => filiale.id));
+          const vorhandeneFilialen = getFilialen(unternehmerId, firmaId).filter((filiale) => {
+            return !nachgeladeneIds.has(filiale.id);
+          });
+          patchState(store, {
+            filialenNachFirma: {
+              ...store.filialenNachFirma(),
+              [unternehmerId]: {
+                ...(store.filialenNachFirma()[unternehmerId] ?? {}),
+                [firmaId]: sortEintraege([...vorhandeneFilialen, ...filialen]),
+              },
+            },
+            download: false,
+            isLoaded: true,
+            error: null,
+          });
+        } catch (error: unknown) {
+          if (aktuell === generation && store.benutzerId() === benutzerId) {
+            patchState(store, {
+              download: false,
+              isLoaded: false,
+              error: getFirebaseErrorMessage(error),
+            });
+          }
+          throw error;
+        }
+      }
+
       // ===== Methoden: Schreiben ==================
 
       /**
@@ -456,6 +527,7 @@ export const StammdatenStore = signalStore(
 
       return {
         loadStammdaten,
+        loadFilialenNachIds,
         upsertUnternehmer,
         upsertFirma,
         upsertFiliale,

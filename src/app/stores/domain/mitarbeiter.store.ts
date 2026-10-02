@@ -21,6 +21,7 @@ export type TMitarbeiterKontextBestand = {
   readonly unternehmerId: string;
   readonly firmaId: string;
   readonly filialId: string | null;
+  readonly filialIds: readonly string[] | null;
   readonly mitarbeiter: readonly IMitarbeiterEintrag[];
   readonly download: boolean;
   readonly isLoaded: boolean;
@@ -43,6 +44,14 @@ const initialState: TMitarbeiterState = {
 
 function getKontextSchluessel(unternehmerId: string, firmaId: string, filialId?: string): string {
   return JSON.stringify([unternehmerId, firmaId, filialId ?? null]);
+}
+
+function getFilialenKontextSchluessel(
+  unternehmerId: string,
+  firmaId: string,
+  filialIds: readonly string[],
+): string {
+  return JSON.stringify([unternehmerId, firmaId, [...filialIds].sort()]);
 }
 
 function sortMitarbeiter(
@@ -87,36 +96,62 @@ export const MitarbeiterStore = signalStore(
       ): Promise<void> {
         const schluessel = getKontextSchluessel(unternehmerId, firmaId, filialId);
         const auftragSchluessel = JSON.stringify([schluessel, strategie]);
-        const vorhandenerKontext = store.kontexte()[schluessel];
-        if (vorhandenerKontext?.isLoaded) {
-          return Promise.resolve();
-        }
-
-        const laufenderAuftrag = ladeauftraege.get(auftragSchluessel);
-        if (laufenderAuftrag) {
-          return laufenderAuftrag.promise;
-        }
-
-        const aktuelleGeneration = generation;
-        setKontext(schluessel, {
-          unternehmerId,
-          firmaId,
-          filialId: filialId ?? null,
-          mitarbeiter: [],
-          download: true,
-          isLoaded: false,
-          error: null,
-        });
-        const promise = executeLoad(
+        return loadMitarbeiterKontext(
           schluessel,
+          auftragSchluessel,
+          {
+            unternehmerId,
+            firmaId,
+            filialId: filialId ?? null,
+            filialIds: null,
+          },
+          () => {
+            return mitarbeiterService.loadMitarbeiter(unternehmerId, firmaId, filialId, strategie);
+          },
+        );
+      }
+
+      /**
+       * Lädt die eindeutige Mitarbeitermenge mehrerer Filialen in einen gemeinsamen Kontext.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der übergeordneten Firma.
+       * @param filialIds - Filial-IDs des gemeinsamen Ladekontexts.
+       * @param strategie - Datenquellenstrategie für den Ladevorgang.
+       * @returns Ein Promise, das nach dem vollständigen Laden abgeschlossen ist.
+       * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+       */
+      function loadMitarbeiterNachFilialen(
+        unternehmerId: string,
+        firmaId: string,
+        filialIds: readonly string[],
+        strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+      ): Promise<void> {
+        const eindeutigeFilialIds = [...new Set(filialIds)].sort();
+        const schluessel = getFilialenKontextSchluessel(
           unternehmerId,
           firmaId,
-          filialId,
-          strategie,
-          aktuelleGeneration,
+          eindeutigeFilialIds,
         );
-        ladeauftraege.set(auftragSchluessel, { generation: aktuelleGeneration, promise });
-        return promise;
+        const auftragSchluessel = JSON.stringify([schluessel, strategie]);
+        return loadMitarbeiterKontext(
+          schluessel,
+          auftragSchluessel,
+          {
+            unternehmerId,
+            firmaId,
+            filialId: null,
+            filialIds: eindeutigeFilialIds,
+          },
+          () => {
+            return mitarbeiterService.loadMitarbeiterNachFilialen(
+              unternehmerId,
+              firmaId,
+              eindeutigeFilialIds,
+              strategie,
+            );
+          },
+        );
       }
 
       // ===== Methoden: Schreiben ==================
@@ -295,6 +330,25 @@ export const MitarbeiterStore = signalStore(
       }
 
       /**
+       * Liefert die gemeinsam geladenen Mitarbeiter mehrerer Filialen.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der Firma.
+       * @param filialIds - Filial-IDs des gemeinsamen Ladekontexts.
+       * @returns Die im gemeinsamen Kontext vorhandenen Mitarbeiter.
+       */
+      function getMitarbeiterNachFilialen(
+        unternehmerId: string,
+        firmaId: string,
+        filialIds: readonly string[],
+      ): readonly IMitarbeiterEintrag[] {
+        const schluessel = getFilialenKontextSchluessel(unternehmerId, firmaId, [
+          ...new Set(filialIds),
+        ]);
+        return store.kontexte()[schluessel]?.mitarbeiter ?? [];
+      }
+
+      /**
        * Prüft, ob ein Firmen- oder Filialkontext vollständig geladen wurde.
        *
        * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
@@ -373,29 +427,62 @@ export const MitarbeiterStore = signalStore(
 
       // ===== Interne Helfer =======================
 
+      function loadMitarbeiterKontext(
+        schluessel: string,
+        auftragSchluessel: string,
+        kontext: Pick<
+          TMitarbeiterKontextBestand,
+          'unternehmerId' | 'firmaId' | 'filialId' | 'filialIds'
+        >,
+        load: () => Promise<readonly IMitarbeiterEintrag[]>,
+      ): Promise<void> {
+        const vorhandenerKontext = store.kontexte()[schluessel];
+        if (vorhandenerKontext?.isLoaded) {
+          return Promise.resolve();
+        }
+
+        const laufenderAuftrag = ladeauftraege.get(auftragSchluessel);
+        if (laufenderAuftrag) {
+          return laufenderAuftrag.promise;
+        }
+
+        const aktuelleGeneration = generation;
+        setKontext(schluessel, {
+          ...kontext,
+          mitarbeiter: [],
+          download: true,
+          isLoaded: false,
+          error: null,
+        });
+        const promise = executeLoad(
+          schluessel,
+          auftragSchluessel,
+          kontext,
+          load,
+          aktuelleGeneration,
+        );
+        ladeauftraege.set(auftragSchluessel, { generation: aktuelleGeneration, promise });
+        return promise;
+      }
+
       async function executeLoad(
         schluessel: string,
-        unternehmerId: string,
-        firmaId: string,
-        filialId: string | undefined,
-        strategie: TFirestoreLesestrategie,
+        auftragSchluessel: string,
+        kontext: Pick<
+          TMitarbeiterKontextBestand,
+          'unternehmerId' | 'firmaId' | 'filialId' | 'filialIds'
+        >,
+        load: () => Promise<readonly IMitarbeiterEintrag[]>,
         aktuelleGeneration: number,
       ): Promise<void> {
         try {
-          const mitarbeiter = await mitarbeiterService.loadMitarbeiter(
-            unternehmerId,
-            firmaId,
-            filialId,
-            strategie,
-          );
+          const mitarbeiter = await load();
           if (aktuelleGeneration !== generation) {
             return;
           }
           const sortierteMitarbeiter = sortMitarbeiter(mitarbeiter);
           setKontext(schluessel, {
-            unternehmerId,
-            firmaId,
-            filialId: filialId ?? null,
+            ...kontext,
             mitarbeiter: sortierteMitarbeiter,
             download: false,
             isLoaded: true,
@@ -414,7 +501,6 @@ export const MitarbeiterStore = signalStore(
           }
           throw error;
         } finally {
-          const auftragSchluessel = JSON.stringify([schluessel, strategie]);
           if (ladeauftraege.get(auftragSchluessel)?.generation === aktuelleGeneration) {
             ladeauftraege.delete(auftragSchluessel);
           }
@@ -437,6 +523,7 @@ export const MitarbeiterStore = signalStore(
           return (
             kontext.unternehmerId === unternehmerId &&
             kontext.firmaId === firmaId &&
+            kontext.filialIds === null &&
             kontext.isLoaded
           );
         });
@@ -465,10 +552,12 @@ export const MitarbeiterStore = signalStore(
 
       return {
         loadMitarbeiter,
+        loadMitarbeiterNachFilialen,
         createMitarbeiter,
         updateMitarbeiter,
         deleteMitarbeiter,
         getMitarbeiter,
+        getMitarbeiterNachFilialen,
         isMitarbeiterKontextLoaded,
         isMitarbeiterKontextLoading,
         getMitarbeiterKontextError,

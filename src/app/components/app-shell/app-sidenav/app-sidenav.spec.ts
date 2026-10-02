@@ -2,9 +2,7 @@
 
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { By } from '@angular/platform-browser';
-
+import { Router, provideRouter } from '@angular/router';
 import { APP_VERSION } from '../../../commons/constants/app.constants';
 import { TFilialKontext } from '../../../commons/models/app/app-kontext.types';
 import { IBenutzerProfilDokument, TUserRole } from '../../../commons/models/domain/benutzer';
@@ -14,7 +12,7 @@ import { IUnternehmerEintrag } from '../../../commons/models/domain/unternehmer'
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { StammdatenStore } from '../../../stores/app/stammdaten.store';
-import { FilialeSelector } from '../../data-selectors/filiale-selector/filiale-selector';
+import { AppKontextSelector } from '../../data-selectors/app-kontext-selector/app-kontext-selector';
 import { AppSidenav } from './app-sidenav';
 
 function createProfil(userRole: TUserRole): IBenutzerProfilDokument {
@@ -80,11 +78,15 @@ describe('AppSidenav', () => {
       imports: [AppSidenavHost],
       providers: [
         provideRouter([
-          { path: 'dashboard', component: AppSidenavHost },
-          { path: 'schichtplan', component: AppSidenavHost },
-          { path: 'mitarbeiter', component: AppSidenavHost },
-          { path: 'verwaltung', component: AppSidenavHost },
-          { path: 'systemverwaltung', component: AppSidenavHost },
+          { path: 'dashboard', component: AppSidenavHost, data: { bereich: 'dashboard' } },
+          { path: 'schichtplan', component: AppSidenavHost, data: { bereich: 'schichtplan' } },
+          { path: 'mitarbeiter', component: AppSidenavHost, data: { bereich: 'mitarbeiter' } },
+          { path: 'verwaltung', component: AppSidenavHost, data: { bereich: 'verwaltung' } },
+          {
+            path: 'systemverwaltung',
+            component: AppSidenavHost,
+            data: { bereich: 'systemverwaltung' },
+          },
           { path: 'passwort', component: AppSidenavHost },
         ]),
         { provide: AppKontextStore, useValue: appKontextStoreMock },
@@ -151,42 +153,39 @@ describe('AppSidenav', () => {
     expect(navigationText).toContain('Systemverwaltung');
   });
 
-  it('should render all context selectors for a master', async () => {
+  it('should render the app context selector for a master', async () => {
+    await TestBed.inject(Router).navigateByUrl('/dashboard');
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
 
-    expect(compiled.querySelector('app-unternehmer-selector')).not.toBeNull();
-    expect(compiled.querySelector('app-firma-selector')).not.toBeNull();
-    expect(compiled.querySelector('app-filiale-selector')).not.toBeNull();
+    expect(compiled.querySelector('app-kontext-selector')).not.toBeNull();
   });
 
-  it('should keep the branch selector disabled', async () => {
+  it('should configure the branch selector by active area for a master', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/dashboard');
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const filialeSelector = fixture.debugElement.query(By.directive(FilialeSelector))
-      .componentInstance as FilialeSelector;
+    let selector = fixture.debugElement.query(
+      (debugElement) => debugElement.componentInstance instanceof AppKontextSelector,
+    ).componentInstance as AppKontextSelector;
 
-    expect(filialeSelector.disabled()).toBe(true);
-  });
+    expect(selector.konfiguration().filiale).toBe('hidden');
 
-  it('should forward context selections to the app context store', () => {
-    const fixture = TestBed.createComponent(AppSidenavHost);
+    await router.navigateByUrl('/mitarbeiter');
     fixture.detectChanges();
-    const sidenav = fixture.debugElement.children[0].componentInstance as AppSidenav;
-    const unternehmerEintrag = { id: 'u1', nummer: 1, anzeigename: 'Unternehmer' };
+    await fixture.whenStable();
+    fixture.detectChanges();
+    selector = fixture.debugElement.query(
+      (debugElement) => debugElement.componentInstance instanceof AppKontextSelector,
+    ).componentInstance as AppKontextSelector;
 
-    sidenav.selectUnternehmer(unternehmerEintrag);
-    sidenav.selectFirma(null);
-    sidenav.selectFilialKontext({ typ: 'alle' });
-
-    expect(appKontextStoreMock.selectUnternehmer).toHaveBeenCalledWith(unternehmerEintrag);
-    expect(appKontextStoreMock.selectFirma).toHaveBeenCalledWith(null);
-    expect(appKontextStoreMock.selectFilialKontext).toHaveBeenCalledWith({ typ: 'alle' });
+    expect(selector.konfiguration().filiale).toBe('editable');
   });
 
   it('should expand system administration and show both child routes for master', () => {
@@ -229,9 +228,12 @@ describe('AppSidenav', () => {
     expect(navigationText).not.toContain('Verwaltung');
   });
 
-  it('should hide administration from users without the master role', () => {
+  it('should hide administration and open context selectors from non-master users', async () => {
     benutzerStoreMock.benutzerProfil.mockReturnValue(createProfil('office'));
+    await TestBed.inject(Router).navigateByUrl('/dashboard');
     const fixture = TestBed.createComponent(AppSidenavHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     const navigationText = compiled.querySelector('[aria-label="Hauptnavigation"]')?.textContent;
@@ -240,9 +242,7 @@ describe('AppSidenav', () => {
     expect(navigationText).toContain('Mitarbeiter');
     expect(navigationText).toContain('Verwaltung');
     expect(navigationText).not.toContain('Systemverwaltung');
-    expect(compiled.querySelector('app-unternehmer-selector')).toBeNull();
-    expect(compiled.querySelector('app-firma-selector')).toBeNull();
-    expect(compiled.querySelector('app-filiale-selector')).toBeNull();
+    expect(compiled.querySelector('app-kontext-selector')).toBeNull();
   });
 
   it.each([

@@ -1,10 +1,9 @@
-// pur-system/src/app/components/data-selectors/firma-selector/firma-selector.ts
+// pur-system/src/app/components/data-selectors/app-kontext-selector/firma-selector/firma-selector.ts
 
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-
-import { IFirmaEintrag } from '../../../commons/models/domain/firma';
+import { IFirmaEintrag } from '../../../../commons/models/domain/firma';
 
 @Component({
   selector: 'app-firma-selector',
