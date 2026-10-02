@@ -4,9 +4,20 @@ import { Timestamp } from 'firebase/firestore';
 import { IPerson } from './person';
 
 // ===== Anwendungs-Typen ====================
+export interface IUnternehmerAdresse {
+  strasse?: string;
+  hausnummer?: string;
+  postleitzahl?: string;
+  ort?: string;
+}
+
+export interface IUnternehmerPerson extends Omit<IPerson, 'adresse'> {
+  adresse?: IUnternehmerAdresse;
+}
+
 export interface IUnternehmerAnlage {
   anzeigename: string;
-  person: IPerson;
+  person: IUnternehmerPerson;
 }
 
 export interface IUnternehmerAnlageErgebnis {

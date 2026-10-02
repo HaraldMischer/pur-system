@@ -168,24 +168,101 @@ async function seedProfile(userRole, overrides = {}) {
   return testEnvironment.authenticatedContext('scoped').firestore();
 }
 
-test('active master reads all permitted collections, nested data and all profiles with legacy scopes', async () => {
+test('active master reads permitted collections and legacy customers without legacy write access', async () => {
   const db = await seedProfile('master', { zugriffe: [] });
   for (const path of [
     filialePath,
     `${filialePath}/mitarbeiter/m-1`,
     'benutzerprofil/other',
     'benutzerprofil/other/private/doc',
+    legacyBranchPath,
   ]) {
     await assertSucceeds(getDoc(doc(db, path)));
   }
-  for (const path of ['benutzerprofil', 'unternehmer', `${firmaPath}/filiale`]) {
+  for (const path of ['benutzerprofil', 'unternehmer', `${firmaPath}/filiale`, 'purCustomers']) {
     await assertSucceeds(getDocs(collection(db, path)));
   }
-  for (const path of [legacyBranchPath, 'purUser/old', 'other/doc']) {
+  for (const path of ['purUser/old', 'other/doc']) {
     await assertFails(getDoc(doc(db, path)));
   }
-  await assertFails(getDocs(collection(db, 'purCustomers')));
   await assertFails(getDocs(collection(db, 'purUser')));
+  await assertFails(setDoc(doc(db, legacyBranchPath), { name: 'Geändert' }, { merge: true }));
+  await assertFails(deleteDoc(doc(db, legacyBranchPath)));
+});
+
+test('active master reads and writes migration status without delete access', async () => {
+  const db = await seedProfile('master', { zugriffe: [] });
+  const systemmigration = doc(db, 'systemMigrationen/u-1');
+  const datenbereich = doc(db, 'systemMigrationen/u-1/datenbereiche/unternehmer_v1');
+
+  await assertSucceeds(
+    setDoc(systemmigration, {
+      purCustomerId: 'u-1',
+      unternehmerId: 'u-1',
+      erstelltAm: serverTimestamp(),
+      aktualisiertAm: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    setDoc(datenbereich, {
+      datenbereich: 'unternehmer',
+      version: 1,
+      status: 'inProgress',
+      quellDokumente: 1,
+      migrierteDokumente: 0,
+      bereitsMigrierteDokumente: 0,
+      konflikte: 0,
+      fehler: 0,
+      probleme: [],
+      gestartetAm: serverTimestamp(),
+      abgeschlossenAm: null,
+      aktualisiertAm: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(getDoc(systemmigration));
+  await assertSucceeds(getDocs(collection(db, 'systemMigrationen/u-1/datenbereiche')));
+  await assertSucceeds(setDoc(datenbereich, { status: 'completed' }, { merge: true }));
+  await assertFails(deleteDoc(systemmigration));
+  await assertFails(deleteDoc(datenbereich));
+});
+
+for (const role of ['office', 'filiale', 'mitarbeiter']) {
+  test(`${role} cannot access migration status`, async () => {
+    const db = await seedProfile(role);
+    const systemmigration = doc(db, 'systemMigrationen/u-1');
+    const datenbereich = doc(db, 'systemMigrationen/u-1/datenbereiche/unternehmer_v1');
+
+    await assertFails(getDoc(systemmigration));
+    await assertFails(getDoc(datenbereich));
+    await assertFails(setDoc(systemmigration, { purCustomerId: 'u-1' }));
+    await assertFails(setDoc(datenbereich, { status: 'completed' }));
+  });
+}
+
+test('inactive master cannot access migration status', async () => {
+  const db = await seedProfile('master', { aktiv: false });
+  const systemmigration = doc(db, 'systemMigrationen/u-1');
+  const datenbereich = doc(db, 'systemMigrationen/u-1/datenbereiche/unternehmer_v1');
+
+  await assertFails(getDoc(systemmigration));
+  await assertFails(getDoc(datenbereich));
+  await assertFails(setDoc(systemmigration, { purCustomerId: 'u-1' }));
+  await assertFails(setDoc(datenbereich, { status: 'completed' }));
+});
+
+test('legacy and unauthenticated accounts cannot access migration status', async () => {
+  for (const db of [
+    testEnvironment.authenticatedContext('legacy').firestore(),
+    testEnvironment.unauthenticatedContext().firestore(),
+  ]) {
+    const systemmigration = doc(db, 'systemMigrationen/u-1');
+    const datenbereich = doc(db, 'systemMigrationen/u-1/datenbereiche/unternehmer_v1');
+
+    await assertFails(getDoc(systemmigration));
+    await assertFails(getDoc(datenbereich));
+    await assertFails(setDoc(systemmigration, { purCustomerId: 'u-1' }));
+    await assertFails(setDoc(datenbereich, { status: 'completed' }));
+  }
 });
 
 for (const role of ['office', 'filiale']) {

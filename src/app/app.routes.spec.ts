@@ -91,7 +91,7 @@ describe('app routes', () => {
     });
   });
 
-  it('should provide separate data structure and user administration routes', () => {
+  it('should provide separate system administration routes', () => {
     const systemverwaltungRoute = routes.find((route) => route.path === 'systemverwaltung');
     const datenstrukturRoute = systemverwaltungRoute?.children?.find(
       (route) => route.path === 'datenstruktur',
@@ -99,11 +99,16 @@ describe('app routes', () => {
     const benutzerRoute = systemverwaltungRoute?.children?.find(
       (route) => route.path === 'benutzer',
     );
+    const datenmigrationRoute = systemverwaltungRoute?.children?.find(
+      (route) => route.path === 'datenmigration',
+    );
 
     expect(datenstrukturRoute?.title).toBe('Datenstruktur anlegen');
     expect(datenstrukturRoute?.loadComponent).toBeDefined();
     expect(benutzerRoute?.title).toBe('Benutzerverwaltung');
     expect(benutzerRoute?.loadComponent).toBeDefined();
+    expect(datenmigrationRoute?.title).toBe('Datenmigration');
+    expect(datenmigrationRoute?.loadComponent).toBeDefined();
   });
 
   it('should protect the management route by area and allowed roles', () => {

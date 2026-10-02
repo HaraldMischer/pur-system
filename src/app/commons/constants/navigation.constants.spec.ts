@@ -64,10 +64,12 @@ describe('NAVIGATION_NACH_ROLLE', () => {
     expect(systemverwaltung.kinder.map((eintrag) => eintrag.id)).toEqual([
       'datenstruktur',
       'benutzerverwaltung',
+      'datenmigration',
     ]);
     expect(getNavigationLinks(systemverwaltung.kinder).map((eintrag) => eintrag.route)).toEqual([
       '/systemverwaltung/datenstruktur',
       '/systemverwaltung/benutzer',
+      '/systemverwaltung/datenmigration',
     ]);
   });
 

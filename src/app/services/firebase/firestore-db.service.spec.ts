@@ -392,6 +392,18 @@ describe('FirestoreDbService', () => {
     expect(addDocMock).toHaveBeenCalledWith('collection-ref', { aktiv: true });
   });
 
+  it('should create a random document id without writing a document', () => {
+    docMock.mockReturnValueOnce({ id: 'zufall-123' });
+    const service = TestBed.inject(FirestoreDbService);
+
+    expect(service.createDocumentId('unternehmer')).toBe('zufall-123');
+    expect(collectionMock).toHaveBeenCalledWith(firestoreMock, 'unternehmer');
+    expect(docMock).toHaveBeenCalledWith('collection-ref');
+    expect(setDocMock).not.toHaveBeenCalled();
+    expect(addDocMock).not.toHaveBeenCalled();
+    expect(trackWriteMock).not.toHaveBeenCalled();
+  });
+
   it('should update a document with merge', async () => {
     const service = TestBed.inject(FirestoreDbService);
 

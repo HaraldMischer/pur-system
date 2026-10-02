@@ -69,6 +69,14 @@ const SYSTEMVERWALTUNG_NAVIGATION: INavigationGruppe = {
       route: '/systemverwaltung/benutzer',
       bereich: 'systemverwaltung',
     },
+    {
+      typ: 'link',
+      id: 'datenmigration',
+      label: 'Datenmigration',
+      icon: 'sync_alt',
+      route: '/systemverwaltung/datenmigration',
+      bereich: 'systemverwaltung',
+    },
   ],
 };
 

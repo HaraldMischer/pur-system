@@ -1,0 +1,139 @@
+<!-- pur-system/src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.html -->
+
+<section class="pur-page-section datenmigration-page">
+  <p class="pur-page-section__text">
+    Wähle einen Legacy-Kunden aus. Alle Migrationsaktionen beziehen sich ausschließlich auf diese
+    Auswahl.
+  </p>
+
+  <!-- Migrationsauswahl -->
+  <div class="datenmigration-page__auswahl">
+    <mat-form-field appearance="outline">
+      <mat-label>Legacy-Kunde</mat-label>
+      <mat-select
+        [value]="datenmigrationStore.selectedPurCustomerId()"
+        [disabled]="datenmigrationStore.download() || datenmigrationStore.inProgress()"
+        (selectionChange)="handlePurCustomerSelect($event.value)"
+      >
+        @for (purCustomer of datenmigrationStore.purCustomers(); track purCustomer.id) {
+          <mat-option [value]="purCustomer.id">{{ purCustomer.anzeigename }}</mat-option>
+        } @empty {
+          <mat-option disabled>Keine Legacy-Kunden vorhanden</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Migrationsbereich</mat-label>
+      <mat-select
+        [value]="selectedMigrationsbereich()"
+        [disabled]="
+          !selectedPurCustomer() ||
+          datenmigrationStore.download() ||
+          datenmigrationStore.inProgress()
+        "
+        (selectionChange)="handleMigrationsbereichSelect($event.value)"
+      >
+        @for (migrationsbereich of migrationsbereiche; track migrationsbereich.id) {
+          <mat-option [value]="migrationsbereich.id">{{ migrationsbereich.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (datenmigrationStore.error(); as error) {
+      <p class="pur-form__error" role="alert">{{ error }}</p>
+      <button matButton="outlined" type="button" (click)="retryLoad()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        Erneut laden
+      </button>
+    } @else if (datenmigrationStore.isLoaded() && datenmigrationStore.purCustomers().length === 0) {
+      <p class="pur-form__message" role="status">Keine Legacy-Kunden vorhanden.</p>
+    }
+  </div>
+
+  @if (selectedPurCustomer(); as purCustomer) {
+    @if (selectedMigrationsbereich() === 'unternehmer') {
+      <!-- Unternehmermigration -->
+      <mat-card class="pur-card datenmigration-page__karte" appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar aria-hidden="true">business</mat-icon>
+          <mat-card-title>Unternehmer migrieren</mat-card-title>
+          <mat-card-subtitle>{{ purCustomer.anzeigename }}</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <dl class="datenmigration-page__status" aria-live="polite">
+            <div>
+              <dt>Status</dt>
+              <dd>{{ statusLabel() }}</dd>
+            </div>
+            <div>
+              <dt>Quelle</dt>
+              <dd>{{ unternehmerStatus()?.quellDokumente ?? 1 }}</dd>
+            </div>
+            <div>
+              <dt>Migriert</dt>
+              <dd>{{ unternehmerStatus()?.migrierteDokumente ?? 0 }}</dd>
+            </div>
+            <div>
+              <dt>Bereits migriert</dt>
+              <dd>{{ unternehmerStatus()?.bereitsMigrierteDokumente ?? 0 }}</dd>
+            </div>
+            <div>
+              <dt>Konflikte</dt>
+              <dd>{{ unternehmerStatus()?.konflikte ?? 0 }}</dd>
+            </div>
+            <div>
+              <dt>Fehler</dt>
+              <dd>{{ unternehmerStatus()?.fehler ?? 0 }}</dd>
+            </div>
+          </dl>
+
+          @if (unternehmerStatus()?.probleme?.length) {
+            <div class="datenmigration-page__probleme" role="alert">
+              <h2>Hinweise zur Migration</h2>
+              <ul>
+                @for (problem of unternehmerStatus()?.probleme ?? []; track $index) {
+                  <li>
+                    <span>{{ problem.ursache }}</span>
+                    <small>{{ problem.quellPfad }}</small>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </mat-card-content>
+
+        <mat-card-actions align="end">
+          <button
+            class="datenmigration-page__migration-button"
+            matButton="filled"
+            type="button"
+            [disabled]="migrationDisabled()"
+            (click)="migrateUnternehmer()"
+          >
+            <mat-icon aria-hidden="true">sync</mat-icon>
+            {{ migrationButtonLabel() }}
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    } @else {
+      <!-- Noch nicht umgesetzter Migrationsbereich -->
+      <mat-card class="pur-card datenmigration-page__karte" appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar aria-hidden="true">
+            {{ selectedMigrationsbereichOption().icon }}
+          </mat-icon>
+          <mat-card-title> {{ selectedMigrationsbereichOption().label }} migrieren </mat-card-title>
+          <mat-card-subtitle>{{ purCustomer.anzeigename }}</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <p class="pur-form__message" role="status">
+            Die Migration dieses Datenbereichs ist noch nicht umgesetzt.
+          </p>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</section>

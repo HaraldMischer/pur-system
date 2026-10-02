@@ -83,7 +83,7 @@ describe('UnternehmerAnlegenDialog', () => {
     ).toBe(true);
   });
 
-  it('should create the entrepreneur without optional contact data', async () => {
+  it('should create the entrepreneur without optional address and contact data', async () => {
     const component = TestBed.createComponent(UnternehmerAnlegenDialog).componentInstance;
     component.unternehmerForm.setValue({
       anzeigename: 'Unternehmer Nord',
@@ -91,10 +91,42 @@ describe('UnternehmerAnlegenDialog', () => {
         vorname: 'Max',
         nachname: 'Mustermann',
         adresse: {
-          strasse: 'Hauptstraße',
-          hausnummer: '1',
-          postleitzahl: '20095',
-          ort: 'Hamburg',
+          strasse: '',
+          hausnummer: '',
+          postleitzahl: '',
+          ort: '',
+        },
+        kontakt: {
+          email: '',
+          telefon: '',
+        },
+      },
+    });
+
+    await component.onSubmit();
+
+    expect(createUnternehmerMock).toHaveBeenCalledWith({
+      anzeigename: 'Unternehmer Nord',
+      person: {
+        vorname: 'Max',
+        nachname: 'Mustermann',
+        kontakt: {},
+      },
+    });
+  });
+
+  it('should create the entrepreneur with a partial optional address', async () => {
+    const component = TestBed.createComponent(UnternehmerAnlegenDialog).componentInstance;
+    component.unternehmerForm.setValue({
+      anzeigename: 'Unternehmer Nord',
+      person: {
+        vorname: 'Max',
+        nachname: 'Mustermann',
+        adresse: {
+          strasse: ' Hauptstraße ',
+          hausnummer: '',
+          postleitzahl: '',
+          ort: ' Hamburg ',
         },
         kontakt: {
           email: '',
@@ -112,8 +144,6 @@ describe('UnternehmerAnlegenDialog', () => {
         nachname: 'Mustermann',
         adresse: {
           strasse: 'Hauptstraße',
-          hausnummer: '1',
-          postleitzahl: '20095',
           ort: 'Hamburg',
         },
         kontakt: {},

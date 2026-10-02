@@ -59,22 +59,10 @@ export class UnternehmerAnlegenDialog {
         validators: [Validators.required, nichtLeerValidator],
       }),
       adresse: new FormGroup({
-        strasse: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
-        }),
-        hausnummer: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
-        }),
-        postleitzahl: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
-        }),
-        ort: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
-        }),
+        strasse: new FormControl('', { nonNullable: true }),
+        hausnummer: new FormControl('', { nonNullable: true }),
+        postleitzahl: new FormControl('', { nonNullable: true }),
+        ort: new FormControl('', { nonNullable: true }),
       }),
       kontakt: new FormGroup({
         email: new FormControl('', {
@@ -111,18 +99,23 @@ export class UnternehmerAnlegenDialog {
     const value = this.unternehmerForm.getRawValue();
     const email = value.person.kontakt.email.trim().toLowerCase();
     const telefon = value.person.kontakt.telefon.trim();
+    const strasse = value.person.adresse.strasse.trim();
+    const hausnummer = value.person.adresse.hausnummer.trim();
+    const postleitzahl = value.person.adresse.postleitzahl.trim();
+    const ort = value.person.adresse.ort.trim();
+    const adresse = {
+      ...(strasse ? { strasse } : {}),
+      ...(hausnummer ? { hausnummer } : {}),
+      ...(postleitzahl ? { postleitzahl } : {}),
+      ...(ort ? { ort } : {}),
+    };
 
     return {
       anzeigename: value.anzeigename.trim(),
       person: {
         vorname: value.person.vorname.trim(),
         nachname: value.person.nachname.trim(),
-        adresse: {
-          strasse: value.person.adresse.strasse.trim(),
-          hausnummer: value.person.adresse.hausnummer.trim(),
-          postleitzahl: value.person.adresse.postleitzahl.trim(),
-          ort: value.person.adresse.ort.trim(),
-        },
+        ...(Object.keys(adresse).length > 0 ? { adresse } : {}),
         kontakt: {
           ...(email ? { email } : {}),
           ...(telefon ? { telefon } : {}),

@@ -244,11 +244,24 @@ service cloud.firestore {
     }
 
     // ===============================================================================
-    // 3. Konten der Altanwendung ohne Pur-System-Benutzerprofil
+    // 3. Status der Datenmigration
+    // ===============================================================================
+
+    match /systemMigrationen/{purCustomerId} {
+      allow read, create, update: if isMaster();
+
+      match /datenbereiche/{datenbereichId} {
+        allow read, create, update: if isMaster();
+      }
+    }
+
+    // ===============================================================================
+    // 4. Konten der Altanwendung ohne Pur-System-Benutzerprofil
     // ===============================================================================
 
     match /purCustomers/{document=**} {
-      allow read, write: if isAuthenticated() && !hasProfil();
+      allow read: if isMaster() || (isAuthenticated() && !hasProfil());
+      allow write: if isAuthenticated() && !hasProfil();
     }
 
     match /purUser/{document=**} {

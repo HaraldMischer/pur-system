@@ -107,6 +107,14 @@ export const routes: Routes = [
             (m) => m.BenutzerPage,
           ),
       },
+      {
+        path: 'datenmigration',
+        title: 'Datenmigration',
+        loadComponent: () =>
+          import('./pages/systemverwaltung-page/datenmigration-page/datenmigration-page').then(
+            (m) => m.DatenmigrationPage,
+          ),
+      },
     ],
   },
   {

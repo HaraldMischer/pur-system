@@ -2,7 +2,12 @@
 
 export const FIRESTORE_COLLECTION_PATHS = {
   benutzerprofile: 'benutzerprofil',
+  purCustomers: 'purCustomers',
+  systemMigrationen: 'systemMigrationen',
   unternehmer: 'unternehmer',
+  migrationsDatenbereiche(purCustomerId: string): string {
+    return `systemMigrationen/${purCustomerId}/datenbereiche`;
+  },
   firmen(unternehmerId: string): string {
     return `unternehmer/${unternehmerId}/firma`;
   },
@@ -17,6 +22,15 @@ export const FIRESTORE_COLLECTION_PATHS = {
 export const FIRESTORE_DOCUMENT_PATHS = {
   benutzerprofil(uid: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.benutzerprofile}/${uid}`;
+  },
+  purCustomer(purCustomerId: string): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purCustomers}/${purCustomerId}`;
+  },
+  systemmigration(purCustomerId: string): string {
+    return `${FIRESTORE_COLLECTION_PATHS.systemMigrationen}/${purCustomerId}`;
+  },
+  migrationsDatenbereich(purCustomerId: string, datenbereichId: string): string {
+    return `${FIRESTORE_COLLECTION_PATHS.migrationsDatenbereiche(purCustomerId)}/${datenbereichId}`;
   },
   unternehmer(unternehmerId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.unternehmer}/${unternehmerId}`;

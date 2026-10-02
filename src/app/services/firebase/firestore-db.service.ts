@@ -272,6 +272,19 @@ export class FirestoreDbService {
   }
 
   /**
+   * Erzeugt eine zufällige Dokument-ID für eine Firestore-Collection, ohne ein Dokument anzulegen.
+   *
+   * @param collectionPath - Vollständiger Pfad der Ziel-Collection.
+   * @returns Die lokal durch Firestore erzeugte Dokument-ID.
+   */
+  createDocumentId(collectionPath: string): string {
+    return this.runInContext(() => {
+      const collectionRef = this.collection(this.firestore, collectionPath);
+      return this.doc(collectionRef).id;
+    });
+  }
+
+  /**
    * Legt ein Dokument mit automatisch erzeugter Dokument-ID an.
    *
    * @param collectionPath - Vollständiger Pfad der Ziel-Collection.

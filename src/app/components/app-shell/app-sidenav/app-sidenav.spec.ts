@@ -188,7 +188,7 @@ describe('AppSidenav', () => {
     expect(selector.konfiguration().filiale).toBe('editable');
   });
 
-  it('should expand system administration and show both child routes for master', () => {
+  it('should expand system administration and show all child routes for master', () => {
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -210,6 +210,7 @@ describe('AppSidenav', () => {
     expect(children?.classList).not.toContain('app-sidenav-nested-navigation__children--hidden');
     expect(children?.textContent).toContain('Datenstruktur anlegen');
     expect(children?.textContent).toContain('Benutzerverwaltung');
+    expect(children?.textContent).toContain('Datenmigration');
   });
 
   it('should hide navigation entries without permission', () => {
