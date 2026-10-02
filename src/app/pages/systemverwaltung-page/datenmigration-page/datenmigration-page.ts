@@ -70,6 +70,12 @@ export class DatenmigrationPage implements OnInit {
   readonly unternehmerStatus = computed(() => {
     return this.datenmigrationStore.migrationsstatus().unternehmer ?? null;
   });
+  readonly firmenStatus = computed(() => {
+    return this.datenmigrationStore.migrationsstatus().firmen ?? null;
+  });
+  readonly selectedStatus = computed(() => {
+    return this.datenmigrationStore.migrationsstatus()[this.selectedMigrationsbereich()] ?? null;
+  });
   readonly selectedMigrationsbereichOption = computed(() => {
     return (
       this.migrationsbereiche.find(
@@ -79,21 +85,37 @@ export class DatenmigrationPage implements OnInit {
   });
   readonly statusLabel = computed(() => {
     if (this.datenmigrationStore.download() && this.selectedPurCustomer()) return 'Wird geladen';
-    const status = this.unternehmerStatus()?.status;
-    return status ? STATUS_LABELS[status] : 'Noch nicht migriert';
+    const status = this.selectedStatus()?.status;
+    return status ? STATUS_LABELS[status] : 'Ausstehend';
+  });
+  readonly quellDokumente = computed(() => {
+    const statusAnzahl = this.selectedStatus()?.quellDokumente;
+    if (statusAnzahl !== undefined) return statusAnzahl;
+    if (this.selectedMigrationsbereich() === 'unternehmer') return 1;
+    if (this.selectedMigrationsbereich() === 'firmen') {
+      return this.datenmigrationStore.firmenQuellDokumente() ?? 0;
+    }
+    return 0;
+  });
+  readonly migrationImplemented = computed(() => {
+    const migrationsbereich = this.selectedMigrationsbereich();
+    return migrationsbereich === 'unternehmer' || migrationsbereich === 'firmen';
   });
   readonly migrationDisabled = computed(() => {
+    const migrationsbereich = this.selectedMigrationsbereich();
     return (
       !this.selectedPurCustomer() ||
+      !this.migrationImplemented() ||
       this.datenmigrationStore.download() ||
       this.datenmigrationStore.inProgress() ||
-      this.unternehmerStatus()?.status === 'completed'
+      this.selectedStatus()?.status === 'completed' ||
+      (migrationsbereich === 'firmen' && this.unternehmerStatus()?.status !== 'completed')
     );
   });
   readonly migrationButtonLabel = computed(() => {
     if (this.datenmigrationStore.inProgress()) return 'Migration läuft';
-    if (this.unternehmerStatus()?.status === 'completed') return 'Bereits migriert';
-    return 'Unternehmer migrieren';
+    if (this.selectedStatus()?.status === 'completed') return 'Bereits migriert';
+    return `${this.selectedMigrationsbereichOption().label} migrieren`;
   });
 
   // ===== Lifecycle Hooks ======================
@@ -114,6 +136,9 @@ export class DatenmigrationPage implements OnInit {
    */
   async handlePurCustomerSelect(purCustomerId: string): Promise<void> {
     await this.datenmigrationStore.selectPurCustomer(purCustomerId).catch(() => undefined);
+    if (this.selectedMigrationsbereich() === 'firmen') {
+      await this.datenmigrationStore.loadFirmenQuelle().catch(() => undefined);
+    }
   }
 
   /**
@@ -121,8 +146,11 @@ export class DatenmigrationPage implements OnInit {
    *
    * @param migrationsbereich - Fachlicher Bereich der anzuzeigenden Migrationskarte.
    */
-  handleMigrationsbereichSelect(migrationsbereich: TDatenmigrationsbereich): void {
+  async handleMigrationsbereichSelect(migrationsbereich: TDatenmigrationsbereich): Promise<void> {
     this.selectedMigrationsbereich.set(migrationsbereich);
+    if (migrationsbereich === 'firmen') {
+      await this.datenmigrationStore.loadFirmenQuelle().catch(() => undefined);
+    }
   }
 
   /**
@@ -134,12 +162,33 @@ export class DatenmigrationPage implements OnInit {
   }
 
   /**
+   * Migriert die Firmen des ausgewählten Legacy-Kunden.
+   */
+  async migrateFirmen(): Promise<void> {
+    if (this.migrationDisabled()) return;
+    await this.datenmigrationStore.migrateFirmen().catch(() => undefined);
+  }
+
+  /**
+   * Startet die aktuell ausgewählte und bereits umgesetzte Migration.
+   */
+  async migrateSelectedBereich(): Promise<void> {
+    if (this.selectedMigrationsbereich() === 'unternehmer') {
+      await this.migrateUnternehmer();
+      return;
+    }
+    if (this.selectedMigrationsbereich() === 'firmen') {
+      await this.migrateFirmen();
+    }
+  }
+
+  /**
    * Wiederholt abhängig von der aktuellen Auswahl das Laden der Kunden oder ihres Status.
    */
   async retryLoad(): Promise<void> {
     const purCustomerId = this.datenmigrationStore.selectedPurCustomerId();
     if (purCustomerId) {
-      await this.datenmigrationStore.selectPurCustomer(purCustomerId).catch(() => undefined);
+      await this.handlePurCustomerSelect(purCustomerId);
       return;
     }
     await this.datenmigrationStore.loadPurCustomers().catch(() => undefined);

@@ -2,22 +2,28 @@
 
 import { Timestamp } from 'firebase/firestore';
 
-import { IAdresse } from './adresse';
 import { IKontakt } from './kontakt';
 
 // ===== Anwendungs-Typen ====================
 
+export interface IFirmaAdresse {
+  strasse?: string;
+  hausnummer?: string;
+  postleitzahl?: string;
+  ort?: string;
+}
+
 export interface IFirmaAnlage {
   anzeigename: string;
   firmenname: string;
-  adresse: IAdresse;
+  adresse?: IFirmaAdresse;
   kontakt: IKontakt;
 }
 
 export interface IFirmaAktualisierung {
   anzeigename: string;
   firmenname: string;
-  adresse: IAdresse;
+  adresse?: IFirmaAdresse;
   kontakt: IKontakt;
 }
 

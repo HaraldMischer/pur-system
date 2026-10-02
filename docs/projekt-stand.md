@@ -60,10 +60,10 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `/systemverwaltung/benutzer` und leitet ohne Unterpfad auf die Datenstruktur-Anlage weiter.
 - Die `DatenstrukturPage` ist unter ihrer eigenen Unterroute erreichbar. Die `BenutzerPage` bündelt unter der zweiten Unterroute
   weiterhin Benutzeranlage und Benutzerverwaltung.
-- Die `DatenmigrationPage` lädt Legacy-Kunden zur Einzelauswahl und zeigt für den ausgewählten Kunden eine Unternehmerkarte mit
-  Status, Ergebniszahlen, Problemdetails und einer einzelnen Migrationsaktion. Abgeschlossene Migrationen sind gesperrt;
-  fehlgeschlagene oder konfliktbehaftete Migrationen können erneut geprüft werden. Eine kundenübergreifende Sammelaktion gibt es
-  nicht.
+- Die `DatenmigrationPage` lädt Legacy-Kunden zur Einzelauswahl und bietet für den ausgewählten Kunden die Migration von
+  Unternehmer und Firmen mit jeweils eigenem Status, Ergebniszahlen und Problemdetails an. Die Firmenmigration ist erst nach
+  erfolgreicher Unternehmermigration freigegeben. Abgeschlossene Migrationen sind gesperrt; fehlgeschlagene oder
+  konfliktbehaftete Migrationen können erneut geprüft werden. Eine kundenübergreifende Sammelaktion gibt es nicht.
 - Die Route `/verwaltung` enthält die Auswahl zugeordneter Stammdaten und die Bearbeitung bestehender Firmen- und Filialdaten.
 - Die geschützte Route `/passwort` ermöglicht angemeldeten Benutzern eine Passwortänderung.
 
@@ -86,6 +86,9 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Serverfehlern; Berechtigungsfehler werden unverändert weitergegeben.
 - Firestore-Collection- und Dokumentpfade für Benutzerprofile, Unternehmer, Firmen und Filialen werden zentral in
   `firebase.constants.ts` erzeugt.
+- Legacy-Firmen werden ausschließlich aus dem ausgewählten `purCustomer` gelesen und anhand einer dauerhaft gespeicherten,
+  zufälligen Ziel-ID migriert. Firmenadressen sind sowohl bei Anlage und Bearbeitung als auch bei der Migration optional und
+  dürfen unvollständig sein.
 - `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
   sondern greifen über den `FirestoreDbService` zu.
 - Der `AppSitzungsInitService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
@@ -560,7 +563,7 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 Am 02.10.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 567 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
+- 592 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
   konsistenter
   Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,
@@ -569,7 +572,7 @@ Am 02.10.2026 für den aktuellen Stand erfolgreich geprüft:
   benutzerabhängigen Stammdatenladeplänen für alle vier Rollen, Echtzeitbeobachtung des eigenen Profils, zentralem
   Sitzungsstart mit Initialisierungszustand, wartender Navigation, Fehlerseite, Wiederholung und Rücknavigation sowie globalem
   Banner-Service, Inaktivhinweis, sichtbarer Anwendungsversion, allen vier Firestore-Lesestrategien, buildabhängiger Cache-Art,
-  erzwungenem Server-Neuladen und Benutzertrennung.
+  erzwungenem Server-Neuladen, Benutzertrennung sowie Unternehmer- und Firmenmigration.
 - Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
 - Datenstruktur-Anlage und Benutzerverwaltung wurden unter ihren getrennten Systemverwaltungsrouten auf Desktop und einem
   kleinen Viewport erfolgreich manuell geprüft.

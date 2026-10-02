@@ -98,6 +98,27 @@ describe('FirmaBearbeitenDialog', () => {
     expect(component.firmaForm.touched).toBe(true);
   });
 
+  it('should initialize and save a company without address data', async () => {
+    const firmaOhneAdresse = { ...firma, adresse: undefined };
+    TestBed.overrideProvider(MAT_DIALOG_DATA, { useValue: { firma: firmaOhneAdresse } });
+    const component = TestBed.createComponent(FirmaBearbeitenDialog).componentInstance;
+
+    expect(component.firmaForm.controls.adresse.getRawValue()).toEqual({
+      strasse: '',
+      hausnummer: '',
+      postleitzahl: '',
+      ort: '',
+    });
+
+    await component.onSubmit();
+
+    expect(updateFirmaMock).toHaveBeenCalledWith({
+      anzeigename: 'Firma Nord',
+      firmenname: 'Firma Nord GmbH',
+      kontakt: firma.kontakt,
+    });
+  });
+
   it('should normalize editable data and close with the updated company', async () => {
     const aktualisierteFirma = { ...firma, anzeigename: 'Firma Neu' };
     updateFirmaMock.mockResolvedValue(aktualisierteFirma);

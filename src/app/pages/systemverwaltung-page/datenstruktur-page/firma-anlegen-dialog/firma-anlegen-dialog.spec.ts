@@ -70,7 +70,7 @@ describe('FirmaAnlegenDialog', () => {
     expect(dialogContent?.classList).toContain('pur-dialog__content');
     expect(form?.contains(dialogActions)).toBe(false);
     expect(submitButton?.getAttribute('form')).toBe('firma-anlegen-form');
-    expect(compiled.querySelectorAll('.pur-form__row')).toHaveLength(3);
+    expect(compiled.querySelectorAll('.pur-form__row')).toHaveLength(4);
     expect(compiled.querySelector('[class*="firma-anlegen-dialog__"]')).toBeNull();
   });
 
@@ -110,6 +110,32 @@ describe('FirmaAnlegenDialog', () => {
         postleitzahl: '20095',
         ort: 'Hamburg',
       },
+      kontakt: {},
+    });
+  });
+
+  it('should create the company without address data', async () => {
+    const component = TestBed.createComponent(FirmaAnlegenDialog).componentInstance;
+    component.firmaForm.setValue({
+      anzeigename: 'Firma Nord',
+      firmenname: 'Firma Nord GmbH',
+      adresse: {
+        strasse: '',
+        hausnummer: '',
+        postleitzahl: '',
+        ort: '',
+      },
+      kontakt: {
+        email: '',
+        telefon: '',
+      },
+    });
+
+    await component.onSubmit();
+
+    expect(createFirmaMock).toHaveBeenCalledWith('unternehmer-1', {
+      anzeigename: 'Firma Nord',
+      firmenname: 'Firma Nord GmbH',
       kontakt: {},
     });
   });

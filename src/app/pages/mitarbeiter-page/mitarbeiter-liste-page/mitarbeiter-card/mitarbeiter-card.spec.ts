@@ -50,7 +50,7 @@ describe('MitarbeiterCard', () => {
 
     expect(card?.textContent).toContain('Noch keiner Filiale zugeordnet');
     expect(card?.textContent).toContain('Inaktiv');
-    expect(card?.classList).toContain('mitarbeiter-card--inaktiv');
+    expect(card?.classList).toContain('pur-card--inaktiv');
   });
 
   it('should emit the employee when edit is selected', () => {

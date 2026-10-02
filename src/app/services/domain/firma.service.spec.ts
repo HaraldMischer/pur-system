@@ -123,12 +123,6 @@ describe('FirmaService', () => {
         firmenname: 'z',
         nummer: 0,
         aktiv: false,
-        adresse: {
-          strasse: '',
-          hausnummer: '',
-          postleitzahl: '',
-          ort: '',
-        },
         kontakt: {},
       },
     ]);
@@ -157,6 +151,29 @@ describe('FirmaService', () => {
         aktualisiertAm: 'server-zeitstempel',
       },
     );
+  });
+
+  it('should preserve an omitted address when loading and creating a company', async () => {
+    firestoreDbServiceMock.loadDocument.mockResolvedValue({
+      id: 'firma-ohne-adresse',
+      daten: {
+        anzeigename: 'Ohne Adresse',
+        firmenname: 'Firma ohne Adresse',
+        nummer: 9,
+        aktiv: true,
+        kontakt: {},
+      },
+    });
+    const service = TestBed.inject(FirmaService);
+
+    await expect(service.loadFirmaEintrag('unternehmer-1', 'firma-ohne-adresse')).resolves.toEqual({
+      id: 'firma-ohne-adresse',
+      anzeigename: 'Ohne Adresse',
+      firmenname: 'Firma ohne Adresse',
+      nummer: 9,
+      aktiv: true,
+      kontakt: {},
+    });
   });
 
   it('should update only editable company data with a server timestamp', async () => {

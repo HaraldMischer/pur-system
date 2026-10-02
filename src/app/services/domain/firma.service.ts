@@ -29,6 +29,11 @@ function mapFirmaEintrag(id: string, daten: Record<string, unknown>): IFirmaEint
   const telefon = getOptionalString(kontakt['telefon']);
   const mobil = getOptionalString(kontakt['mobil']);
   const webseite = getOptionalString(kontakt['webseite']);
+  const strasse = getOptionalString(adresse['strasse']);
+  const hausnummer = getOptionalString(adresse['hausnummer']);
+  const postleitzahl = getOptionalString(adresse['postleitzahl']);
+  const ort = getOptionalString(adresse['ort']);
+  const hatAdresse = Boolean(strasse || hausnummer || postleitzahl || ort);
 
   return {
     id,
@@ -36,12 +41,16 @@ function mapFirmaEintrag(id: string, daten: Record<string, unknown>): IFirmaEint
     firmenname: typeof firmenname === 'string' && firmenname.trim() ? firmenname.trim() : id,
     nummer: Number.isInteger(nummer) && Number(nummer) > 0 ? Number(nummer) : 0,
     aktiv: daten['aktiv'] === true,
-    adresse: {
-      strasse: getString(adresse['strasse']),
-      hausnummer: getString(adresse['hausnummer']),
-      postleitzahl: getString(adresse['postleitzahl']),
-      ort: getString(adresse['ort']),
-    },
+    ...(hatAdresse
+      ? {
+          adresse: {
+            ...(strasse ? { strasse } : {}),
+            ...(hausnummer ? { hausnummer } : {}),
+            ...(postleitzahl ? { postleitzahl } : {}),
+            ...(ort ? { ort } : {}),
+          },
+        }
+      : {}),
     kontakt: {
       ...(email ? { email } : {}),
       ...(telefon ? { telefon } : {}),

@@ -62,21 +62,17 @@ export class FirmaBearbeitenDialog {
       validators: [Validators.required, nichtLeerValidator],
     }),
     adresse: new FormGroup({
-      strasse: new FormControl(this.dialogDaten.firma.adresse.strasse, {
+      strasse: new FormControl(this.dialogDaten.firma.adresse?.strasse ?? '', {
         nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
       }),
-      hausnummer: new FormControl(this.dialogDaten.firma.adresse.hausnummer, {
+      hausnummer: new FormControl(this.dialogDaten.firma.adresse?.hausnummer ?? '', {
         nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
       }),
-      postleitzahl: new FormControl(this.dialogDaten.firma.adresse.postleitzahl, {
+      postleitzahl: new FormControl(this.dialogDaten.firma.adresse?.postleitzahl ?? '', {
         nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
       }),
-      ort: new FormControl(this.dialogDaten.firma.adresse.ort, {
+      ort: new FormControl(this.dialogDaten.firma.adresse?.ort ?? '', {
         nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
       }),
     }),
     kontakt: new FormGroup({
@@ -132,16 +128,25 @@ export class FirmaBearbeitenDialog {
     const telefon = value.kontakt.telefon.trim();
     const mobil = value.kontakt.mobil.trim();
     const webseite = value.kontakt.webseite.trim();
+    const strasse = value.adresse.strasse.trim();
+    const hausnummer = value.adresse.hausnummer.trim();
+    const postleitzahl = value.adresse.postleitzahl.trim();
+    const ort = value.adresse.ort.trim();
+    const hatAdresse = Boolean(strasse || hausnummer || postleitzahl || ort);
 
     return {
       anzeigename: value.anzeigename.trim(),
       firmenname: value.firmenname.trim(),
-      adresse: {
-        strasse: value.adresse.strasse.trim(),
-        hausnummer: value.adresse.hausnummer.trim(),
-        postleitzahl: value.adresse.postleitzahl.trim(),
-        ort: value.adresse.ort.trim(),
-      },
+      ...(hatAdresse
+        ? {
+            adresse: {
+              ...(strasse ? { strasse } : {}),
+              ...(hausnummer ? { hausnummer } : {}),
+              ...(postleitzahl ? { postleitzahl } : {}),
+              ...(ort ? { ort } : {}),
+            },
+          }
+        : {}),
       kontakt: {
         ...(email ? { email } : {}),
         ...(telefon ? { telefon } : {}),

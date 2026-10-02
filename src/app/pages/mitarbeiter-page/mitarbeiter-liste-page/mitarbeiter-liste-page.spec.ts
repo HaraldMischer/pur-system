@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 
 import { IBenutzerProfilDokument } from '../../../commons/models/domain/benutzer';
+import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IFirmaEintrag } from '../../../commons/models/domain/firma';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { IUnternehmerEintrag } from '../../../commons/models/domain/unternehmer';
@@ -50,8 +51,18 @@ describe('MitarbeiterListePage', () => {
     kontakt: {},
     aktiv: true,
   };
+  const filiale: IFilialeEintrag = {
+    id: 'b-1',
+    nummer: 1,
+    anzeigename: 'Filiale 1',
+    filialname: 'Filiale 1',
+    adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
+    kontakt: {},
+    aktiv: true,
+  };
   const selectedUnternehmer = signal<IUnternehmerEintrag | null>(unternehmer);
   const selectedFirma = signal<IFirmaEintrag | null>(firma);
+  const selectedFiliale = signal<IFilialeEintrag | null>(null);
   const mitarbeiterSignal = signal<IMitarbeiterEintrag[]>([]);
   const download = signal(false);
   const isLoaded = signal(false);
@@ -79,6 +90,7 @@ describe('MitarbeiterListePage', () => {
   beforeEach(() => {
     selectedUnternehmer.set(unternehmer);
     selectedFirma.set(firma);
+    selectedFiliale.set(null);
     mitarbeiterSignal.set([]);
     download.set(false);
     isLoaded.set(false);
@@ -122,7 +134,7 @@ describe('MitarbeiterListePage', () => {
         { provide: MatDialog, useValue: dialogMock },
         {
           provide: AppKontextStore,
-          useValue: { selectedUnternehmer, selectedFirma },
+          useValue: { selectedUnternehmer, selectedFirma, selectedFiliale },
         },
         { provide: BenutzerStore, useValue: { benutzerProfil } },
         { provide: StammdatenStore, useValue: stammdatenStoreMock },
@@ -176,6 +188,37 @@ describe('MitarbeiterListePage', () => {
     await fixture.whenStable();
 
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenLastCalledWith('u-1', 'f-2', undefined);
+  });
+
+  it('should filter already loaded employees by the selected branch without loading again', async () => {
+    const mitarbeiterFiliale = {
+      ...mitarbeiter,
+      id: 'm-b-1',
+      filialIds: ['b-1'],
+      person: { ...mitarbeiter.person, vorname: 'Filiale', nachname: 'Eins' },
+    };
+    const mitarbeiterAndereFiliale = {
+      ...mitarbeiter,
+      id: 'm-b-2',
+      filialIds: ['b-2'],
+      person: { ...mitarbeiter.person, vorname: 'Filiale', nachname: 'Zwei' },
+    };
+    mitarbeiterStoreMock.loadMitarbeiter.mockImplementation(async () => {
+      mitarbeiterSignal.set([mitarbeiterFiliale, mitarbeiterAndereFiliale]);
+      isLoaded.set(true);
+    });
+    const fixture = TestBed.createComponent(MitarbeiterListePage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    selectedFiliale.set(filiale);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledOnce();
+    expect(text).toContain('Filiale Eins');
+    expect(text).not.toContain('Filiale Zwei');
   });
 
   it('should load only employees of the assigned branch for a branch account', async () => {

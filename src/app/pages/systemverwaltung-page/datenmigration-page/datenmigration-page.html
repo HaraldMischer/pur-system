@@ -52,12 +52,14 @@
   </div>
 
   @if (selectedPurCustomer(); as purCustomer) {
-    @if (selectedMigrationsbereich() === 'unternehmer') {
-      <!-- Unternehmermigration -->
+    @if (migrationImplemented()) {
+      <!-- Umgesetzter Migrationsbereich -->
       <mat-card class="pur-card datenmigration-page__karte" appearance="outlined">
         <mat-card-header>
-          <mat-icon mat-card-avatar aria-hidden="true">business</mat-icon>
-          <mat-card-title>Unternehmer migrieren</mat-card-title>
+          <mat-icon mat-card-avatar aria-hidden="true">
+            {{ selectedMigrationsbereichOption().icon }}
+          </mat-icon>
+          <mat-card-title> {{ selectedMigrationsbereichOption().label }} migrieren </mat-card-title>
           <mat-card-subtitle>{{ purCustomer.anzeigename }}</mat-card-subtitle>
         </mat-card-header>
 
@@ -69,31 +71,39 @@
             </div>
             <div>
               <dt>Quelle</dt>
-              <dd>{{ unternehmerStatus()?.quellDokumente ?? 1 }}</dd>
+              <dd>{{ quellDokumente() }}</dd>
             </div>
             <div>
               <dt>Migriert</dt>
-              <dd>{{ unternehmerStatus()?.migrierteDokumente ?? 0 }}</dd>
+              <dd>{{ selectedStatus()?.migrierteDokumente ?? 0 }}</dd>
             </div>
             <div>
               <dt>Bereits migriert</dt>
-              <dd>{{ unternehmerStatus()?.bereitsMigrierteDokumente ?? 0 }}</dd>
+              <dd>{{ selectedStatus()?.bereitsMigrierteDokumente ?? 0 }}</dd>
             </div>
             <div>
               <dt>Konflikte</dt>
-              <dd>{{ unternehmerStatus()?.konflikte ?? 0 }}</dd>
+              <dd>{{ selectedStatus()?.konflikte ?? 0 }}</dd>
             </div>
             <div>
               <dt>Fehler</dt>
-              <dd>{{ unternehmerStatus()?.fehler ?? 0 }}</dd>
+              <dd>{{ selectedStatus()?.fehler ?? 0 }}</dd>
             </div>
           </dl>
 
-          @if (unternehmerStatus()?.probleme?.length) {
+          @if (
+            selectedMigrationsbereich() === 'firmen' && unternehmerStatus()?.status !== 'completed'
+          ) {
+            <p class="pur-form__message" role="status">
+              Migriere zuerst den Unternehmer dieses Legacy-Kunden.
+            </p>
+          }
+
+          @if (selectedStatus()?.probleme?.length) {
             <div class="datenmigration-page__probleme" role="alert">
               <h2>Hinweise zur Migration</h2>
               <ul>
-                @for (problem of unternehmerStatus()?.probleme ?? []; track $index) {
+                @for (problem of selectedStatus()?.probleme ?? []; track $index) {
                   <li>
                     <span>{{ problem.ursache }}</span>
                     <small>{{ problem.quellPfad }}</small>
@@ -110,7 +120,7 @@
             matButton="filled"
             type="button"
             [disabled]="migrationDisabled()"
-            (click)="migrateUnternehmer()"
+            (click)="migrateSelectedBereich()"
           >
             <mat-icon aria-hidden="true">sync</mat-icon>
             {{ migrationButtonLabel() }}

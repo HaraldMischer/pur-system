@@ -8,6 +8,9 @@ export const FIRESTORE_COLLECTION_PATHS = {
   migrationsDatenbereiche(purCustomerId: string): string {
     return `systemMigrationen/${purCustomerId}/datenbereiche`;
   },
+  purCompanies(purCustomerId: string): string {
+    return `purCustomers/${purCustomerId}/company`;
+  },
   firmen(unternehmerId: string): string {
     return `unternehmer/${unternehmerId}/firma`;
   },
@@ -25,6 +28,9 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   },
   purCustomer(purCustomerId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.purCustomers}/${purCustomerId}`;
+  },
+  purCompany(purCustomerId: string, purCompanyId: string): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purCompanies(purCustomerId)}/${purCompanyId}`;
   },
   systemmigration(purCustomerId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.systemMigrationen}/${purCustomerId}`;

@@ -12,26 +12,6 @@
     justify-items: start;
     gap: 12px;
   }
-
-  &__add-card {
-    min-height: 160px;
-
-    button {
-      display: grid;
-      place-content: center;
-      gap: 12px;
-      width: 100%;
-      height: 100%;
-      font: var(--mat-sys-title-medium);
-    }
-
-    mat-icon {
-      width: 48px;
-      height: 48px;
-      margin: auto;
-      font-size: 48px;
-    }
-  }
 }
 
 @media (max-width: 600px) {

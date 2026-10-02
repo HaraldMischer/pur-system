@@ -8,7 +8,7 @@ Die Legacy-Daten werden kontrolliert für genau einen ausgewählten `purCustomer
 `purCustomers` gemeinsam migriert. Für jeden ausgewählten Kunden wird ein eigenes Hauptdokument unter
 `systemMigrationen/{purCustomerId}` geführt. Der Status jedes migrierten Datenbereichs liegt separat unter
 `systemMigrationen/{purCustomerId}/datenbereiche/{datenbereich_v1}`. Das Hauptdokument ordnet dem Legacy-Kunden dauerhaft die
-zufällig erzeugte Ziel-Unternehmer-ID zu.
+zufällig erzeugte Ziel-Unternehmer-ID und die Ziel-IDs seiner Firmen zu.
 
 ### 1.1 Migrationsgrundlage und Unternehmer
 
@@ -110,7 +110,12 @@ die neue Unternehmerstruktur übernommen werden. Der Status gilt nur für die Fi
 
 Änderungen:
 
+- `src/app/commons/constants/firebase.constants.ts`
+- `src/app/commons/constants/firebase.constants.spec.ts`
 - `src/app/commons/models/domain/datenmigration.ts`
+- `src/app/commons/models/domain/firma.ts`
+- `src/app/services/domain/firma.service.ts`
+- `src/app/services/domain/firma.service.spec.ts`
 - `src/app/services/domain/datenmigration.service.ts`
 - `src/app/services/domain/datenmigration.service.spec.ts`
 - `src/app/stores/domain/datenmigration.store.ts`
@@ -118,36 +123,47 @@ die neue Unternehmerstruktur übernommen werden. Der Status gilt nur für die Fi
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.ts`
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.html`
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.spec.ts`
+- `src/app/pages/systemverwaltung-page/datenstruktur-page/firma-anlegen-dialog/firma-anlegen-dialog.ts`
+- `src/app/pages/systemverwaltung-page/datenstruktur-page/firma-anlegen-dialog/firma-anlegen-dialog.spec.ts`
+- `src/app/pages/verwaltung-page/firma-bearbeiten-dialog/firma-bearbeiten-dialog.ts`
+- `src/app/pages/verwaltung-page/firma-bearbeiten-dialog/firma-bearbeiten-dialog.spec.ts`
+- `docs/matrix-datenmigration.md`
 - `docs/projekt-stand.md`
+
+Neu hinzuzufügen:
+
+- `src/app/commons/mapper/datenmigration/pur-company-firma.mapper.ts`
+- `src/app/commons/mapper/datenmigration/pur-company-firma.mapper.spec.ts`
+- `src/app/commons/models/legacy/pur-company.ts`
 
 #### Schritt 1: Firmenmigration
 
-- [ ] Reale Legacy-Firmendokumente prüfen und die Feldzuordnung zum Firmenmodell festlegen.
-- [ ] Firmen ausschließlich aus `purCustomers/{purCustomerId}/company` des ausgewählten Kunden laden.
-- [ ] Die Firmenmigration erst nach erfolgreicher Unternehmermigration freigeben.
-- [ ] Fehlende Firmen anlegen, identische Firmen als bereits migriert zählen und abweichende Firmen als Konflikt behandeln.
-- [ ] Den Status unter `datenbereiche/firmen_v1` mit den Ergebniszahlen dieser Firmenmigration speichern.
+- [x] Reale Legacy-Firmendokumente prüfen und die Feldzuordnung zum Firmenmodell festlegen.
+- [x] Firmen ausschließlich aus `purCustomers/{purCustomerId}/company` des ausgewählten Kunden laden.
+- [x] Die Firmenmigration erst nach erfolgreicher Unternehmermigration freigeben.
+- [x] Fehlende Firmen anlegen, identische Firmen als bereits migriert zählen und abweichende Firmen als Konflikt behandeln.
+- [x] Den Status unter `datenbereiche/firmen_v1` mit den Ergebniszahlen dieser Firmenmigration speichern.
 
 #### Schritt 2: Firmenkarte
 
-- [ ] Eine Karte „Firmen migrieren“ mit eigenem Status und eigener Migrationsaktion ergänzen.
-- [ ] Quelle, migriert, bereits migriert, Konflikte und Fehler bezogen auf den ausgewählten Kunden anzeigen.
-- [ ] Status und Freigabe der Karte nach einer Migration oder einem Kundenwechsel aktualisieren.
+- [x] Eine Karte „Firmen migrieren“ mit eigenem Status und eigener Migrationsaktion ergänzen.
+- [x] Quelle, migriert, bereits migriert, Konflikte und Fehler bezogen auf den ausgewählten Kunden anzeigen.
+- [x] Status und Freigabe der Karte nach einer Migration oder einem Kundenwechsel aktualisieren.
 
 #### Tests und Abschluss
 
-- [ ] Service-, Store- und Seitentests für Firmenmigration, Abhängigkeit, Wiederholung, Konflikte und Fehler ergänzen.
-- [ ] `docs/projekt-stand.md` nach der Umsetzung aktualisieren.
-- [ ] `npm test` ohne Watch-Modus erfolgreich ausführen.
-- [ ] `npm run build` erfolgreich ausführen.
+- [x] Service-, Store- und Seitentests für Firmenmigration, Abhängigkeit, Wiederholung, Konflikte und Fehler ergänzen.
+- [x] `docs/projekt-stand.md` nach der Umsetzung aktualisieren.
+- [x] `npm test` ohne Watch-Modus erfolgreich ausführen.
+- [x] `npm run build:master` erfolgreich ausführen.
 
 #### Erledigt, wenn
 
-- [ ] Nur die Firmen des ausgewählten `purCustomer` werden migriert.
-- [ ] Die Firmenmigration ist ohne erfolgreich migrierten Unternehmer nicht ausführbar.
-- [ ] Der Status liegt unter `systemMigrationen/{purCustomerId}/datenbereiche/firmen_v1`.
-- [ ] Wiederholungen erzeugen keine zusätzlichen Firmen und überschreiben keine Konflikte.
-- [ ] Tests und Build laufen erfolgreich.
+- [x] Nur die Firmen des ausgewählten `purCustomer` werden migriert.
+- [x] Die Firmenmigration ist ohne erfolgreich migrierten Unternehmer nicht ausführbar.
+- [x] Der Status liegt unter `systemMigrationen/{purCustomerId}/datenbereiche/firmen_v1`.
+- [x] Wiederholungen erzeugen keine zusätzlichen Firmen und überschreiben keine Konflikte.
+- [x] Tests und Build laufen erfolgreich.
 
 ### 1.3 Filialen des ausgewählten Kunden migrieren
 

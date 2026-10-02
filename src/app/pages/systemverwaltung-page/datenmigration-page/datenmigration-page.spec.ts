@@ -41,6 +41,7 @@ describe('DatenmigrationPage', () => {
   let fixture: ComponentFixture<DatenmigrationPage>;
   let selectedPurCustomerId: ReturnType<typeof signal<string | null>>;
   let migrationsstatus: ReturnType<typeof signal<TDatenmigrationsstatusMap>>;
+  let firmenQuellDokumente: ReturnType<typeof signal<number | null>>;
   let download: ReturnType<typeof signal<boolean>>;
   let isLoaded: ReturnType<typeof signal<boolean>>;
   let inProgress: ReturnType<typeof signal<boolean>>;
@@ -49,18 +50,22 @@ describe('DatenmigrationPage', () => {
     purCustomers: ReturnType<typeof signal<IPurCustomerEintrag[]>>;
     selectedPurCustomerId: typeof selectedPurCustomerId;
     migrationsstatus: typeof migrationsstatus;
+    firmenQuellDokumente: typeof firmenQuellDokumente;
     download: typeof download;
     isLoaded: typeof isLoaded;
     inProgress: typeof inProgress;
     error: typeof error;
     loadPurCustomers: ReturnType<typeof vi.fn>;
+    loadFirmenQuelle: ReturnType<typeof vi.fn>;
     selectPurCustomer: ReturnType<typeof vi.fn>;
     migrateUnternehmer: ReturnType<typeof vi.fn>;
+    migrateFirmen: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
     selectedPurCustomerId = signal<string | null>(null);
     migrationsstatus = signal<TDatenmigrationsstatusMap>({});
+    firmenQuellDokumente = signal<number | null>(null);
     download = signal(false);
     isLoaded = signal(true);
     inProgress = signal(false);
@@ -69,15 +74,20 @@ describe('DatenmigrationPage', () => {
       purCustomers: signal(purCustomers),
       selectedPurCustomerId,
       migrationsstatus,
+      firmenQuellDokumente,
       download,
       isLoaded,
       inProgress,
       error,
       loadPurCustomers: vi.fn().mockResolvedValue(undefined),
+      loadFirmenQuelle: vi.fn().mockImplementation(async () => {
+        firmenQuellDokumente.set(2);
+      }),
       selectPurCustomer: vi.fn().mockImplementation(async (purCustomerId: string) => {
         selectedPurCustomerId.set(purCustomerId);
       }),
       migrateUnternehmer: vi.fn().mockResolvedValue(undefined),
+      migrateFirmen: vi.fn().mockResolvedValue(undefined),
     };
 
     await TestBed.configureTestingModule({
@@ -121,7 +131,7 @@ describe('DatenmigrationPage', () => {
       'Unternehmer migrieren',
     );
     expect(compiled.querySelector('mat-card-subtitle')?.textContent).toContain('Beta');
-    expect(compiled.textContent).toContain('Noch nicht migriert');
+    expect(compiled.textContent).toContain('Ausstehend');
     expect(compiled.textContent).toContain('Quelle');
   });
 
@@ -138,14 +148,46 @@ describe('DatenmigrationPage', () => {
     expect(datenmigrationStoreMock.migrateUnternehmer).toHaveBeenCalledOnce();
   });
 
-  it('should render a placeholder card for a future migration area', () => {
+  it('should load the company source and block migration until the entrepreneur is complete', async () => {
     selectedPurCustomerId.set('a');
-    fixture.componentInstance.handleMigrationsbereichSelect('firmen');
+    await fixture.componentInstance.handleMigrationsbereichSelect('firmen');
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
+    const button = compiled.querySelector<HTMLButtonElement>(
+      '.datenmigration-page__migration-button',
+    );
 
     expect(compiled.querySelector('mat-card-title')?.textContent).toContain('Firmen migrieren');
     expect(compiled.querySelector('mat-card-subtitle')?.textContent).toContain('Alpha');
+    expect(datenmigrationStoreMock.loadFirmenQuelle).toHaveBeenCalledOnce();
+    expect(compiled.textContent).toContain('2');
+    expect(compiled.textContent).toContain('Migriere zuerst den Unternehmer');
+    expect(button?.disabled).toBe(true);
+  });
+
+  it('should migrate companies after the entrepreneur migration is complete', async () => {
+    selectedPurCustomerId.set('a');
+    migrationsstatus.set({ unternehmer: createStatus({ status: 'completed' }) });
+    await fixture.componentInstance.handleMigrationsbereichSelect('firmen');
+    fixture.detectChanges();
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '.datenmigration-page__migration-button',
+    );
+
+    button?.click();
+    await fixture.whenStable();
+
+    expect(button?.disabled).toBe(false);
+    expect(datenmigrationStoreMock.migrateFirmen).toHaveBeenCalledOnce();
+  });
+
+  it('should keep a placeholder card for migration areas not implemented yet', async () => {
+    selectedPurCustomerId.set('a');
+    await fixture.componentInstance.handleMigrationsbereichSelect('filialen');
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('mat-card-title')?.textContent).toContain('Filialen migrieren');
     expect(compiled.textContent).toContain(
       'Die Migration dieses Datenbereichs ist noch nicht umgesetzt.',
     );

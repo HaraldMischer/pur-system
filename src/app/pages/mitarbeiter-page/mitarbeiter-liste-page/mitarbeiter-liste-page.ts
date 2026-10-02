@@ -46,7 +46,9 @@ export class MitarbeiterListePage {
     const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
     const firmaId = this.appKontextStore.selectedFirma()?.id;
     const filialId =
-      unternehmerId && firmaId ? this.getMitarbeiterFilialId(unternehmerId, firmaId) : undefined;
+      unternehmerId && firmaId
+        ? this.getMitarbeiterLadeFilialId(unternehmerId, firmaId)
+        : undefined;
 
     if (unternehmerId && firmaId) {
       void this.loadMitarbeiter(unternehmerId, firmaId, filialId);
@@ -68,13 +70,17 @@ export class MitarbeiterListePage {
   });
   readonly mitarbeiter: Signal<readonly IMitarbeiterEintrag[]> = computed(() => {
     const kontext = this.getSelectedMitarbeiterKontext();
-    return kontext
-      ? this.mitarbeiterStore.getMitarbeiter(
-          kontext.unternehmerId,
-          kontext.firmaId,
-          kontext.filialId,
-        )
-      : [];
+    if (!kontext) return [];
+
+    const mitarbeiter = this.mitarbeiterStore.getMitarbeiter(
+      kontext.unternehmerId,
+      kontext.firmaId,
+      kontext.filialId,
+    );
+    const filterFilialId = this.getMitarbeiterFilterFilialId();
+    return filterFilialId
+      ? mitarbeiter.filter((eintrag) => eintrag.filialIds.includes(filterFilialId))
+      : mitarbeiter;
   });
   readonly mitarbeiterDownload: Signal<boolean> = computed(() => {
     const kontext = this.getSelectedMitarbeiterKontext();
@@ -120,7 +126,7 @@ export class MitarbeiterListePage {
     await this.loadMitarbeiter(
       unternehmerId,
       firmaId,
-      this.getMitarbeiterFilialId(unternehmerId, firmaId),
+      this.getMitarbeiterLadeFilialId(unternehmerId, firmaId),
     );
   }
 
@@ -157,12 +163,18 @@ export class MitarbeiterListePage {
 
   // ===== Interne Helfer =======================
 
-  private getMitarbeiterFilialId(unternehmerId: string, firmaId: string): string | undefined {
+  private getMitarbeiterLadeFilialId(unternehmerId: string, firmaId: string): string | undefined {
     const profil = this.benutzerStore.benutzerProfil();
     if (profil?.userRole !== 'filiale') return undefined;
 
     const filialIds = profil.zugriffe[unternehmerId]?.[firmaId];
     return Array.isArray(filialIds) && filialIds.length === 1 ? filialIds[0] : undefined;
+  }
+
+  private getMitarbeiterFilterFilialId(): string | undefined {
+    return this.benutzerStore.benutzerProfil()?.userRole === 'filiale'
+      ? undefined
+      : this.appKontextStore.selectedFiliale()?.id;
   }
 
   private getSelectedMitarbeiterKontext(): {
@@ -179,7 +191,7 @@ export class MitarbeiterListePage {
     return {
       unternehmerId,
       firmaId,
-      filialId: this.getMitarbeiterFilialId(unternehmerId, firmaId),
+      filialId: this.getMitarbeiterLadeFilialId(unternehmerId, firmaId),
     };
   }
 

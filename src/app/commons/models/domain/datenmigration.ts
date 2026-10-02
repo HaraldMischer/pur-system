@@ -33,6 +33,7 @@ export type TDatenmigrationsstatusMap = Partial<
 export interface ISystemmigrationDokument {
   purCustomerId: string;
   unternehmerId: string;
+  firmenIds?: Readonly<Record<string, string>>;
   erstelltAm: Timestamp;
   aktualisiertAm: Timestamp;
 }

@@ -30,7 +30,7 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 | Reihenfolge | Legacy-Quelle                                    | Ziel                                          |
 | ----------- | ------------------------------------------------ | --------------------------------------------- |
 | 1           | `purCustomers/{purCustomerId}`                   | `unternehmer/{unternehmerId}`                 |
-| 2           | `purCustomers/{purCustomerId}/company/{firmaId}` | `unternehmer/{unternehmerId}/firma/{firmaId}` |
+| 2           | `purCustomers/{purCustomerId}/company/{purCompanyId}` | `unternehmer/{unternehmerId}/firma/{firmaId}` |
 | 3           | `…/company/{firmaId}/branches/{filialId}`        | `…/firma/{firmaId}/filiale/{filialId}`        |
 | 4           | `…/branches/{filialId}/employee/{mitarbeiterId}` | `…/firma/{firmaId}/mitarbeiter/{zielId}`      |
 
@@ -38,7 +38,9 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 
 - Die Unternehmer-ID wird einmalig zufällig erzeugt und dauerhaft unter
   `systemMigrationen/{purCustomerId}.unternehmerId` dem Legacy-Kunden zugeordnet.
-- Die Vergabe und Zuordnung neuer Firmen- und Filial-IDs wird in deren Umsetzungsschritten festgelegt.
+- Firmen-IDs werden einmalig zufällig erzeugt und unter `systemMigrationen/{purCustomerId}.firmenIds.{purCompanyId}` dauerhaft
+  der jeweiligen Legacy-Firma zugeordnet.
+- Die Vergabe und Zuordnung neuer Filial-IDs wird in deren Umsetzungsschritt festgelegt.
 - Untergeordnete Daten werden nur bei vorhandener Zielstruktur migriert.
 
 ## 3. Transformation und Konflikte
@@ -58,7 +60,27 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 - Die konkrete Feldzuordnung wird vor der Umsetzung anhand realer Legacy-Dokumente festgelegt.
 - Wiederholte Läufe erzeugen keine zusätzlichen Dokumente.
 
-## 4. Mitarbeiter
+## 4. Firmen
+
+### Matrix
+
+| Legacy-Feld                    | Zielfeld                         |
+| ------------------------------ | -------------------------------- |
+| `companyName`                  | `anzeigename`, `firmenname`      |
+| `companyNumber`                | `nummer`                         |
+| `active`                       | `aktiv`                          |
+| `address.street/postcode/city` | optionale, teilweise `adresse`   |
+| `email`, `phone.*`             | optionale Felder unter `kontakt` |
+
+### Zusatzbedingungen
+
+- `company_ID` muss, sofern gesetzt, der Legacy-Dokument-ID entsprechen.
+- Fehlt eine gültige `companyNumber`, wird die nächste freie Firmennummer des Ziel-Unternehmers vergeben. Bei Wiederholungen
+  bleibt eine bereits gespeicherte Zielnummer erhalten.
+- `activeDate`, `addressName` und `phone.fax` werden nicht übernommen.
+- Eine fehlende oder unvollständige Adresse verhindert weder die reguläre Firmenanlage noch die Migration.
+
+## 5. Mitarbeiter
 
 ### Matrix
 
@@ -75,7 +97,7 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 - Gleiche Namen oder Legacy-IDs in verschiedenen Filialen führen nicht zu einem Überschreiben.
 - Potenzielle Dubletten werden nur für die spätere manuelle Prüfung kenntlich gemacht.
 
-## 5. Ausführung und Ergebnis
+## 6. Ausführung und Ergebnis
 
 ### Matrix
 
@@ -91,7 +113,7 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 - `purUser` und Firebase Auth bleiben von dieser Ausführung unberührt.
 - Die konkrete technische Ausführung und Statusspeicherung werden im Umsetzungstodo festgelegt.
 
-## 6. Manuelle Nacharbeit und Abnahme
+## 7. Manuelle Nacharbeit und Abnahme
 
 ### Matrix
 

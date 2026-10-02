@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { IDatenbereichMigrationDokument } from '../../commons/models/domain/datenmigration';
 import { IPurCustomerEintrag } from '../../commons/models/legacy/pur-customer';
+import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { DatenmigrationService } from '../../services/domain/datenmigration.service';
 import { DatenmigrationStore } from './datenmigration.store';
@@ -19,20 +20,30 @@ describe('DatenmigrationStore', () => {
   let datenmigrationServiceMock: {
     loadPurCustomers: ReturnType<typeof vi.fn>;
     loadMigrationsstatus: ReturnType<typeof vi.fn>;
+    loadPurCompanies: ReturnType<typeof vi.fn>;
     migrateUnternehmer: ReturnType<typeof vi.fn>;
+    migrateFirmen: ReturnType<typeof vi.fn>;
+  };
+  const debugLogServiceMock = {
+    logDatenflussTitel: vi.fn(),
+    logDatenGeladen: vi.fn(),
   };
 
   beforeEach(() => {
+    vi.clearAllMocks();
     datenmigrationServiceMock = {
       loadPurCustomers: vi.fn().mockResolvedValue(purCustomers),
       loadMigrationsstatus: vi.fn().mockResolvedValue({}),
+      loadPurCompanies: vi.fn().mockResolvedValue([]),
       migrateUnternehmer: vi.fn().mockResolvedValue(undefined),
+      migrateFirmen: vi.fn().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({
       providers: [
         DatenmigrationStore,
         { provide: DatenmigrationService, useValue: datenmigrationServiceMock },
+        { provide: DebugLogService, useValue: debugLogServiceMock },
         {
           provide: StoreSnapshotService,
           useValue: { registerStoreSnapshot: vi.fn().mockReturnValue(vi.fn()) },
@@ -50,11 +61,30 @@ describe('DatenmigrationStore', () => {
       purCustomers,
       selectedPurCustomerId: null,
       migrationsstatus: {},
+      firmenQuellDokumente: null,
       download: false,
       isLoaded: true,
       inProgress: false,
       error: null,
     });
+  });
+
+  it('should load and log the company source count of the selected customer', async () => {
+    datenmigrationServiceMock.loadPurCompanies.mockResolvedValue([
+      { id: 'firma-1', daten: {} },
+      { id: 'firma-2', daten: {} },
+    ]);
+    const store = TestBed.inject(DatenmigrationStore);
+    await store.loadPurCustomers();
+    await store.selectPurCustomer('a');
+
+    await store.loadFirmenQuelle();
+
+    expect(datenmigrationServiceMock.loadPurCompanies).toHaveBeenCalledWith('a');
+    expect(store.firmenQuellDokumente()).toBe(2);
+    expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith('DATENMIGRATION ');
+    expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith('Legacy-Firmen | Alpha', 2);
+    expect(store.download()).toBe(false);
   });
 
   it('should select one customer and load only its migration status', async () => {
@@ -84,6 +114,7 @@ describe('DatenmigrationStore', () => {
 
     expect(store.selectedPurCustomerId()).toBeNull();
     expect(store.migrationsstatus()).toEqual({});
+    expect(store.firmenQuellDokumente()).toBeNull();
   });
 
   it('should migrate the selected customer and reload its status', async () => {
@@ -109,6 +140,22 @@ describe('DatenmigrationStore', () => {
       'Vor der Migration muss ein Legacy-Kunde ausgewählt werden.',
     );
     expect(datenmigrationServiceMock.migrateUnternehmer).not.toHaveBeenCalled();
+  });
+
+  it('should migrate companies of the selected customer and reload its status', async () => {
+    datenmigrationServiceMock.loadMigrationsstatus
+      .mockResolvedValueOnce({ unternehmer: completedStatus })
+      .mockResolvedValueOnce({ unternehmer: completedStatus, firmen: completedStatus });
+    const store = TestBed.inject(DatenmigrationStore);
+    await store.loadPurCustomers();
+    await store.selectPurCustomer('a');
+
+    await store.migrateFirmen();
+
+    expect(datenmigrationServiceMock.migrateFirmen).toHaveBeenCalledWith('a');
+    expect(datenmigrationServiceMock.loadMigrationsstatus).toHaveBeenLastCalledWith('a');
+    expect(store.migrationsstatus().firmen).toBe(completedStatus);
+    expect(store.inProgress()).toBe(false);
   });
 
   it('should expose friendly load and migration errors', async () => {

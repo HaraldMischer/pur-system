@@ -69,7 +69,7 @@ describe('UnternehmerAnlegenDialog', () => {
     expect(dialogContent?.classList).toContain('pur-dialog__content');
     expect(form?.contains(dialogActions)).toBe(false);
     expect(submitButton?.getAttribute('form')).toBe('unternehmer-anlegen-form');
-    expect(compiled.querySelectorAll('.pur-form__row')).toHaveLength(4);
+    expect(compiled.querySelectorAll('.pur-form__row')).toHaveLength(5);
     expect(compiled.querySelector('[class*="unternehmer-anlegen-dialog__"]')).toBeNull();
   });
 

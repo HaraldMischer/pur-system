@@ -6,6 +6,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { TDatenmigrationsstatusMap } from '../../commons/models/domain/datenmigration';
 import { IPurCustomerEintrag } from '../../commons/models/legacy/pur-customer';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
+import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { DatenmigrationService } from '../../services/domain/datenmigration.service';
 
@@ -15,6 +16,7 @@ export type TDatenmigrationSnapshot = {
   readonly purCustomers: readonly IPurCustomerEintrag[];
   readonly selectedPurCustomerId: string | null;
   readonly migrationsstatus: TDatenmigrationsstatusMap;
+  readonly firmenQuellDokumente: number | null;
   readonly download: boolean;
   readonly isLoaded: boolean;
   readonly inProgress: boolean;
@@ -27,6 +29,7 @@ const initialState: TDatenmigrationState = {
   purCustomers: [],
   selectedPurCustomerId: null,
   migrationsstatus: {},
+  firmenQuellDokumente: null,
   download: false,
   isLoaded: false,
   inProgress: false,
@@ -40,6 +43,7 @@ export const DatenmigrationStore = signalStore(
     (
       store,
       datenmigrationService = inject(DatenmigrationService),
+      debugLogService = inject(DebugLogService),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),
     ) => {
@@ -65,6 +69,42 @@ export const DatenmigrationStore = signalStore(
           throw error;
         } finally {
           patchState(store, { download: false });
+        }
+      }
+
+      /**
+       * Lädt und zählt die Legacy-Firmen des ausgewählten Kunden für die Quellenanzeige.
+       *
+       * @returns Ein Promise, das nach dem vollständigen Laden abgeschlossen ist.
+       * @throws Wenn kein Kunde ausgewählt ist oder das Laden fehlschlägt.
+       */
+      async function loadFirmenQuelle(): Promise<void> {
+        if (store.download() || store.firmenQuellDokumente() !== null) return;
+
+        const purCustomerId = store.selectedPurCustomerId();
+        if (!purCustomerId) {
+          throw new Error('Vor dem Laden muss ein Legacy-Kunde ausgewählt werden.');
+        }
+        const aktuelleVersion = auswahlVersion;
+        const anzeigename =
+          store.purCustomers().find((eintrag) => eintrag.id === purCustomerId)?.anzeigename ??
+          purCustomerId;
+
+        patchState(store, { download: true, error: null });
+        try {
+          const purCompanies = await datenmigrationService.loadPurCompanies(purCustomerId);
+          if (aktuelleVersion !== auswahlVersion) return;
+
+          patchState(store, { firmenQuellDokumente: purCompanies.length });
+          debugLogService.logDatenflussTitel('DATENMIGRATION ');
+          debugLogService.logDatenGeladen(`Legacy-Firmen | ${anzeigename}`, purCompanies.length);
+        } catch (error: unknown) {
+          if (aktuelleVersion === auswahlVersion) {
+            patchState(store, { error: getFirebaseErrorMessage(error) });
+          }
+          throw error;
+        } finally {
+          if (aktuelleVersion === auswahlVersion) patchState(store, { download: false });
         }
       }
 
@@ -101,6 +141,35 @@ export const DatenmigrationStore = signalStore(
         }
       }
 
+      /**
+       * Migriert die Firmen des ausgewählten Legacy-Kunden und lädt seinen Status neu.
+       *
+       * @returns Ein Promise, das nach Migration und Statusaktualisierung abgeschlossen ist.
+       * @throws Wenn kein Kunde ausgewählt ist oder die Migration technisch fehlschlägt.
+       */
+      async function migrateFirmen(): Promise<void> {
+        if (store.inProgress()) return;
+
+        const purCustomerId = store.selectedPurCustomerId();
+        if (!purCustomerId) {
+          throw new Error('Vor der Migration muss ein Legacy-Kunde ausgewählt werden.');
+        }
+
+        patchState(store, { inProgress: true, error: null });
+        try {
+          await datenmigrationService.migrateFirmen(purCustomerId);
+          const migrationsstatus = await datenmigrationService.loadMigrationsstatus(purCustomerId);
+          if (store.selectedPurCustomerId() === purCustomerId) {
+            patchState(store, { migrationsstatus });
+          }
+        } catch (error: unknown) {
+          patchState(store, { error: getFirebaseErrorMessage(error) });
+          throw error;
+        } finally {
+          patchState(store, { inProgress: false });
+        }
+      }
+
       // ===== Methoden: Sonstige Aktionen ==========
 
       /**
@@ -116,6 +185,7 @@ export const DatenmigrationStore = signalStore(
           patchState(store, {
             selectedPurCustomerId: null,
             migrationsstatus: {},
+            firmenQuellDokumente: null,
             error: null,
           });
           return;
@@ -127,6 +197,7 @@ export const DatenmigrationStore = signalStore(
         patchState(store, {
           selectedPurCustomerId: purCustomerId,
           migrationsstatus: {},
+          firmenQuellDokumente: null,
           download: true,
           error: null,
         });
@@ -153,6 +224,7 @@ export const DatenmigrationStore = signalStore(
           purCustomers: store.purCustomers(),
           selectedPurCustomerId: store.selectedPurCustomerId(),
           migrationsstatus: store.migrationsstatus(),
+          firmenQuellDokumente: store.firmenQuellDokumente(),
           download: store.download(),
           isLoaded: store.isLoaded(),
           inProgress: store.inProgress(),
@@ -175,7 +247,9 @@ export const DatenmigrationStore = signalStore(
 
       return {
         loadPurCustomers,
+        loadFirmenQuelle,
         migrateUnternehmer,
+        migrateFirmen,
         selectPurCustomer,
         snapshot,
         clearError,
