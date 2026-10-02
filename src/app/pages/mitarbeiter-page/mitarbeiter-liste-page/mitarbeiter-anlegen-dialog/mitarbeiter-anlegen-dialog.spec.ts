@@ -24,7 +24,10 @@ describe('MitarbeiterAnlegenDialog', () => {
     unternehmerName: 'Unternehmer',
     firmaId: 'f-1',
     firmaName: 'Firma',
-    filialen: [{ id: 'b-1', anzeigename: 'Filiale 1' }],
+    filialen: [
+      { id: 'b-1', anzeigename: 'Filiale 1' },
+      { id: 'b-2', anzeigename: 'Filiale 2' },
+    ],
   };
   const inProgress = signal(false);
   const error = signal<string | null>(null);
@@ -64,9 +67,41 @@ describe('MitarbeiterAnlegenDialog', () => {
     expect(fixture.componentInstance.mitarbeiterForm.invalid).toBe(true);
     expect(form?.classList).toContain('pur-form--grid');
     expect(submit?.getAttribute('form')).toBe('mitarbeiter-anlegen-form');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'mat-select[formcontrolname="filialIds"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        '[formcontrolname="geburtstag"], [formcontrolname="telefon"], [formcontrolname="webseite"]',
+      ),
+    ).toHaveLength(0);
   });
 
-  it('should normalize and create an employee with optional branch assignment', async () => {
+  it('should hide the fixed branch assignment for a branch account', () => {
+    benutzerProfil.set({ ...profil, userRole: 'filiale' });
+    const fixture = TestBed.createComponent(MitarbeiterAnlegenDialog);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.mitarbeiterForm.controls.filialIds.value).toEqual(['b-1']);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'mat-select[formcontrolname="filialIds"]',
+      ),
+    ).toBeNull();
+  });
+
+  it('should summarize multiple selected branches in the select trigger', () => {
+    const fixture = TestBed.createComponent(MitarbeiterAnlegenDialog);
+    fixture.detectChanges();
+    fixture.componentInstance.mitarbeiterForm.controls.filialIds.setValue(['b-1', 'b-2']);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('2 Filialen zugeordnet');
+  });
+
+  it('should normalize and create an employee with a required branch assignment', async () => {
     const component = TestBed.createComponent(MitarbeiterAnlegenDialog).componentInstance;
     component.mitarbeiterForm.patchValue({
       person: {
@@ -99,6 +134,23 @@ describe('MitarbeiterAnlegenDialog', () => {
     expect(dialogRefMock.close).toHaveBeenCalledWith({ id: 'm-neu' });
   });
 
+  it('should reject creating an employee without a branch assignment', async () => {
+    const component = TestBed.createComponent(MitarbeiterAnlegenDialog).componentInstance;
+    component.mitarbeiterForm.patchValue({
+      person: {
+        vorname: 'Mia',
+        nachname: 'Muster',
+        adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
+      },
+      filialIds: [],
+    });
+
+    await component.onSubmit();
+
+    expect(component.mitarbeiterForm.controls.filialIds.hasError('required')).toBe(true);
+    expect(createMitarbeiterMock).not.toHaveBeenCalled();
+  });
+
   it('should reject saving after the company permission is removed', async () => {
     const component = TestBed.createComponent(MitarbeiterAnlegenDialog).componentInstance;
     component.mitarbeiterForm.patchValue({
@@ -107,6 +159,7 @@ describe('MitarbeiterAnlegenDialog', () => {
         nachname: 'Muster',
         adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
       },
+      filialIds: ['b-1'],
     });
     benutzerProfil.set({ ...profil, zugriffe: {} });
 

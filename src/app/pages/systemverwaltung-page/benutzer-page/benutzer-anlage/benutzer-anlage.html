@@ -22,10 +22,6 @@
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Anzeigename</mat-label>
           <input formControlName="anzeigename" matInput type="text" autocomplete="off" />
-
-          @if (benutzerForm.controls.anzeigename.hasError('required')) {
-            <mat-error>Anzeigename ist erforderlich.</mat-error>
-          }
         </mat-form-field>
 
         <!-- Benutzerrolle -->
@@ -65,9 +61,7 @@
               passwortSichtbar() ? 'visibility_off' : 'visibility'
             }}</mat-icon>
           </button>
-          @if (benutzerForm.controls.passwort.hasError('required')) {
-            <mat-error>Ein Anfangspasswort ist erforderlich.</mat-error>
-          } @else if (benutzerForm.controls.passwort.hasError('minlength')) {
+          @if (benutzerForm.controls.passwort.hasError('minlength')) {
             <mat-error>Das Passwort muss mindestens 8 Zeichen lang sein.</mat-error>
           }
         </mat-form-field>
@@ -117,9 +111,6 @@
                   <mat-option [value]="mitarbeiter.id">{{ mitarbeiter.anzeigename }}</mat-option>
                 }
               </mat-select>
-              @if (benutzerForm.controls.firmaMitarbeiterId.hasError('required')) {
-                <mat-error>Ein Mitarbeiter ist erforderlich.</mat-error>
-              }
             </mat-form-field>
           </app-datenzugriff-selector>
 

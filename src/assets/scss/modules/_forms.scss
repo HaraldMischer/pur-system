@@ -41,6 +41,21 @@
 
     > .pur-form__field {
       flex: 1 1 260px;
+
+      &--20 {
+        flex: 20 1 0;
+      }
+
+      &--80 {
+        flex: 80 1 0;
+      }
+    }
+
+    @media (max-width: 600px) {
+      > .pur-form__field--20,
+      > .pur-form__field--80 {
+        flex: 1 1 100%;
+      }
     }
   }
 
@@ -114,6 +129,10 @@
     .pur-form__field,
     .pur-form__submit {
       width: 100%;
+    }
+
+    .pur-form__row > .pur-form__field {
+      width: auto;
     }
   }
 }

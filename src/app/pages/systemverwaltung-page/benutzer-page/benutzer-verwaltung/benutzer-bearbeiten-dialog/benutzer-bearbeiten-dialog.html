@@ -17,9 +17,6 @@
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Anzeigename</mat-label>
           <input matInput formControlName="anzeigename" type="text" autocomplete="name" />
-          @if (benutzerForm.controls.anzeigename.hasError('required')) {
-            <mat-error>Anzeigename ist erforderlich.</mat-error>
-          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="pur-form__field">

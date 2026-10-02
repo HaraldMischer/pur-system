@@ -27,11 +27,16 @@ describe('MitarbeiterBearbeitenDialog', () => {
     person: {
       vorname: 'Mia',
       nachname: 'Muster',
+      geburtstag: '2000-01-01',
       adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
-      kontakt: { email: 'mia@example.com' },
+      kontakt: {
+        email: 'mia@example.com',
+        telefon: '0123456789',
+        webseite: 'https://example.com',
+      },
     },
     rolle: 'service',
-    filialIds: ['b-1', 'b-2'],
+    filialIds: ['b-1', 'b-3'],
     aktiv: true,
   };
   const dialogDaten = {
@@ -39,12 +44,16 @@ describe('MitarbeiterBearbeitenDialog', () => {
     unternehmerName: 'Unternehmer',
     firmaId: 'f-1',
     firmaName: 'Firma',
-    filialen: [{ id: 'b-1', anzeigename: 'Filiale 1' }],
+    filialen: [
+      { id: 'b-1', anzeigename: 'Filiale 1' },
+      { id: 'b-2', anzeigename: 'Filiale 2' },
+    ],
     mitarbeiter,
   };
   const inProgress = signal(false);
   const error = signal<string | null>(null);
   const benutzerProfil = signal<IBenutzerProfilDokument | null>(profil);
+  let aktuelleDialogDaten: typeof dialogDaten;
   let updateMitarbeiterMock: ReturnType<typeof vi.fn>;
   let dialogRefMock: { close: ReturnType<typeof vi.fn>; disableClose: boolean };
 
@@ -52,13 +61,14 @@ describe('MitarbeiterBearbeitenDialog', () => {
     inProgress.set(false);
     error.set(null);
     benutzerProfil.set(profil);
+    aktuelleDialogDaten = dialogDaten;
     updateMitarbeiterMock = vi.fn().mockResolvedValue(undefined);
     dialogRefMock = { close: vi.fn(), disableClose: false };
 
     await TestBed.configureTestingModule({
       imports: [MitarbeiterBearbeitenDialog, NoopAnimationsModule],
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: dialogDaten },
+        { provide: MAT_DIALOG_DATA, useFactory: () => aktuelleDialogDaten },
         { provide: MatDialogRef, useValue: dialogRefMock },
         { provide: BenutzerStore, useValue: { benutzerProfil } },
         {
@@ -81,6 +91,31 @@ describe('MitarbeiterBearbeitenDialog', () => {
     });
     expect(fixture.componentInstance.weitereFilialzuordnungen).toBe(1);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('m-1');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'mat-select[formcontrolname="filialIds"]',
+      ),
+    ).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        '[formcontrolname="geburtstag"], [formcontrolname="telefon"], [formcontrolname="webseite"]',
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('should show the multiple branch assignment for an office account', () => {
+    benutzerProfil.set({ ...profil, userRole: 'office' });
+    const fixture = TestBed.createComponent(MitarbeiterBearbeitenDialog);
+    fixture.detectChanges();
+    fixture.componentInstance.mitarbeiterForm.controls.filialIds.setValue(['b-1', 'b-2']);
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'mat-select[formcontrolname="filialIds"]',
+      ),
+    ).not.toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('2 Filialen zugeordnet');
   });
 
   it('should preserve inaccessible branch assignments while updating editable data', async () => {
@@ -99,15 +134,37 @@ describe('MitarbeiterBearbeitenDialog', () => {
       'f-1',
       'm-1',
       expect.objectContaining({
-        person: expect.objectContaining({ vorname: 'Mia Neu' }),
+        person: expect.objectContaining({
+          vorname: 'Mia Neu',
+          geburtstag: '2000-01-01',
+          kontakt: {
+            email: 'mia@example.com',
+            telefon: '0123456789',
+            webseite: 'https://example.com',
+          },
+        }),
         rolle: 'admin',
-        filialIds: ['b-2', 'b-1'],
+        filialIds: ['b-3', 'b-1'],
         aktiv: false,
       }),
     );
     expect(dialogRefMock.close).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'm-1', filialIds: ['b-2', 'b-1'], aktiv: false }),
+      expect.objectContaining({ id: 'm-1', filialIds: ['b-3', 'b-1'], aktiv: false }),
     );
+  });
+
+  it('should reject removing the last branch assignment', async () => {
+    aktuelleDialogDaten = {
+      ...dialogDaten,
+      mitarbeiter: { ...mitarbeiter, filialIds: ['b-1'] },
+    };
+    const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
+    component.mitarbeiterForm.controls.filialIds.setValue([]);
+
+    await component.onSubmit();
+
+    expect(component.mitarbeiterForm.controls.filialIds.hasError('required')).toBe(true);
+    expect(updateMitarbeiterMock).not.toHaveBeenCalled();
   });
 
   it('should retain input and keep the dialog open after a failed update', async () => {

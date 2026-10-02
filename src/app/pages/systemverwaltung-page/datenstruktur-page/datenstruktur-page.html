@@ -1,7 +1,6 @@
 <!-- pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/datenstruktur-page.html -->
 
 <section class="pur-page-section">
-
   <mat-stepper
     class="pur-stepper pur-stepper--flush"
     [linear]="true"
@@ -22,9 +21,6 @@
                 <mat-option disabled>Keine Unternehmer vorhanden</mat-option>
               }
             </mat-select>
-            @if (unternehmerForm.controls.id.hasError('required')) {
-              <mat-error>Ein Unternehmer ist erforderlich.</mat-error>
-            }
           </mat-form-field>
 
           <button
@@ -80,9 +76,6 @@
                 <mat-option disabled>Keine Firmen vorhanden</mat-option>
               }
             </mat-select>
-            @if (firmaForm.controls.id.hasError('required')) {
-              <mat-error>Eine Firma ist erforderlich.</mat-error>
-            }
           </mat-form-field>
 
           <button

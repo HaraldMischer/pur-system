@@ -72,6 +72,10 @@ export class MitarbeiterAnlegenDialog {
   readonly benutzerStore = inject(BenutzerStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
 
+  // ===== Interner State =======================
+
+  private readonly verpflichtendeFilialId = this.getVerpflichtendeFilialId();
+
   // ===== Öffentliche Werte ====================
 
   readonly geschlechter = Object.values(EGender);
@@ -122,7 +126,13 @@ export class MitarbeiterAnlegenDialog {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    filialIds: new FormControl<string[]>([], { nonNullable: true }),
+    filialIds: new FormControl<string[]>(
+      this.verpflichtendeFilialId ? [this.verpflichtendeFilialId] : [],
+      {
+        nonNullable: true,
+        validators: [Validators.required],
+      },
+    ),
   });
 
   constructor() {
@@ -195,7 +205,6 @@ export class MitarbeiterAnlegenDialog {
     const kontakt = value.person.kontakt;
     const geburtstag = value.person.geburtstag.trim();
 
-    const verpflichtendeFilialId = this.getVerpflichtendeFilialId();
     return {
       person: {
         vorname: value.person.vorname.trim(),
@@ -219,7 +228,7 @@ export class MitarbeiterAnlegenDialog {
       filialIds: [
         ...new Set([
           ...value.filialIds,
-          ...(verpflichtendeFilialId ? [verpflichtendeFilialId] : []),
+          ...(this.verpflichtendeFilialId ? [this.verpflichtendeFilialId] : []),
         ]),
       ],
     };

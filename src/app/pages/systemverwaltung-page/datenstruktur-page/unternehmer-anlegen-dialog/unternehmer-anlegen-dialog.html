@@ -17,9 +17,6 @@
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Anzeigename</mat-label>
           <input matInput formControlName="anzeigename" type="text" autocomplete="off" />
-          @if (unternehmerForm.controls.anzeigename.hasError('required')) {
-            <mat-error>Anzeigename ist erforderlich.</mat-error>
-          }
         </mat-form-field>
       </div>
     </div>
@@ -33,17 +30,11 @@
           <mat-form-field appearance="outline" class="pur-form__field">
             <mat-label>Vorname</mat-label>
             <input matInput formControlName="vorname" type="text" autocomplete="given-name" />
-            @if (unternehmerForm.controls.person.controls.vorname.hasError('required')) {
-              <mat-error>Vorname ist erforderlich.</mat-error>
-            }
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="pur-form__field">
             <mat-label>Nachname</mat-label>
             <input matInput formControlName="nachname" type="text" autocomplete="family-name" />
-            @if (unternehmerForm.controls.person.controls.nachname.hasError('required')) {
-              <mat-error>Nachname ist erforderlich.</mat-error>
-            }
           </mat-form-field>
         </div>
       </div>
@@ -56,45 +47,21 @@
           <mat-form-field appearance="outline" class="pur-form__field">
             <mat-label>Straße</mat-label>
             <input matInput formControlName="strasse" type="text" autocomplete="street-address" />
-            @if (
-              unternehmerForm.controls.person.controls.adresse.controls.strasse.hasError('required')
-            ) {
-              <mat-error>Straße ist erforderlich.</mat-error>
-            }
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="pur-form__field">
             <mat-label>Hausnummer</mat-label>
             <input matInput formControlName="hausnummer" type="text" autocomplete="off" />
-            @if (
-              unternehmerForm.controls.person.controls.adresse.controls.hausnummer.hasError(
-                'required'
-              )
-            ) {
-              <mat-error>Hausnummer ist erforderlich.</mat-error>
-            }
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="pur-form__field">
             <mat-label>Postleitzahl</mat-label>
             <input matInput formControlName="postleitzahl" type="text" autocomplete="postal-code" />
-            @if (
-              unternehmerForm.controls.person.controls.adresse.controls.postleitzahl.hasError(
-                'required'
-              )
-            ) {
-              <mat-error>Postleitzahl ist erforderlich.</mat-error>
-            }
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="pur-form__field">
             <mat-label>Ort</mat-label>
             <input matInput formControlName="ort" type="text" autocomplete="address-level2" />
-            @if (
-              unternehmerForm.controls.person.controls.adresse.controls.ort.hasError('required')
-            ) {
-              <mat-error>Ort ist erforderlich.</mat-error>
-            }
           </mat-form-field>
         </div>
       </div>

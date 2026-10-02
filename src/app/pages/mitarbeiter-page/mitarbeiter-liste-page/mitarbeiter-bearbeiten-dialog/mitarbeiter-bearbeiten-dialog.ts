@@ -152,7 +152,10 @@ export class MitarbeiterBearbeitenDialog {
       this.dialogDaten.mitarbeiter.filialIds.filter((filialId) => {
         return this.erlaubteFilialIds.has(filialId);
       }),
-      { nonNullable: true },
+      {
+        nonNullable: true,
+        validators: this.fremdeFilialIds.length > 0 ? [] : [Validators.required],
+      },
     ),
     aktiv: new FormControl(this.dialogDaten.mitarbeiter.aktiv, { nonNullable: true }),
   });

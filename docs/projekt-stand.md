@@ -245,14 +245,17 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden als kompakte Cards mit Rolle,
   Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben je Kontext unterscheidbar.
 - Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
-  Bearbeitungsdialog. Beide Reactive Forms erfassen Person, vollständige Adresse, optionale Kontakt- und Personendaten,
-  betriebliche Rolle und optionale Filialzuordnungen. Der Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer,
-  Firma sowie Mitarbeiter-ID unveränderlich an.
+  Bearbeitungsdialog. Beide Reactive Forms erfassen Person, vollständige Adresse, Geschlecht, E-Mail-Adresse, Mobilnummer,
+  betriebliche Rolle und mindestens eine verpflichtende Filialzuordnung. Geburtstag, Telefon und Webseite sind derzeit in der
+  Oberfläche ausgeblendet; bereits gespeicherte Werte bleiben beim Bearbeiten erhalten. Der Bearbeitungsdialog ergänzt den
+  Aktivstatus und zeigt Unternehmer, Firma sowie Mitarbeiter-ID unveränderlich an. Bereits vorhandene, für den Bearbeiter nicht
+  sichtbare Filialzuordnungen erfüllen diese Pflicht weiterhin.
 - Vor dem Öffnen und erneut vor dem Speichern wird der aktuelle Verwaltungszugriff auf die Firma geprüft. Während eines
   Schreibvorgangs sind Formular und Aktionen deaktiviert. Anlage und Aktualisierung erscheinen durch die Store-Aktualisierung
   ohne erneutes Laden in der Liste; bei Fehlern bleiben die Eingaben erhalten.
-- Im Bearbeitungsdialog werden nur erlaubte Filialen angeboten. Bereits vorhandene, für das aktuelle Konto nicht zugängliche
-  Filialzuordnungen bleiben beim Speichern unverändert; die lokalen Firestore Rules erzwingen dieselbe Begrenzung.
+- In den Mitarbeiterdialogen bleibt die Filial-Mehrfachauswahl für Master und Office sichtbar. Bei Filialkonten wird sie
+  ausgeblendet, weil deren eigene Filiale bereits eindeutig vorgegeben ist. Bereits vorhandene, für das aktuelle Konto nicht
+  zugängliche Filialzuordnungen bleiben beim Speichern unverändert; die lokalen Firestore Rules erzwingen dieselbe Begrenzung.
 - Filialprofile müssen bei Anlage und Bearbeitung genau einen Unternehmer, eine Firma und eine Filiale enthalten. Filialkonten
   legen Mitarbeiter nur mit der eigenen Filial-ID an und behalten diese beim Bearbeiten verpflichtend bei.
 

@@ -34,10 +34,6 @@
             autocomplete="username"
             autocapitalize="none"
           />
-
-          @if (loginForm.controls.anmeldename.hasError('required')) {
-            <mat-error>Anmeldename ist erforderlich.</mat-error>
-          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="pur-form__field">
@@ -60,10 +56,6 @@
               passwortSichtbar() ? 'visibility_off' : 'visibility'
             }}</mat-icon>
           </button>
-
-          @if (loginForm.controls.password.hasError('required')) {
-            <mat-error>Passwort ist erforderlich.</mat-error>
-          }
         </mat-form-field>
 
         <!-- Fehlermeldung -->

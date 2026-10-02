@@ -78,6 +78,9 @@
   `untouched` und werden nicht unmittelbar als fehlerhaft dargestellt. Bei einem Fehler bleiben die Eingaben erhalten.
 - Erfolgsmeldungen innerhalb von Formularen verwenden die globale Klasse `pur-form__success`; dafür werden keine lokalen
   Erfolgsfarben oder formularspezifischen Erfolgsklassen angelegt.
+- Für fehlende Pflichtfeldeingaben werden keine `mat-error`-Texte ausgegeben. Die Pflichtkennzeichnung erfolgt durch den Stern
+  und der Fehlerzustand durch die rote Angular-Material-Darstellung. Fehlermeldungen für Format-, Längen- und sonstige fachliche
+  Validierungsfehler bleiben zulässig.
 
 ## Naming
 

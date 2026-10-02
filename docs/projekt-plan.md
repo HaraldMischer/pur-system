@@ -359,11 +359,11 @@ sind `service`, `kasse` und `admin` vorgesehen. `person.kontakt` wird als Objekt
 `person.geburtstag` und `person.geschlecht` sind optional. `aktiv` kennzeichnet, ob der Mitarbeiter fachlich verwendet werden
 darf. `erstelltAm` und `aktualisiertAm` werden serverseitig gepflegt.
 
-`filialIds` enthält ausschließlich Filial-IDs der übergeordneten Firma. Für Office darf die Liste leer sein, weil ein Mitarbeiter
-zunächst nur bei der Firma beschäftigt sein kann. Sie kann später eine oder mehrere eindeutige Filial-IDs enthalten. Filialkonten
-dürfen die Mitarbeiter ihrer Firma lesen, laden über eine `array-contains`-Abfrage aber direkt nur Mitarbeiter mit ihrer eigenen
-Filial-ID. Sie können nur solche Mitarbeiter anlegen und bearbeiten. Bei einer Bearbeitung werden nur die für das angemeldete
-Konto erlaubten Filialzuordnungen angeboten; weitere bereits vorhandene Zuordnungen bleiben unverändert.
+`filialIds` enthält mindestens eine eindeutige Filial-ID der übergeordneten Firma, weil jeder Mitarbeiter in mindestens einer
+Filiale arbeitet. Filialkonten dürfen die Mitarbeiter ihrer Firma lesen, laden über eine `array-contains`-Abfrage aber direkt nur
+Mitarbeiter mit ihrer eigenen Filial-ID. Sie können nur solche Mitarbeiter anlegen und bearbeiten. Bei einer Bearbeitung werden
+nur die für das angemeldete Konto erlaubten Filialzuordnungen angeboten; weitere bereits vorhandene Zuordnungen bleiben
+unverändert.
 
 `benutzerUid` ist eine optionale, ausschließlich serverseitig gesetzte technische Gegenreferenz zum persönlichen
 Firebase-Auth-Zugang. Sie wird weder im Mitarbeiterformular erfasst noch für den betrieblichen Mitarbeiter-Login verwendet. Der

@@ -17,17 +17,11 @@
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Anzeigename</mat-label>
           <input matInput formControlName="anzeigename" type="text" autocomplete="organization" />
-          @if (firmaForm.controls.anzeigename.hasError('required')) {
-            <mat-error>Anzeigename ist erforderlich.</mat-error>
-          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Firmenname</mat-label>
           <input matInput formControlName="firmenname" type="text" autocomplete="organization" />
-          @if (firmaForm.controls.firmenname.hasError('required')) {
-            <mat-error>Firmenname ist erforderlich.</mat-error>
-          }
         </mat-form-field>
       </div>
     </div>
@@ -40,33 +34,21 @@
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Straße</mat-label>
           <input matInput formControlName="strasse" type="text" autocomplete="street-address" />
-          @if (firmaForm.controls.adresse.controls.strasse.hasError('required')) {
-            <mat-error>Straße ist erforderlich.</mat-error>
-          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Hausnummer</mat-label>
           <input matInput formControlName="hausnummer" type="text" autocomplete="off" />
-          @if (firmaForm.controls.adresse.controls.hausnummer.hasError('required')) {
-            <mat-error>Hausnummer ist erforderlich.</mat-error>
-          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Postleitzahl</mat-label>
           <input matInput formControlName="postleitzahl" type="text" autocomplete="postal-code" />
-          @if (firmaForm.controls.adresse.controls.postleitzahl.hasError('required')) {
-            <mat-error>Postleitzahl ist erforderlich.</mat-error>
-          }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Ort</mat-label>
           <input matInput formControlName="ort" type="text" autocomplete="address-level2" />
-          @if (firmaForm.controls.adresse.controls.ort.hasError('required')) {
-            <mat-error>Ort ist erforderlich.</mat-error>
-          }
         </mat-form-field>
       </div>
     </div>
