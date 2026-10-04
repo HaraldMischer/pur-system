@@ -105,7 +105,7 @@
     matButton="filled"
     type="submit"
     form="filiale-bearbeiten-form"
-    [disabled]="filialeForm.invalid || verwaltungStore.inProgress()"
+    [disabled]="filialeForm.invalid || !hatAenderungen() || verwaltungStore.inProgress()"
   >
     {{ verwaltungStore.inProgress() ? 'Filiale wird gespeichert' : 'Änderungen speichern' }}
   </button>

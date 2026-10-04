@@ -114,6 +114,24 @@ describe('FilialeAnlegenDialog', () => {
     });
   });
 
+  it('should create the branch without address data', async () => {
+    const component = TestBed.createComponent(FilialeAnlegenDialog).componentInstance;
+    component.filialeForm.setValue({
+      anzeigename: 'Gevelsberg 1',
+      filialname: 'Spielhalle',
+      adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
+      kontakt: { email: '', telefon: '' },
+    });
+
+    await component.onSubmit();
+
+    expect(createFilialeMock).toHaveBeenCalledWith('unternehmer-1', 'firma-1', {
+      anzeigename: 'Gevelsberg 1',
+      filialname: 'Spielhalle',
+      kontakt: {},
+    });
+  });
+
   it('should create the branch and close with the result when the form is valid', async () => {
     const component = TestBed.createComponent(FilialeAnlegenDialog).componentInstance;
     component.filialeForm.setValue({

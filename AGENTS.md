@@ -73,6 +73,10 @@
 - Während eines laufenden Schreibvorgangs (`inProgress`) wird das gesamte betroffene Formular einschließlich eigenständig
   verwalteter Unterkomponenten und weiterer datenverändernder Aktionen deaktiviert. Der Submit-Handler verhindert zusätzlich
   wiederholte Aufrufe. Nach Erfolg oder Fehler wird das Formular wieder aktiviert.
+- Datenändernde Submit-Aktionen sind nur aktiv, wenn das Formular gültig ist und kein Schreibvorgang läuft. Bearbeiten-Dialoge
+  vergleichen den normalisierten, speicherbaren Ausgangszustand und den aktuellen Zustand per `JSON.stringify()`. Ohne fachliche
+  Änderung bleibt der Submit-Button deaktiviert und der Submit-Handler verhindert den Schreibzugriff zusätzlich. Anlegen-Dialoge
+  verhindern leere oder fachlich unvollständige Schreibzugriffe über ihre Validierung.
 - Nach einem erfolgreichen Submit wird ein erneut verwendbares Reactive Form einschließlich des nativen Submitstatus über die
   `FormGroupDirective` zurückgesetzt. Leere Pflichtfelder bleiben dadurch fachlich ungültig, sind aber wieder `pristine` und
   `untouched` und werden nicht unmittelbar als fehlerhaft dargestellt. Bei einem Fehler bleiben die Eingaben erhalten.

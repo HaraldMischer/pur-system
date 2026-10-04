@@ -98,9 +98,44 @@ describe('MitarbeiterBearbeitenDialog', () => {
     ).toBeNull();
     expect(
       (fixture.nativeElement as HTMLElement).querySelectorAll(
-        '[formcontrolname="geburtstag"], [formcontrolname="telefon"], [formcontrolname="webseite"]',
+        '[formcontrolname="geburtstag"], [formcontrolname="geschlecht"], [formcontrolname="telefon"], [formcontrolname="webseite"]',
       ),
     ).toHaveLength(0);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+        'button[type="submit"]',
+      )?.disabled,
+    ).toBe(true);
+  });
+
+  it('should enable saving only while the form differs from its initial value', () => {
+    const fixture = TestBed.createComponent(MitarbeiterBearbeitenDialog);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const submit = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
+
+    component.mitarbeiterForm.controls.person.controls.vorname.setValue('Mia Neu');
+    fixture.detectChanges();
+
+    expect(component.hatAenderungen()).toBe(true);
+    expect(submit?.disabled).toBe(false);
+
+    component.mitarbeiterForm.controls.person.controls.vorname.setValue('Mia');
+    fixture.detectChanges();
+
+    expect(component.hatAenderungen()).toBe(false);
+    expect(submit?.disabled).toBe(true);
+  });
+
+  it('should not update an unchanged employee', async () => {
+    const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
+
+    await component.onSubmit();
+
+    expect(updateMitarbeiterMock).not.toHaveBeenCalled();
+    expect(dialogRefMock.close).not.toHaveBeenCalled();
   });
 
   it('should show the multiple branch assignment for an office account', () => {
@@ -153,6 +188,29 @@ describe('MitarbeiterBearbeitenDialog', () => {
     );
   });
 
+  it('should update an employee without address data', async () => {
+    const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
+    component.mitarbeiterForm.controls.person.controls.adresse.setValue({
+      strasse: '',
+      hausnummer: '',
+      postleitzahl: '',
+      ort: '',
+    });
+
+    await component.onSubmit();
+
+    expect(updateMitarbeiterMock).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      'm-1',
+      expect.objectContaining({
+        person: expect.objectContaining({
+          adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
+        }),
+      }),
+    );
+  });
+
   it('should reject removing the last branch assignment', async () => {
     aktuelleDialogDaten = {
       ...dialogDaten,
@@ -181,6 +239,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
 
   it('should reject saving after the company permission is removed', async () => {
     const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
+    component.mitarbeiterForm.controls.person.controls.vorname.setValue('Mia Neu');
     benutzerProfil.set({ ...profil, zugriffe: {} });
 
     await component.onSubmit();

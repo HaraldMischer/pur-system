@@ -12,16 +12,15 @@ import {
   IMitarbeiterAnlage,
   IMitarbeiterAnlageErgebnis,
   IMitarbeiterEintrag,
+  TMitarbeiterPerson,
   TMitarbeiterRolle,
 } from '../../commons/models/domain/mitarbeiter';
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
-import { EGender, IPerson } from '../../commons/models/domain/person';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 
 // ===== Top-Level Helper =====================
 
 const MITARBEITER_ROLLEN: readonly TMitarbeiterRolle[] = ['service', 'kasse', 'admin'];
-const GESCHLECHTER = new Set<string>(Object.values(EGender));
 
 function mapMitarbeiterEintrag(
   unternehmerId: string,
@@ -43,12 +42,11 @@ function mapMitarbeiterEintrag(
   };
 }
 
-function mapPerson(value: unknown): IPerson {
+function mapPerson(value: unknown): TMitarbeiterPerson {
   const person = asRecord(value);
   const adresse = asRecord(person['adresse']);
   const kontakt = asRecord(person['kontakt']);
   const geburtstag = getOptionalString(person['geburtstag']);
-  const geschlecht = getOptionalString(person['geschlecht']);
   const email = getOptionalString(kontakt['email']);
   const telefon = getOptionalString(kontakt['telefon']);
   const mobil = getOptionalString(kontakt['mobil']);
@@ -70,7 +68,6 @@ function mapPerson(value: unknown): IPerson {
       ...(webseite ? { webseite } : {}),
     },
     ...(geburtstag ? { geburtstag } : {}),
-    ...(geschlecht && GESCHLECHTER.has(geschlecht) ? { geschlecht: geschlecht as EGender } : {}),
   };
 }
 
@@ -96,6 +93,20 @@ function getDokumentIds(value: unknown): string[] {
 
 function isMitarbeiterRolle(value: unknown): value is TMitarbeiterRolle {
   return typeof value === 'string' && MITARBEITER_ROLLEN.includes(value as TMitarbeiterRolle);
+}
+
+function createAnzeigename(person: TMitarbeiterPerson): string {
+  return `${person.vorname.trim()} ${person.nachname.trim()}`.trim();
+}
+
+function createMitarbeiterPerson(person: TMitarbeiterPerson): TMitarbeiterPerson {
+  return {
+    vorname: person.vorname,
+    nachname: person.nachname,
+    adresse: person.adresse,
+    kontakt: person.kontakt,
+    ...(person.geburtstag ? { geburtstag: person.geburtstag } : {}),
+  };
 }
 
 function sortMitarbeiter(mitarbeiter: readonly IMitarbeiterEintrag[]): IMitarbeiterEintrag[] {
@@ -231,6 +242,8 @@ export class MitarbeiterService {
       FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId),
       {
         ...anlage,
+        person: createMitarbeiterPerson(anlage.person),
+        anzeigename: createAnzeigename(anlage.person),
         aktiv: true,
         erstelltAm: zeitstempel,
         aktualisiertAm: zeitstempel,
@@ -260,6 +273,8 @@ export class MitarbeiterService {
       FIRESTORE_DOCUMENT_PATHS.mitarbeiter(unternehmerId, firmaId, mitarbeiterId),
       {
         ...aktualisierung,
+        person: createMitarbeiterPerson(aktualisierung.person),
+        anzeigename: createAnzeigename(aktualisierung.person),
         aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
       },
     );

@@ -1,7 +1,7 @@
 // pur-system/src/app/commons/mapper/datenmigration/pur-company-firma.mapper.spec.ts
 
 import { IPurCompanyEintrag } from '../../models/legacy/pur-company';
-import { entsprichtFirmaMigration, mapPurCompanyToFirma } from './pur-company-firma.mapper';
+import { mapPurCompanyToFirma } from './pur-company-firma.mapper';
 
 describe('PurCompany-Firma-Mapper', () => {
   const purCompany: IPurCompanyEintrag = {
@@ -109,13 +109,4 @@ describe('PurCompany-Firma-Mapper', () => {
     ]);
   });
 
-  it('erkennt identische und abweichende Ziel-Firmendaten', () => {
-    const mapping = mapPurCompanyToFirma('kunde-1', purCompany);
-    if (!mapping.daten) throw new Error('Testdaten müssen gültig sein.');
-
-    expect(entsprichtFirmaMigration(mapping.daten, mapping.daten)).toBe(true);
-    expect(
-      entsprichtFirmaMigration({ ...mapping.daten, firmenname: 'Manuell geändert' }, mapping.daten),
-    ).toBe(false);
-  });
 });

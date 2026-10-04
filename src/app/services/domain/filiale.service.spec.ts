@@ -111,12 +111,6 @@ describe('FilialeService', () => {
         filialname: 'z',
         nummer: 0,
         aktiv: false,
-        adresse: {
-          strasse: '',
-          hausnummer: '',
-          postleitzahl: '',
-          ort: '',
-        },
         kontakt: {},
       },
     ]);

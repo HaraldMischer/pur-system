@@ -28,6 +28,22 @@
     }
   }
 
+  &__bereich-option {
+    min-height: 64px;
+  }
+
+  &__bereich-option-inhalt {
+    display: grid;
+    gap: 2px;
+    padding: 6px 0;
+    line-height: normal;
+  }
+
+  &__bereich-pfad {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-small);
+  }
+
   &__status {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

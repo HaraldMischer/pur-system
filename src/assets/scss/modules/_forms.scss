@@ -46,6 +46,10 @@
         flex: 20 1 0;
       }
 
+      &--50 {
+        flex: 50 1 0;
+      }
+
       &--80 {
         flex: 80 1 0;
       }
@@ -53,6 +57,7 @@
 
     @media (max-width: 600px) {
       > .pur-form__field--20,
+      > .pur-form__field--50,
       > .pur-form__field--80 {
         flex: 1 1 100%;
       }

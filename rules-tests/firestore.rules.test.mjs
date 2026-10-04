@@ -383,9 +383,41 @@ for (const role of ['office', 'filiale']) {
       }),
     );
     await assertSucceeds(
+      setDoc(doc(db, `${firmaPath}/mitarbeiter/neu-inaktiv`), {
+        person: {},
+        rolle: 'service',
+        filialIds: role === 'filiale' ? ['b-1'] : [],
+        aktiv: false,
+        erstelltAm: serverTimestamp(),
+        aktualisiertAm: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(getDoc(doc(db, `${firmaPath}/mitarbeiter/neu-inaktiv`)));
+    await assertSucceeds(
       setDoc(
         doc(db, mitarbeiterPath),
         { rolle: 'admin', filialIds: ['b-1'], aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { anzeigename: 'Mia Muster', aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { aktiv: false, aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { aktiv: true, aktualisiertAm: serverTimestamp() },
         { merge: true },
       ),
     );
@@ -487,6 +519,16 @@ test('active master manages all company employees with the employee area', async
       rolle: 'service',
       filialIds: ['b-1'],
       aktiv: true,
+      erstelltAm: serverTimestamp(),
+      aktualisiertAm: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    setDoc(doc(db, `${firmaPath}/mitarbeiter/neu-inaktiv`), {
+      person: {},
+      rolle: 'service',
+      filialIds: ['b-1'],
+      aktiv: false,
       erstelltAm: serverTimestamp(),
       aktualisiertAm: serverTimestamp(),
     }),

@@ -98,7 +98,12 @@
     matButton="filled"
     type="submit"
     form="benutzer-bearbeiten-form"
-    [disabled]="benutzerForm.invalid || !datenAuswahlGueltig() || verwaltungStore.inProgress()"
+    [disabled]="
+      benutzerForm.invalid ||
+      !datenAuswahlGueltig() ||
+      !hatAenderungen() ||
+      verwaltungStore.inProgress()
+    "
   >
     {{ verwaltungStore.inProgress() ? 'Benutzer wird gespeichert' : 'Änderungen speichern' }}
   </button>

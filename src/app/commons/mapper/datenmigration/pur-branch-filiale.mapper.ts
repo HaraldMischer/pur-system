@@ -1,50 +1,55 @@
-// pur-system/src/app/commons/mapper/datenmigration/pur-company-firma.mapper.ts
+// pur-system/src/app/commons/mapper/datenmigration/pur-branch-filiale.mapper.ts
 
 import { FIRESTORE_DOCUMENT_PATHS } from '../../constants/firebase.constants';
 import { IDatenmigrationsproblem } from '../../models/domain/datenmigration';
-import { IFirmaAdresse, IFirmaDokument } from '../../models/domain/firma';
-import { IPurCompanyEintrag } from '../../models/legacy/pur-company';
+import { IFilialeAdresse, IFilialeDokument } from '../../models/domain/filiale';
+import { IPurBranchEintrag } from '../../models/legacy/pur-branch';
 
 // ===== Konstanten & Typen ===================
 
-export type TFirmaMigrationDaten = Omit<IFirmaDokument, 'erstelltAm' | 'aktualisiertAm'>;
+export type TFilialeMigrationDaten = Omit<IFilialeDokument, 'erstelltAm' | 'aktualisiertAm'>;
 
-export type TFirmaMappingErgebnis =
-  | { daten: TFirmaMigrationDaten; probleme: [] }
+export type TFilialeMappingErgebnis =
+  | { daten: TFilialeMigrationDaten; probleme: [] }
   | { daten: null; probleme: IDatenmigrationsproblem[] };
 
 // ===== Mapper ===============================
 
 /**
- * Validiert und überführt eine Legacy-Firma in die neue Firmenstruktur.
+ * Validiert und überführt eine Legacy-Filiale in die neue Filialstruktur.
  *
  * @param purCustomerId - Dokument-ID des übergeordneten Legacy-Kunden.
- * @param purCompany - Legacy-Firma mit Dokument-ID und unveränderten Quelldaten.
- * @param ersatzNummer - Nächste freie Firmennummer, falls die Legacy-Nummer ungültig ist.
- * @returns Gemappte Firmendaten oder die festgestellten Validierungsprobleme.
+ * @param purBranch - Legacy-Filiale mit übergeordneter Firmen-ID und Quelldaten.
+ * @param ersatzNummer - Nächste freie Filialnummer, falls die Legacy-Nummer ungültig ist.
+ * @returns Gemappte Filialdaten oder die festgestellten Validierungsprobleme.
  */
-export function mapPurCompanyToFirma(
+export function mapPurBranchToFiliale(
   purCustomerId: string,
-  purCompany: IPurCompanyEintrag,
+  purBranch: IPurBranchEintrag,
   ersatzNummer?: number,
-): TFirmaMappingErgebnis {
-  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purCompany(purCustomerId, purCompany.id);
-  const daten = purCompany.daten;
+): TFilialeMappingErgebnis {
+  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purBranch(
+    purCustomerId,
+    purBranch.purCompanyId,
+    purBranch.id,
+  );
+  const daten = purBranch.daten;
   const probleme: IDatenmigrationsproblem[] = [];
-  const firmenname = trimString(daten.companyName);
-  const legacyNummer = daten.companyNumber;
+  const branchName = trimString(daten.branchName);
+  const addressName = trimString(daten.addressName);
+  const anzeigename = branchName || addressName;
+  const filialname = addressName || branchName;
+  const legacyNummer = daten.branchNumber;
   const nummer =
     Number.isInteger(legacyNummer) && Number(legacyNummer) > 0
       ? Number(legacyNummer)
       : ersatzNummer;
   const adresse = mapAdresse(daten.address);
 
-  if (daten.company_ID && daten.company_ID !== purCompany.id) {
-    probleme.push(createProblem(quellPfad, 'Die eingebettete Firmen-ID weicht vom Quellpfad ab.'));
-  }
-  if (!firmenname) probleme.push(createProblem(quellPfad, 'Der Firmenname fehlt.'));
+  if (!anzeigename) probleme.push(createProblem(quellPfad, 'Der Anzeigename fehlt.'));
+  if (!filialname) probleme.push(createProblem(quellPfad, 'Der Filialname fehlt.'));
   if (!Number.isInteger(nummer) || Number(nummer) <= 0) {
-    probleme.push(createProblem(quellPfad, 'Die Firmennummer fehlt oder ist ungültig.'));
+    probleme.push(createProblem(quellPfad, 'Die Filialnummer fehlt oder ist ungültig.'));
   }
   if (typeof daten.active !== 'boolean') {
     probleme.push(createProblem(quellPfad, 'Der Aktivstatus fehlt oder ist ungültig.'));
@@ -57,8 +62,8 @@ export function mapPurCompanyToFirma(
 
   return {
     daten: {
-      anzeigename: firmenname,
-      firmenname,
+      anzeigename,
+      filialname,
       nummer: Number(nummer),
       aktiv: daten.active as boolean,
       ...(Object.keys(adresse).length > 0 ? { adresse } : {}),
@@ -74,12 +79,12 @@ export function mapPurCompanyToFirma(
 
 // ===== Interne Helfer =======================
 
-function mapAdresse(adresse: IPurCompanyEintrag['daten']['address']): IFirmaAdresse {
+function mapAdresse(adresse: IPurBranchEintrag['daten']['address']): IFilialeAdresse {
   const strassenwert = trimString(adresse?.street);
   const geteilteStrasse = splitStrasse(strassenwert);
   const postleitzahl = normalizePostleitzahl(adresse?.postcode);
   const ort = trimString(adresse?.city);
-  const ergebnis: IFirmaAdresse = {};
+  const ergebnis: IFilialeAdresse = {};
 
   if (geteilteStrasse) {
     ergebnis.strasse = geteilteStrasse.strasse;
@@ -113,9 +118,5 @@ function splitStrasse(value: unknown): { strasse: string; hausnummer: string } |
 }
 
 function createProblem(quellPfad: string, ursache: string): IDatenmigrationsproblem {
-  return {
-    typ: 'fehler',
-    quellPfad,
-    ursache,
-  };
+  return { typ: 'fehler', quellPfad, ursache };
 }

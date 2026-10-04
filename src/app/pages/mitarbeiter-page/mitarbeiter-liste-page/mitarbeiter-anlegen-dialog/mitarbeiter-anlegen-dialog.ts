@@ -29,7 +29,6 @@ import {
   IMitarbeiterAnlageErgebnis,
   TMitarbeiterRolle,
 } from '../../../../commons/models/domain/mitarbeiter';
-import { EGender } from '../../../../commons/models/domain/person';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
 import { BenutzerStore } from '../../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../../stores/domain/mitarbeiter.store';
@@ -78,7 +77,6 @@ export class MitarbeiterAnlegenDialog {
 
   // ===== Öffentliche Werte ====================
 
-  readonly geschlechter = Object.values(EGender);
   readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
     { value: 'service', label: 'Service' },
     { value: 'kasse', label: 'Kasse' },
@@ -96,24 +94,11 @@ export class MitarbeiterAnlegenDialog {
         validators: [Validators.required, nichtLeerValidator],
       }),
       geburtstag: new FormControl('', { nonNullable: true }),
-      geschlecht: new FormControl<EGender | null>(null),
       adresse: new FormGroup({
-        strasse: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
-        }),
-        hausnummer: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
-        }),
-        postleitzahl: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
-        }),
-        ort: new FormControl('', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
-        }),
+        strasse: new FormControl('', { nonNullable: true }),
+        hausnummer: new FormControl('', { nonNullable: true }),
+        postleitzahl: new FormControl('', { nonNullable: true }),
+        ort: new FormControl('', { nonNullable: true }),
       }),
       kontakt: new FormGroup({
         email: new FormControl('', { nonNullable: true, validators: [Validators.email] }),
@@ -222,7 +207,6 @@ export class MitarbeiterAnlegenDialog {
           ...(kontakt.webseite.trim() ? { webseite: kontakt.webseite.trim() } : {}),
         },
         ...(geburtstag ? { geburtstag } : {}),
-        ...(value.person.geschlecht ? { geschlecht: value.person.geschlecht } : {}),
       },
       rolle: value.rolle,
       filialIds: [

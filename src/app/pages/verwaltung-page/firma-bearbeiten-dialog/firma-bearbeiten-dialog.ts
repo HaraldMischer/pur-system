@@ -1,6 +1,7 @@
 // pur-system/src/app/pages/verwaltung-page/firma-bearbeiten-dialog/firma-bearbeiten-dialog.ts
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormControl,
@@ -50,8 +51,13 @@ export class FirmaBearbeitenDialog {
   private readonly dialogDaten = inject<IFirmaBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly verwaltungStore = inject(VerwaltungStore);
 
+  // ===== Interner State =======================
+
+  private urspruenglicherDatenwert = '';
+
   // ===== Öffentliche Werte ====================
 
+  readonly hatAenderungen = signal(false);
   readonly firmaForm = new FormGroup({
     anzeigename: new FormControl(this.dialogDaten.firma.anzeigename, {
       nonNullable: true,
@@ -92,6 +98,13 @@ export class FirmaBearbeitenDialog {
     }),
   });
 
+  constructor() {
+    this.urspruenglicherDatenwert = JSON.stringify(this.getFirmaAktualisierung());
+    this.firmaForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.updateAenderungsstatus();
+    });
+  }
+
   // ===== Öffentliche Aktionen =================
 
   /**
@@ -108,6 +121,7 @@ export class FirmaBearbeitenDialog {
       this.firmaForm.markAllAsTouched();
       return;
     }
+    if (!this.hatAenderungen()) return;
 
     this.dialogRef.disableClose = true;
     try {
@@ -121,6 +135,12 @@ export class FirmaBearbeitenDialog {
   }
 
   // ===== Interne Helfer =======================
+
+  private updateAenderungsstatus(): void {
+    this.hatAenderungen.set(
+      JSON.stringify(this.getFirmaAktualisierung()) !== this.urspruenglicherDatenwert,
+    );
+  }
 
   private getFirmaAktualisierung(): IFirmaAktualisierung {
     const value = this.firmaForm.getRawValue();

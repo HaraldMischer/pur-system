@@ -5,6 +5,7 @@ import { Timestamp } from 'firebase/firestore';
 import { IPerson } from './person';
 
 export type TMitarbeiterRolle = 'service' | 'kasse' | 'admin';
+export type TMitarbeiterPerson = Omit<IPerson, 'geschlecht'>;
 
 // ===== Anwendungs-Typen ====================
 
@@ -19,7 +20,7 @@ export interface IMitarbeiterAuswahlAnfrage {
 }
 
 export interface IMitarbeiterAnlage {
-  person: IPerson;
+  person: TMitarbeiterPerson;
   rolle: TMitarbeiterRolle;
   filialIds: string[];
 }
@@ -45,6 +46,7 @@ export interface IMitarbeiterEintrag extends IMitarbeiterAnlage {
 // ===== Firestore-Dokumente ==================
 
 export interface IMitarbeiterDokument extends IMitarbeiterAnlage {
+  anzeigename: string;
   aktiv: boolean;
   benutzerUid?: string;
   erstelltAm?: Timestamp;

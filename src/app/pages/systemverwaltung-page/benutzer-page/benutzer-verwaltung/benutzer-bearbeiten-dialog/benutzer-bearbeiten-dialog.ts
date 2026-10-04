@@ -1,6 +1,15 @@
 // pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.ts
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormControl,
@@ -70,6 +79,10 @@ export class BenutzerBearbeitenDialog {
   private readonly stammdatenStore = inject(StammdatenStore);
   readonly verwaltungStore = inject(BenutzerVerwaltungStore);
 
+  // ===== Interner State =======================
+
+  private urspruenglicherDatenwert = '';
+
   // ===== Öffentliche Werte ====================
 
   readonly profil = this.dialogDaten.profil;
@@ -102,6 +115,7 @@ export class BenutzerBearbeitenDialog {
   readonly filialen = signal<Readonly<Partial<Record<string, readonly string[]>>>>(
     this.getFilialen(this.profil.zugriffe),
   );
+  readonly hatAenderungen = signal(false);
   readonly benutzerForm = new FormGroup({
     anzeigename: new FormControl(this.profil.anzeigename, {
       nonNullable: true,
@@ -125,6 +139,19 @@ export class BenutzerBearbeitenDialog {
     if (this.istEigenesProfil) {
       this.benutzerForm.controls.aktiv.disable();
     }
+
+    this.urspruenglicherDatenwert = JSON.stringify(this.getAktualisierung());
+    this.benutzerForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.updateAenderungsstatus();
+    });
+    effect(() => {
+      this.unternehmerIds();
+      this.firmaIds();
+      this.filialen();
+      untracked(() => {
+        this.updateAenderungsstatus();
+      });
+    });
   }
 
   // ===== Öffentliche Aktionen =================
@@ -166,6 +193,7 @@ export class BenutzerBearbeitenDialog {
       this.benutzerForm.markAllAsTouched();
       return;
     }
+    if (!this.hatAenderungen()) return;
 
     this.dialogRef.disableClose = true;
     try {
@@ -179,6 +207,12 @@ export class BenutzerBearbeitenDialog {
   }
 
   // ===== Interne Helfer =======================
+
+  private updateAenderungsstatus(): void {
+    this.hatAenderungen.set(
+      JSON.stringify(this.getAktualisierung()) !== this.urspruenglicherDatenwert,
+    );
+  }
 
   private getAktualisierung(): IBenutzerProfilAktualisierung {
     const value = this.benutzerForm.getRawValue();

@@ -97,25 +97,6 @@ export function mapPurCustomerToUnternehmer(
   };
 }
 
-/**
- * Prüft, ob ein vorhandenes Unternehmerdokument dem Migrationsergebnis entspricht.
- *
- * @param vorhanden - Bereits gespeicherte Unternehmerdaten.
- * @param erwartet - Aus dem Legacy-Kunden gemappte Unternehmerdaten.
- * @returns `true`, wenn alle migrationsrelevanten Unternehmerdaten übereinstimmen.
- */
-export function entsprichtUnternehmerMigration(
-  vorhanden: Record<string, unknown>,
-  erwartet: TUnternehmerMigrationDaten,
-): boolean {
-  return sindGleich(erwartet, {
-    anzeigename: vorhanden['anzeigename'],
-    nummer: vorhanden['nummer'],
-    aktiv: vorhanden['aktiv'],
-    person: vorhanden['person'],
-  });
-}
-
 // ===== Interne Helfer =======================
 
 function trimString(value: unknown): string {
@@ -139,32 +120,4 @@ function createProblem(quellPfad: string, ursache: string): IDatenmigrationsprob
     quellPfad,
     ursache,
   };
-}
-
-function sindGleich(erwartet: unknown, vorhanden: unknown): boolean {
-  if (Object.is(erwartet, vorhanden)) return true;
-  if (Array.isArray(erwartet) || Array.isArray(vorhanden)) {
-    if (!Array.isArray(erwartet) || !Array.isArray(vorhanden)) return false;
-    return (
-      erwartet.length === vorhanden.length &&
-      erwartet.every((wert, index) => sindGleich(wert, vorhanden[index]))
-    );
-  }
-  if (
-    typeof erwartet !== 'object' ||
-    erwartet === null ||
-    typeof vorhanden !== 'object' ||
-    vorhanden === null
-  ) {
-    return false;
-  }
-
-  const erwarteteEintraege = Object.entries(erwartet);
-  const vorhandeneEintraege = Object.entries(vorhanden);
-  return (
-    erwarteteEintraege.length === vorhandeneEintraege.length &&
-    erwarteteEintraege.every(([key, wert]) => {
-      return sindGleich(wert, (vorhanden as Record<string, unknown>)[key]);
-    })
-  );
 }

@@ -112,6 +112,30 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(rollenInput.readOnly).toBe(true);
     expect(rollenInput.value).toBe('Office');
     expect(fixture.nativeElement.querySelectorAll('mat-checkbox')).toHaveLength(4);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+        'button[type="submit"]',
+      )?.disabled,
+    ).toBe(true);
+  });
+
+  it('should enable saving only while the profile differs from its initial value', () => {
+    const component = TestBed.createComponent(BenutzerBearbeitenDialog).componentInstance;
+
+    component.benutzerForm.controls.anzeigename.setValue('Office Neu');
+    expect(component.hatAenderungen()).toBe(true);
+
+    component.benutzerForm.controls.anzeigename.setValue('Office Benutzer');
+    expect(component.hatAenderungen()).toBe(false);
+  });
+
+  it('should not update an unchanged user profile', async () => {
+    const component = TestBed.createComponent(BenutzerBearbeitenDialog).componentInstance;
+
+    await component.onSubmit();
+
+    expect(updateBenutzerProfilMock).not.toHaveBeenCalled();
+    expect(closeMock).not.toHaveBeenCalled();
   });
 
   it('should save normalized profile data and close the dialog', async () => {

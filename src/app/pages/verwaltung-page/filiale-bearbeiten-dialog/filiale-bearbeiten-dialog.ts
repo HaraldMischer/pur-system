@@ -1,6 +1,7 @@
 // pur-system/src/app/pages/verwaltung-page/filiale-bearbeiten-dialog/filiale-bearbeiten-dialog.ts
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormControl,
@@ -50,8 +51,13 @@ export class FilialeBearbeitenDialog {
   private readonly dialogDaten = inject<IFilialeBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly verwaltungStore = inject(VerwaltungStore);
 
+  // ===== Interner State =======================
+
+  private urspruenglicherDatenwert = '';
+
   // ===== Öffentliche Werte ====================
 
+  readonly hatAenderungen = signal(false);
   readonly filialeForm = new FormGroup({
     anzeigename: new FormControl(this.dialogDaten.filiale.anzeigename, {
       nonNullable: true,
@@ -62,21 +68,17 @@ export class FilialeBearbeitenDialog {
       validators: [Validators.required, nichtLeerValidator],
     }),
     adresse: new FormGroup({
-      strasse: new FormControl(this.dialogDaten.filiale.adresse.strasse, {
+      strasse: new FormControl(this.dialogDaten.filiale.adresse?.strasse ?? '', {
         nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
       }),
-      hausnummer: new FormControl(this.dialogDaten.filiale.adresse.hausnummer, {
+      hausnummer: new FormControl(this.dialogDaten.filiale.adresse?.hausnummer ?? '', {
         nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
       }),
-      postleitzahl: new FormControl(this.dialogDaten.filiale.adresse.postleitzahl, {
+      postleitzahl: new FormControl(this.dialogDaten.filiale.adresse?.postleitzahl ?? '', {
         nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
       }),
-      ort: new FormControl(this.dialogDaten.filiale.adresse.ort, {
+      ort: new FormControl(this.dialogDaten.filiale.adresse?.ort ?? '', {
         nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
       }),
     }),
     kontakt: new FormGroup({
@@ -96,6 +98,13 @@ export class FilialeBearbeitenDialog {
     }),
   });
 
+  constructor() {
+    this.urspruenglicherDatenwert = JSON.stringify(this.getFilialeAktualisierung());
+    this.filialeForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.updateAenderungsstatus();
+    });
+  }
+
   // ===== Öffentliche Aktionen =================
 
   /**
@@ -112,6 +121,7 @@ export class FilialeBearbeitenDialog {
       this.filialeForm.markAllAsTouched();
       return;
     }
+    if (!this.hatAenderungen()) return;
 
     this.dialogRef.disableClose = true;
     try {
@@ -126,22 +136,37 @@ export class FilialeBearbeitenDialog {
 
   // ===== Interne Helfer =======================
 
+  private updateAenderungsstatus(): void {
+    this.hatAenderungen.set(
+      JSON.stringify(this.getFilialeAktualisierung()) !== this.urspruenglicherDatenwert,
+    );
+  }
+
   private getFilialeAktualisierung(): IFilialeAktualisierung {
     const value = this.filialeForm.getRawValue();
     const email = value.kontakt.email.trim().toLowerCase();
     const telefon = value.kontakt.telefon.trim();
     const mobil = value.kontakt.mobil.trim();
     const webseite = value.kontakt.webseite.trim();
+    const strasse = value.adresse.strasse.trim();
+    const hausnummer = value.adresse.hausnummer.trim();
+    const postleitzahl = value.adresse.postleitzahl.trim();
+    const ort = value.adresse.ort.trim();
+    const hatAdresse = Boolean(strasse || hausnummer || postleitzahl || ort);
 
     return {
       anzeigename: value.anzeigename.trim(),
       filialname: value.filialname.trim(),
-      adresse: {
-        strasse: value.adresse.strasse.trim(),
-        hausnummer: value.adresse.hausnummer.trim(),
-        postleitzahl: value.adresse.postleitzahl.trim(),
-        ort: value.adresse.ort.trim(),
-      },
+      ...(hatAdresse
+        ? {
+            adresse: {
+              ...(strasse ? { strasse } : {}),
+              ...(hausnummer ? { hausnummer } : {}),
+              ...(postleitzahl ? { postleitzahl } : {}),
+              ...(ort ? { ort } : {}),
+            },
+          }
+        : {}),
       kontakt: {
         ...(email ? { email } : {}),
         ...(telefon ? { telefon } : {}),

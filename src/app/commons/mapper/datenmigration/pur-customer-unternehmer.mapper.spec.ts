@@ -2,11 +2,7 @@
 
 import { EGender } from '../../models/domain/person';
 import { IPurCustomerEintrag } from '../../models/legacy/pur-customer';
-import {
-  entsprichtUnternehmerMigration,
-  mapPurCustomerToUnternehmer,
-  TUnternehmerMigrationDaten,
-} from './pur-customer-unternehmer.mapper';
+import { mapPurCustomerToUnternehmer } from './pur-customer-unternehmer.mapper';
 
 describe('mapPurCustomerToUnternehmer', () => {
   const purCustomer: IPurCustomerEintrag = {
@@ -118,31 +114,4 @@ describe('mapPurCustomerToUnternehmer', () => {
     ]);
   });
 
-  it('should recognize an identical existing entrepreneur migration', () => {
-    const mapping = mapPurCustomerToUnternehmer(purCustomer, 7);
-    expect(mapping.daten).not.toBeNull();
-
-    expect(
-      entsprichtUnternehmerMigration(
-        {
-          ...mapping.daten,
-          erstelltAm: 'vorhandener-zeitstempel',
-          aktualisiertAm: 'vorhandener-zeitstempel',
-        },
-        mapping.daten as TUnternehmerMigrationDaten,
-      ),
-    ).toBe(true);
-  });
-
-  it('should reject a differing existing entrepreneur migration', () => {
-    const mapping = mapPurCustomerToUnternehmer(purCustomer, 7);
-    expect(mapping.daten).not.toBeNull();
-
-    expect(
-      entsprichtUnternehmerMigration(
-        { ...mapping.daten, anzeigename: 'Manuell geändert' },
-        mapping.daten as TUnternehmerMigrationDaten,
-      ),
-    ).toBe(false);
-  });
 });

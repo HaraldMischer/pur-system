@@ -74,7 +74,7 @@ describe('MitarbeiterAnlegenDialog', () => {
     ).not.toBeNull();
     expect(
       (fixture.nativeElement as HTMLElement).querySelectorAll(
-        '[formcontrolname="geburtstag"], [formcontrolname="telefon"], [formcontrolname="webseite"]',
+        '[formcontrolname="geburtstag"], [formcontrolname="geschlecht"], [formcontrolname="telefon"], [formcontrolname="webseite"]',
       ),
     ).toHaveLength(0);
   });
@@ -132,6 +132,26 @@ describe('MitarbeiterAnlegenDialog', () => {
       filialIds: ['b-1'],
     });
     expect(dialogRefMock.close).toHaveBeenCalledWith({ id: 'm-neu' });
+  });
+
+  it('should create an employee without address data', async () => {
+    const component = TestBed.createComponent(MitarbeiterAnlegenDialog).componentInstance;
+    component.mitarbeiterForm.patchValue({
+      person: { vorname: 'Mia', nachname: 'Muster' },
+      filialIds: ['b-1'],
+    });
+
+    await component.onSubmit();
+
+    expect(createMitarbeiterMock).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      expect.objectContaining({
+        person: expect.objectContaining({
+          adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
+        }),
+      }),
+    );
   });
 
   it('should reject creating an employee without a branch assignment', async () => {

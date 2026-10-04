@@ -24,6 +24,10 @@ function mapFilialeEintrag(id: string, daten: Record<string, unknown>): IFiliale
   const filialname = daten['filialname'];
   const nummer = daten['nummer'];
   const adresse = asRecord(daten['adresse']);
+  const strasse = getOptionalString(adresse['strasse']);
+  const hausnummer = getOptionalString(adresse['hausnummer']);
+  const postleitzahl = getOptionalString(adresse['postleitzahl']);
+  const ort = getOptionalString(adresse['ort']);
   const kontakt = asRecord(daten['kontakt']);
   const email = getOptionalString(kontakt['email']);
   const telefon = getOptionalString(kontakt['telefon']);
@@ -36,12 +40,16 @@ function mapFilialeEintrag(id: string, daten: Record<string, unknown>): IFiliale
     filialname: typeof filialname === 'string' && filialname.trim() ? filialname.trim() : id,
     nummer: Number.isInteger(nummer) && Number(nummer) > 0 ? Number(nummer) : 0,
     aktiv: daten['aktiv'] === true,
-    adresse: {
-      strasse: getString(adresse['strasse']),
-      hausnummer: getString(adresse['hausnummer']),
-      postleitzahl: getString(adresse['postleitzahl']),
-      ort: getString(adresse['ort']),
-    },
+    ...(strasse || hausnummer || postleitzahl || ort
+      ? {
+          adresse: {
+            ...(strasse ? { strasse } : {}),
+            ...(hausnummer ? { hausnummer } : {}),
+            ...(postleitzahl ? { postleitzahl } : {}),
+            ...(ort ? { ort } : {}),
+          },
+        }
+      : {}),
     kontakt: {
       ...(email ? { email } : {}),
       ...(telefon ? { telefon } : {}),

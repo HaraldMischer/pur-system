@@ -12,8 +12,8 @@ export const DATENMIGRATIONS_BEREICHE = {
 } as const;
 
 export type TDatenmigrationsbereich = keyof typeof DATENMIGRATIONS_BEREICHE;
-export type TDatenmigrationsstatus = 'inProgress' | 'completed' | 'failed' | 'conflict';
-export type TDatenmigrationsproblemTyp = 'fehler' | 'konflikt';
+export type TDatenmigrationsstatus = 'inProgress' | 'completed' | 'failed';
+export type TDatenmigrationsproblemTyp = 'fehler';
 
 // ===== Anwendungs-Typen =====================
 
@@ -34,6 +34,10 @@ export interface ISystemmigrationDokument {
   purCustomerId: string;
   unternehmerId: string;
   firmenIds?: Readonly<Record<string, string>>;
+  filialenIds?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  mitarbeiterIds?: Readonly<
+    Record<string, Readonly<Record<string, Readonly<Record<string, string>>>>>
+  >;
   erstelltAm: Timestamp;
   aktualisiertAm: Timestamp;
 }
@@ -44,8 +48,6 @@ export interface IDatenbereichMigrationDokument {
   status: TDatenmigrationsstatus;
   quellDokumente: number;
   migrierteDokumente: number;
-  bereitsMigrierteDokumente: number;
-  konflikte: number;
   fehler: number;
   probleme: IDatenmigrationsproblem[];
   gestartetAm: Timestamp;

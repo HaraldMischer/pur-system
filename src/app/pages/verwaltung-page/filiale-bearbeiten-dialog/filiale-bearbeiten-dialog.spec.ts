@@ -59,7 +59,9 @@ describe('FilialeBearbeitenDialog', () => {
   });
 
   it('should initialize the form with the complete editable branch data', () => {
-    const component = TestBed.createComponent(FilialeBearbeitenDialog).componentInstance;
+    const fixture = TestBed.createComponent(FilialeBearbeitenDialog);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
 
     expect(component.filialeForm.getRawValue()).toEqual({
       anzeigename: 'Hamburg 1',
@@ -68,6 +70,53 @@ describe('FilialeBearbeitenDialog', () => {
       kontakt: filiale.kontakt,
     });
     expect(component.filialeForm.valid).toBe(true);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+        'button[type="submit"]',
+      )?.disabled,
+    ).toBe(true);
+  });
+
+  it('should enable saving only while the branch differs from its initial value', () => {
+    const component = TestBed.createComponent(FilialeBearbeitenDialog).componentInstance;
+
+    component.filialeForm.controls.anzeigename.setValue('Hamburg Neu');
+    expect(component.hatAenderungen()).toBe(true);
+
+    component.filialeForm.controls.anzeigename.setValue('Hamburg 1');
+    expect(component.hatAenderungen()).toBe(false);
+  });
+
+  it('should not update an unchanged branch', async () => {
+    const component = TestBed.createComponent(FilialeBearbeitenDialog).componentInstance;
+
+    await component.onSubmit();
+
+    expect(updateFilialeMock).not.toHaveBeenCalled();
+    expect(closeMock).not.toHaveBeenCalled();
+  });
+
+  it('should initialize and save a branch without address data', async () => {
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: { filiale: { ...filiale, adresse: undefined } },
+    });
+    const component = TestBed.createComponent(FilialeBearbeitenDialog).componentInstance;
+
+    expect(component.filialeForm.controls.adresse.getRawValue()).toEqual({
+      strasse: '',
+      hausnummer: '',
+      postleitzahl: '',
+      ort: '',
+    });
+    component.filialeForm.controls.anzeigename.setValue('Hamburg Neu');
+
+    await component.onSubmit();
+
+    expect(updateFilialeMock).toHaveBeenCalledWith({
+      anzeigename: 'Hamburg Neu',
+      filialname: 'Spielhalle',
+      kontakt: filiale.kontakt,
+    });
   });
 
   it('should use the global form and dialog structure', () => {
@@ -125,6 +174,7 @@ describe('FilialeBearbeitenDialog', () => {
   it('should keep the dialog open when the update fails', async () => {
     updateFilialeMock.mockRejectedValue({ code: 'permission-denied' });
     const component = TestBed.createComponent(FilialeBearbeitenDialog).componentInstance;
+    component.filialeForm.controls.anzeigename.setValue('Hamburg Neu');
 
     await component.onSubmit();
 

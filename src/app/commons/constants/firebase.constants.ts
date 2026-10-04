@@ -11,6 +11,12 @@ export const FIRESTORE_COLLECTION_PATHS = {
   purCompanies(purCustomerId: string): string {
     return `purCustomers/${purCustomerId}/company`;
   },
+  purBranches(purCustomerId: string, purCompanyId: string): string {
+    return `purCustomers/${purCustomerId}/company/${purCompanyId}/branches`;
+  },
+  purEmployees(purCustomerId: string, purCompanyId: string, purBranchId: string): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purBranches(purCustomerId, purCompanyId)}/${purBranchId}/employee`;
+  },
   firmen(unternehmerId: string): string {
     return `unternehmer/${unternehmerId}/firma`;
   },
@@ -31,6 +37,17 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   },
   purCompany(purCustomerId: string, purCompanyId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.purCompanies(purCustomerId)}/${purCompanyId}`;
+  },
+  purBranch(purCustomerId: string, purCompanyId: string, purBranchId: string): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purBranches(purCustomerId, purCompanyId)}/${purBranchId}`;
+  },
+  purEmployee(
+    purCustomerId: string,
+    purCompanyId: string,
+    purBranchId: string,
+    purEmployeeId: string,
+  ): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purEmployees(purCustomerId, purCompanyId, purBranchId)}/${purEmployeeId}`;
   },
   systemmigration(purCustomerId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.systemMigrationen}/${purCustomerId}`;

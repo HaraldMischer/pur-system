@@ -6,14 +6,10 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
-import {
-  entsprichtFirmaMigration,
-  mapPurCompanyToFirma,
-} from '../../commons/mapper/datenmigration/pur-company-firma.mapper';
-import {
-  entsprichtUnternehmerMigration,
-  mapPurCustomerToUnternehmer,
-} from '../../commons/mapper/datenmigration/pur-customer-unternehmer.mapper';
+import { mapPurBranchToFiliale } from '../../commons/mapper/datenmigration/pur-branch-filiale.mapper';
+import { mapPurCompanyToFirma } from '../../commons/mapper/datenmigration/pur-company-firma.mapper';
+import { mapPurCustomerToUnternehmer } from '../../commons/mapper/datenmigration/pur-customer-unternehmer.mapper';
+import { mapPurEmployeeToMitarbeiter } from '../../commons/mapper/datenmigration/pur-employee-mitarbeiter.mapper';
 import {
   DATENMIGRATIONS_BEREICHE,
   IDatenbereichMigrationDokument,
@@ -23,11 +19,13 @@ import {
   TDatenmigrationsstatus,
   TDatenmigrationsstatusMap,
 } from '../../commons/models/domain/datenmigration';
+import { IPurBranchEintrag } from '../../commons/models/legacy/pur-branch';
 import { IPurCompanyEintrag } from '../../commons/models/legacy/pur-company';
 import {
   IPurCustomerDokument,
   IPurCustomerEintrag,
 } from '../../commons/models/legacy/pur-customer';
+import { IPurEmployeeEintrag } from '../../commons/models/legacy/pur-employee';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 
 // ===== Top-Level Helper =====================
@@ -111,6 +109,157 @@ export class DatenmigrationService {
   }
 
   /**
+   * Lädt alle Legacy-Filialen aller Firmen eines ausgewählten Legacy-Kunden.
+   *
+   * @param purCustomerId - Dokument-ID des ausgewählten Legacy-Kunden.
+   * @returns Legacy-Filialen mit Dokument-ID, übergeordneter Firmen-ID und Quelldaten.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async loadPurBranches(purCustomerId: string): Promise<IPurBranchEintrag[]> {
+    const purCompanies = await this.loadPurCompanies(purCustomerId);
+    const filialenJeFirma = await Promise.all(
+      purCompanies.map(async (purCompany) => {
+        const dokumente = await this.firestoreDbService.loadCollection<IPurBranchEintrag['daten']>(
+          FIRESTORE_COLLECTION_PATHS.purBranches(purCustomerId, purCompany.id),
+          'networkOnly',
+        );
+        return dokumente.map((dokument) => {
+          return {
+            id: dokument.id,
+            purCompanyId: purCompany.id,
+            daten: dokument.daten,
+          };
+        });
+      }),
+    );
+
+    return filialenJeFirma.flat();
+  }
+
+  /**
+   * Lädt alle Legacy-Mitarbeiter aus allen Filialen eines ausgewählten Legacy-Kunden.
+   *
+   * @param purCustomerId - Dokument-ID des ausgewählten Legacy-Kunden.
+   * @returns Legacy-Mitarbeiter mit Dokument-, Firmen- und Filial-ID sowie Quelldaten.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async loadPurEmployees(purCustomerId: string): Promise<IPurEmployeeEintrag[]> {
+    const purBranches = await this.loadPurBranches(purCustomerId);
+    const mitarbeiterJeFiliale = await Promise.all(
+      purBranches.map(async (purBranch) => {
+        const dokumente = await this.firestoreDbService.loadCollection<
+          IPurEmployeeEintrag['daten']
+        >(
+          FIRESTORE_COLLECTION_PATHS.purEmployees(
+            purCustomerId,
+            purBranch.purCompanyId,
+            purBranch.id,
+          ),
+          'networkOnly',
+        );
+        return dokumente.map((dokument) => {
+          return {
+            id: dokument.id,
+            purCompanyId: purBranch.purCompanyId,
+            purBranchId: purBranch.id,
+            daten: dokument.daten,
+          };
+        });
+      }),
+    );
+
+    return mitarbeiterJeFiliale.flat();
+  }
+
+  /**
+   * Ermittelt, ob der Ziel-Unternehmer des ausgewählten Legacy-Kunden vorhanden ist.
+   *
+   * @param purCustomerId - Dokument-ID des ausgewählten Legacy-Kunden und Ziel-Unternehmers.
+   * @returns `1`, wenn der Ziel-Unternehmer vorhanden ist, sonst `0`.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async loadUnternehmerZielDokumente(purCustomerId: string): Promise<number> {
+    const unternehmerId = await this.getZielUnternehmerId(purCustomerId);
+    if (!unternehmerId) return 0;
+
+    const dokument = await this.firestoreDbService.loadDocument<Record<string, unknown>>(
+      FIRESTORE_DOCUMENT_PATHS.unternehmer(unternehmerId),
+      'networkOnly',
+    );
+    return dokument ? 1 : 0;
+  }
+
+  /**
+   * Ermittelt die aktuelle Anzahl der Firmen im Ziel-Unternehmer.
+   *
+   * @param purCustomerId - Dokument-ID des ausgewählten Legacy-Kunden und Ziel-Unternehmers.
+   * @returns Anzahl aller Firmen in der Ziel-Collection.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async loadFirmenZielDokumente(purCustomerId: string): Promise<number> {
+    const unternehmerId = await this.getZielUnternehmerId(purCustomerId);
+    if (!unternehmerId) return 0;
+
+    const dokumente = await this.firestoreDbService.loadCollection<Record<string, unknown>>(
+      FIRESTORE_COLLECTION_PATHS.firmen(unternehmerId),
+      'networkOnly',
+    );
+    return dokumente.length;
+  }
+
+  /**
+   * Ermittelt die aktuelle Anzahl aller Filialen unter den Firmen des Ziel-Unternehmers.
+   *
+   * @param purCustomerId - Dokument-ID des ausgewählten Legacy-Kunden und Ziel-Unternehmers.
+   * @returns Anzahl aller Filialen in den Ziel-Collections.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async loadFilialenZielDokumente(purCustomerId: string): Promise<number> {
+    const unternehmerId = await this.getZielUnternehmerId(purCustomerId);
+    if (!unternehmerId) return 0;
+
+    const firmen = await this.firestoreDbService.loadCollection<Record<string, unknown>>(
+      FIRESTORE_COLLECTION_PATHS.firmen(unternehmerId),
+      'networkOnly',
+    );
+    const filialenJeFirma = await Promise.all(
+      firmen.map((firma) => {
+        return this.firestoreDbService.loadCollection<Record<string, unknown>>(
+          FIRESTORE_COLLECTION_PATHS.filialen(unternehmerId, firma.id),
+          'networkOnly',
+        );
+      }),
+    );
+    return filialenJeFirma.reduce((anzahl, filialen) => anzahl + filialen.length, 0);
+  }
+
+  /**
+   * Ermittelt die aktuelle Anzahl aller Mitarbeiter unter den Firmen des Ziel-Unternehmers.
+   *
+   * @param purCustomerId - Dokument-ID des ausgewählten Legacy-Kunden.
+   * @returns Anzahl aller Mitarbeiter in den Ziel-Collections.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async loadMitarbeiterZielDokumente(purCustomerId: string): Promise<number> {
+    const unternehmerId = await this.getZielUnternehmerId(purCustomerId);
+    if (!unternehmerId) return 0;
+
+    const firmen = await this.firestoreDbService.loadCollection<Record<string, unknown>>(
+      FIRESTORE_COLLECTION_PATHS.firmen(unternehmerId),
+      'networkOnly',
+    );
+    const mitarbeiterJeFirma = await Promise.all(
+      firmen.map((firma) => {
+        return this.firestoreDbService.loadCollection<Record<string, unknown>>(
+          FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firma.id),
+          'networkOnly',
+        );
+      }),
+    );
+    return mitarbeiterJeFirma.reduce((anzahl, mitarbeiter) => anzahl + mitarbeiter.length, 0);
+  }
+
+  /**
    * Migriert genau einen ausgewählten Legacy-Kunden zum Unternehmer.
    *
    * @param purCustomer - Ausgewählter Legacy-Kunde einschließlich unveränderter Quelldaten.
@@ -123,8 +272,6 @@ export class DatenmigrationService {
     const zielPfad = FIRESTORE_DOCUMENT_PATHS.unternehmer(unternehmerId);
     await this.saveUnternehmerStatus(purCustomer.id, 'inProgress', {
       migrierteDokumente: 0,
-      bereitsMigrierteDokumente: 0,
-      konflikte: 0,
       fehler: 0,
       probleme: [],
       gestartet: true,
@@ -139,40 +286,8 @@ export class DatenmigrationService {
       if (!mapping.daten) {
         await this.saveUnternehmerStatus(purCustomer.id, 'failed', {
           migrierteDokumente: 0,
-          bereitsMigrierteDokumente: 0,
-          konflikte: 0,
           fehler: mapping.probleme.length,
           probleme: mapping.probleme,
-        });
-        return;
-      }
-
-      if (vorhandenerUnternehmer) {
-        if (entsprichtUnternehmerMigration(vorhandenerUnternehmer.daten, mapping.daten)) {
-          await this.saveUnternehmerStatus(purCustomer.id, 'completed', {
-            migrierteDokumente: 0,
-            bereitsMigrierteDokumente: 1,
-            konflikte: 0,
-            fehler: 0,
-            probleme: [],
-            abgeschlossen: true,
-          });
-          return;
-        }
-
-        await this.saveUnternehmerStatus(purCustomer.id, 'conflict', {
-          migrierteDokumente: 0,
-          bereitsMigrierteDokumente: 0,
-          konflikte: 1,
-          fehler: 0,
-          probleme: [
-            {
-              typ: 'konflikt',
-              quellPfad,
-              zielPfad,
-              ursache: 'Der vorhandene Unternehmer weicht vom Migrationsergebnis ab.',
-            },
-          ],
         });
         return;
       }
@@ -180,13 +295,11 @@ export class DatenmigrationService {
       const zeitstempel = this.firestoreDbService.createServerTimestamp();
       await this.firestoreDbService.updateDocument(zielPfad, {
         ...mapping.daten,
-        erstelltAm: zeitstempel,
+        ...(!vorhandenerUnternehmer ? { erstelltAm: zeitstempel } : {}),
         aktualisiertAm: zeitstempel,
       });
       await this.saveUnternehmerStatus(purCustomer.id, 'completed', {
         migrierteDokumente: 1,
-        bereitsMigrierteDokumente: 0,
-        konflikte: 0,
         fehler: 0,
         probleme: [],
         abgeschlossen: true,
@@ -194,8 +307,6 @@ export class DatenmigrationService {
     } catch (error: unknown) {
       await this.saveUnternehmerStatus(purCustomer.id, 'failed', {
         migrierteDokumente: 0,
-        bereitsMigrierteDokumente: 0,
-        konflikte: 0,
         fehler: 1,
         probleme: [
           {
@@ -218,13 +329,11 @@ export class DatenmigrationService {
    * @throws Wenn die Unternehmermigration fehlt oder ein technischer Fehler auftritt.
    */
   async migrateFirmen(purCustomerId: string): Promise<void> {
-    const systemmigration = await this.getSystemmigrationFuerFirmen(purCustomerId);
+    const systemmigration = await this.ensureFirmenMigrationMoeglich(purCustomerId);
     const unternehmerId = systemmigration.unternehmerId;
     const quellPfad = FIRESTORE_COLLECTION_PATHS.purCompanies(purCustomerId);
     let quellDokumente = 0;
     let migrierteDokumente = 0;
-    let bereitsMigrierteDokumente = 0;
-    let konflikte = 0;
     let fehler = 0;
     const probleme: IDatenmigrationsproblem[] = [];
 
@@ -240,65 +349,51 @@ export class DatenmigrationService {
 
       await this.saveFirmenStatus(purCustomerId, 'inProgress', quellDokumente, {
         migrierteDokumente,
-        bereitsMigrierteDokumente,
-        konflikte,
         fehler,
         probleme,
         gestartet: true,
       });
 
       for (const purCompany of purCompanies) {
-        const firmaId = firmenIds[purCompany.id];
-        const zielPfad = FIRESTORE_DOCUMENT_PATHS.firma(unternehmerId, firmaId);
-        const vorhandeneFirma = await this.firestoreDbService.loadDocument<Record<string, unknown>>(
-          zielPfad,
-          'networkOnly',
-        );
-        const nummer = await this.getFirmaNummer(
-          unternehmerId,
-          purCompany.daten.companyNumber,
-          vorhandeneFirma?.daten,
-        );
-        const mapping = mapPurCompanyToFirma(purCustomerId, purCompany, nummer);
-        if (!mapping.daten) {
-          fehler += mapping.probleme.length;
-          probleme.push(...mapping.probleme);
-          continue;
-        }
-
-        if (vorhandeneFirma) {
-          if (entsprichtFirmaMigration(vorhandeneFirma.daten, mapping.daten)) {
-            bereitsMigrierteDokumente += 1;
-          } else {
-            konflikte += 1;
-            probleme.push({
-              typ: 'konflikt',
-              quellPfad: FIRESTORE_DOCUMENT_PATHS.purCompany(purCustomerId, purCompany.id),
-              zielPfad,
-              ursache: 'Die vorhandene Firma weicht vom Migrationsergebnis ab.',
-            });
+        const purCompanyPfad = FIRESTORE_DOCUMENT_PATHS.purCompany(purCustomerId, purCompany.id);
+        const zielPfad = FIRESTORE_DOCUMENT_PATHS.firma(unternehmerId, firmenIds[purCompany.id]);
+        try {
+          const vorhandeneFirma = await this.firestoreDbService.loadDocument<
+            Record<string, unknown>
+          >(zielPfad, 'networkOnly');
+          const nummer = await this.getFirmaNummer(
+            unternehmerId,
+            purCompany.daten.companyNumber,
+            vorhandeneFirma?.daten,
+          );
+          const mapping = mapPurCompanyToFirma(purCustomerId, purCompany, nummer);
+          if (!mapping.daten) {
+            fehler += mapping.probleme.length;
+            probleme.push(...mapping.probleme);
+            continue;
           }
-          continue;
-        }
 
-        const zeitstempel = this.firestoreDbService.createServerTimestamp();
-        await this.firestoreDbService.updateDocument(zielPfad, {
-          ...mapping.daten,
-          erstelltAm: zeitstempel,
-          aktualisiertAm: zeitstempel,
-        });
-        migrierteDokumente += 1;
+          const zeitstempel = this.firestoreDbService.createServerTimestamp();
+          await this.firestoreDbService.updateDocument(zielPfad, {
+            ...mapping.daten,
+            ...(!vorhandeneFirma ? { erstelltAm: zeitstempel } : {}),
+            aktualisiertAm: zeitstempel,
+          });
+          migrierteDokumente += 1;
+        } catch {
+          fehler += 1;
+          probleme.push({
+            typ: 'fehler',
+            quellPfad: purCompanyPfad,
+            zielPfad,
+            ursache: 'Das Firmendokument konnte technisch nicht migriert werden.',
+          });
+        }
       }
 
-      const status: TDatenmigrationsstatus = fehler
-        ? 'failed'
-        : konflikte
-          ? 'conflict'
-          : 'completed';
+      const status: TDatenmigrationsstatus = fehler ? 'failed' : 'completed';
       await this.saveFirmenStatus(purCustomerId, status, quellDokumente, {
         migrierteDokumente,
-        bereitsMigrierteDokumente,
-        konflikte,
         fehler,
         probleme,
         abgeschlossen: status === 'completed',
@@ -312,8 +407,252 @@ export class DatenmigrationService {
       });
       await this.saveFirmenStatus(purCustomerId, 'failed', quellDokumente, {
         migrierteDokumente,
-        bereitsMigrierteDokumente,
-        konflikte,
+        fehler,
+        probleme,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Migriert alle Legacy-Filialen eines ausgewählten Kunden in ihre bereits migrierten Firmen.
+   *
+   * @param purCustomerId - Dokument-ID des ausgewählten Legacy-Kunden.
+   * @returns Ein Promise, das nach dem Speichern des abschließenden Filialstatus erfüllt wird.
+   * @throws Wenn die Firmenmigration fehlt oder ein technischer Fehler auftritt.
+   */
+  async migrateFilialen(purCustomerId: string): Promise<void> {
+    const systemmigration = await this.ensureFilialenMigrationMoeglich(purCustomerId);
+    const unternehmerId = systemmigration.unternehmerId;
+    const quellPfad = FIRESTORE_COLLECTION_PATHS.purCompanies(purCustomerId);
+    let quellDokumente = 0;
+    let migrierteDokumente = 0;
+    let fehler = 0;
+    const probleme: IDatenmigrationsproblem[] = [];
+
+    try {
+      const purBranches = await this.loadPurBranches(purCustomerId);
+      quellDokumente = purBranches.length;
+      const filialenIds = await this.ensureFilialenIds(
+        purCustomerId,
+        unternehmerId,
+        systemmigration.firmenIds,
+        systemmigration.filialenIds,
+        purBranches,
+      );
+
+      await this.saveFilialenStatus(purCustomerId, 'inProgress', quellDokumente, {
+        migrierteDokumente,
+        fehler,
+        probleme,
+        gestartet: true,
+      });
+
+      for (const purBranch of purBranches) {
+        const firmaId = systemmigration.firmenIds?.[purBranch.purCompanyId]?.trim();
+        if (!firmaId) {
+          fehler += 1;
+          probleme.push({
+            typ: 'fehler',
+            quellPfad: FIRESTORE_DOCUMENT_PATHS.purBranch(
+              purCustomerId,
+              purBranch.purCompanyId,
+              purBranch.id,
+            ),
+            ursache: 'Für die Legacy-Firma fehlt die gespeicherte Ziel-ID.',
+          });
+          continue;
+        }
+        const filialeId = filialenIds[purBranch.purCompanyId]?.[purBranch.id]?.trim();
+        if (!filialeId) {
+          fehler += 1;
+          probleme.push({
+            typ: 'fehler',
+            quellPfad: FIRESTORE_DOCUMENT_PATHS.purBranch(
+              purCustomerId,
+              purBranch.purCompanyId,
+              purBranch.id,
+            ),
+            ursache: 'Für die Legacy-Filiale fehlt die gespeicherte Ziel-ID.',
+          });
+          continue;
+        }
+        const zielPfad = FIRESTORE_DOCUMENT_PATHS.filiale(unternehmerId, firmaId, filialeId);
+        const purBranchPfad = FIRESTORE_DOCUMENT_PATHS.purBranch(
+          purCustomerId,
+          purBranch.purCompanyId,
+          purBranch.id,
+        );
+        try {
+          const vorhandeneFiliale = await this.firestoreDbService.loadDocument<
+            Record<string, unknown>
+          >(zielPfad, 'networkOnly');
+          const nummer = await this.getFilialeNummer(
+            unternehmerId,
+            firmaId,
+            purBranch.daten.branchNumber,
+            vorhandeneFiliale?.daten,
+          );
+          const mapping = mapPurBranchToFiliale(purCustomerId, purBranch, nummer);
+          if (!mapping.daten) {
+            fehler += mapping.probleme.length;
+            probleme.push(...mapping.probleme);
+            continue;
+          }
+
+          const zeitstempel = this.firestoreDbService.createServerTimestamp();
+          await this.firestoreDbService.updateDocument(zielPfad, {
+            ...mapping.daten,
+            ...(!vorhandeneFiliale ? { erstelltAm: zeitstempel } : {}),
+            aktualisiertAm: zeitstempel,
+          });
+          migrierteDokumente += 1;
+        } catch {
+          fehler += 1;
+          probleme.push({
+            typ: 'fehler',
+            quellPfad: purBranchPfad,
+            zielPfad,
+            ursache: 'Das Filialdokument konnte technisch nicht migriert werden.',
+          });
+        }
+      }
+
+      const status: TDatenmigrationsstatus = fehler ? 'failed' : 'completed';
+      await this.saveFilialenStatus(purCustomerId, status, quellDokumente, {
+        migrierteDokumente,
+        fehler,
+        probleme,
+        abgeschlossen: status === 'completed',
+      });
+    } catch (error: unknown) {
+      fehler += 1;
+      probleme.push({
+        typ: 'fehler',
+        quellPfad,
+        ursache: 'Die Filialmigration ist technisch fehlgeschlagen.',
+      });
+      await this.saveFilialenStatus(purCustomerId, 'failed', quellDokumente, {
+        migrierteDokumente,
+        fehler,
+        probleme,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Migriert alle Legacy-Filialmitarbeiter eines ausgewählten Kunden als Firmenmitarbeiter.
+   *
+   * @param purCustomerId - Dokument-ID des ausgewählten Legacy-Kunden.
+   * @returns Ein Promise, das nach dem Speichern des abschließenden Mitarbeiterstatus erfüllt wird.
+   * @throws Wenn die Filialmigration fehlt oder ein technischer Fehler auftritt.
+   */
+  async migrateMitarbeiter(purCustomerId: string): Promise<void> {
+    const systemmigration = await this.ensureMitarbeiterMigrationMoeglich(purCustomerId);
+    const unternehmerId = systemmigration.unternehmerId;
+    const quellPfad = FIRESTORE_COLLECTION_PATHS.purCompanies(purCustomerId);
+    let quellDokumente = 0;
+    let migrierteDokumente = 0;
+    let fehler = 0;
+    const probleme: IDatenmigrationsproblem[] = [];
+
+    try {
+      const purEmployees = await this.loadPurEmployees(purCustomerId);
+      quellDokumente = purEmployees.length;
+      const mitarbeiterIds = await this.ensureMitarbeiterIds(
+        purCustomerId,
+        unternehmerId,
+        systemmigration.firmenIds,
+        systemmigration.filialenIds,
+        systemmigration.mitarbeiterIds,
+        purEmployees,
+      );
+
+      await this.saveMitarbeiterStatus(purCustomerId, 'inProgress', quellDokumente, {
+        migrierteDokumente,
+        fehler,
+        probleme,
+        gestartet: true,
+      });
+
+      for (const purEmployee of purEmployees) {
+        const firmaId = systemmigration.firmenIds?.[purEmployee.purCompanyId]?.trim();
+        const filialId =
+          systemmigration.filialenIds?.[purEmployee.purCompanyId]?.[
+            purEmployee.purBranchId
+          ]?.trim();
+        const mitarbeiterId =
+          mitarbeiterIds[purEmployee.purCompanyId]?.[purEmployee.purBranchId]?.[
+            purEmployee.id
+          ]?.trim();
+        const purEmployeePfad = FIRESTORE_DOCUMENT_PATHS.purEmployee(
+          purCustomerId,
+          purEmployee.purCompanyId,
+          purEmployee.purBranchId,
+          purEmployee.id,
+        );
+
+        if (!firmaId || !filialId || !mitarbeiterId) {
+          fehler += 1;
+          probleme.push({
+            typ: 'fehler',
+            quellPfad: purEmployeePfad,
+            ursache: 'Für Firma, Filiale oder Mitarbeiter fehlt die gespeicherte Ziel-ID.',
+          });
+          continue;
+        }
+
+        const zielPfad = FIRESTORE_DOCUMENT_PATHS.mitarbeiter(
+          unternehmerId,
+          firmaId,
+          mitarbeiterId,
+        );
+        try {
+          const vorhandenerMitarbeiter = await this.firestoreDbService.loadDocument<
+            Record<string, unknown>
+          >(zielPfad, 'networkOnly');
+          const mapping = mapPurEmployeeToMitarbeiter(purCustomerId, purEmployee, filialId);
+          if (!mapping.daten) {
+            fehler += mapping.probleme.length;
+            probleme.push(...mapping.probleme);
+            continue;
+          }
+
+          const zeitstempel = this.firestoreDbService.createServerTimestamp();
+          await this.firestoreDbService.updateDocument(zielPfad, {
+            ...mapping.daten,
+            ...(!vorhandenerMitarbeiter ? { erstelltAm: zeitstempel } : {}),
+            aktualisiertAm: zeitstempel,
+          });
+          migrierteDokumente += 1;
+        } catch {
+          fehler += 1;
+          probleme.push({
+            typ: 'fehler',
+            quellPfad: purEmployeePfad,
+            zielPfad,
+            ursache: 'Das Mitarbeiterdokument konnte technisch nicht migriert werden.',
+          });
+        }
+      }
+
+      const status: TDatenmigrationsstatus = fehler ? 'failed' : 'completed';
+      await this.saveMitarbeiterStatus(purCustomerId, status, quellDokumente, {
+        migrierteDokumente,
+        fehler,
+        probleme,
+        abgeschlossen: status === 'completed',
+      });
+    } catch (error: unknown) {
+      fehler += 1;
+      probleme.push({
+        typ: 'fehler',
+        quellPfad,
+        ursache: 'Die Mitarbeitermigration ist technisch fehlgeschlagen.',
+      });
+      await this.saveMitarbeiterStatus(purCustomerId, 'failed', quellDokumente, {
+        migrierteDokumente,
         fehler,
         probleme,
       });
@@ -367,6 +706,32 @@ export class DatenmigrationService {
     return Math.max(0, ...nummern) + 1;
   }
 
+  private async getFilialeNummer(
+    unternehmerId: string,
+    firmaId: string,
+    legacyNummer: unknown,
+    vorhandeneFiliale?: Record<string, unknown>,
+  ): Promise<number> {
+    if (Number.isInteger(legacyNummer) && Number(legacyNummer) > 0) {
+      return Number(legacyNummer);
+    }
+
+    const vorhandeneNummer = vorhandeneFiliale?.['nummer'];
+    if (Number.isInteger(vorhandeneNummer) && Number(vorhandeneNummer) > 0) {
+      return Number(vorhandeneNummer);
+    }
+
+    const filialen = await this.firestoreDbService.loadCollection<Record<string, unknown>>(
+      FIRESTORE_COLLECTION_PATHS.filialen(unternehmerId, firmaId),
+      'networkOnly',
+    );
+    const nummern = filialen
+      .map((eintrag) => eintrag.daten['nummer'])
+      .filter((nummer): nummer is number => Number.isInteger(nummer) && Number(nummer) > 0);
+
+    return Math.max(0, ...nummern) + 1;
+  }
+
   private async ensureSystemmigration(purCustomerId: string): Promise<string> {
     const dokumentPfad = FIRESTORE_DOCUMENT_PATHS.systemmigration(purCustomerId);
     const vorhanden = await this.firestoreDbService.loadDocument<ISystemmigrationDokument>(
@@ -390,7 +755,7 @@ export class DatenmigrationService {
     return unternehmerId;
   }
 
-  private async getSystemmigrationFuerFirmen(
+  private async ensureFirmenMigrationMoeglich(
     purCustomerId: string,
   ): Promise<ISystemmigrationDokument> {
     const systemmigration = await this.firestoreDbService.loadDocument<ISystemmigrationDokument>(
@@ -405,14 +770,61 @@ export class DatenmigrationService {
         ),
         'networkOnly',
       );
+    const systemmigrationDaten = systemmigration?.daten;
+    const unternehmerId = systemmigrationDaten?.unternehmerId?.trim();
     if (
-      !systemmigration?.daten.unternehmerId?.trim() ||
+      !systemmigrationDaten ||
+      !unternehmerId ||
       unternehmerStatus?.daten.status !== 'completed'
     ) {
       throw new Error('Die Firmenmigration erfordert eine abgeschlossene Unternehmermigration.');
     }
+    return systemmigrationDaten;
+  }
 
-    return systemmigration.daten;
+  private async ensureFilialenMigrationMoeglich(
+    purCustomerId: string,
+  ): Promise<ISystemmigrationDokument> {
+    const systemmigration = await this.firestoreDbService.loadDocument<ISystemmigrationDokument>(
+      FIRESTORE_DOCUMENT_PATHS.systemmigration(purCustomerId),
+      'networkOnly',
+    );
+    const firmenStatus = await this.firestoreDbService.loadDocument<IDatenbereichMigrationDokument>(
+      FIRESTORE_DOCUMENT_PATHS.migrationsDatenbereich(
+        purCustomerId,
+        DATENMIGRATIONS_BEREICHE.firmen,
+      ),
+      'networkOnly',
+    );
+    const systemmigrationDaten = systemmigration?.daten;
+    const unternehmerId = systemmigrationDaten?.unternehmerId?.trim();
+    if (!systemmigrationDaten || !unternehmerId || firmenStatus?.daten.status !== 'completed') {
+      throw new Error('Die Filialmigration erfordert eine abgeschlossene Firmenmigration.');
+    }
+    return systemmigrationDaten;
+  }
+
+  private async ensureMitarbeiterMigrationMoeglich(
+    purCustomerId: string,
+  ): Promise<ISystemmigrationDokument> {
+    const systemmigration = await this.firestoreDbService.loadDocument<ISystemmigrationDokument>(
+      FIRESTORE_DOCUMENT_PATHS.systemmigration(purCustomerId),
+      'networkOnly',
+    );
+    const filialenStatus =
+      await this.firestoreDbService.loadDocument<IDatenbereichMigrationDokument>(
+        FIRESTORE_DOCUMENT_PATHS.migrationsDatenbereich(
+          purCustomerId,
+          DATENMIGRATIONS_BEREICHE.filialen,
+        ),
+        'networkOnly',
+      );
+    const systemmigrationDaten = systemmigration?.daten;
+    const unternehmerId = systemmigrationDaten?.unternehmerId?.trim();
+    if (!systemmigrationDaten || !unternehmerId || filialenStatus?.daten.status !== 'completed') {
+      throw new Error('Die Mitarbeitermigration erfordert eine abgeschlossene Filialmigration.');
+    }
+    return systemmigrationDaten;
   }
 
   private async ensureFirmenIds(
@@ -446,13 +858,125 @@ export class DatenmigrationService {
     return firmenIds;
   }
 
+  private async ensureFilialenIds(
+    purCustomerId: string,
+    unternehmerId: string,
+    firmenIds: Readonly<Record<string, string>> | undefined,
+    gespeicherteFilialenIds: Readonly<Record<string, Readonly<Record<string, string>>>> | undefined,
+    purBranches: readonly IPurBranchEintrag[],
+  ): Promise<Readonly<Record<string, Readonly<Record<string, string>>>>> {
+    const filialenIds = Object.fromEntries(
+      Object.entries(gespeicherteFilialenIds ?? {}).map(([purCompanyId, ids]) => {
+        return [purCompanyId, { ...ids }];
+      }),
+    );
+    let aktualisiert = false;
+
+    for (const purBranch of purBranches) {
+      const firmaId = firmenIds?.[purBranch.purCompanyId]?.trim();
+      if (!firmaId) continue;
+
+      const firmaFilialenIds = filialenIds[purBranch.purCompanyId] ?? {};
+      if (
+        typeof firmaFilialenIds[purBranch.id] === 'string' &&
+        firmaFilialenIds[purBranch.id].trim()
+      ) {
+        continue;
+      }
+      filialenIds[purBranch.purCompanyId] = {
+        ...firmaFilialenIds,
+        [purBranch.id]: this.firestoreDbService.createDocumentId(
+          FIRESTORE_COLLECTION_PATHS.filialen(unternehmerId, firmaId),
+        ),
+      };
+      aktualisiert = true;
+    }
+
+    if (aktualisiert) {
+      await this.firestoreDbService.updateDocument(
+        FIRESTORE_DOCUMENT_PATHS.systemmigration(purCustomerId),
+        {
+          filialenIds,
+          aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
+        },
+      );
+    }
+    return filialenIds;
+  }
+
+  private async ensureMitarbeiterIds(
+    purCustomerId: string,
+    unternehmerId: string,
+    firmenIds: Readonly<Record<string, string>> | undefined,
+    filialenIds: Readonly<Record<string, Readonly<Record<string, string>>>> | undefined,
+    gespeicherteMitarbeiterIds: ISystemmigrationDokument['mitarbeiterIds'],
+    purEmployees: readonly IPurEmployeeEintrag[],
+  ): Promise<NonNullable<ISystemmigrationDokument['mitarbeiterIds']>> {
+    const mitarbeiterIds = Object.fromEntries(
+      Object.entries(gespeicherteMitarbeiterIds ?? {}).map(([purCompanyId, filialen]) => {
+        return [
+          purCompanyId,
+          Object.fromEntries(
+            Object.entries(filialen).map(([purBranchId, ids]) => {
+              return [purBranchId, { ...ids }];
+            }),
+          ),
+        ];
+      }),
+    );
+    let aktualisiert = false;
+
+    for (const purEmployee of purEmployees) {
+      const firmaId = firmenIds?.[purEmployee.purCompanyId]?.trim();
+      const filialId = filialenIds?.[purEmployee.purCompanyId]?.[purEmployee.purBranchId]?.trim();
+      if (!firmaId || !filialId) continue;
+
+      const firmaMitarbeiterIds = mitarbeiterIds[purEmployee.purCompanyId] ?? {};
+      const filialMitarbeiterIds = firmaMitarbeiterIds[purEmployee.purBranchId] ?? {};
+      if (
+        typeof filialMitarbeiterIds[purEmployee.id] === 'string' &&
+        filialMitarbeiterIds[purEmployee.id].trim()
+      ) {
+        continue;
+      }
+      mitarbeiterIds[purEmployee.purCompanyId] = {
+        ...firmaMitarbeiterIds,
+        [purEmployee.purBranchId]: {
+          ...filialMitarbeiterIds,
+          [purEmployee.id]: this.firestoreDbService.createDocumentId(
+            FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId),
+          ),
+        },
+      };
+      aktualisiert = true;
+    }
+
+    if (aktualisiert) {
+      await this.firestoreDbService.updateDocument(
+        FIRESTORE_DOCUMENT_PATHS.systemmigration(purCustomerId),
+        {
+          mitarbeiterIds,
+          aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
+        },
+      );
+    }
+    return mitarbeiterIds;
+  }
+
+  private async getZielUnternehmerId(purCustomerId: string): Promise<string | null> {
+    const systemmigration = await this.firestoreDbService.loadDocument<ISystemmigrationDokument>(
+      FIRESTORE_DOCUMENT_PATHS.systemmigration(purCustomerId),
+      'networkOnly',
+    );
+    const unternehmerId = systemmigration?.daten.unternehmerId;
+    return typeof unternehmerId === 'string' && unternehmerId.trim() ? unternehmerId.trim() : null;
+  }
+
   private async saveUnternehmerStatus(
     purCustomerId: string,
     status: TDatenmigrationsstatus,
     ergebnis: {
       migrierteDokumente: number;
-      bereitsMigrierteDokumente: number;
-      konflikte: number;
       fehler: number;
       probleme: IDatenmigrationsproblem[];
       gestartet?: boolean;
@@ -471,8 +995,6 @@ export class DatenmigrationService {
         status,
         quellDokumente: 1,
         migrierteDokumente: ergebnis.migrierteDokumente,
-        bereitsMigrierteDokumente: ergebnis.bereitsMigrierteDokumente,
-        konflikte: ergebnis.konflikte,
         fehler: ergebnis.fehler,
         probleme: ergebnis.probleme,
         ...(ergebnis.gestartet ? { gestartetAm: zeitstempel } : {}),
@@ -488,8 +1010,6 @@ export class DatenmigrationService {
     quellDokumente: number,
     ergebnis: {
       migrierteDokumente: number;
-      bereitsMigrierteDokumente: number;
-      konflikte: number;
       fehler: number;
       probleme: IDatenmigrationsproblem[];
       gestartet?: boolean;
@@ -508,8 +1028,72 @@ export class DatenmigrationService {
         status,
         quellDokumente,
         migrierteDokumente: ergebnis.migrierteDokumente,
-        bereitsMigrierteDokumente: ergebnis.bereitsMigrierteDokumente,
-        konflikte: ergebnis.konflikte,
+        fehler: ergebnis.fehler,
+        probleme: ergebnis.probleme,
+        ...(ergebnis.gestartet ? { gestartetAm: zeitstempel } : {}),
+        abgeschlossenAm: ergebnis.abgeschlossen ? zeitstempel : null,
+        aktualisiertAm: zeitstempel,
+      },
+    );
+  }
+
+  private async saveFilialenStatus(
+    purCustomerId: string,
+    status: TDatenmigrationsstatus,
+    quellDokumente: number,
+    ergebnis: {
+      migrierteDokumente: number;
+      fehler: number;
+      probleme: IDatenmigrationsproblem[];
+      gestartet?: boolean;
+      abgeschlossen?: boolean;
+    },
+  ): Promise<void> {
+    const zeitstempel = this.firestoreDbService.createServerTimestamp();
+    await this.firestoreDbService.updateDocument(
+      FIRESTORE_DOCUMENT_PATHS.migrationsDatenbereich(
+        purCustomerId,
+        DATENMIGRATIONS_BEREICHE.filialen,
+      ),
+      {
+        datenbereich: 'filialen',
+        version: 1,
+        status,
+        quellDokumente,
+        migrierteDokumente: ergebnis.migrierteDokumente,
+        fehler: ergebnis.fehler,
+        probleme: ergebnis.probleme,
+        ...(ergebnis.gestartet ? { gestartetAm: zeitstempel } : {}),
+        abgeschlossenAm: ergebnis.abgeschlossen ? zeitstempel : null,
+        aktualisiertAm: zeitstempel,
+      },
+    );
+  }
+
+  private async saveMitarbeiterStatus(
+    purCustomerId: string,
+    status: TDatenmigrationsstatus,
+    quellDokumente: number,
+    ergebnis: {
+      migrierteDokumente: number;
+      fehler: number;
+      probleme: IDatenmigrationsproblem[];
+      gestartet?: boolean;
+      abgeschlossen?: boolean;
+    },
+  ): Promise<void> {
+    const zeitstempel = this.firestoreDbService.createServerTimestamp();
+    await this.firestoreDbService.updateDocument(
+      FIRESTORE_DOCUMENT_PATHS.migrationsDatenbereich(
+        purCustomerId,
+        DATENMIGRATIONS_BEREICHE.mitarbeiter,
+      ),
+      {
+        datenbereich: 'mitarbeiter',
+        version: 1,
+        status,
+        quellDokumente,
+        migrierteDokumente: ergebnis.migrierteDokumente,
         fehler: ergebnis.fehler,
         probleme: ergebnis.probleme,
         ...(ergebnis.gestartet ? { gestartetAm: zeitstempel } : {}),

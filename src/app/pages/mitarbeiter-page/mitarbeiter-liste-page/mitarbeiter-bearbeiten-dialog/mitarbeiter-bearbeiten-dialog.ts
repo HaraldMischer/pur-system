@@ -8,6 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormControl,
@@ -30,7 +31,6 @@ import {
   IMitarbeiterEintrag,
   TMitarbeiterRolle,
 } from '../../../../commons/models/domain/mitarbeiter';
-import { EGender } from '../../../../commons/models/domain/person';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
 import { BenutzerStore } from '../../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../../stores/domain/mitarbeiter.store';
@@ -84,9 +84,12 @@ export class MitarbeiterBearbeitenDialog {
     return !this.erlaubteFilialIds.has(filialId);
   });
 
+  // ===== Interner State =======================
+
+  private urspruenglicherFormwert = '';
+
   // ===== Öffentliche Werte ====================
 
-  readonly geschlechter = Object.values(EGender);
   readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
     { value: 'service', label: 'Service' },
     { value: 'kasse', label: 'Kasse' },
@@ -94,6 +97,7 @@ export class MitarbeiterBearbeitenDialog {
   ];
   readonly weitereFilialzuordnungen = this.fremdeFilialIds.length;
   readonly submitError = signal<string | null>(null);
+  readonly hatAenderungen = signal(false);
   readonly mitarbeiterForm = new FormGroup({
     person: new FormGroup({
       vorname: new FormControl(this.dialogDaten.mitarbeiter.person.vorname, {
@@ -107,25 +111,18 @@ export class MitarbeiterBearbeitenDialog {
       geburtstag: new FormControl(this.dialogDaten.mitarbeiter.person.geburtstag ?? '', {
         nonNullable: true,
       }),
-      geschlecht: new FormControl<EGender | null>(
-        this.dialogDaten.mitarbeiter.person.geschlecht ?? null,
-      ),
       adresse: new FormGroup({
         strasse: new FormControl(this.dialogDaten.mitarbeiter.person.adresse.strasse, {
           nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
         }),
         hausnummer: new FormControl(this.dialogDaten.mitarbeiter.person.adresse.hausnummer, {
           nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
         }),
         postleitzahl: new FormControl(this.dialogDaten.mitarbeiter.person.adresse.postleitzahl, {
           nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
         }),
         ort: new FormControl(this.dialogDaten.mitarbeiter.person.adresse.ort, {
           nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator],
         }),
       }),
       kontakt: new FormGroup({
@@ -161,6 +158,13 @@ export class MitarbeiterBearbeitenDialog {
   });
 
   constructor() {
+    this.urspruenglicherFormwert = JSON.stringify(this.mitarbeiterForm.getRawValue());
+    this.mitarbeiterForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.hatAenderungen.set(
+        JSON.stringify(this.mitarbeiterForm.getRawValue()) !== this.urspruenglicherFormwert,
+      );
+    });
+
     effect(() => {
       const inProgress = this.mitarbeiterStore.inProgress();
       untracked(() => {
@@ -184,6 +188,7 @@ export class MitarbeiterBearbeitenDialog {
       this.mitarbeiterForm.markAllAsTouched();
       return;
     }
+    if (!this.hatAenderungen()) return;
     if (!this.hatAktuellenFirmenzugriff()) {
       this.submitError.set('Der Zugriff auf die ausgewählte Firma ist nicht mehr erlaubt.');
       return;
@@ -255,7 +260,6 @@ export class MitarbeiterBearbeitenDialog {
           ...(kontakt.webseite.trim() ? { webseite: kontakt.webseite.trim() } : {}),
         },
         ...(geburtstag ? { geburtstag } : {}),
-        ...(value.person.geschlecht ? { geschlecht: value.person.geschlecht } : {}),
       },
       rolle: value.rolle,
       filialIds: [

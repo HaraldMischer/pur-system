@@ -34,8 +34,16 @@
         "
         (selectionChange)="handleMigrationsbereichSelect($event.value)"
       >
+        <mat-select-trigger class="datenmigration-page__bereich-trigger">
+          {{ selectedMigrationsbereichOption().label }}
+        </mat-select-trigger>
         @for (migrationsbereich of migrationsbereiche; track migrationsbereich.id) {
-          <mat-option [value]="migrationsbereich.id">{{ migrationsbereich.label }}</mat-option>
+          <mat-option class="datenmigration-page__bereich-option" [value]="migrationsbereich.id">
+            <span class="datenmigration-page__bereich-option-inhalt">
+              <span>{{ migrationsbereich.label }}</span>
+              <small class="datenmigration-page__bereich-pfad">{{ migrationsbereich.pfad }}</small>
+            </span>
+          </mat-option>
         }
       </mat-select>
     </mat-form-field>
@@ -78,16 +86,16 @@
               <dd>{{ selectedStatus()?.migrierteDokumente ?? 0 }}</dd>
             </div>
             <div>
-              <dt>Bereits migriert</dt>
-              <dd>{{ selectedStatus()?.bereitsMigrierteDokumente ?? 0 }}</dd>
-            </div>
-            <div>
-              <dt>Konflikte</dt>
-              <dd>{{ selectedStatus()?.konflikte ?? 0 }}</dd>
-            </div>
-            <div>
               <dt>Fehler</dt>
               <dd>{{ selectedStatus()?.fehler ?? 0 }}</dd>
+            </div>
+            <div>
+              <dt>Offen</dt>
+              <dd>{{ offeneDokumente() }}</dd>
+            </div>
+            <div>
+              <dt>Ziel</dt>
+              <dd>{{ zielDokumente() }}</dd>
             </div>
           </dl>
 
@@ -96,6 +104,23 @@
           ) {
             <p class="pur-form__message" role="status">
               Migriere zuerst den Unternehmer dieses Legacy-Kunden.
+            </p>
+          }
+
+          @if (
+            selectedMigrationsbereich() === 'filialen' && firmenStatus()?.status !== 'completed'
+          ) {
+            <p class="pur-form__message" role="status">
+              Migriere zuerst die Firmen dieses Legacy-Kunden.
+            </p>
+          }
+
+          @if (
+            selectedMigrationsbereich() === 'mitarbeiter' &&
+            filialenStatus()?.status !== 'completed'
+          ) {
+            <p class="pur-form__message" role="status">
+              Migriere zuerst die Filialen dieses Legacy-Kunden.
             </p>
           }
 

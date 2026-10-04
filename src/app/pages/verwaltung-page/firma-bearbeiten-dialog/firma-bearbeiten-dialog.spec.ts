@@ -59,7 +59,9 @@ describe('FirmaBearbeitenDialog', () => {
   });
 
   it('should initialize the form with the complete editable company data', () => {
-    const component = TestBed.createComponent(FirmaBearbeitenDialog).componentInstance;
+    const fixture = TestBed.createComponent(FirmaBearbeitenDialog);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
 
     expect(component.firmaForm.getRawValue()).toEqual({
       anzeigename: 'Firma Nord',
@@ -68,6 +70,32 @@ describe('FirmaBearbeitenDialog', () => {
       kontakt: firma.kontakt,
     });
     expect(component.firmaForm.valid).toBe(true);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+        'button[type="submit"]',
+      )?.disabled,
+    ).toBe(true);
+  });
+
+  it('should enable saving only while the company differs from its initial value', () => {
+    const fixture = TestBed.createComponent(FirmaBearbeitenDialog);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.firmaForm.controls.anzeigename.setValue('Firma Neu');
+    expect(component.hatAenderungen()).toBe(true);
+
+    component.firmaForm.controls.anzeigename.setValue('Firma Nord');
+    expect(component.hatAenderungen()).toBe(false);
+  });
+
+  it('should not update an unchanged company', async () => {
+    const component = TestBed.createComponent(FirmaBearbeitenDialog).componentInstance;
+
+    await component.onSubmit();
+
+    expect(updateFirmaMock).not.toHaveBeenCalled();
+    expect(closeMock).not.toHaveBeenCalled();
   });
 
   it('should use only global form and dialog layout classes', () => {
@@ -109,11 +137,12 @@ describe('FirmaBearbeitenDialog', () => {
       postleitzahl: '',
       ort: '',
     });
+    component.firmaForm.controls.anzeigename.setValue('Firma Nord Neu');
 
     await component.onSubmit();
 
     expect(updateFirmaMock).toHaveBeenCalledWith({
-      anzeigename: 'Firma Nord',
+      anzeigename: 'Firma Nord Neu',
       firmenname: 'Firma Nord GmbH',
       kontakt: firma.kontakt,
     });
@@ -151,6 +180,7 @@ describe('FirmaBearbeitenDialog', () => {
   it('should keep the dialog open when the update fails', async () => {
     updateFirmaMock.mockRejectedValue({ code: 'permission-denied' });
     const component = TestBed.createComponent(FirmaBearbeitenDialog).componentInstance;
+    component.firmaForm.controls.anzeigename.setValue('Firma Neu');
 
     await component.onSubmit();
 

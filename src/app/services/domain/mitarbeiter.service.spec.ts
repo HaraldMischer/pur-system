@@ -6,7 +6,6 @@ import {
   IMitarbeiterAktualisierung,
   IMitarbeiterAnlage,
 } from '../../commons/models/domain/mitarbeiter';
-import { EGender } from '../../commons/models/domain/person';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { MitarbeiterService } from './mitarbeiter.service';
 
@@ -33,7 +32,6 @@ describe('MitarbeiterService', () => {
       },
       kontakt: { email: 'mia@example.com' },
       geburtstag: '1990-01-02',
-      geschlecht: EGender.FEMALE,
     },
     rolle: 'service',
     filialIds: ['filiale-1'],
@@ -64,7 +62,12 @@ describe('MitarbeiterService', () => {
         id: 'z',
         daten: {
           ...anlage,
-          person: { ...anlage.person, vorname: ' Zoe ', nachname: ' Zimmer ' },
+          person: {
+            ...anlage.person,
+            vorname: ' Zoe ',
+            nachname: ' Zimmer ',
+            geschlecht: 'weiblich',
+          },
           filialIds: ['filiale-2', 'filiale-2', ' filiale-1 '],
           aktiv: true,
           benutzerUid: 'intern',
@@ -243,6 +246,7 @@ describe('MitarbeiterService', () => {
       'unternehmer/u/firma/f/mitarbeiter',
       {
         ...anlage,
+        anzeigename: 'Mia Muster',
         aktiv: true,
         erstelltAm: 'server-zeitstempel',
         aktualisiertAm: 'server-zeitstempel',
@@ -263,6 +267,7 @@ describe('MitarbeiterService', () => {
       'unternehmer/u/firma/f/mitarbeiter/m-1',
       {
         ...aktualisierung,
+        anzeigename: 'Mia Muster',
         aktualisiertAm: 'server-zeitstempel',
       },
     );

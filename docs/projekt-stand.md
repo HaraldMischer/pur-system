@@ -61,10 +61,13 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Die `DatenstrukturPage` ist unter ihrer eigenen Unterroute erreichbar. Die `BenutzerPage` bündelt unter der zweiten Unterroute
   weiterhin Benutzeranlage und Benutzerverwaltung.
 - Die `DatenmigrationPage` lädt Legacy-Kunden zur Einzelauswahl und bietet für den ausgewählten Kunden die Migration von
-  Unternehmer und Firmen mit jeweils eigenem Status, Ergebniszahlen und Problemdetails an. Die Firmenmigration ist erst nach
-  erfolgreicher Unternehmermigration freigegeben. Abgeschlossene Migrationen sind gesperrt; fehlgeschlagene oder
-  konfliktbehaftete Migrationen können erneut geprüft werden. Eine kundenübergreifende Sammelaktion gibt es nicht.
+  Unternehmer, Firmen, Filialen und Mitarbeitern mit jeweils eigenem Status, Ergebniszahlen und Problemdetails an. Der feste
+  Bereichsselektor zeigt die fachliche Reihenfolge; die zugehörige Karte zeigt `Status | Quelle | Migriert` sowie
+  `Fehler | Offen | Ziel`. Jeder Folgebereich setzt den erfolgreichen Abschluss seines Vorgängers voraus. Abgeschlossene und
+  fehlgeschlagene Migrationen können erneut ausgeführt werden. Eine kundenübergreifende Sammelaktion gibt es nicht.
 - Die Route `/verwaltung` enthält die Auswahl zugeordneter Stammdaten und die Bearbeitung bestehender Firmen- und Filialdaten.
+  Die beiden Bearbeitungsdialoge vergleichen ihre normalisierten Aktualisierungsdaten per `JSON.stringify()` mit dem
+  Ausgangszustand. Ohne fachliche Änderung bleiben Speicherbutton und Firestore-Aktualisierung gesperrt.
 - Die geschützte Route `/passwort` ermöglicht angemeldeten Benutzern eine Passwortänderung.
 
 ## Firebase-Grundlage
@@ -86,9 +89,19 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Serverfehlern; Berechtigungsfehler werden unverändert weitergegeben.
 - Firestore-Collection- und Dokumentpfade für Benutzerprofile, Unternehmer, Firmen und Filialen werden zentral in
   `firebase.constants.ts` erzeugt.
-- Legacy-Firmen werden ausschließlich aus dem ausgewählten `purCustomer` gelesen und anhand einer dauerhaft gespeicherten,
-  zufälligen Ziel-ID migriert. Firmenadressen sind sowohl bei Anlage und Bearbeitung als auch bei der Migration optional und
+- Legacy-Firmen werden ausschließlich aus dem ausgewählten `purCustomer` gelesen. Jede Firma erhält einmalig eine
+  Firestore-Auto-ID, die unter `systemMigrationen/{purCustomerId}.firmenIds.{purCompanyId}` gespeichert und bei Wiederholungen
+  wiederverwendet wird. Firmenadressen sind sowohl bei Anlage und Bearbeitung als auch bei der Migration optional und dürfen
+  unvollständig sein.
+- Legacy-Filialen werden aus allen Legacy-Firmen des ausgewählten `purCustomer` gelesen. Jede Filiale erhält einmalig eine
+  Firestore-Auto-ID, die unter `systemMigrationen/{purCustomerId}.filialenIds.{purCompanyId}.{purBranchId}` gespeichert und bei
+  Wiederholungen wiederverwendet wird. Eingebettete Legacy-IDs und veraltete Felder werden ignoriert; Filial-Untercollections
+  bleiben späteren Migrationsschritten vorbehalten. Filialadressen sind bei Anlage, Bearbeitung und Migration optional und
   dürfen unvollständig sein.
+- Legacy-Mitarbeiter werden aus allen Filialen des ausgewählten `purCustomer` gelesen und als einzelne Firmenmitarbeiter
+  übernommen. Jeder Quellmitarbeiter erhält eine Firestore-Auto-ID, die verschachtelt nach Legacy-Firma, -Filiale und
+  -Mitarbeiter unter `systemMigrationen/{purCustomerId}.mitarbeiterIds` gespeichert wird. `filialIds` enthält die zugeordnete
+  neue Filial-ID. Gleiche Namen oder Legacy-IDs in unterschiedlichen Filialen bleiben getrennte, nachvollziehbare Mitarbeiter.
 - `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
   sondern greifen über den `FirestoreDbService` zu.
 - Der `AppSitzungsInitService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
@@ -130,14 +143,19 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `ready` freigeben.
 - Die Datenmigration besitzt gemeinsame Modelle und zentrale Firestore-Pfade für `purCustomers`,
   `systemMigrationen/{purCustomerId}` und die versionierten Statusdokumente unter `datenbereiche`. Der Datenmigration-Service
-  lädt Legacy-Kunden und ihren Status und kann genau einen ausgewählten Kunden zu einem Unternehmer mit zufälliger Dokument-ID
-  migrieren. Das Hauptdokument speichert die dauerhafte Zuordnung von `purCustomerId` zu `unternehmerId`; Wiederholungen verwenden
-  dieselbe Ziel-ID. Identische Zieldaten werden als bereits migriert behandelt; abweichende Zieldaten werden nicht überschrieben.
-  Validierungs-, Konflikt- und technische Fehler werden im Status `unternehmer_v1` nachvollziehbar gespeichert. Der
-  Datenmigration-Store hält Auswahl, Status sowie Lese- und Schreibzustände und verwirft verspätete Statusergebnisse einer
-  überholten Kundenauswahl. Neben der Kundenauswahl wählt ein fester Migrationsbereich-Selektor zwischen Unternehmern, Firmen,
-  Filialen und Mitarbeitern und zeigt genau die zugehörige Karte; noch nicht umgesetzte Bereiche sind als solche gekennzeichnet.
-  Die Zuordnung realer Legacy-Felder ist noch nicht für alle Folgebereiche abschließend geprüft.
+  lädt Legacy-Kunden und ihren Status und kann genau einen ausgewählten Kunden zu einem Unternehmer mit Firestore-Auto-ID
+  migrieren. Das Hauptdokument speichert die dauerhafte Zuordnung als `unternehmerId`; ein Status-Reset entfernt diese Zuordnung
+  nicht. Auch jede Firma, Filiale und jeder Filialmitarbeiter erhält eine dauerhaft unter `firmenIds`, `filialenIds`
+  beziehungsweise `mitarbeiterIds` gespeicherte Firestore-Auto-ID. Die gemappten Quelldaten werden bei jedem Lauf unter derselben
+  Ziel-ID geschrieben; ausschließlich im Ziel vorhandene Dokumente und nicht gemappte Zusatzfelder bleiben erhalten.
+  Validierungs- und technische Fehler werden in den Statusdokumenten nachvollziehbar gespeichert. Der
+  Datenmigration-Store hält Auswahl, Quellen- und Zielzahlen, Status sowie Lese- und Schreibzustände und verwirft verspätete
+  Ergebnisse einer überholten Kundenauswahl. Neben der Kundenauswahl wählt ein fester Migrationsbereich-Selektor zwischen
+  Unternehmern, Firmen, Filialen und Mitarbeitern und zeigt genau die zugehörige Karte. Beim Öffnen eines Bereichs werden
+  aktueller Quellen- und Zielbestand aus Firestore gelesen. Nach der
+  Migration lädt der Store den Status und den tatsächlichen Zielbestand erneut. `Offen` ergibt sich aus der aktuellen Quelle
+  abzüglich der zuletzt erfolgreich migrierten Dokumente; nur im Ziel vorhandene Dokumente bleiben erhalten und werden in `Ziel`
+  mitgezählt.
 - Aktive Master dürfen die Legacy-Kundendaten lesen sowie Migrationsstatus lesen, anlegen und aktualisieren; andere
   Pur-System-Rollen, Legacy-Konten und nicht angemeldete Zugriffe bleiben ausgeschlossen.
 - Offline-Schreibvorgänge, Pending-Sync und Batch-Schreibvorgänge aus der Altanwendung wurden bewusst noch nicht übernommen.
@@ -209,7 +227,10 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   wieder aktiviert. Erfolgs- und Fehlermeldungen werden beim Start einer neuen Aktion sowie beim Verlassen der Seite
   zurückgesetzt; bei Fehlern bleiben die Eingaben erhalten.
 - Die Benutzerauswahl zeigt Anzeigename und Rollenbezeichnung. Im Bearbeitungsdialog bleiben Anmeldename und technische
-  Firebase-Adresse einsehbar; die Profilkarte der App-Shell zeigt unter dem Anzeigenamen den Anmeldenamen.
+  Firebase-Adresse einsehbar; die Profilkarte der App-Shell zeigt unter dem Anzeigenamen den Anmeldenamen. Der
+  Bearbeitungsdialog vergleicht das normalisierte Profil einschließlich der außerhalb des Reactive Forms verwalteten
+  Datenzugriffszuordnungen mit dem Ausgangszustand. Ohne fachliche Änderung bleibt die Speicheraktion deaktiviert und es wird
+  keine Firestore-Anfrage ausgelöst.
 - Die Rolle `mitarbeiter` kann in der Benutzeranlage mit der Anzeige „Mitarbeiter“ ausgewählt werden. Der Master weist ihre
   `erlaubteBereiche` über dieselben Checkboxen wie bei den bestehenden Rollen zu. Zusätzlich wählt er genau einen Unternehmer,
   eine Firma und einen aktiven, noch nicht verknüpften Firma-Mitarbeiter aus. Eine Filialauswahl wird dabei nicht angezeigt. Das
@@ -255,23 +276,30 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
   Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
   `erlaubteBereiche`. Die Löschmethode ist in Service und Store vorhanden; verknüpfte Mitarbeiter sind durch Rules vor Löschung
-  geschützt. Eine Löschaktion in der Oberfläche ist noch nicht angebunden. Der am 28.09.2026 produktiv deployte Rules-Stand
-  enthielt bereits die Firmenrechte des Mitarbeiterzugangs. Die danach lokal ergänzte Leseberechtigung für direkte
-  Filialdokumente ist getestet, aber noch nicht deployed.
+  geschützt. Der Aktivstatus fachlicher Mitarbeiter ist ein Soft Delete: Er begrenzt die Lese- und Bearbeitungsrechte nicht,
+  und Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Eine Löschaktion
+  in der Oberfläche ist noch nicht angebunden. Der am 28.09.2026 produktiv deployte Rules-Stand enthielt bereits die
+  Firmenrechte des Mitarbeiterzugangs. Die danach lokal ergänzten Rechte für direkte Filialdokumente und die vereinfachten
+  Mitarbeiterregeln sind getestet, aber noch nicht deployed.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
   `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
   passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
   Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden als kompakte Cards mit Rolle,
   Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben je Kontext unterscheidbar.
 - Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
-  Bearbeitungsdialog. Beide Reactive Forms erfassen Person, vollständige Adresse, Geschlecht, E-Mail-Adresse, Mobilnummer,
-  betriebliche Rolle und mindestens eine verpflichtende Filialzuordnung. Geburtstag, Telefon und Webseite sind derzeit in der
-  Oberfläche ausgeblendet; bereits gespeicherte Werte bleiben beim Bearbeiten erhalten. Der Bearbeitungsdialog ergänzt den
-  Aktivstatus und zeigt Unternehmer, Firma sowie Mitarbeiter-ID unveränderlich an. Bereits vorhandene, für den Bearbeiter nicht
-  sichtbare Filialzuordnungen erfüllen diese Pflicht weiterhin.
+  Bearbeitungsdialog. Beide Reactive Forms erfassen Vorname, Nachname, optionale Adress- und Kontaktdaten, die betriebliche Rolle
+  und mindestens eine verpflichtende Filialzuordnung. Ein Geschlecht wird nicht erfasst oder gespeichert. Der Anzeigename des
+  Firestore-Dokuments wird automatisch aus Vor- und Nachname gebildet und bei Namensänderungen aktualisiert. Geburtstag, Telefon
+  und Webseite sind derzeit in der Oberfläche ausgeblendet; bereits gespeicherte Werte bleiben beim Bearbeiten erhalten. Der
+  Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer, Firma sowie Mitarbeiter-ID unveränderlich an. Bereits
+  vorhandene, für den Bearbeiter nicht sichtbare Filialzuordnungen erfüllen diese Pflicht weiterhin. Vorname und Nachname,
+  E-Mail-Adresse und Mobilnummer sowie Rolle und Filialauswahl werden auf breiten Dialogen jeweils als 50/50-Zeile dargestellt
+  und auf kleinen Viewports untereinander angeordnet.
 - Vor dem Öffnen und erneut vor dem Speichern wird der aktuelle Verwaltungszugriff auf die Firma geprüft. Während eines
   Schreibvorgangs sind Formular und Aktionen deaktiviert. Anlage und Aktualisierung erscheinen durch die Store-Aktualisierung
-  ohne erneutes Laden in der Liste; bei Fehlern bleiben die Eingaben erhalten.
+  ohne erneutes Laden in der Liste; bei Fehlern bleiben die Eingaben erhalten. Der Mitarbeiter-Bearbeitungsdialog vergleicht den
+  aktuellen Formularzustand per `JSON.stringify()` mit seinem Ausgangszustand und verhindert ohne Änderung sowohl die
+  Aktivierung des Speicherbuttons als auch den Firestore-Aufruf.
 - In den Mitarbeiterdialogen bleibt die Filial-Mehrfachauswahl für Master und Office sichtbar. Bei Filialkonten wird sie
   ausgeblendet, weil deren eigene Filiale bereits eindeutig vorgegeben ist. Bereits vorhandene, für das aktuelle Konto nicht
   zugängliche Filialzuordnungen bleiben beim Speichern unverändert; die lokalen Firestore Rules erzwingen dieselbe Begrenzung.
@@ -309,8 +337,9 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Firmenbestand.
 - Schritt 3 lädt die Filialen der ausgewählten Firma und öffnet für die Neuanlage einen Material-Dialog. Eine Auswahl bereits
   vorhandener Filialen ist in diesem reinen Anlageschritt bewusst nicht vorgesehen.
-- Der Filialdialog erfasst getrennt den kurzen `anzeigename` für Auswahlen und den vollständigen `filialname` sowie die Adresse
-  und optionale Kontaktdaten. Die fortlaufende Filialnummer wird innerhalb der Firma aus der vollständig geladenen Store-Liste mit
+- Der Filialdialog erfasst getrennt den kurzen `anzeigename` für Auswahlen und den vollständigen `filialname` sowie eine optionale,
+  teilweise Adresse und optionale Kontaktdaten. Die fortlaufende Filialnummer wird innerhalb der Firma aus der vollständig
+  geladenen Store-Liste mit
   `max(nummer) + 1` bestimmt.
 - Neue Filialen werden direkt unter `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialeId}` gespeichert, in die
   sortierte Filialliste übernommen und in der Hierarchie-Zusammenfassung angezeigt. Ein Unternehmer- oder Firmenwechsel setzt die
@@ -368,7 +397,7 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Masterkonten besitzen keine erforderliche Zugriffszuordnung und laden bei der Sitzungsinitialisierung die vollständige
   Hierarchie sowie alle Benutzerprofile.
 - Die Auswahl verwendet anschließend den zentralen Sitzungsbestand. Ausgewählte Firmen und Filialen können über getrennte
-  Material-Dialoge bearbeitet werden; sie umfassen Anzeigename, Firmen- beziehungsweise Filialname, vollständige Adresse und
+  Material-Dialoge bearbeitet werden; sie umfassen Anzeigename, Firmen- beziehungsweise Filialname, optionale Adressfelder und
   optionale Kontaktdaten.
 - Dokument-ID, Nummer, Aktivstatus und Hierarchiepfad bleiben unverändert. `FirmaService` und `FilialeService` speichern
   ausschließlich die bearbeitbaren Felder und setzen `aktualisiertAm` mit einem Server-Zeitstempel.
@@ -561,9 +590,9 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Tests und Build
 
-Am 02.10.2026 für den aktuellen Stand erfolgreich geprüft:
+Am 04.10.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 592 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
+- 634 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
   konsistenter
   Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,
@@ -572,7 +601,7 @@ Am 02.10.2026 für den aktuellen Stand erfolgreich geprüft:
   benutzerabhängigen Stammdatenladeplänen für alle vier Rollen, Echtzeitbeobachtung des eigenen Profils, zentralem
   Sitzungsstart mit Initialisierungszustand, wartender Navigation, Fehlerseite, Wiederholung und Rücknavigation sowie globalem
   Banner-Service, Inaktivhinweis, sichtbarer Anwendungsversion, allen vier Firestore-Lesestrategien, buildabhängiger Cache-Art,
-  erzwungenem Server-Neuladen, Benutzertrennung sowie Unternehmer- und Firmenmigration.
+  erzwungenem Server-Neuladen, Benutzertrennung sowie Unternehmer-, Firmen- und Filialmigration.
 - Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
 - Datenstruktur-Anlage und Benutzerverwaltung wurden unter ihren getrennten Systemverwaltungsrouten auf Desktop und einem
   kleinen Viewport erfolgreich manuell geprüft.
@@ -616,6 +645,12 @@ Ebenfalls am 25.09.2026 wurden ein neuer Master und die weiteren Rollenkonten na
 Benutzeranlage, Anmeldung, Passwortänderung, Rollen- und Bereichsgrenzen sowie die vorgesehenen Office-, Filial- und
 Mitarbeiter-Auslieferungsvarianten wurden laut Benutzer erfolgreich geprüft. Die bisherigen Testkonten werden nicht migriert. Die
 übrigen Schreibgrenzen sind durch die erfolgreichen Firestore-Emulator-Tests abgesichert.
+
+Am 04.10.2026 wurde eine vollständige Kundenmigration mit realen Legacy-Daten fachlich abgenommen. Unternehmer, Firmen,
+Filialen und Mitarbeiter wurden in ihrer Abhängigkeitsreihenfolge migriert, mit den Quelldaten verglichen und erneut ausgeführt.
+Die gespeicherten Ziel-ID-Zuordnungen wurden wiederverwendet, ausschließlich im Ziel vorhandene Dokumente blieben erhalten und
+alle 15 geprüften Legacy-Mitarbeiter wurden erfolgreich übernommen. Das Umsetzungstodo zur Kundenmigration ist damit
+abgeschlossen.
 
 ## Rollenpräzisierung: Umsetzung und offene Punkte
 

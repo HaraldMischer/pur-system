@@ -97,13 +97,13 @@ service cloud.firestore {
     }
 
     function darfMitarbeiterFirmaVerwenden(unternehmerId, firmaId) {
-      return isMaster() || darfFirmaLesen(unternehmerId, firmaId);
+      return darfFirmaLesen(unternehmerId, firmaId);
     }
 
     function darfMitarbeiterLesen(unternehmerId, firmaId) {
       return darfMitarbeiterFirmaVerwenden(unternehmerId, firmaId)
         && (
-          profil().userRole in ['master', 'office']
+          profil().userRole == 'office'
           || (
             profil().userRole == 'filiale'
             && resource.data.filialIds is list
@@ -115,10 +115,7 @@ service cloud.firestore {
     function hatGueltigeMitarbeiterFilialenBeiAnlage(unternehmerId, firmaId) {
       return request.resource.data.filialIds is list
         && request.resource.data.filialIds.size() == request.resource.data.filialIds.toSet().size()
-        && (
-          profil().userRole == 'master'
-          || request.resource.data.filialIds.hasOnly(profil().zugriffe[unternehmerId][firmaId])
-        );
+        && request.resource.data.filialIds.hasOnly(profil().zugriffe[unternehmerId][firmaId]);
     }
 
     function bleibenFremdeMitarbeiterFilialenErhalten(unternehmerId, firmaId) {
@@ -132,22 +129,18 @@ service cloud.firestore {
       return resource.data.filialIds is list
         && request.resource.data.filialIds is list
         && request.resource.data.filialIds.size() == request.resource.data.filialIds.toSet().size()
-        && (
-          profil().userRole == 'master'
-          || bleibenFremdeMitarbeiterFilialenErhalten(unternehmerId, firmaId)
-        );
+        && bleibenFremdeMitarbeiterFilialenErhalten(unternehmerId, firmaId);
     }
 
     function darfMitarbeiterAnlegen(unternehmerId, firmaId) {
       return darfMitarbeiterFirmaVerwenden(unternehmerId, firmaId)
         && !('benutzerUid' in request.resource.data)
         && request.resource.data.rolle in ['service', 'kasse', 'admin']
-        && request.resource.data.aktiv == true
         && request.resource.data.erstelltAm == request.time
         && request.resource.data.aktualisiertAm == request.time
         && hatGueltigeMitarbeiterFilialenBeiAnlage(unternehmerId, firmaId)
         && (
-          profil().userRole in ['master', 'office']
+          profil().userRole == 'office'
           || profil().zugriffe[unternehmerId][firmaId][0] in request.resource.data.filialIds
         );
     }
@@ -156,17 +149,17 @@ service cloud.firestore {
       return darfMitarbeiterLesen(unternehmerId, firmaId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'person',
+          'anzeigename',
           'rolle',
           'filialIds',
           'aktiv',
           'aktualisiertAm'
         ])
         && request.resource.data.rolle in ['service', 'kasse', 'admin']
-        && request.resource.data.aktiv is bool
         && request.resource.data.aktualisiertAm == request.time
         && hatGueltigeMitarbeiterFilialenBeiBearbeitung(unternehmerId, firmaId)
         && (
-          profil().userRole in ['master', 'office']
+          profil().userRole == 'office'
           || profil().zugriffe[unternehmerId][firmaId][0] in request.resource.data.filialIds
         );
     }
@@ -216,7 +209,7 @@ service cloud.firestore {
         }
 
         match /mitarbeiter/{mitarbeiterId} {
-          allow read: if isMaster();
+          allow read, create, update: if isMaster();
           allow read: if isOffice() && darfFirmaLesen(unternehmerId, firmaId);
           allow read: if profil().userRole == 'filiale'
             && darfFirmaLesen(unternehmerId, firmaId);

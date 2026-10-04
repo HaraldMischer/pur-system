@@ -63,22 +63,10 @@ export class FilialeAnlegenDialog {
       validators: [Validators.required, nichtLeerValidator],
     }),
     adresse: new FormGroup({
-      strasse: new FormControl('', {
-        nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
-      }),
-      hausnummer: new FormControl('', {
-        nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
-      }),
-      postleitzahl: new FormControl('', {
-        nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
-      }),
-      ort: new FormControl('', {
-        nonNullable: true,
-        validators: [Validators.required, nichtLeerValidator],
-      }),
+      strasse: new FormControl('', { nonNullable: true }),
+      hausnummer: new FormControl('', { nonNullable: true }),
+      postleitzahl: new FormControl('', { nonNullable: true }),
+      ort: new FormControl('', { nonNullable: true }),
     }),
     kontakt: new FormGroup({
       email: new FormControl('', {
@@ -127,16 +115,25 @@ export class FilialeAnlegenDialog {
     const value = this.filialeForm.getRawValue();
     const email = value.kontakt.email.trim().toLowerCase();
     const telefon = value.kontakt.telefon.trim();
+    const strasse = value.adresse.strasse.trim();
+    const hausnummer = value.adresse.hausnummer.trim();
+    const postleitzahl = value.adresse.postleitzahl.trim();
+    const ort = value.adresse.ort.trim();
+    const hatAdresse = Boolean(strasse || hausnummer || postleitzahl || ort);
 
     return {
       anzeigename: value.anzeigename.trim(),
       filialname: value.filialname.trim(),
-      adresse: {
-        strasse: value.adresse.strasse.trim(),
-        hausnummer: value.adresse.hausnummer.trim(),
-        postleitzahl: value.adresse.postleitzahl.trim(),
-        ort: value.adresse.ort.trim(),
-      },
+      ...(hatAdresse
+        ? {
+            adresse: {
+              ...(strasse ? { strasse } : {}),
+              ...(hausnummer ? { hausnummer } : {}),
+              ...(postleitzahl ? { postleitzahl } : {}),
+              ...(ort ? { ort } : {}),
+            },
+          }
+        : {}),
       kontakt: {
         ...(email ? { email } : {}),
         ...(telefon ? { telefon } : {}),
