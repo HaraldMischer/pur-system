@@ -103,13 +103,13 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   -Mitarbeiter unter `systemMigrationen/{purCustomerId}.mitarbeiterIds` gespeichert wird. `filialIds` enthält die zugeordnete
   neue Filial-ID. Gleiche Namen oder Legacy-IDs in unterschiedlichen Filialen bleiben zunächst getrennte, nachvollziehbare
   Mitarbeiter. Die Legacy-Felder `role` und `authorisation` werden gemeinsam auf die betrieblichen Rollen `filialkasse`,
-  `servicekraft`, `administrator`, `kassierer` und `techniker` abgebildet und als eindeutiges Array `rollen` gespeichert. Master
-  können Mitarbeiter physisch löschen; dabei werden deren Legacy-Zuordnungen atomar entfernt. Dubletten können gezielt
-  zusammengeführt werden. Dabei werden `filialIds` und `rollen` vereinigt, alle Legacy-IDs atomar auf den gewählten
-  Zielmitarbeiter umgeleitet und das Duplikat physisch gelöscht. Wiederholte Mitarbeitermigrationen überschreiben die Stammdaten
-  eines manuell zusammengeführten Zielmitarbeiters nicht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Löschen und
-  Zusammenführen geschützt. Der fachliche Status wird ausschließlich mit `aktiv` geführt; ein zusätzliches Löschfeld gibt es
-  nicht.
+  `servicekraft`, `administrator`, `kassierer` und `techniker` abgebildet und als eindeutiges Array `rollen` gespeichert.
+  Dubletten können durch Master gezielt zusammengeführt werden. Dabei werden `filialIds` und `rollen` vereinigt, alle
+  Legacy-IDs atomar auf den gewählten Zielmitarbeiter umgeleitet und das Duplikat physisch gelöscht. Eine eigenständige
+  Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten; die technische Löschfunktion wird für das Zusammenführen
+  verwendet. Wiederholte Mitarbeitermigrationen überschreiben die Stammdaten eines manuell zusammengeführten Zielmitarbeiters
+  nicht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Zusammenführen und dem dabei ausgeführten Löschen geschützt.
+  Der fachliche Status wird ausschließlich mit `aktiv` geführt; ein zusätzliches Löschfeld gibt es nicht.
 - `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
   sondern greifen über den `FirestoreDbService` zu.
 - Der `AppSitzungsInitService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
@@ -171,6 +171,13 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Offline-Schreibvorgänge, Pending-Sync und Batch-Schreibvorgänge aus der Altanwendung wurden bewusst noch nicht übernommen.
   Die Offline-App-Shell aller vier PWA-Builds bleibt davon getrennt.
 - Es gibt keine öffentliche Selbstregistrierung.
+- Die Datenmigration ist ein einmaliger Übergangsprozess und kein Bestandteil des regulären fachlichen Systembetriebs.
+  Migrierte Unternehmer, Firmen, Filialen und Mitarbeiter stehen anschließend als reguläre neue Strukturdaten zur Verfügung.
+  In der Benutzerverwaltung können vorhandene Profile bearbeitet oder neue Benutzer angelegt und diesen Daten rollenabhängig
+  zugeordnet werden. Dabei werden ausschließlich die neuen Ziel-IDs verwendet. Die Zuordnungen unter `systemMigrationen` sind
+  nur für Wiederholung und Nachvollziehbarkeit der Migration relevant und gewähren keine Datenrechte.
+- Legacy-Benutzer und Firebase-Auth-Konten werden in diesem Übergangsprozess nicht automatisch migriert. Benutzerzugänge werden
+  bewusst neu angelegt oder als vorhandene Pur-System-Profile mit den übernommenen Strukturdaten verknüpft.
 
 ## Login und Benutzerberechtigungen
 
@@ -285,12 +292,13 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   innerhalb ihres Firmen- beziehungsweise Filialbereichs. Filialkonten dürfen Mitarbeiter ihrer Firma lesen, laden mit ihrer
   Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
   Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
-  `erlaubteBereiche`. Master können nicht verknüpfte Mitarbeiter über Service, Store und Oberfläche physisch löschen oder
-  zusammenführen; verknüpfte Mitarbeiter sind durch Rules vor beiden Aktionen geschützt. Der Aktivstatus beschreibt allein den
-  Beschäftigungsstatus: Er begrenzt die Lese- und Bearbeitungsrechte nicht, und Office sowie Filiale können Mitarbeiter in ihrem
-  erlaubten Bereich deaktivieren und wieder aktivieren. Der am 28.09.2026 produktiv deployte Rules-Stand enthielt bereits die
-  Firmenrechte des Mitarbeiterzugangs. Die danach lokal ergänzten Rechte für direkte Filialdokumente und die vereinfachten
-  Mitarbeiterregeln sind getestet, aber noch nicht deployed.
+  `erlaubteBereiche`. Master können nicht verknüpfte Mitarbeiter zusammenführen; dabei wird das Duplikat über die technische
+  Löschfunktion physisch entfernt. Eine eigenständige Löschaktion bietet die Oberfläche nicht an. Verknüpfte Mitarbeiter sind
+  durch Rules vor dem Zusammenführen und Löschen geschützt. Der Aktivstatus beschreibt allein den Beschäftigungsstatus: Er
+  begrenzt die Lese- und Bearbeitungsrechte nicht, und Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich
+  deaktivieren und wieder aktivieren. Die am 04.10.2026 deployten Rules erlauben die vereinbarten Mitarbeiterzugriffe. Die danach
+  lokal ergänzten Regeln für Rollen-Arrays und das Zusammenführen sind getestet, aber noch nicht als produktiv deployed
+  dokumentiert.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
   `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
   passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
@@ -605,7 +613,7 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 Am 05.10.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 677 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
+- 674 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
   konsistenter
   Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,

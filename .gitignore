@@ -45,8 +45,8 @@ testem.log
 /typings
 __screenshots__/
 
-# Documentation
-/docs/
+# Confidential documentation
+/docs/*Fernwirkungsschnittstelle*/
 
 # System files
 .DS_Store

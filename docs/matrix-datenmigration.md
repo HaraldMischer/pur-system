@@ -2,8 +2,9 @@
 
 # Matrix: Datenmigration
 
-Diese Übersicht beschreibt die fachlichen Regeln für die Übernahme der Legacy-Daten in die neue Firestore-Struktur. Die
-technische Umsetzung wird separat in `docs/todo_next.md` geplant.
+Diese Übersicht beschreibt den einmaligen Übergangsprozess zur Übernahme der Legacy-Daten in die neue Firestore-Struktur. Die
+hier dokumentierten Zuordnungen und Wiederholungsregeln gehören nicht zum regulären fachlichen Systembetrieb. Der abgeschlossene
+Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/projekt-stand.md` zusammengefasst.
 
 ## 1. Geltungsbereich
 
@@ -15,13 +16,18 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 | Firmen                      | ja          | Neue Unternehmensstruktur               |
 | Filialen                    | ja          | Neue Unternehmensstruktur               |
 | Mitarbeiter                 | ja          | Firmenmitarbeiter mit Filialzuordnungen |
-| `purUser` und Firebase Auth | nein        | Separate Benutzer- und Auth-Migration   |
+| `purUser` und Firebase Auth | nein        | Keine automatische Benutzermigration    |
 | Weitere Fachdaten           | nein        | Spätere Planung bei fachlichem Bedarf   |
 
 ### Zusatzbedingungen
 
 - Die Migration verändert oder löscht keine Legacy-Daten.
 - Legacy-Passwörter und andere Anmeldedaten werden nicht übernommen.
+- Migrierte Unternehmer, Firmen, Filialen und Mitarbeiter sind anschließend reguläre Dokumente der neuen Unternehmensstruktur.
+- Vorhandene oder neu angelegte Benutzer können ihnen in der Benutzerverwaltung rollenabhängig zugeordnet werden. Dafür werden
+  ausschließlich die neuen Ziel-IDs verwendet.
+- `systemMigrationen` und die dort gespeicherten Legacy-Zuordnungen dienen nur der Migration und begründen keine
+  Benutzerberechtigungen.
 
 ## 2. Pfade und Reihenfolge
 
@@ -44,8 +50,8 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
   `filialenIds.{purCompanyId}.{purBranchId}` unter `systemMigrationen/{purCustomerId}` gespeichert.
 - Jeder Filialmitarbeiter erhält einmalig eine Firestore-Auto-ID. Die Zuordnungen werden dauerhaft als
   `mitarbeiterIds.{purCompanyId}.{purBranchId}.{purEmployeeId}` unter `systemMigrationen/{purCustomerId}` gespeichert.
-- Löscht ein Master einen Firmenmitarbeiter, werden das Mitarbeiterdokument und seine Zuordnungen unter `mitarbeiterIds` atomar
-  entfernt. Eine spätere erneute Mitarbeitermigration legt für diese Legacy-IDs wieder einen neuen Zielmitarbeiter an.
+- Eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten. Die technische Löschfunktion wird beim
+  Zusammenführen verwendet.
 - Beim manuellen Zusammenführen werden alle Legacy-IDs des Duplikats auf den gewählten Zielmitarbeiter umgeleitet und das
   Duplikat anschließend atomar gelöscht.
 - Ein Reset eines Datenbereichs entfernt die gespeicherten Unternehmer-, Firmen-, Filial- und Mitarbeiter-Zuordnungen nicht.
@@ -127,19 +133,24 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 | Anzeigename         | Wird aus `firstName` und `lastName` gebildet.                                 |
 | Rollen              | Werden als eindeutiges Array unter `rollen` gespeichert.                       |
 | `Service`           | Wird als `servicekraft` übernommen.                                            |
+| `Servicekraft`      | Wird als `servicekraft` übernommen.                                            |
 | `Filialkasse`       | Wird als `filialkasse` übernommen.                                             |
 | `Administrator`     | Wird als `administrator` übernommen.                                           |
+| `Einstellungen`     | Wird als `administrator` übernommen.                                           |
 | `Kassierer`         | Wird als `kassierer` übernommen.                                               |
+| `Kassieren`         | Wird als `kassierer` übernommen.                                               |
 | `Techniker`         | Wird als `techniker` übernommen.                                               |
+| `Gerätetechnik`     | Wird als `techniker` übernommen.                                               |
+| `Geraetetechnik`    | Wird als `techniker` übernommen.                                               |
 
 ### Zusatzbedingungen
 
 - Gleiche Namen oder Legacy-IDs in verschiedenen Filialen führen durch die verschachtelte Zuordnung nicht zu einem
   Überschreiben und bleiben für die spätere manuelle Prüfung nachvollziehbar.
-- Master können solche getrennten Einträge löschen oder gezielt zusammenführen. Beim Zusammenführen bleiben die Stammdaten des
+- Master können solche getrennten Einträge gezielt zusammenführen. Beim Zusammenführen bleiben die Stammdaten des
   Zielmitarbeiters maßgeblich, `filialIds` und `rollen` werden jeweils vereinigt, alle Legacy-Zuordnungen des Duplikats werden
-  auf die Ziel-ID umgestellt und das Duplikat wird gelöscht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Löschen
-  und Zusammenführen geschützt.
+  auf die Ziel-ID umgestellt und das Duplikat wird gelöscht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem
+  Zusammenführen und dem dabei ausgeführten Löschen geschützt.
 - `firstName`, `lastName`, `address`, `email`, `phone`, `birthday`, `role`, `active` und `deleted` werden in die vorhandene
   Personen-, Rollen-, Filial- und Statusstruktur überführt. `active` und `deleted` bestimmen gemeinsam den Zielwert `aktiv`;
   ein separates Löschfeld wird nicht gespeichert.
