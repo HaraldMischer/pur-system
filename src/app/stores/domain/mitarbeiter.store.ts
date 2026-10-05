@@ -188,7 +188,6 @@ export const MitarbeiterStore = signalStore(
             id: ergebnis.id,
             unternehmerId,
             firmaId,
-            aktiv: true,
           };
           if (!kontext.filialId || mitarbeiter.filialIds.includes(kontext.filialId)) {
             setKontext(schluessel, {

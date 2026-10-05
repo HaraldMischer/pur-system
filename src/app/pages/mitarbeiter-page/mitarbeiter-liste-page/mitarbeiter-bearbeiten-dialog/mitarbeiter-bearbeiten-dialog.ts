@@ -9,15 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  AbstractControl,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -32,20 +24,13 @@ import {
   TMitarbeiterRolle,
 } from '../../../../commons/models/domain/mitarbeiter';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
+import { nichtLeerValidator } from '../../../../commons/validators/nicht-leer.validator';
 import { BenutzerStore } from '../../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../../stores/domain/mitarbeiter.store';
 
-// ===== Top-Level Helper =====================
-
-const nichtLeerValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  return String(control.value).trim() ? null : { required: true };
-};
-
 export interface IMitarbeiterBearbeitenDialogDaten {
   unternehmerId: string;
-  unternehmerName: string;
   firmaId: string;
-  firmaName: string;
   filialen: readonly IFilialeEintrag[];
   mitarbeiter: IMitarbeiterEintrag;
 }
@@ -67,7 +52,6 @@ export interface IMitarbeiterBearbeitenDialogDaten {
 })
 export class MitarbeiterBearbeitenDialog {
   // ===== Interne Dependency Injection =========
-
   private readonly dialogRef = inject(
     MatDialogRef<MitarbeiterBearbeitenDialog, IMitarbeiterEintrag | undefined>,
   );
@@ -76,7 +60,6 @@ export class MitarbeiterBearbeitenDialog {
   readonly mitarbeiterStore = inject(MitarbeiterStore);
 
   // ===== Konstanten & Typen ===================
-
   private readonly erlaubteFilialIds = new Set(
     this.dialogDaten.filialen.map((filiale) => filiale.id),
   );
@@ -85,11 +68,9 @@ export class MitarbeiterBearbeitenDialog {
   });
 
   // ===== Interner State =======================
-
-  private urspruenglicherFormwert = '';
+  private readonly urspruenglicherFormwert: string;
 
   // ===== Öffentliche Werte ====================
-
   readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
     { value: 'filialkasse', label: 'Filialkasse' },
     { value: 'servicekraft', label: 'Servicekraft' },
@@ -180,7 +161,6 @@ export class MitarbeiterBearbeitenDialog {
   }
 
   // ===== Öffentliche Aktionen =================
-
   /**
    * Validiert und aktualisiert den ausgewählten Mitarbeiter.
    */
@@ -220,7 +200,6 @@ export class MitarbeiterBearbeitenDialog {
   }
 
   // ===== Interne Helfer =======================
-
   private hatAktuellenFirmenzugriff(): boolean {
     const profil = this.benutzerStore.benutzerProfil();
     return Boolean(
@@ -232,13 +211,11 @@ export class MitarbeiterBearbeitenDialog {
       ),
     );
   }
-
   private normalisiereEmail(): void {
     const control = this.mitarbeiterForm.controls.person.controls.kontakt.controls.email;
     control.setValue(control.getRawValue().trim().toLowerCase());
     this.mitarbeiterForm.updateValueAndValidity();
   }
-
   private getMitarbeiterAktualisierung(): IMitarbeiterAktualisierung {
     const value = this.mitarbeiterForm.getRawValue();
     const kontakt = value.person.kontakt;
@@ -274,7 +251,6 @@ export class MitarbeiterBearbeitenDialog {
       aktiv: value.aktiv,
     };
   }
-
   private getVerpflichtendeFilialId(): string | undefined {
     const profil = this.benutzerStore.benutzerProfil();
     if (profil?.userRole !== 'filiale') return undefined;

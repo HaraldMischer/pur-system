@@ -1,28 +1,15 @@
 // pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/firma-anlegen-dialog/firma-anlegen-dialog.ts
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import {
-  AbstractControl,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
 import { IFirmaAnlage, IFirmaAnlageErgebnis } from '../../../../commons/models/domain/firma';
+import { nichtLeerValidator } from '../../../../commons/validators/nicht-leer.validator';
 import { FirmaStore } from '../../../../stores/domain/firma.store';
-
-// ===== Top-Level Helper =====================
-
-const nichtLeerValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  return String(control.value).trim() ? null : { required: true };
-};
 
 export interface IFirmaAnlegenDialogDaten {
   unternehmerId: string;

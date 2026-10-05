@@ -25,6 +25,7 @@ describe('MitarbeiterStore', () => {
     },
     rollen: ['servicekraft'],
     filialIds: [],
+    aktiv: true,
   };
   const alpha: IMitarbeiterEintrag = {
     ...anlage,
@@ -202,7 +203,6 @@ describe('MitarbeiterStore', () => {
         id: 'm-neu',
         unternehmerId: 'u',
         firmaId: 'f',
-        aktiv: true,
       },
       zulu,
     ]);

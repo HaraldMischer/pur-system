@@ -37,6 +37,7 @@ import {
   getWaehlbareAppBereiche,
   TWaehlbarerAppBereich,
 } from '../../../../commons/utils/benutzer/erlaubte-bereiche';
+import { nichtLeerValidator } from '../../../../commons/validators/nicht-leer.validator';
 import { BenutzerVerwaltungStore } from '../../../../stores/domain/benutzer-verwaltung.store';
 import { DatenzugriffSelector } from '../../../../components/data-selectors/datenzugriff-selector/datenzugriff-selector';
 
@@ -51,10 +52,6 @@ type TBenutzerAnlageForm = {
   firmaMitarbeiterId: FormControl<string | null>;
   passwort: FormControl<string>;
 };
-
-function nichtLeerValidator(control: AbstractControl): ValidationErrors | null {
-  return String(control.value).trim() ? null : { required: true };
-}
 
 function namensbestandteilValidator(control: AbstractControl): ValidationErrors | null {
   return normalizeNamensbestandteil(String(control.value)) ? null : { required: true };

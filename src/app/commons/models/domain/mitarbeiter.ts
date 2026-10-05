@@ -24,6 +24,7 @@ export interface IMitarbeiterAnlage {
   person: TMitarbeiterPerson;
   rollen: TMitarbeiterRolle[];
   filialIds: string[];
+  aktiv: boolean;
 }
 
 export interface IMitarbeiterAktualisierung {
@@ -41,14 +42,12 @@ export interface IMitarbeiterEintrag extends IMitarbeiterAnlage {
   id: string;
   unternehmerId: string;
   firmaId: string;
-  aktiv: boolean;
 }
 
 // ===== Firestore-Dokumente ==================
 
 export interface IMitarbeiterDokument extends IMitarbeiterAnlage {
   anzeigename: string;
-  aktiv: boolean;
   benutzerUid?: string;
   erstelltAm?: Timestamp;
   aktualisiertAm?: Timestamp;

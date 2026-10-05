@@ -1,15 +1,7 @@
 // pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/unternehmer-anlegen-dialog/unternehmer-anlegen-dialog.ts
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import {
-  AbstractControl,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,11 +11,8 @@ import {
   IUnternehmerAnlage,
   IUnternehmerAnlageErgebnis,
 } from '../../../../commons/models/domain/unternehmer';
+import { nichtLeerValidator } from '../../../../commons/validators/nicht-leer.validator';
 import { UnternehmerStore } from '../../../../stores/domain/unternehmer.store';
-
-const nichtLeerValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  return String(control.value).trim() ? null : { required: true };
-};
 
 @Component({
   selector: 'app-unternehmer-anlegen-dialog',

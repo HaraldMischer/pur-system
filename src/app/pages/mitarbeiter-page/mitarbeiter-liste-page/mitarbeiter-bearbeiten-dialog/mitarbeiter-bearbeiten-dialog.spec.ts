@@ -41,9 +41,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
   };
   const dialogDaten = {
     unternehmerId: 'u-1',
-    unternehmerName: 'Unternehmer',
     firmaId: 'f-1',
-    firmaName: 'Firma',
     filialen: [
       { id: 'b-1', anzeigename: 'Filiale 1' },
       { id: 'b-2', anzeigename: 'Filiale 2' },
@@ -79,7 +77,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
     }).compileComponents();
   });
 
-  it('should initialize all editable data and show immutable identification', () => {
+  it('should initialize all editable data without an identification summary', () => {
     const fixture = TestBed.createComponent(MitarbeiterBearbeitenDialog);
     fixture.detectChanges();
 
@@ -90,7 +88,9 @@ describe('MitarbeiterBearbeitenDialog', () => {
       aktiv: true,
     });
     expect(fixture.componentInstance.weitereFilialzuordnungen).toBe(1);
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('m-1');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.pur-page-section__summary'),
+    ).toBeNull();
     expect(
       (fixture.nativeElement as HTMLElement).querySelector(
         'mat-select[formcontrolname="filialIds"]',

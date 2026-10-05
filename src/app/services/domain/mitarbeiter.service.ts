@@ -135,7 +135,7 @@ export class MitarbeiterService {
   }
 
   /**
-   * Legt einen aktiven Mitarbeiter unter einer Firma an.
+   * Legt einen Mitarbeiter unter einer Firma an.
    *
    * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
    * @param firmaId - Die Dokument-ID der übergeordneten Firma.
@@ -155,7 +155,6 @@ export class MitarbeiterService {
         ...anlage,
         person: createMitarbeiterPerson(anlage.person),
         anzeigename: createAnzeigename(anlage.person),
-        aktiv: true,
         erstelltAm: zeitstempel,
         aktualisiertAm: zeitstempel,
       },

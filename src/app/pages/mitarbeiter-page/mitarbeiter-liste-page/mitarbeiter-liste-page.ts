@@ -246,22 +246,16 @@ export class MitarbeiterListePage {
 
   private getDialogKontext(): {
     unternehmerId: string;
-    unternehmerName: string;
     firmaId: string;
-    firmaName: string;
     filialen: readonly IFilialeEintrag[];
   } | null {
-    const unternehmer = this.appKontextStore.selectedUnternehmer();
-    const firma = this.appKontextStore.selectedFirma();
-    const unternehmerId = unternehmer?.id;
-    const firmaId = firma?.id;
-    if (!unternehmerId || !firmaId || !unternehmer || !firma) return null;
+    const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
+    const firmaId = this.appKontextStore.selectedFirma()?.id;
+    if (!unternehmerId || !firmaId) return null;
 
     return {
       unternehmerId,
-      unternehmerName: unternehmer.anzeigename,
       firmaId,
-      firmaName: firma.anzeigename,
       filialen: this.stammdatenStore.getFilialen(unternehmerId, firmaId),
     };
   }

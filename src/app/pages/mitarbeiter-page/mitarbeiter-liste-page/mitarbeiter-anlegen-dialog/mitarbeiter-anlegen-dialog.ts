@@ -8,16 +8,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import {
-  AbstractControl,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -30,20 +23,13 @@ import {
   TMitarbeiterRolle,
 } from '../../../../commons/models/domain/mitarbeiter';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
+import { nichtLeerValidator } from '../../../../commons/validators/nicht-leer.validator';
 import { BenutzerStore } from '../../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../../stores/domain/mitarbeiter.store';
 
-// ===== Top-Level Helper =====================
-
-const nichtLeerValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  return String(control.value).trim() ? null : { required: true };
-};
-
 export interface IMitarbeiterAnlegenDialogDaten {
   unternehmerId: string;
-  unternehmerName: string;
   firmaId: string;
-  firmaName: string;
   filialen: readonly IFilialeEintrag[];
 }
 
@@ -51,6 +37,7 @@ export interface IMitarbeiterAnlegenDialogDaten {
   selector: 'app-mitarbeiter-anlegen-dialog',
   imports: [
     MatButtonModule,
+    MatCheckboxModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
@@ -63,7 +50,6 @@ export interface IMitarbeiterAnlegenDialogDaten {
 })
 export class MitarbeiterAnlegenDialog {
   // ===== Interne Dependency Injection =========
-
   private readonly dialogRef = inject(
     MatDialogRef<MitarbeiterAnlegenDialog, IMitarbeiterAnlageErgebnis | undefined>,
   );
@@ -72,11 +58,9 @@ export class MitarbeiterAnlegenDialog {
   readonly mitarbeiterStore = inject(MitarbeiterStore);
 
   // ===== Interner State =======================
-
   private readonly verpflichtendeFilialId = this.getVerpflichtendeFilialId();
 
   // ===== Öffentliche Werte ====================
-
   readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
     { value: 'filialkasse', label: 'Filialkasse' },
     { value: 'servicekraft', label: 'Servicekraft' },
@@ -120,6 +104,7 @@ export class MitarbeiterAnlegenDialog {
         validators: [Validators.required],
       },
     ),
+    aktiv: new FormControl(true, { nonNullable: true }),
   });
 
   constructor() {
@@ -136,7 +121,6 @@ export class MitarbeiterAnlegenDialog {
   }
 
   // ===== Öffentliche Aktionen =================
-
   /**
    * Validiert und speichert einen neuen Mitarbeiter für die ausgewählte Firma.
    */
@@ -168,7 +152,6 @@ export class MitarbeiterAnlegenDialog {
   }
 
   // ===== Interne Helfer =======================
-
   private hatAktuellenFirmenzugriff(): boolean {
     const profil = this.benutzerStore.benutzerProfil();
     return Boolean(
@@ -180,13 +163,11 @@ export class MitarbeiterAnlegenDialog {
       ),
     );
   }
-
   private normalisiereEmail(): void {
     const control = this.mitarbeiterForm.controls.person.controls.kontakt.controls.email;
     control.setValue(control.getRawValue().trim().toLowerCase());
     this.mitarbeiterForm.updateValueAndValidity();
   }
-
   private getMitarbeiterAnlage(): IMitarbeiterAnlage {
     const value = this.mitarbeiterForm.getRawValue();
     const kontakt = value.person.kontakt;
@@ -217,9 +198,9 @@ export class MitarbeiterAnlegenDialog {
           ...(this.verpflichtendeFilialId ? [this.verpflichtendeFilialId] : []),
         ]),
       ],
+      aktiv: value.aktiv,
     };
   }
-
   private getVerpflichtendeFilialId(): string | undefined {
     const profil = this.benutzerStore.benutzerProfil();
     if (profil?.userRole !== 'filiale') return undefined;

@@ -9,23 +9,9 @@
     [formGroup]="mitarbeiterForm"
     (ngSubmit)="onSubmit()"
   >
-    <!-- Firmenkontext -->
-    <div class="pur-form__group">
-      <h2 class="pur-form__group-titel">Firma</h2>
-      <div class="pur-page-section__summary">
-        <div>
-          <span>Unternehmer</span><span>{{ dialogDaten.unternehmerName }}</span>
-        </div>
-        <div>
-          <span>Firma</span><span>{{ dialogDaten.firmaName }}</span>
-        </div>
-      </div>
-    </div>
-
     <ng-container formGroupName="person">
       <!-- Person -->
       <div class="pur-form__group">
-        <h2 class="pur-form__group-titel">Person</h2>
         <div class="pur-form__row">
           <mat-form-field appearance="outline" class="pur-form__field pur-form__field--50">
             <mat-label>Vorname</mat-label>
@@ -40,7 +26,6 @@
 
       <!-- Adresse -->
       <div class="pur-form__group" formGroupName="adresse">
-        <h2 class="pur-form__group-titel">Adresse</h2>
         <div class="pur-form__row">
           <mat-form-field appearance="outline" class="pur-form__field pur-form__field--80">
             <mat-label>Straße</mat-label>
@@ -65,7 +50,6 @@
 
       <!-- Kontaktdaten -->
       <div class="pur-form__group" formGroupName="kontakt">
-        <h2 class="pur-form__group-titel">Kontaktdaten</h2>
         <div class="pur-form__row">
           <mat-form-field appearance="outline" class="pur-form__field pur-form__field--50">
             <mat-label>E-Mail-Adresse</mat-label>
@@ -86,17 +70,32 @@
 
     <!-- Beschäftigung -->
     <div class="pur-form__group">
-      <h2 class="pur-form__group-titel">Beschäftigung</h2>
       <div class="pur-form__row">
         <mat-form-field appearance="outline" class="pur-form__field pur-form__field--50">
           <mat-label>Rollen</mat-label>
           <mat-select formControlName="rollen" multiple>
+            <mat-select-trigger>
+              @if (mitarbeiterForm.controls.rollen.value.length > 1) {
+                {{ mitarbeiterForm.controls.rollen.value.length }} Rollen vergeben
+              } @else {
+                @for (rolle of rollen; track rolle.value) {
+                  @if (mitarbeiterForm.controls.rollen.value.includes(rolle.value)) {
+                    {{ rolle.label }}
+                  }
+                }
+              }
+            </mat-select-trigger>
             @for (rolle of rollen; track rolle.value) {
               <mat-option [value]="rolle.value">{{ rolle.label }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
-        @if (benutzerStore.benutzerProfil()?.userRole !== 'filiale') {
+        <mat-checkbox class="pur-form__field pur-form__field--50" formControlName="aktiv">
+          Mitarbeiter ist aktiv
+        </mat-checkbox>
+      </div>
+      @if (benutzerStore.benutzerProfil()?.userRole !== 'filiale') {
+        <div class="pur-form__row">
           <mat-form-field appearance="outline" class="pur-form__field pur-form__field--50">
             <mat-label>Filialen</mat-label>
             <mat-select formControlName="filialIds" multiple>
@@ -116,8 +115,8 @@
               }
             </mat-select>
           </mat-form-field>
-        }
-      </div>
+        </div>
+      }
     </div>
 
     @if (submitError() || mitarbeiterStore.error(); as error) {

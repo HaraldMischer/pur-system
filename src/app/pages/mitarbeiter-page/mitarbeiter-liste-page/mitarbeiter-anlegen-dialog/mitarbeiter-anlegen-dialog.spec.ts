@@ -21,9 +21,7 @@ describe('MitarbeiterAnlegenDialog', () => {
   };
   const dialogDaten = {
     unternehmerId: 'u-1',
-    unternehmerName: 'Unternehmer',
     firmaId: 'f-1',
-    firmaName: 'Firma',
     filialen: [
       { id: 'b-1', anzeigename: 'Filiale 1' },
       { id: 'b-2', anzeigename: 'Filiale 2' },
@@ -65,7 +63,11 @@ describe('MitarbeiterAnlegenDialog', () => {
     );
 
     expect(fixture.componentInstance.mitarbeiterForm.invalid).toBe(true);
+    expect(fixture.componentInstance.mitarbeiterForm.controls.aktiv.value).toBe(true);
     expect(form?.classList).toContain('pur-form--grid');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.pur-page-section__summary'),
+    ).toBeNull();
     expect(submit?.getAttribute('form')).toBe('mitarbeiter-anlegen-form');
     expect(
       (fixture.nativeElement as HTMLElement).querySelector(
@@ -117,6 +119,7 @@ describe('MitarbeiterAnlegenDialog', () => {
       },
       rollen: ['filialkasse'],
       filialIds: ['b-1'],
+      aktiv: false,
     });
 
     await component.onSubmit();
@@ -130,6 +133,7 @@ describe('MitarbeiterAnlegenDialog', () => {
       },
       rollen: ['filialkasse'],
       filialIds: ['b-1'],
+      aktiv: false,
     });
     expect(dialogRefMock.close).toHaveBeenCalledWith({ id: 'm-neu' });
   });

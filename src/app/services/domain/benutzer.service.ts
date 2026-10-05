@@ -120,10 +120,13 @@ export class BenutzerService {
       erlaubteBereiche: buildErlaubteBereiche(userRole, aktualisierung.erlaubteBereiche),
     };
 
-    await this.firestoreDbService.updateDocument(FIRESTORE_DOCUMENT_PATHS.benutzerprofil(uid), {
-      ...gespeicherteAktualisierung,
-      aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
-    });
+    await this.firestoreDbService.replaceDocumentFields(
+      FIRESTORE_DOCUMENT_PATHS.benutzerprofil(uid),
+      {
+        ...gespeicherteAktualisierung,
+        aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
+      },
+    );
 
     return gespeicherteAktualisierung;
   }

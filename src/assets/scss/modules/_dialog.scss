@@ -13,5 +13,9 @@
 
   &__content.mat-mdc-dialog-content {
     overflow-x: hidden;
+
+    > .pur-form:first-child {
+      margin-top: 8px;
+    }
   }
 }

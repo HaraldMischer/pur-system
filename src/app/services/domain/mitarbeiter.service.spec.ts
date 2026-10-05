@@ -37,6 +37,7 @@ describe('MitarbeiterService', () => {
     },
     rollen: ['servicekraft'],
     filialIds: ['filiale-1'],
+    aktiv: true,
   };
 
   beforeEach(() => {
@@ -240,18 +241,18 @@ describe('MitarbeiterService', () => {
     await expect(service.loadMitarbeiterEintrag('u', 'f', 'm-1')).resolves.toBeNull();
   });
 
-  it('should create an active employee with server timestamps', async () => {
+  it('should create an employee with the selected status and server timestamps', async () => {
     const service = TestBed.inject(MitarbeiterService);
+    const inaktiveAnlage = { ...anlage, aktiv: false };
 
-    await expect(service.createMitarbeiter('u', 'f', anlage)).resolves.toEqual({
+    await expect(service.createMitarbeiter('u', 'f', inaktiveAnlage)).resolves.toEqual({
       id: 'mitarbeiter-123',
     });
     expect(firestoreDbServiceMock.createDocument).toHaveBeenCalledWith(
       'unternehmer/u/firma/f/mitarbeiter',
       {
-        ...anlage,
+        ...inaktiveAnlage,
         anzeigename: 'Mia Muster',
-        aktiv: true,
         erstelltAm: 'server-zeitstempel',
         aktualisiertAm: 'server-zeitstempel',
       },

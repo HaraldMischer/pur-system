@@ -10,15 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  AbstractControl,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -37,6 +29,7 @@ import {
   getWaehlbareAppBereiche,
   TWaehlbarerAppBereich,
 } from '../../../../../commons/utils/benutzer/erlaubte-bereiche';
+import { nichtLeerValidator } from '../../../../../commons/validators/nicht-leer.validator';
 import { AuthService } from '../../../../../services/firebase/auth.service';
 import { StammdatenStore } from '../../../../../stores/app/stammdaten.store';
 import { BenutzerVerwaltungStore } from '../../../../../stores/domain/benutzer-verwaltung.store';
@@ -44,10 +37,6 @@ import { BenutzerVerwaltungStore } from '../../../../../stores/domain/benutzer-v
 // ===== Top-Level Helper =====================
 
 type TErlaubteBereicheForm = { [K in TWaehlbarerAppBereich]: FormControl<boolean> };
-
-const nichtLeerValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  return String(control.value).trim() ? null : { required: true };
-};
 
 export interface IBenutzerBearbeitenDialogDaten {
   profil: IBenutzerProfilEintrag;

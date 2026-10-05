@@ -2,28 +2,15 @@
 
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  AbstractControl,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
 import { IFilialeAktualisierung, IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { VerwaltungStore } from '../../../stores/domain/verwaltung.store';
-
-// ===== Top-Level Helper =====================
-
-const nichtLeerValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  return String(control.value).trim() ? null : { required: true };
-};
 
 export interface IFilialeBearbeitenDialogDaten {
   filiale: IFilialeEintrag;

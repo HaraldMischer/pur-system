@@ -15,7 +15,7 @@ describe('BenutzerService', () => {
     loadCollection: vi.fn(),
     loadDocument: vi.fn(),
     observeDocument: vi.fn(),
-    updateDocument: vi.fn(),
+    replaceDocumentFields: vi.fn(),
   };
 
   beforeEach(() => {
@@ -24,7 +24,7 @@ describe('BenutzerService', () => {
     firestoreDbServiceMock.loadDocument.mockResolvedValue(null);
     firestoreDbServiceMock.observeDocument.mockReturnValue(vi.fn());
     firestoreDbServiceMock.createServerTimestamp.mockReturnValue('server-timestamp');
-    firestoreDbServiceMock.updateDocument.mockResolvedValue(undefined);
+    firestoreDbServiceMock.replaceDocumentFields.mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
       providers: [
@@ -231,11 +231,14 @@ describe('BenutzerService', () => {
 
     const ergebnis = await service.updateBenutzerProfil('office-1', 'office', aktualisierung);
 
-    expect(firestoreDbServiceMock.updateDocument).toHaveBeenCalledWith('benutzerprofil/office-1', {
-      ...aktualisierung,
-      erlaubteBereiche: ['dashboard', 'verwaltung'],
-      aktualisiertAm: 'server-timestamp',
-    });
+    expect(firestoreDbServiceMock.replaceDocumentFields).toHaveBeenCalledWith(
+      'benutzerprofil/office-1',
+      {
+        ...aktualisierung,
+        erlaubteBereiche: ['dashboard', 'verwaltung'],
+        aktualisiertAm: 'server-timestamp',
+      },
+    );
     expect(ergebnis.erlaubteBereiche).toEqual(['dashboard', 'verwaltung']);
   });
 });
