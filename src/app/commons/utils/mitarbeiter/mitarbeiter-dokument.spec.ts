@@ -42,7 +42,7 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
         adresse: person.adresse,
         kontakt: { email: 'mia@example.com' },
       },
-      rolle: 'service',
+      rollen: ['servicekraft'],
       filialIds: ['b-1'],
       aktiv: true,
     });
@@ -56,13 +56,24 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
     });
   });
 
+  it('should read the previous scalar role format compatibly', () => {
+    expect(
+      mapMitarbeiterEintrag('u-1', 'f-1', 'm-1', {
+        person,
+        rolle: 'kasse',
+        filialIds: [],
+        aktiv: true,
+      }).rollen,
+    ).toEqual(['filialkasse']);
+  });
+
   it('should sort employees by last name and first name without changing the input', () => {
     const zulu: IMitarbeiterEintrag = {
       id: 'z',
       unternehmerId: 'u-1',
       firmaId: 'f-1',
       person: { ...person, vorname: 'Zoe', nachname: 'Zulu' },
-      rolle: 'service',
+      rollen: ['servicekraft'],
       filialIds: [],
       aktiv: true,
     };

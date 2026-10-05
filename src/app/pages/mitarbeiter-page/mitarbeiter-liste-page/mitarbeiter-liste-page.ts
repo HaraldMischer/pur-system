@@ -7,7 +7,9 @@ import {
   computed,
   effect,
   inject,
+  signal,
 } from '@angular/core';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
@@ -23,10 +25,13 @@ import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { MitarbeiterAnlegenDialog } from './mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog';
 import { MitarbeiterBearbeitenDialog } from './mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog';
 import { MitarbeiterCard } from './mitarbeiter-card/mitarbeiter-card';
+import { MitarbeiterZusammenfuehrenDialog } from './mitarbeiter-zusammenfuehren-dialog/mitarbeiter-zusammenfuehren-dialog';
+
+type TMitarbeiterAnsicht = 'aktiv' | 'inaktiv' | 'alle';
 
 @Component({
   selector: 'app-mitarbeiter-liste-page',
-  imports: [MatButtonModule, MatCardModule, MatIconModule, MitarbeiterCard],
+  imports: [MatButtonModule, MatButtonToggleModule, MatCardModule, MatIconModule, MitarbeiterCard],
   templateUrl: './mitarbeiter-liste-page.html',
   styleUrl: './mitarbeiter-liste-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,6 +44,10 @@ export class MitarbeiterListePage {
   readonly benutzerStore = inject(BenutzerStore);
   readonly stammdatenStore = inject(StammdatenStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
+
+  // ===== Öffentliche Werte ====================
+
+  readonly mitarbeiterAnsicht = signal<TMitarbeiterAnsicht>('aktiv');
 
   // ===== Interne Ableitungen ==================
 
@@ -68,7 +77,7 @@ export class MitarbeiterListePage {
       hatMitarbeiterVerwaltungszugriffAufFirma(profil, unternehmerId, firmaId),
     );
   });
-  readonly darfLoeschen: Signal<boolean> = computed(() => {
+  readonly darfZusammenfuehren: Signal<boolean> = computed(() => {
     const profil = this.benutzerStore.benutzerProfil();
     return profil?.aktiv === true && profil.userRole === 'master';
   });
@@ -82,9 +91,14 @@ export class MitarbeiterListePage {
       kontext.filialId,
     );
     const filterFilialId = this.getMitarbeiterFilterFilialId();
-    return filterFilialId
+    const gefilterteMitarbeiter = filterFilialId
       ? mitarbeiter.filter((eintrag) => eintrag.filialIds.includes(filterFilialId))
       : mitarbeiter;
+    return gefilterteMitarbeiter.filter((eintrag) => {
+      if (this.mitarbeiterAnsicht() === 'aktiv') return eintrag.aktiv;
+      if (this.mitarbeiterAnsicht() === 'inaktiv') return !eintrag.aktiv;
+      return true;
+    });
   });
   readonly mitarbeiterDownload: Signal<boolean> = computed(() => {
     const kontext = this.getSelectedMitarbeiterKontext();
@@ -115,6 +129,14 @@ export class MitarbeiterListePage {
           kontext.filialId,
         )
       : null;
+  });
+  readonly hatZusammenfuehrungsZiel: Signal<boolean> = computed(() => {
+    const kontext = this.getSelectedMitarbeiterKontext();
+    if (!kontext) return false;
+    return (
+      this.mitarbeiterStore.getMitarbeiter(kontext.unternehmerId, kontext.firmaId, kontext.filialId)
+        .length > 1
+    );
   });
 
   // ===== Öffentliche Aktionen =================
@@ -166,31 +188,26 @@ export class MitarbeiterListePage {
   }
 
   /**
-   * Löscht nach Bestätigung einen Mitarbeiter und seine Migrationszuordnungen.
+   * Öffnet den Dialog zum Zusammenführen eines doppelten Mitarbeiters.
    *
-   * @param mitarbeiter - Der zu löschende Mitarbeiter.
+   * @param mitarbeiter - Der als Duplikat zu behandelnde Mitarbeiter.
    */
-  async deleteMitarbeiter(mitarbeiter: IMitarbeiterEintrag): Promise<void> {
-    if (
-      !this.darfLoeschen() ||
-      this.mitarbeiterStore.inProgress() ||
-      !this.mitarbeiter().some((eintrag) => eintrag.id === mitarbeiter.id)
-    ) {
+  openMitarbeiterZusammenfuehrenDialog(mitarbeiter: IMitarbeiterEintrag): void {
+    const kontext = this.getSelectedMitarbeiterKontext();
+    if (!kontext || !this.darfZusammenfuehren() || this.mitarbeiterStore.inProgress()) return;
+
+    const alleMitarbeiter = this.mitarbeiterStore.getMitarbeiter(
+      kontext.unternehmerId,
+      kontext.firmaId,
+      kontext.filialId,
+    );
+    if (!alleMitarbeiter.some((eintrag) => eintrag.id === mitarbeiter.id)) {
       return;
     }
 
-    const name = `${mitarbeiter.person.vorname} ${mitarbeiter.person.nachname}`.trim();
-    if (!window.confirm(`Mitarbeiter „${name}“ wirklich löschen?`)) return;
-
-    try {
-      await this.mitarbeiterStore.deleteMitarbeiter(
-        mitarbeiter.unternehmerId,
-        mitarbeiter.firmaId,
-        mitarbeiter.id,
-      );
-    } catch {
-      // Der MitarbeiterStore stellt die Fehlermeldung für die Oberfläche bereit.
-    }
+    this.dialog.open(MitarbeiterZusammenfuehrenDialog, {
+      data: { quelle: mitarbeiter, mitarbeiter: alleMitarbeiter },
+    });
   }
 
   // ===== Interne Helfer =======================

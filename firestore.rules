@@ -135,7 +135,15 @@ service cloud.firestore {
     function darfMitarbeiterAnlegen(unternehmerId, firmaId) {
       return darfMitarbeiterFirmaVerwenden(unternehmerId, firmaId)
         && !('benutzerUid' in request.resource.data)
-        && request.resource.data.rolle in ['service', 'kasse', 'admin']
+        && request.resource.data.rollen is list
+        && request.resource.data.rollen.size() > 0
+        && request.resource.data.rollen.hasOnly([
+          'filialkasse',
+          'servicekraft',
+          'administrator',
+          'kassierer',
+          'techniker'
+        ])
         && request.resource.data.erstelltAm == request.time
         && request.resource.data.aktualisiertAm == request.time
         && hatGueltigeMitarbeiterFilialenBeiAnlage(unternehmerId, firmaId)
@@ -150,12 +158,20 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'person',
           'anzeigename',
-          'rolle',
+          'rollen',
           'filialIds',
           'aktiv',
           'aktualisiertAm'
         ])
-        && request.resource.data.rolle in ['service', 'kasse', 'admin']
+        && request.resource.data.rollen is list
+        && request.resource.data.rollen.size() > 0
+        && request.resource.data.rollen.hasOnly([
+          'filialkasse',
+          'servicekraft',
+          'administrator',
+          'kassierer',
+          'techniker'
+        ])
         && request.resource.data.aktualisiertAm == request.time
         && hatGueltigeMitarbeiterFilialenBeiBearbeitung(unternehmerId, firmaId)
         && (
@@ -210,14 +226,13 @@ service cloud.firestore {
 
         match /mitarbeiter/{mitarbeiterId} {
           allow read, create, update: if isMaster();
+          allow delete: if isMaster() && resource.data.get('benutzerUid', null) == null;
           allow read: if isOffice() && darfFirmaLesen(unternehmerId, firmaId);
           allow read: if profil().userRole == 'filiale'
             && darfFirmaLesen(unternehmerId, firmaId);
           allow read: if darfMitarbeiterFirmaLesen(unternehmerId, firmaId);
           allow create: if darfMitarbeiterAnlegen(unternehmerId, firmaId);
           allow update: if darfMitarbeiterBearbeiten(unternehmerId, firmaId);
-          allow delete: if isMaster()
-            && resource.data.get('benutzerUid', null) == null;
         }
 
       }

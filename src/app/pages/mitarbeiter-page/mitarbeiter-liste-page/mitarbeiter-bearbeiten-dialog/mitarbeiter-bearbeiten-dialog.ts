@@ -91,9 +91,11 @@ export class MitarbeiterBearbeitenDialog {
   // ===== Öffentliche Werte ====================
 
   readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
-    { value: 'service', label: 'Service' },
-    { value: 'kasse', label: 'Kasse' },
-    { value: 'admin', label: 'Administration' },
+    { value: 'filialkasse', label: 'Filialkasse' },
+    { value: 'servicekraft', label: 'Servicekraft' },
+    { value: 'administrator', label: 'Administrator' },
+    { value: 'kassierer', label: 'Kassierer' },
+    { value: 'techniker', label: 'Techniker' },
   ];
   readonly weitereFilialzuordnungen = this.fremdeFilialIds.length;
   readonly submitError = signal<string | null>(null);
@@ -141,7 +143,7 @@ export class MitarbeiterBearbeitenDialog {
         }),
       }),
     }),
-    rolle: new FormControl<TMitarbeiterRolle>(this.dialogDaten.mitarbeiter.rolle, {
+    rollen: new FormControl<TMitarbeiterRolle[]>(this.dialogDaten.mitarbeiter.rollen, {
       nonNullable: true,
       validators: [Validators.required],
     }),
@@ -261,7 +263,7 @@ export class MitarbeiterBearbeitenDialog {
         },
         ...(geburtstag ? { geburtstag } : {}),
       },
-      rolle: value.rolle,
+      rollen: value.rollen,
       filialIds: [
         ...new Set([
           ...this.fremdeFilialIds,

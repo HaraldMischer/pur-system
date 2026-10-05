@@ -25,6 +25,7 @@ import {
   serverTimestamp,
   setDoc,
   where,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { httpsCallable } from '@angular/fire/functions';
 
@@ -160,6 +161,14 @@ export const FIRESTORE_SET_DOC = new InjectionToken<typeof setDoc>('FIRESTORE_SE
   providedIn: 'root',
   factory: () => setDoc,
 });
+
+export const FIRESTORE_WRITE_BATCH = new InjectionToken<typeof writeBatch>(
+  'FIRESTORE_WRITE_BATCH',
+  {
+    providedIn: 'root',
+    factory: () => writeBatch,
+  },
+);
 
 export const FIRESTORE_SERVER_TIMESTAMP = new InjectionToken<typeof serverTimestamp>(
   'FIRESTORE_SERVER_TIMESTAMP',

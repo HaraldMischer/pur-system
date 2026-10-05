@@ -16,6 +16,7 @@ import {
   FIRESTORE_QUERY,
   FIRESTORE_SERVER_TIMESTAMP,
   FIRESTORE_SET_DOC,
+  FIRESTORE_WRITE_BATCH,
   FIRESTORE_WHERE,
 } from '../../commons/tokens/firebase.tokens';
 import { LoadingService } from '../core/loading.service';
@@ -35,6 +36,14 @@ describe('FirestoreDbService', () => {
   const onSnapshotMock = vi.fn();
   const queryMock = vi.fn().mockReturnValue('query-ref');
   const setDocMock = vi.fn();
+  const batchSetMock = vi.fn();
+  const batchDeleteMock = vi.fn();
+  const batchCommitMock = vi.fn();
+  const writeBatchMock = vi.fn().mockReturnValue({
+    set: batchSetMock,
+    delete: batchDeleteMock,
+    commit: batchCommitMock,
+  });
   const unsubscribeMock = vi.fn();
   const serverTimestampMock = vi.fn().mockReturnValue('server-zeitstempel');
   const whereMock = vi.fn().mockReturnValue('where-constraint');
@@ -54,6 +63,7 @@ describe('FirestoreDbService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    docMock.mockReturnValue('document-ref');
     getDocsFromCacheMock.mockRejectedValue({ code: 'unavailable' });
     getDocsFromServerMock.mockResolvedValue({ docs: [] });
     getDocFromCacheMock.mockRejectedValue({ code: 'unavailable' });
@@ -68,6 +78,7 @@ describe('FirestoreDbService', () => {
       },
     );
     setDocMock.mockResolvedValue(undefined);
+    batchCommitMock.mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
       providers: [
@@ -85,6 +96,7 @@ describe('FirestoreDbService', () => {
         { provide: FIRESTORE_QUERY, useValue: queryMock },
         { provide: FIRESTORE_SERVER_TIMESTAMP, useValue: serverTimestampMock },
         { provide: FIRESTORE_SET_DOC, useValue: setDocMock },
+        { provide: FIRESTORE_WRITE_BATCH, useValue: writeBatchMock },
         { provide: FIRESTORE_WHERE, useValue: whereMock },
         {
           provide: LoadingService,
@@ -93,6 +105,37 @@ describe('FirestoreDbService', () => {
         { provide: NetzwerkStatusService, useValue: { assertOnline: assertOnlineMock } },
       ],
     });
+  });
+
+  it('should update several documents atomically', async () => {
+    docMock.mockImplementation((_firestore, path: string) => `ref:${path}`);
+    const service = TestBed.inject(FirestoreDbService);
+
+    await service.updateDocumentsAtomically([
+      { documentPath: 'mitarbeiter/m-1', daten: { aktiv: false } },
+      {
+        documentPath: 'systemMigrationen/k-1',
+        daten: { mitarbeiterIds: { alt: 'neu' }, aktualisiertAm: 'zeit' },
+        replaceFields: true,
+      },
+      { documentPath: 'mitarbeiter/m-2', delete: true },
+    ]);
+
+    expect(writeBatchMock).toHaveBeenCalledWith(firestoreMock);
+    expect(batchSetMock).toHaveBeenNthCalledWith(
+      1,
+      'ref:mitarbeiter/m-1',
+      { aktiv: false },
+      { merge: true },
+    );
+    expect(batchDeleteMock).toHaveBeenCalledWith('ref:mitarbeiter/m-2');
+    expect(batchSetMock).toHaveBeenNthCalledWith(
+      2,
+      'ref:systemMigrationen/k-1',
+      { mitarbeiterIds: { alt: 'neu' }, aktualisiertAm: 'zeit' },
+      { mergeFields: ['mitarbeiterIds', 'aktualisiertAm'] },
+    );
+    expect(batchCommitMock).toHaveBeenCalledOnce();
   });
 
   it('should load a collection with document ids', async () => {

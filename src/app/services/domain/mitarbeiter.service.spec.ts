@@ -19,6 +19,7 @@ describe('MitarbeiterService', () => {
     updateDocument: vi.fn(),
     replaceDocumentFields: vi.fn(),
     deleteDocument: vi.fn(),
+    updateDocumentsAtomically: vi.fn(),
     createServerTimestamp: vi.fn(),
   };
   const anlage: IMitarbeiterAnlage = {
@@ -34,7 +35,7 @@ describe('MitarbeiterService', () => {
       kontakt: { email: 'mia@example.com' },
       geburtstag: '1990-01-02',
     },
-    rolle: 'service',
+    rollen: ['servicekraft'],
     filialIds: ['filiale-1'],
   };
 
@@ -48,6 +49,7 @@ describe('MitarbeiterService', () => {
     firestoreDbServiceMock.updateDocument.mockResolvedValue(undefined);
     firestoreDbServiceMock.replaceDocumentFields.mockResolvedValue(undefined);
     firestoreDbServiceMock.deleteDocument.mockResolvedValue(undefined);
+    firestoreDbServiceMock.updateDocumentsAtomically.mockResolvedValue(undefined);
     firestoreDbServiceMock.createServerTimestamp.mockReturnValue('server-zeitstempel');
 
     TestBed.configureTestingModule({
@@ -80,7 +82,7 @@ describe('MitarbeiterService', () => {
         daten: {
           ...anlage,
           person: { ...anlage.person, vorname: ' Anton ', nachname: ' Albrecht ' },
-          rolle: 'kasse',
+          rollen: ['filialkasse'],
           filialIds: [],
           aktiv: false,
         },
@@ -94,7 +96,7 @@ describe('MitarbeiterService', () => {
         unternehmerId: 'unternehmer-1',
         firmaId: 'firma-1',
         person: { ...anlage.person, vorname: 'Anton', nachname: 'Albrecht' },
-        rolle: 'kasse',
+        rollen: ['filialkasse'],
         filialIds: [],
         aktiv: false,
       },
@@ -103,7 +105,7 @@ describe('MitarbeiterService', () => {
         unternehmerId: 'unternehmer-1',
         firmaId: 'firma-1',
         person: { ...anlage.person, vorname: 'Zoe', nachname: 'Zimmer' },
-        rolle: 'service',
+        rollen: ['servicekraft'],
         filialIds: ['filiale-2', 'filiale-1'],
         aktiv: true,
       },
@@ -126,7 +128,7 @@ describe('MitarbeiterService', () => {
             kontakt: { email: ' ', telefon: ' 123 ' },
             geschlecht: 'unbekannt',
           },
-          rolle: 'unbekannt',
+          rollen: ['unbekannt'],
           filialIds: [' ', null, 'filiale-1'],
           benutzerUid: 'auth-1',
         },
@@ -145,7 +147,7 @@ describe('MitarbeiterService', () => {
           adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
           kontakt: { telefon: '123' },
         },
-        rolle: 'service',
+        rollen: ['servicekraft'],
         filialIds: ['filiale-1'],
         aktiv: false,
       },
@@ -278,7 +280,50 @@ describe('MitarbeiterService', () => {
     );
   });
 
-  it('should delete an employee document', async () => {
+  it('should delete an employee and remove matching migration mappings atomically', async () => {
+    firestoreDbServiceMock.loadDocument.mockResolvedValue({ id: 'm-1', daten: anlage });
+    firestoreDbServiceMock.loadCollection.mockResolvedValue([
+      {
+        id: 'kunde-1',
+        daten: {
+          unternehmerId: 'u',
+          firmenIds: { 'firma-alt': 'f' },
+          mitarbeiterIds: {
+            'firma-alt': { 'filiale-alt': { 'mitarbeiter-alt': 'm-1' } },
+          },
+        },
+      },
+    ]);
+    const service = TestBed.inject(MitarbeiterService);
+
+    await service.deleteMitarbeiter('u', 'f', 'm-1');
+
+    expect(firestoreDbServiceMock.updateDocumentsAtomically).toHaveBeenCalledWith([
+      {
+        documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-1',
+        delete: true,
+      },
+      {
+        documentPath: 'systemMigrationen/kunde-1',
+        daten: {
+          mitarbeiterIds: { 'firma-alt': { 'filiale-alt': {} } },
+          aktualisiertAm: 'server-zeitstempel',
+        },
+        replaceFields: true,
+      },
+    ]);
+  });
+
+  it('should merge employees and redirect all matching migration mappings atomically', async () => {
+    firestoreDbServiceMock.loadDocument
+      .mockResolvedValueOnce({
+        id: 'm-quelle',
+        daten: { ...anlage, rollen: ['techniker'], filialIds: ['b-1'], aktiv: false },
+      })
+      .mockResolvedValueOnce({
+        id: 'm-ziel',
+        daten: { ...anlage, filialIds: ['b-2'], aktiv: true },
+      });
     firestoreDbServiceMock.loadCollection.mockResolvedValue([
       {
         id: 'kunde-1',
@@ -288,8 +333,8 @@ describe('MitarbeiterService', () => {
           mitarbeiterIds: {
             'firma-alt': {
               'filiale-alt': {
-                'mitarbeiter-alt': 'm-1',
-                'mitarbeiter-bleibt': 'm-2',
+                'mitarbeiter-alt-1': 'm-quelle',
+                'mitarbeiter-alt-2': 'm-ziel',
               },
             },
           },
@@ -298,46 +343,37 @@ describe('MitarbeiterService', () => {
     ]);
     const service = TestBed.inject(MitarbeiterService);
 
-    await service.deleteMitarbeiter('u', 'f', 'm-1');
+    await service.mergeMitarbeiter('u', 'f', 'm-quelle', 'm-ziel');
 
-    expect(firestoreDbServiceMock.deleteDocument).toHaveBeenCalledWith(
-      'unternehmer/u/firma/f/mitarbeiter/m-1',
-    );
-    expect(firestoreDbServiceMock.replaceDocumentFields).toHaveBeenCalledWith(
-      'systemMigrationen/kunde-1',
+    expect(firestoreDbServiceMock.updateDocumentsAtomically).toHaveBeenCalledWith([
       {
-        mitarbeiterIds: {
-          'firma-alt': {
-            'filiale-alt': {
-              'mitarbeiter-bleibt': 'm-2',
-            },
-          },
-        },
-        aktualisiertAm: 'server-zeitstempel',
-      },
-    );
-  });
-
-  it('should leave unrelated migration mappings unchanged when an employee is deleted', async () => {
-    firestoreDbServiceMock.loadCollection.mockResolvedValue([
-      {
-        id: 'kunde-1',
+        documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-ziel',
         daten: {
-          unternehmerId: 'u',
-          firmenIds: { 'andere-firma-alt': 'andere-firma' },
+          filialIds: ['b-2', 'b-1'],
+          rollen: ['servicekraft', 'techniker'],
+          aktualisiertAm: 'server-zeitstempel',
+        },
+      },
+      {
+        documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-quelle',
+        delete: true,
+      },
+      {
+        documentPath: 'systemMigrationen/kunde-1',
+        daten: {
           mitarbeiterIds: {
-            'andere-firma-alt': {
-              'filiale-alt': { 'mitarbeiter-alt': 'm-1' },
+            'firma-alt': {
+              'filiale-alt': {
+                'mitarbeiter-alt-1': 'm-ziel',
+                'mitarbeiter-alt-2': 'm-ziel',
+              },
             },
           },
+          aktualisiertAm: 'server-zeitstempel',
         },
+        replaceFields: true,
       },
     ]);
-    const service = TestBed.inject(MitarbeiterService);
-
-    await service.deleteMitarbeiter('u', 'f', 'm-1');
-
-    expect(firestoreDbServiceMock.replaceDocumentFields).not.toHaveBeenCalled();
   });
 
   it('should propagate Firestore errors', async () => {

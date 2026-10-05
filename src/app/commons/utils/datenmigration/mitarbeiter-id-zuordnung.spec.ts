@@ -1,7 +1,10 @@
 // pur-system/src/app/commons/utils/datenmigration/mitarbeiter-id-zuordnung.spec.ts
 
 import { ISystemmigrationDokument } from '../../models/domain/datenmigration';
-import { removeMitarbeiterIdZuordnung } from './mitarbeiter-id-zuordnung';
+import {
+  deleteMitarbeiterIdZuordnung,
+  replaceMitarbeiterIdZuordnung,
+} from './mitarbeiter-id-zuordnung';
 
 describe('Mitarbeiter-ID-Zuordnung', () => {
   const systemmigration = {
@@ -24,8 +27,20 @@ describe('Mitarbeiter-ID-Zuordnung', () => {
     },
   } as unknown as ISystemmigrationDokument;
 
-  it('should remove only matching target ids from the selected company', () => {
-    expect(removeMitarbeiterIdZuordnung(systemmigration, 'f-1', 'm-1')).toEqual({
+  it('should replace only matching target ids in the selected company', () => {
+    expect(replaceMitarbeiterIdZuordnung(systemmigration, 'f-1', 'm-1', 'm-ziel')).toEqual({
+      'firma-alt': {
+        'filiale-alt': {
+          'mitarbeiter-alt': 'm-ziel',
+          'mitarbeiter-bleibt': 'm-2',
+        },
+      },
+      'andere-firma-alt': systemmigration.mitarbeiterIds?.['andere-firma-alt'],
+    });
+  });
+
+  it('should delete only matching target ids in the selected company', () => {
+    expect(deleteMitarbeiterIdZuordnung(systemmigration, 'f-1', 'm-1')).toEqual({
       'firma-alt': {
         'filiale-alt': {
           'mitarbeiter-bleibt': 'm-2',
@@ -36,26 +51,16 @@ describe('Mitarbeiter-ID-Zuordnung', () => {
   });
 
   it('should return null without a matching assignment', () => {
-    expect(removeMitarbeiterIdZuordnung(systemmigration, 'f-1', 'nicht-vorhanden')).toBeNull();
     expect(
-      removeMitarbeiterIdZuordnung({ ...systemmigration, mitarbeiterIds: undefined }, 'f-1', 'm-1'),
+      replaceMitarbeiterIdZuordnung(systemmigration, 'f-1', 'nicht-vorhanden', 'm-ziel'),
     ).toBeNull();
-  });
-
-  it('should remove empty branch and company maps', () => {
     expect(
-      removeMitarbeiterIdZuordnung(
-        {
-          ...systemmigration,
-          mitarbeiterIds: {
-            'firma-alt': {
-              'filiale-alt': { 'mitarbeiter-alt': 'm-1' },
-            },
-          },
-        },
+      replaceMitarbeiterIdZuordnung(
+        { ...systemmigration, mitarbeiterIds: undefined },
         'f-1',
         'm-1',
+        'm-ziel',
       ),
-    ).toEqual({});
+    ).toBeNull();
   });
 });

@@ -35,7 +35,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
         webseite: 'https://example.com',
       },
     },
-    rolle: 'service',
+    rollen: ['servicekraft'],
     filialIds: ['b-1', 'b-3'],
     aktiv: true,
   };
@@ -85,7 +85,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
 
     expect(fixture.componentInstance.mitarbeiterForm.getRawValue()).toMatchObject({
       person: mitarbeiter.person,
-      rolle: 'service',
+      rollen: ['servicekraft'],
       filialIds: ['b-1'],
       aktiv: true,
     });
@@ -157,7 +157,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
     const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
     component.mitarbeiterForm.patchValue({
       person: { vorname: ' Mia Neu ' },
-      rolle: 'admin',
+      rollen: ['administrator'],
       filialIds: [],
       aktiv: false,
     });
@@ -178,7 +178,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
             webseite: 'https://example.com',
           },
         }),
-        rolle: 'admin',
+        rollen: ['administrator'],
         filialIds: ['b-3', 'b-1'],
         aktiv: false,
       }),

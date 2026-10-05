@@ -21,7 +21,7 @@ describe('MitarbeiterCard', () => {
       },
       kontakt: {},
     },
-    rolle: 'service',
+    rollen: ['servicekraft'],
     filialIds: ['b-1', 'b-2'],
     aktiv: true,
   };
@@ -65,20 +65,20 @@ describe('MitarbeiterCard', () => {
     expect(bearbeitenSpy).toHaveBeenCalledWith(mitarbeiter);
   });
 
-  it('should offer and emit deletion only when it is allowed', () => {
+  it('should emit merging when it is allowed', () => {
     const fixture = TestBed.createComponent(MitarbeiterCard);
-    const loeschenSpy = vi.fn();
+    const zusammenfuehrenSpy = vi.fn();
     fixture.componentRef.setInput('mitarbeiter', mitarbeiter);
-    fixture.componentInstance.loeschen.subscribe(loeschenSpy);
+    fixture.componentRef.setInput('darfZusammenfuehren', true);
+    fixture.componentInstance.zusammenfuehren.subscribe(zusammenfuehrenSpy);
     fixture.detectChanges();
 
+    const mergeButton = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
+      (button) => button.textContent?.includes('Zusammenführen'),
+    );
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Löschen');
+    mergeButton?.click();
 
-    fixture.componentRef.setInput('darfLoeschen', true);
-    fixture.detectChanges();
-    const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('button');
-    buttons[0]?.click();
-
-    expect(loeschenSpy).toHaveBeenCalledWith(mitarbeiter);
+    expect(zusammenfuehrenSpy).toHaveBeenCalledWith(mitarbeiter);
   });
 });

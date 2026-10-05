@@ -133,7 +133,7 @@ describe('DatenmigrationService', () => {
       adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
       kontakt: {},
     },
-    rolle: 'service',
+    rollen: ['servicekraft'],
     filialIds: ['filiale-ziel'],
     aktiv: true,
   };
@@ -1091,6 +1091,64 @@ describe('DatenmigrationService', () => {
         fehler: 0,
       }),
     );
+  });
+
+  it('should preserve target identity data after legacy ids were merged', async () => {
+    firestoreDbServiceMock.loadDocument
+      .mockResolvedValueOnce({
+        id: 'kunde-1',
+        daten: {
+          purCustomerId: 'kunde-1',
+          unternehmerId: 'unternehmer-ziel',
+          firmenIds: { 'firma-alt': 'firma-ziel' },
+          filialenIds: {
+            'firma-alt': {
+              'filiale-1': 'filiale-ziel-1',
+              'filiale-2': 'filiale-ziel-2',
+            },
+          },
+          mitarbeiterIds: {
+            'firma-alt': {
+              'filiale-1': { 'mitarbeiter-1': 'mitarbeiter-ziel' },
+              'filiale-2': { 'mitarbeiter-2': 'mitarbeiter-ziel' },
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({ id: 'filialen_v1', daten: { status: 'completed' } })
+      .mockResolvedValue({
+        id: 'mitarbeiter-ziel',
+        daten: {
+          ...erwarteterMitarbeiter,
+          anzeigename: 'Manuell gewähltes Ziel',
+          filialIds: ['filiale-ziel-1'],
+          rollen: ['administrator'],
+        },
+      });
+    firestoreDbServiceMock.loadCollection
+      .mockResolvedValueOnce([{ id: 'firma-alt', daten: purCompany }])
+      .mockResolvedValueOnce([
+        { id: 'filiale-1', daten: purBranch },
+        { id: 'filiale-2', daten: purBranch },
+      ])
+      .mockResolvedValueOnce([{ id: 'mitarbeiter-1', daten: purEmployee }])
+      .mockResolvedValueOnce([{ id: 'mitarbeiter-2', daten: purEmployee }]);
+    const service = TestBed.inject(DatenmigrationService);
+
+    await service.migrateMitarbeiter('kunde-1');
+
+    const zielUpdates = firestoreDbServiceMock.updateDocument.mock.calls.filter(
+      ([documentPath]) =>
+        documentPath ===
+        'unternehmer/unternehmer-ziel/firma/firma-ziel/mitarbeiter/mitarbeiter-ziel',
+    );
+    expect(zielUpdates).toHaveLength(2);
+    expect(zielUpdates[1]?.[1]).toEqual({
+      filialIds: ['filiale-ziel-1', 'filiale-ziel-2'],
+      rollen: ['administrator', 'servicekraft'],
+      aktualisiertAm: 'server-zeitstempel',
+    });
+    expect(zielUpdates.some(([, daten]) => 'anzeigename' in daten)).toBe(false);
   });
 
   it('should assign different target ids to the same legacy employee id in two branches', async () => {

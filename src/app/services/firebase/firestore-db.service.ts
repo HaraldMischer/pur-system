@@ -17,6 +17,7 @@ import {
   FIRESTORE_QUERY,
   FIRESTORE_SERVER_TIMESTAMP,
   FIRESTORE_SET_DOC,
+  FIRESTORE_WRITE_BATCH,
   FIRESTORE_WHERE,
 } from '../../commons/tokens/firebase.tokens';
 import { LoadingService } from '../core/loading.service';
@@ -26,6 +27,19 @@ export interface IFirestoreDokument<T extends DocumentData> {
   id: string;
   daten: T;
 }
+
+export interface IFirestoreBatchAktualisierung {
+  documentPath: string;
+  daten: DocumentData;
+  replaceFields?: boolean;
+}
+
+export interface IFirestoreBatchLoeschung {
+  documentPath: string;
+  delete: true;
+}
+
+export type TFirestoreBatchOperation = IFirestoreBatchAktualisierung | IFirestoreBatchLoeschung;
 
 const TECHNISCHE_SERVERFEHLER = new Set([
   'aborted',
@@ -57,6 +71,7 @@ export class FirestoreDbService {
   private readonly netzwerkStatusService = inject(NetzwerkStatusService);
   private readonly serverTimestamp = inject(FIRESTORE_SERVER_TIMESTAMP);
   private readonly setDoc = inject(FIRESTORE_SET_DOC);
+  private readonly writeBatch = inject(FIRESTORE_WRITE_BATCH);
   private readonly where = inject(FIRESTORE_WHERE);
 
   // ===== Interner State =======================
@@ -360,6 +375,36 @@ export class FirestoreDbService {
       await this.runInContext(() => {
         const documentRef = this.doc(this.firestore, documentPath);
         return this.setDoc(documentRef, daten, { mergeFields: Object.keys(daten) });
+      });
+    });
+  }
+
+  /**
+   * Aktualisiert oder löscht mehrere Dokumente in einem atomaren Firestore-Schreibvorgang.
+   *
+   * @param operationen - Dokumentpfade und die jeweils auszuführenden Schreiboperationen.
+   * @returns Ein Promise, das nach dem bestätigten Batch-Schreibvorgang abgeschlossen ist.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async updateDocumentsAtomically(operationen: readonly TFirestoreBatchOperation[]): Promise<void> {
+    if (operationen.length === 0) return;
+    this.netzwerkStatusService.assertOnline();
+
+    await this.loadingService.trackWrite(async () => {
+      await this.runInContext(() => {
+        const batch = this.writeBatch(this.firestore);
+        for (const operation of operationen) {
+          const documentRef = this.doc(this.firestore, operation.documentPath);
+          if ('delete' in operation) {
+            batch.delete(documentRef);
+            continue;
+          }
+          const options = operation.replaceFields
+            ? { mergeFields: Object.keys(operation.daten) }
+            : { merge: true };
+          batch.set(documentRef, operation.daten, options);
+        }
+        return batch.commit();
       });
     });
   }

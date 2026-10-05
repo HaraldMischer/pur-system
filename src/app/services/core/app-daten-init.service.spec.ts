@@ -91,7 +91,7 @@ describe('AppDatenInitService', () => {
           },
           kontakt: {},
         },
-        rolle: 'service',
+        rollen: ['servicekraft'],
         filialIds: ['b-2', 'b-1'],
         aktiv: true,
       }),

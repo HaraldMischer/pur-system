@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -101,10 +101,15 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Legacy-Mitarbeiter werden aus allen Filialen des ausgewählten `purCustomer` gelesen und als einzelne Firmenmitarbeiter
   übernommen. Jeder Quellmitarbeiter erhält eine Firestore-Auto-ID, die verschachtelt nach Legacy-Firma, -Filiale und
   -Mitarbeiter unter `systemMigrationen/{purCustomerId}.mitarbeiterIds` gespeichert wird. `filialIds` enthält die zugeordnete
-  neue Filial-ID. Gleiche Namen oder Legacy-IDs in unterschiedlichen Filialen bleiben getrennte, nachvollziehbare Mitarbeiter.
-  Master können ein Mitarbeiterdokument aus der neuen Firmenstruktur löschen. Zugehörige Ziel-ID-Zuordnungen werden dabei aus
-  `systemMigrationen` entfernt, während die Legacy-Quelle unverändert bleibt und bei einer erneuten Migration wieder angelegt
-  werden kann. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Löschen geschützt.
+  neue Filial-ID. Gleiche Namen oder Legacy-IDs in unterschiedlichen Filialen bleiben zunächst getrennte, nachvollziehbare
+  Mitarbeiter. Die Legacy-Felder `role` und `authorisation` werden gemeinsam auf die betrieblichen Rollen `filialkasse`,
+  `servicekraft`, `administrator`, `kassierer` und `techniker` abgebildet und als eindeutiges Array `rollen` gespeichert. Master
+  können Mitarbeiter physisch löschen; dabei werden deren Legacy-Zuordnungen atomar entfernt. Dubletten können gezielt
+  zusammengeführt werden. Dabei werden `filialIds` und `rollen` vereinigt, alle Legacy-IDs atomar auf den gewählten
+  Zielmitarbeiter umgeleitet und das Duplikat physisch gelöscht. Wiederholte Mitarbeitermigrationen überschreiben die Stammdaten
+  eines manuell zusammengeführten Zielmitarbeiters nicht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Löschen und
+  Zusammenführen geschützt. Der fachliche Status wird ausschließlich mit `aktiv` geführt; ein zusätzliches Löschfeld gibt es
+  nicht.
 - `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
   sondern greifen über den `FirestoreDbService` zu.
 - Der `AppSitzungsInitService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
@@ -150,7 +155,9 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   migrieren. Das Hauptdokument speichert die dauerhafte Zuordnung als `unternehmerId`; ein Status-Reset entfernt diese Zuordnung
   nicht. Auch jede Firma, Filiale und jeder Filialmitarbeiter erhält eine dauerhaft unter `firmenIds`, `filialenIds`
   beziehungsweise `mitarbeiterIds` gespeicherte Firestore-Auto-ID. Die gemappten Quelldaten werden bei jedem Lauf unter derselben
-  Ziel-ID geschrieben; ausschließlich im Ziel vorhandene Dokumente und nicht gemappte Zusatzfelder bleiben erhalten.
+  Ziel-ID geschrieben; ausschließlich im Ziel vorhandene Dokumente und nicht gemappte Zusatzfelder bleiben erhalten. Manuell
+  zusammengeführte Mitarbeiter bilden die Ausnahme: Mehrere Legacy-IDs dürfen auf dieselbe Ziel-ID zeigen, deren bestehende
+  Stammdaten bei Wiederholungen erhalten bleiben.
   Validierungs- und technische Fehler werden in den Statusdokumenten nachvollziehbar gespeichert. Der
   Datenmigration-Store hält Auswahl, Quellen- und Zielzahlen, Status sowie Lese- und Schreibzustände und verwirft verspätete
   Ergebnisse einer überholten Kundenauswahl. Neben der Kundenauswahl wählt ein fester Migrationsbereich-Selektor zwischen
@@ -278,25 +285,28 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   innerhalb ihres Firmen- beziehungsweise Filialbereichs. Filialkonten dürfen Mitarbeiter ihrer Firma lesen, laden mit ihrer
   Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
   Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
-  `erlaubteBereiche`. Die Löschmethode ist in Service und Store vorhanden; verknüpfte Mitarbeiter sind durch Rules vor Löschung
-  geschützt. Der Aktivstatus fachlicher Mitarbeiter ist ein Soft Delete: Er begrenzt die Lese- und Bearbeitungsrechte nicht,
-  und Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Eine Löschaktion
-  in der Oberfläche ist noch nicht angebunden. Der am 28.09.2026 produktiv deployte Rules-Stand enthielt bereits die
+  `erlaubteBereiche`. Master können nicht verknüpfte Mitarbeiter über Service, Store und Oberfläche physisch löschen oder
+  zusammenführen; verknüpfte Mitarbeiter sind durch Rules vor beiden Aktionen geschützt. Der Aktivstatus beschreibt allein den
+  Beschäftigungsstatus: Er begrenzt die Lese- und Bearbeitungsrechte nicht, und Office sowie Filiale können Mitarbeiter in ihrem
+  erlaubten Bereich deaktivieren und wieder aktivieren. Der am 28.09.2026 produktiv deployte Rules-Stand enthielt bereits die
   Firmenrechte des Mitarbeiterzugangs. Die danach lokal ergänzten Rechte für direkte Filialdokumente und die vereinfachten
   Mitarbeiterregeln sind getestet, aber noch nicht deployed.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
   `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
   passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
-  Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden als kompakte Cards mit Rolle,
-  Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben je Kontext unterscheidbar.
+  Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden als kompakte Cards mit allen
+  betrieblichen Rollen, Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben je
+  Kontext unterscheidbar.
 - Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
-  Bearbeitungsdialog. Beide Reactive Forms erfassen Vorname, Nachname, optionale Adress- und Kontaktdaten, die betriebliche Rolle
-  und mindestens eine verpflichtende Filialzuordnung. Ein Geschlecht wird nicht erfasst oder gespeichert. Der Anzeigename des
+  Bearbeitungsdialog. Beide Reactive Forms erfassen Vorname, Nachname, optionale Adress- und Kontaktdaten, mindestens eine der
+  betrieblichen Rollen `filialkasse`, `servicekraft`, `administrator`, `kassierer` oder `techniker` und mindestens eine
+  verpflichtende Filialzuordnung. Ein Mitarbeiter kann mehrere Rollen besitzen. Ein Geschlecht wird nicht erfasst oder
+  gespeichert. Der Anzeigename des
   Firestore-Dokuments wird automatisch aus Vor- und Nachname gebildet und bei Namensänderungen aktualisiert. Geburtstag, Telefon
   und Webseite sind derzeit in der Oberfläche ausgeblendet; bereits gespeicherte Werte bleiben beim Bearbeiten erhalten. Der
   Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer, Firma sowie Mitarbeiter-ID unveränderlich an. Bereits
   vorhandene, für den Bearbeiter nicht sichtbare Filialzuordnungen erfüllen diese Pflicht weiterhin. Vorname und Nachname,
-  E-Mail-Adresse und Mobilnummer sowie Rolle und Filialauswahl werden auf breiten Dialogen jeweils als 50/50-Zeile dargestellt
+  E-Mail-Adresse und Mobilnummer sowie Rollen und Filialauswahl werden auf breiten Dialogen jeweils als 50/50-Zeile dargestellt
   und auf kleinen Viewports untereinander angeordnet.
 - Vor dem Öffnen und erneut vor dem Speichern wird der aktuelle Verwaltungszugriff auf die Firma geprüft. Während eines
   Schreibvorgangs sind Formular und Aktionen deaktiviert. Anlage und Aktualisierung erscheinen durch die Store-Aktualisierung
@@ -593,9 +603,9 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Tests und Build
 
-Am 04.10.2026 für den aktuellen Stand erfolgreich geprüft:
+Am 05.10.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 634 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
+- 677 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
   konsistenter
   Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,

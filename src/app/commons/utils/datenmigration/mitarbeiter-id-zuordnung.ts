@@ -3,14 +3,14 @@
 import { ISystemmigrationDokument } from '../../models/domain/datenmigration';
 
 /**
- * Entfernt alle Zuordnungen zu einer Mitarbeiter-Ziel-ID aus einer Firmenmigration.
+ * Entfernt alle Legacy-Zuordnungen eines Firmenmitarbeiters.
  *
  * @param systemmigration - Vollständige Migrationszuordnung eines Legacy-Kunden.
- * @param firmaId - Ziel-ID der Firma, deren Mitarbeiterzuordnungen bereinigt werden.
+ * @param firmaId - Ziel-ID der Firma, deren Mitarbeiterzuordnungen angepasst werden.
  * @param mitarbeiterId - Zu entfernende Mitarbeiter-Ziel-ID.
- * @returns Die bereinigte Zuordnungsstruktur oder `null`, wenn keine Zuordnung gefunden wurde.
+ * @returns Die angepasste Zuordnungsstruktur oder `null`, wenn keine Zuordnung gefunden wurde.
  */
-export function removeMitarbeiterIdZuordnung(
+export function deleteMitarbeiterIdZuordnung(
   systemmigration: ISystemmigrationDokument,
   firmaId: string,
   mitarbeiterId: string,
@@ -19,27 +19,73 @@ export function removeMitarbeiterIdZuordnung(
   if (!mitarbeiterIds) return null;
 
   let aktualisiert = false;
-  const bereinigteFirmen = Object.fromEntries(
-    Object.entries(mitarbeiterIds).flatMap(([purCompanyId, filialen]) => {
+  const aktualisierteFirmen = Object.fromEntries(
+    Object.entries(mitarbeiterIds).map(([purCompanyId, filialen]) => {
       if (systemmigration.firmenIds?.[purCompanyId] !== firmaId) {
-        return [[purCompanyId, filialen]];
+        return [purCompanyId, filialen];
       }
 
-      const bereinigteFilialen = Object.fromEntries(
-        Object.entries(filialen).flatMap(([purBranchId, ids]) => {
-          const bereinigteIds = Object.fromEntries(
+      const aktualisierteFilialen = Object.fromEntries(
+        Object.entries(filialen).map(([purBranchId, ids]) => {
+          const aktualisierteIds = Object.fromEntries(
             Object.entries(ids).filter(([, zielId]) => {
               const behalten = zielId !== mitarbeiterId;
-              aktualisiert ||= !behalten;
+              if (!behalten) aktualisiert = true;
               return behalten;
             }),
           );
-          return Object.keys(bereinigteIds).length > 0 ? [[purBranchId, bereinigteIds]] : [];
+          return [purBranchId, aktualisierteIds];
         }),
       );
-      return Object.keys(bereinigteFilialen).length > 0 ? [[purCompanyId, bereinigteFilialen]] : [];
+      return [purCompanyId, aktualisierteFilialen];
     }),
   );
 
-  return aktualisiert ? bereinigteFirmen : null;
+  return aktualisiert ? aktualisierteFirmen : null;
+}
+
+/**
+ * Leitet alle Legacy-Zuordnungen eines Firmenmitarbeiters auf einen anderen Mitarbeiter um.
+ *
+ * @param systemmigration - Vollständige Migrationszuordnung eines Legacy-Kunden.
+ * @param firmaId - Ziel-ID der Firma, deren Mitarbeiterzuordnungen angepasst werden.
+ * @param quellMitarbeiterId - Bisherige Mitarbeiter-Ziel-ID.
+ * @param zielMitarbeiterId - Künftig verwendete Mitarbeiter-Ziel-ID.
+ * @returns Die angepasste Zuordnungsstruktur oder `null`, wenn keine Zuordnung gefunden wurde.
+ */
+export function replaceMitarbeiterIdZuordnung(
+  systemmigration: ISystemmigrationDokument,
+  firmaId: string,
+  quellMitarbeiterId: string,
+  zielMitarbeiterId: string,
+): NonNullable<ISystemmigrationDokument['mitarbeiterIds']> | null {
+  const mitarbeiterIds = systemmigration.mitarbeiterIds;
+  if (!mitarbeiterIds) return null;
+
+  let aktualisiert = false;
+  const aktualisierteFirmen = Object.fromEntries(
+    Object.entries(mitarbeiterIds).map(([purCompanyId, filialen]) => {
+      if (systemmigration.firmenIds?.[purCompanyId] !== firmaId) {
+        return [purCompanyId, filialen];
+      }
+
+      const aktualisierteFilialen = Object.fromEntries(
+        Object.entries(filialen).map(([purBranchId, ids]) => {
+          const aktualisierteIds = Object.fromEntries(
+            Object.entries(ids).map(([purEmployeeId, mitarbeiterId]) => {
+              if (mitarbeiterId !== quellMitarbeiterId) {
+                return [purEmployeeId, mitarbeiterId];
+              }
+              aktualisiert = true;
+              return [purEmployeeId, zielMitarbeiterId];
+            }),
+          );
+          return [purBranchId, aktualisierteIds];
+        }),
+      );
+      return [purCompanyId, aktualisierteFilialen];
+    }),
+  );
+
+  return aktualisiert ? aktualisierteFirmen : null;
 }

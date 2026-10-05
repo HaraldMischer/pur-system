@@ -5,6 +5,15 @@
   <section class="pur-page-section">
     <header class="pur-page-section__header">
       <h2 class="pur-page-section__title">Mitarbeiterliste</h2>
+      <mat-button-toggle-group
+        aria-label="Mitarbeiteransicht"
+        [value]="mitarbeiterAnsicht()"
+        (change)="mitarbeiterAnsicht.set($event.value)"
+      >
+        <mat-button-toggle value="aktiv">Aktiv</mat-button-toggle>
+        <mat-button-toggle value="inaktiv">Inaktiv</mat-button-toggle>
+        <mat-button-toggle value="alle">Alle</mat-button-toggle>
+      </mat-button-toggle-group>
       @if (mitarbeiterIsLoaded()) {
         <span class="pur-page-section__meta">
           {{ mitarbeiter().length }}
@@ -44,9 +53,9 @@
         @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
           <app-mitarbeiter-card
             [mitarbeiter]="mitarbeiter"
-            [darfLoeschen]="darfLoeschen()"
+            [darfZusammenfuehren]="darfZusammenfuehren() && hatZusammenfuehrungsZiel()"
             (bearbeiten)="openMitarbeiterBearbeitenDialog($event)"
-            (loeschen)="deleteMitarbeiter($event)"
+            (zusammenfuehren)="openMitarbeiterZusammenfuehrenDialog($event)"
           />
         }
       </div>

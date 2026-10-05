@@ -46,7 +46,7 @@ describe('PurEmployee-Mitarbeiter-Mapper', () => {
           },
           geburtstag: '1990-02-03',
         },
-        rolle: 'service',
+        rollen: ['servicekraft'],
         filialIds: ['filiale-ziel'],
         aktiv: true,
       },
@@ -56,10 +56,10 @@ describe('PurEmployee-Mitarbeiter-Mapper', () => {
 
   it('bildet die bekannten Legacy-Rollen ab', () => {
     const rollenzuordnungen = [
-      ['Service', 'service'],
-      ['Techniker', 'admin'],
-      ['Kassierer', 'admin'],
-      ['Administrator', 'admin'],
+      ['Service', 'servicekraft'],
+      ['Techniker', 'techniker'],
+      ['Kassierer', 'kassierer'],
+      ['Administrator', 'administrator'],
     ] as const;
 
     for (const [legacyRolle, zielRolle] of rollenzuordnungen) {
@@ -69,8 +69,30 @@ describe('PurEmployee-Mitarbeiter-Mapper', () => {
           { ...purEmployee, daten: { ...purEmployee.daten, role: legacyRolle } },
           'filiale-ziel',
         ),
-      ).toEqual({ daten: expect.objectContaining({ rolle: zielRolle }), probleme: [] });
+      ).toEqual({ daten: expect.objectContaining({ rollen: [zielRolle] }), probleme: [] });
     }
+  });
+
+  it('vereinigt die Legacy-Rolle mit bekannten Berechtigungen', () => {
+    expect(
+      mapPurEmployeeToMitarbeiter(
+        'kunde-1',
+        {
+          ...purEmployee,
+          daten: {
+            ...purEmployee.daten,
+            role: 'Service',
+            authorisation: ['Filialkasse', 'Kassieren', 'Gerätetechnik', 'Einstellungen'],
+          },
+        },
+        'filiale-ziel',
+      ),
+    ).toEqual({
+      daten: expect.objectContaining({
+        rollen: ['servicekraft', 'filialkasse', 'kassierer', 'techniker', 'administrator'],
+      }),
+      probleme: [],
+    });
   });
 
   it('übernimmt fehlende optionale Personenfelder als leere Adresse', () => {
@@ -106,7 +128,10 @@ describe('PurEmployee-Mitarbeiter-Mapper', () => {
         { ...purEmployee, daten: { ...purEmployee.daten, deleted: true } },
         'filiale-ziel',
       ),
-    ).toEqual({ daten: expect.objectContaining({ aktiv: false }), probleme: [] });
+    ).toEqual({
+      daten: expect.objectContaining({ aktiv: false }),
+      probleme: [],
+    });
   });
 
   it('normalisiert einen einzelnen Legacy-Aktivstatus aus einem Array', () => {

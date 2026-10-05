@@ -115,7 +115,7 @@ describe('MitarbeiterAnlegenDialog', () => {
         },
         kontakt: { email: ' MIA@EXAMPLE.COM ' },
       },
-      rolle: 'kasse',
+      rollen: ['filialkasse'],
       filialIds: ['b-1'],
     });
 
@@ -128,7 +128,7 @@ describe('MitarbeiterAnlegenDialog', () => {
         adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
         kontakt: { email: 'mia@example.com' },
       },
-      rolle: 'kasse',
+      rollen: ['filialkasse'],
       filialIds: ['b-1'],
     });
     expect(dialogRefMock.close).toHaveBeenCalledWith({ id: 'm-neu' });

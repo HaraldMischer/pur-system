@@ -26,6 +26,7 @@ import {
   IPurCustomerEintrag,
 } from '../../commons/models/legacy/pur-customer';
 import { IPurEmployeeEintrag } from '../../commons/models/legacy/pur-employee';
+import { mapMitarbeiterEintrag } from '../../commons/utils/mitarbeiter/mitarbeiter-dokument';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 
 // ===== Top-Level Helper =====================
@@ -568,6 +569,17 @@ export class DatenmigrationService {
         systemmigration.mitarbeiterIds,
         purEmployees,
       );
+      const anzahlQuellenJeZielId = Object.values(mitarbeiterIds)
+        .flatMap((filialen) => {
+          return Object.values(filialen);
+        })
+        .flatMap((ids) => {
+          return Object.values(ids);
+        })
+        .reduce<Record<string, number>>((anzahlen, mitarbeiterId) => {
+          anzahlen[mitarbeiterId] = (anzahlen[mitarbeiterId] ?? 0) + 1;
+          return anzahlen;
+        }, {});
 
       await this.saveMitarbeiterStatus(purCustomerId, 'inProgress', quellDokumente, {
         migrierteDokumente,
@@ -620,6 +632,23 @@ export class DatenmigrationService {
           }
 
           const zeitstempel = this.firestoreDbService.createServerTimestamp();
+          if (vorhandenerMitarbeiter && anzahlQuellenJeZielId[mitarbeiterId] > 1) {
+            const vorhandenerEintrag = mapMitarbeiterEintrag(
+              unternehmerId,
+              firmaId,
+              vorhandenerMitarbeiter.id,
+              vorhandenerMitarbeiter.daten,
+            );
+            await this.firestoreDbService.updateDocument(zielPfad, {
+              filialIds: [
+                ...new Set([...vorhandenerEintrag.filialIds, ...mapping.daten.filialIds]),
+              ],
+              rollen: [...new Set([...vorhandenerEintrag.rollen, ...mapping.daten.rollen])],
+              aktualisiertAm: zeitstempel,
+            });
+            migrierteDokumente += 1;
+            continue;
+          }
           await this.firestoreDbService.updateDocument(zielPfad, {
             ...mapping.daten,
             ...(!vorhandenerMitarbeiter ? { erstelltAm: zeitstempel } : {}),

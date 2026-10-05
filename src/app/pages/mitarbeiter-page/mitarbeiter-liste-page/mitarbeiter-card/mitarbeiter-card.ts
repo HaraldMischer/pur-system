@@ -13,9 +13,11 @@ import {
 // ===== Konstanten & Typen ===================
 
 const ROLLEN_LABEL: Readonly<Record<TMitarbeiterRolle, string>> = {
-  service: 'Service',
-  kasse: 'Kasse',
-  admin: 'Administration',
+  filialkasse: 'Filialkasse',
+  servicekraft: 'Servicekraft',
+  administrator: 'Administrator',
+  kassierer: 'Kassierer',
+  techniker: 'Techniker',
 };
 
 @Component({
@@ -29,9 +31,9 @@ export class MitarbeiterCard {
   // ===== Öffentliche API ======================
 
   readonly mitarbeiter = input.required<IMitarbeiterEintrag>();
-  readonly darfLoeschen = input(false);
+  readonly darfZusammenfuehren = input(false);
   readonly bearbeiten = output<IMitarbeiterEintrag>();
-  readonly loeschen = output<IMitarbeiterEintrag>();
+  readonly zusammenfuehren = output<IMitarbeiterEintrag>();
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -40,7 +42,9 @@ export class MitarbeiterCard {
     return `${person.vorname} ${person.nachname}`.trim();
   });
   readonly rollenLabel: Signal<string> = computed(() => {
-    return ROLLEN_LABEL[this.mitarbeiter().rolle];
+    return this.mitarbeiter()
+      .rollen.map((rolle) => ROLLEN_LABEL[rolle])
+      .join(' · ');
   });
   readonly filialenText: Signal<string> = computed(() => {
     const anzahl = this.mitarbeiter().filialIds.length;
@@ -59,10 +63,10 @@ export class MitarbeiterCard {
   }
 
   /**
-   * Meldet den ausgewählten Mitarbeiter zur Löschung an die Liste.
+   * Meldet den ausgewählten Mitarbeiter zur Zusammenführung an die Liste.
    */
-  selectLoeschen(): void {
-    if (!this.darfLoeschen()) return;
-    this.loeschen.emit(this.mitarbeiter());
+  selectZusammenfuehren(): void {
+    if (!this.darfZusammenfuehren()) return;
+    this.zusammenfuehren.emit(this.mitarbeiter());
   }
 }

@@ -15,10 +15,10 @@
     <p>{{ mitarbeiter().aktiv ? 'Aktiv' : 'Inaktiv' }}</p>
   </mat-card-content>
   <mat-card-actions align="end">
-    @if (darfLoeschen()) {
-      <button matButton type="button" (click)="selectLoeschen()">
-        <mat-icon aria-hidden="true">delete</mat-icon>
-        Löschen
+    @if (darfZusammenfuehren()) {
+      <button matButton type="button" (click)="selectZusammenfuehren()">
+        <mat-icon aria-hidden="true">merge</mat-icon>
+        Zusammenführen
       </button>
     }
     <button matButton type="button" (click)="selectBearbeiten()">

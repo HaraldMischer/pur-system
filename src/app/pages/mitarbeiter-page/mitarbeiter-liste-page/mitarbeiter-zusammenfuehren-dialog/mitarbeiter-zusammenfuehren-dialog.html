@@ -1,0 +1,63 @@
+<!-- pur-system/src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-zusammenfuehren-dialog/mitarbeiter-zusammenfuehren-dialog.html -->
+
+<h2 mat-dialog-title>Mitarbeiter zusammenführen</h2>
+
+<mat-dialog-content class="pur-dialog__content">
+  <form
+    id="mitarbeiter-zusammenfuehren-form"
+    class="pur-form pur-form--grid"
+    [formGroup]="zusammenfuehrenForm"
+    (ngSubmit)="onSubmit()"
+  >
+    <div class="pur-form__group">
+      <h2 class="pur-form__group-titel">Duplikat</h2>
+      <p>{{ getMitarbeiterName(dialogDaten.quelle) }} wird nach der Zusammenführung gelöscht.</p>
+    </div>
+
+    <div class="pur-form__group">
+      <h2 class="pur-form__group-titel">Zielmitarbeiter</h2>
+      <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-label>Mitarbeiter auswählen</mat-label>
+        <mat-select formControlName="zielMitarbeiterId">
+          @for (mitarbeiter of zielMitarbeiter; track mitarbeiter.id) {
+            <mat-option [value]="mitarbeiter.id">
+              {{ getMitarbeiterName(mitarbeiter) }} · {{ mitarbeiter.filialIds.length }} Filiale(n)
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (getAusgewaehlterZielMitarbeiter(); as ziel) {
+      <div class="pur-form__group">
+        <h2 class="pur-form__group-titel">Auswirkung</h2>
+        <p>{{ getMitarbeiterName(ziel) }} bleibt als Mitarbeiter bestehen.</p>
+        <p>Die Filialzuordnungen beider Mitarbeiter werden vereinigt.</p>
+        <p>Alle Legacy-Zuordnungen des Duplikats verweisen anschließend auf dieses Ziel.</p>
+      </div>
+    }
+
+    @if (mitarbeiterStore.error(); as error) {
+      <p class="pur-form__error" role="alert">{{ error }}</p>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions class="pur-dialog__footer" align="end">
+  <button
+    matButton
+    type="button"
+    [mat-dialog-close]="false"
+    [disabled]="mitarbeiterStore.inProgress()"
+  >
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="mitarbeiter-zusammenfuehren-form"
+    [disabled]="zusammenfuehrenForm.invalid || mitarbeiterStore.inProgress()"
+  >
+    {{ mitarbeiterStore.inProgress() ? 'Wird zusammengeführt' : 'Zusammenführen' }}
+  </button>
+</mat-dialog-actions>

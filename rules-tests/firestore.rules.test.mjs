@@ -152,7 +152,7 @@ async function seedProfile(userRole, overrides = {}) {
           adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
           kontakt: {},
         },
-        rolle: 'service',
+        rollen: ['servicekraft'],
         filialIds: ['b-1'],
         aktiv: true,
       });
@@ -333,7 +333,9 @@ test('active employee account reads direct company data only within the assigned
   }
   await assertFails(getDoc(doc(db, nichtZugeordneterMitarbeiterPath)));
   await assertFails(getDocs(collection(db, `${nichtZugeordneteFirmaPath}/mitarbeiter`)));
-  await assertFails(setDoc(doc(db, mitarbeiterPath), { rolle: 'admin' }, { merge: true }));
+  await assertFails(
+    setDoc(doc(db, mitarbeiterPath), { rollen: ['administrator'] }, { merge: true }),
+  );
   await assertFails(getDoc(doc(db, 'benutzerprofil/other')));
   await assertFails(getDocs(collection(db, 'unternehmer')));
 });
@@ -375,7 +377,7 @@ for (const role of ['office', 'filiale']) {
           adresse: { strasse: 'Weg', hausnummer: '2', postleitzahl: '12345', ort: 'Ort' },
           kontakt: {},
         },
-        rolle: 'kasse',
+        rollen: ['filialkasse', 'kassierer'],
         filialIds: role === 'filiale' ? ['b-1'] : [],
         aktiv: true,
         erstelltAm: serverTimestamp(),
@@ -385,7 +387,7 @@ for (const role of ['office', 'filiale']) {
     await assertSucceeds(
       setDoc(doc(db, `${firmaPath}/mitarbeiter/neu-inaktiv`), {
         person: {},
-        rolle: 'service',
+        rollen: ['servicekraft'],
         filialIds: role === 'filiale' ? ['b-1'] : [],
         aktiv: false,
         erstelltAm: serverTimestamp(),
@@ -396,7 +398,25 @@ for (const role of ['office', 'filiale']) {
     await assertSucceeds(
       setDoc(
         doc(db, mitarbeiterPath),
-        { rolle: 'admin', filialIds: ['b-1'], aktualisiertAm: serverTimestamp() },
+        {
+          rollen: ['administrator', 'techniker'],
+          filialIds: ['b-1'],
+          aktualisiertAm: serverTimestamp(),
+        },
+        { merge: true },
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { rollen: ['unbekannt'], aktualisiertAm: serverTimestamp() },
+        { merge: true },
+      ),
+    );
+    await assertFails(
+      setDoc(
+        doc(db, mitarbeiterPath),
+        { rollen: [], aktualisiertAm: serverTimestamp() },
         { merge: true },
       ),
     );
@@ -444,7 +464,11 @@ for (const role of ['office', 'filiale']) {
     });
     const fremdeFilialeBehalten = setDoc(
       doc(db, mitarbeiterPath),
-      { rolle: 'kasse', filialIds: ['b-2'], aktualisiertAm: serverTimestamp() },
+      {
+        rollen: ['filialkasse'],
+        filialIds: ['b-2'],
+        aktualisiertAm: serverTimestamp(),
+      },
       { merge: true },
     );
     if (role === 'office') {
@@ -476,7 +500,7 @@ for (const role of ['office', 'filiale']) {
     await assertSucceeds(
       setDoc(doc(db, `${firmaPath}/mitarbeiter/neu`), {
         person: {},
-        rolle: 'service',
+        rollen: ['servicekraft'],
         filialIds: role === 'filiale' ? ['b-1'] : [],
         aktiv: true,
         erstelltAm: serverTimestamp(),
@@ -494,7 +518,7 @@ test('active master manages company employees without the employee area', async 
   await assertSucceeds(
     setDoc(doc(db, `${firmaPath}/mitarbeiter/neu`), {
       person: {},
-      rolle: 'service',
+      rollen: ['servicekraft'],
       filialIds: [],
       aktiv: true,
       erstelltAm: serverTimestamp(),
@@ -516,7 +540,7 @@ test('active master manages all company employees with the employee area', async
   await assertSucceeds(
     setDoc(neuerMitarbeiter, {
       person: {},
-      rolle: 'service',
+      rollen: ['servicekraft'],
       filialIds: ['b-1'],
       aktiv: true,
       erstelltAm: serverTimestamp(),
@@ -526,7 +550,7 @@ test('active master manages all company employees with the employee area', async
   await assertSucceeds(
     setDoc(doc(db, `${firmaPath}/mitarbeiter/neu-inaktiv`), {
       person: {},
-      rolle: 'service',
+      rollen: ['servicekraft'],
       filialIds: ['b-1'],
       aktiv: false,
       erstelltAm: serverTimestamp(),
@@ -536,7 +560,11 @@ test('active master manages all company employees with the employee area', async
   await assertSucceeds(
     setDoc(
       doc(db, mitarbeiterPath),
-      { rolle: 'admin', filialIds: ['b-2'], aktualisiertAm: serverTimestamp() },
+      {
+        rollen: ['administrator'],
+        filialIds: ['b-2'],
+        aktualisiertAm: serverTimestamp(),
+      },
       { merge: true },
     ),
   );

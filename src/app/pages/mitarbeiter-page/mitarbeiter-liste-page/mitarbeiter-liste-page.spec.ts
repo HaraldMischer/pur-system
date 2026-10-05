@@ -16,6 +16,7 @@ import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { MitarbeiterAnlegenDialog } from './mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog';
 import { MitarbeiterBearbeitenDialog } from './mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog';
 import { MitarbeiterListePage } from './mitarbeiter-liste-page';
+import { MitarbeiterZusammenfuehrenDialog } from './mitarbeiter-zusammenfuehren-dialog/mitarbeiter-zusammenfuehren-dialog';
 
 describe('MitarbeiterListePage', () => {
   const mitarbeiter: IMitarbeiterEintrag = {
@@ -33,7 +34,7 @@ describe('MitarbeiterListePage', () => {
       },
       kontakt: {},
     },
-    rolle: 'service',
+    rollen: ['servicekraft'],
     filialIds: [],
     aktiv: true,
   };
@@ -85,7 +86,7 @@ describe('MitarbeiterListePage', () => {
     isMitarbeiterKontextLoading: ReturnType<typeof vi.fn>;
     isMitarbeiterKontextLoaded: ReturnType<typeof vi.fn>;
     getMitarbeiterKontextError: ReturnType<typeof vi.fn>;
-    deleteMitarbeiter: ReturnType<typeof vi.fn>;
+    mergeMitarbeiter: ReturnType<typeof vi.fn>;
     error: typeof error;
   };
 
@@ -128,7 +129,7 @@ describe('MitarbeiterListePage', () => {
       getMitarbeiterKontextError: vi.fn().mockImplementation(() => {
         return error();
       }),
-      deleteMitarbeiter: vi.fn().mockResolvedValue(undefined),
+      mergeMitarbeiter: vi.fn().mockResolvedValue(undefined),
       error,
     };
 
@@ -263,35 +264,48 @@ describe('MitarbeiterListePage', () => {
     );
   });
 
-  it('should allow only a master to confirm and delete an employee', async () => {
-    benutzerProfil.set({
-      ...benutzerProfil()!,
-      userRole: 'master',
-      zugriffe: {},
-    });
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('should open the merge dialog for a master with another available employee', async () => {
+    const ziel = { ...mitarbeiter, id: 'm-2', person: { ...mitarbeiter.person, vorname: 'Mara' } };
+    mitarbeiterSignal.set([mitarbeiter, ziel]);
+    isLoaded.set(true);
+    mitarbeiterStoreMock.loadMitarbeiter.mockImplementation(async () => undefined);
+    benutzerProfil.set({ ...benutzerProfil()!, userRole: 'master', zugriffe: {} });
     const fixture = TestBed.createComponent(MitarbeiterListePage);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const deleteButton = [
-      ...(fixture.nativeElement as HTMLElement).querySelectorAll('button'),
-    ].find((button) => button.textContent?.includes('Löschen'));
-    deleteButton?.click();
-    await fixture.whenStable();
+    const mergeButton = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
+      (button) => button.textContent?.includes('Zusammenführen'),
+    );
+    mergeButton?.click();
 
-    expect(confirmSpy).toHaveBeenCalledWith('Mitarbeiter „Mia Muster“ wirklich löschen?');
-    expect(mitarbeiterStoreMock.deleteMitarbeiter).toHaveBeenCalledWith('u-1', 'f-1', 'm-1');
+    expect(dialogMock.open).toHaveBeenCalledWith(MitarbeiterZusammenfuehrenDialog, {
+      data: { quelle: mitarbeiter, mitarbeiter: [mitarbeiter, ziel] },
+    });
   });
 
-  it('should not show employee deletion for an office account', async () => {
+  it('should switch between active and inactive employees', async () => {
+    const inaktiverMitarbeiter = {
+      ...mitarbeiter,
+      id: 'm-2',
+      person: { ...mitarbeiter.person, vorname: 'Inaktiv' },
+      aktiv: false,
+    };
+    mitarbeiterSignal.set([mitarbeiter, inaktiverMitarbeiter]);
+    isLoaded.set(true);
+    mitarbeiterStoreMock.loadMitarbeiter.mockImplementation(async () => undefined);
     const fixture = TestBed.createComponent(MitarbeiterListePage);
     fixture.detectChanges();
-    await fixture.whenStable();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Mia Muster');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Inaktiv Muster');
+
+    fixture.componentInstance.mitarbeiterAnsicht.set('inaktiv');
     fixture.detectChanges();
 
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Löschen');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Mia Muster');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Inaktiv Muster');
   });
 
   it('should retain the selected company and offer a retry after loading fails', async () => {
@@ -306,7 +320,9 @@ describe('MitarbeiterListePage', () => {
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(compiled.textContent).toContain('Mitarbeiter konnten nicht geladen werden.');
-    compiled.querySelector<HTMLButtonElement>('button')?.click();
+    [...compiled.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent?.includes('Erneut laden'))
+      ?.click();
     await fixture.whenStable();
 
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledTimes(2);

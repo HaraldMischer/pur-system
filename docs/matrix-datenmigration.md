@@ -44,9 +44,10 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
   `filialenIds.{purCompanyId}.{purBranchId}` unter `systemMigrationen/{purCustomerId}` gespeichert.
 - Jeder Filialmitarbeiter erhält einmalig eine Firestore-Auto-ID. Die Zuordnungen werden dauerhaft als
   `mitarbeiterIds.{purCompanyId}.{purBranchId}.{purEmployeeId}` unter `systemMigrationen/{purCustomerId}` gespeichert.
-- Löscht ein Master einen neuen Firmenmitarbeiter, werden auch alle auf dessen Ziel-ID verweisenden Einträge aus
-  `mitarbeiterIds` entfernt. Das Legacy-Mitarbeiterdokument bleibt unverändert und erhält bei einer erneuten Migration eine neue
-  Ziel-ID.
+- Löscht ein Master einen Firmenmitarbeiter, werden das Mitarbeiterdokument und seine Zuordnungen unter `mitarbeiterIds` atomar
+  entfernt. Eine spätere erneute Mitarbeitermigration legt für diese Legacy-IDs wieder einen neuen Zielmitarbeiter an.
+- Beim manuellen Zusammenführen werden alle Legacy-IDs des Duplikats auf den gewählten Zielmitarbeiter umgeleitet und das
+  Duplikat anschließend atomar gelöscht.
 - Ein Reset eines Datenbereichs entfernt die gespeicherten Unternehmer-, Firmen-, Filial- und Mitarbeiter-Zuordnungen nicht.
 - Untergeordnete Daten werden nur bei vorhandener Zielstruktur migriert.
 
@@ -121,23 +122,31 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 | Übernahme           | Jeder Filialmitarbeiter wird zunächst als eigener Firmenmitarbeiter angelegt. |
 | Ziel-ID             | Einmalige Firestore-Auto-ID mit dauerhaft gespeicherter Zuordnung.            |
 | Filialzuordnung     | `filialIds` enthält zunächst genau die zugeordnete neue Filial-ID.            |
-| Dubletten           | Werden nicht automatisch zusammengeführt.                                     |
+| Dubletten           | Bleiben zunächst getrennt und können durch einen Master zusammengeführt werden. |
 | Persönlicher Zugang | `benutzerUid` wird nicht gesetzt.                                             |
 | Anzeigename         | Wird aus `firstName` und `lastName` gebildet.                                 |
-| Rolle `Service`     | Wird als `service` übernommen.                                                 |
-| Rollen `Techniker`, `Kassierer`, `Administrator` | Werden als `admin` übernommen.                           |
+| Rollen              | Werden als eindeutiges Array unter `rollen` gespeichert.                       |
+| `Service`           | Wird als `servicekraft` übernommen.                                            |
+| `Filialkasse`       | Wird als `filialkasse` übernommen.                                             |
+| `Administrator`     | Wird als `administrator` übernommen.                                           |
+| `Kassierer`         | Wird als `kassierer` übernommen.                                               |
+| `Techniker`         | Wird als `techniker` übernommen.                                               |
 
 ### Zusatzbedingungen
 
 - Gleiche Namen oder Legacy-IDs in verschiedenen Filialen führen durch die verschachtelte Zuordnung nicht zu einem
   Überschreiben und bleiben für die spätere manuelle Prüfung nachvollziehbar.
-- Master können solche getrennten Einträge einzeln aus der neuen Firmenstruktur löschen. Mitarbeiter mit verknüpftem
-  Benutzerkonto bleiben durch die Firestore-Regeln vor dem Löschen geschützt.
-- `firstName`, `lastName`, `address`, `email`, `phone`, `birthday`, `role`, `active` und `deleted` werden in die
-  vorhandene Personen-, Rollen-, Filial- und Statusstruktur überführt.
+- Master können solche getrennten Einträge löschen oder gezielt zusammenführen. Beim Zusammenführen bleiben die Stammdaten des
+  Zielmitarbeiters maßgeblich, `filialIds` und `rollen` werden jeweils vereinigt, alle Legacy-Zuordnungen des Duplikats werden
+  auf die Ziel-ID umgestellt und das Duplikat wird gelöscht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Löschen
+  und Zusammenführen geschützt.
+- `firstName`, `lastName`, `address`, `email`, `phone`, `birthday`, `role`, `active` und `deleted` werden in die vorhandene
+  Personen-, Rollen-, Filial- und Statusstruktur überführt. `active` und `deleted` bestimmen gemeinsam den Zielwert `aktiv`;
+  ein separates Löschfeld wird nicht gespeichert.
 - `active` wird als Boolean sowie bei fehlerhaften Legacy-Daten als Array mit genau einem Boolean akzeptiert.
-- `gender`, `password`, `authorisation`, `basicWage`, `holidays`, `workHours`, `personNum`, `colorLabel`, `thumb`, `added`,
-  `employee_ID` und `phone.fax` werden nicht übernommen.
+- `role` und `authorisation` werden gemeinsam ausgewertet. Erkannte Werte werden ohne Duplikate nach `rollen` übernommen.
+- `gender`, `password`, `basicWage`, `holidays`, `workHours`, `personNum`, `colorLabel`, `thumb`, `added`, `employee_ID` und
+  `phone.fax` werden nicht übernommen.
 
 ## 7. Ausführung und Ergebnis
 
@@ -177,5 +186,6 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 
 ### Zusatzbedingungen
 
-- Beim manuellen Zusammenführen werden die benötigten `filialIds` vereinigt.
-- Vor dem Löschen eines doppelten Mitarbeiters werden vorhandene Referenzen geprüft.
+- Beim manuellen Zusammenführen werden die benötigten `filialIds` vereinigt und alle Legacy-IDs auf den Zielmitarbeiter
+  umgeleitet. Das Duplikat wird anschließend physisch gelöscht.
+- Wiederholte Mitarbeitermigrationen erhalten die Stammdaten zusammengeführter Zielmitarbeiter.

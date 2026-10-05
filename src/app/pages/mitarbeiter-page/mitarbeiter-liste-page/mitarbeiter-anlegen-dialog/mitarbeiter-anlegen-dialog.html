@@ -89,8 +89,8 @@
       <h2 class="pur-form__group-titel">Beschäftigung</h2>
       <div class="pur-form__row">
         <mat-form-field appearance="outline" class="pur-form__field pur-form__field--50">
-          <mat-label>Rolle</mat-label>
-          <mat-select formControlName="rolle">
+          <mat-label>Rollen</mat-label>
+          <mat-select formControlName="rollen" multiple>
             @for (rolle of rollen; track rolle.value) {
               <mat-option [value]="rolle.value">{{ rolle.label }}</mat-option>
             }

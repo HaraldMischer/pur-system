@@ -42,12 +42,12 @@ export function mapPurEmployeeToMitarbeiter(
   const vorname = trimString(daten.firstName);
   const nachname = trimString(daten.lastName);
   const anzeigename = `${vorname} ${nachname}`.trim();
-  const rolle = mapRolle(daten.role);
+  const rollen = mapRollen(daten.role, daten.authorisation);
   const aktiv = mapAktiv(daten.active);
 
   if (!vorname) probleme.push(createProblem(quellPfad, 'Der Vorname fehlt.'));
   if (!nachname) probleme.push(createProblem(quellPfad, 'Der Nachname fehlt.'));
-  if (!rolle)
+  if (rollen.length === 0)
     probleme.push(createProblem(quellPfad, 'Die Mitarbeiterrolle fehlt oder ist unbekannt.'));
   if (aktiv === null) {
     probleme.push(createProblem(quellPfad, 'Der Aktivstatus fehlt oder ist ungültig.'));
@@ -73,7 +73,7 @@ export function mapPurEmployeeToMitarbeiter(
         },
         ...(geburtstag ? { geburtstag } : {}),
       },
-      rolle: rolle as TMitarbeiterRolle,
+      rollen,
       filialIds: [filialId],
       aktiv: aktiv === true && daten.deleted !== true,
     },
@@ -95,11 +95,22 @@ function mapAdresse(adresse: IPurEmployeeEintrag['daten']['address']) {
   };
 }
 
-function mapRolle(value: unknown): TMitarbeiterRolle | null {
+function mapRollen(rolle: unknown, berechtigungen: unknown): TMitarbeiterRolle[] {
+  const werte = [rolle, ...(Array.isArray(berechtigungen) ? berechtigungen : [])];
+  const rollen = werte
+    .map((wert) => mapRollenwert(wert))
+    .filter((wert): wert is TMitarbeiterRolle => wert !== null);
+  return [...new Set(rollen)];
+}
+
+function mapRollenwert(value: unknown): TMitarbeiterRolle | null {
   const rolle = trimString(value).toLocaleLowerCase('de');
-  if (rolle === 'service') return 'service';
-  if (rolle === 'techniker' || rolle === 'kassierer' || rolle === 'administrator') {
-    return 'admin';
+  if (rolle === 'filialkasse') return 'filialkasse';
+  if (rolle === 'service' || rolle === 'servicekraft') return 'servicekraft';
+  if (rolle === 'administrator' || rolle === 'einstellungen') return 'administrator';
+  if (rolle === 'kassierer' || rolle === 'kassieren') return 'kassierer';
+  if (rolle === 'techniker' || rolle === 'gerätetechnik' || rolle === 'geraetetechnik') {
+    return 'techniker';
   }
   return null;
 }

@@ -244,9 +244,7 @@ export const MitarbeiterStore = signalStore(
           }
           const mitarbeiter = kontext.mitarbeiter
             .map((eintrag) => {
-              return eintrag.id === mitarbeiterId
-                ? { id: mitarbeiterId, unternehmerId, firmaId, ...aktualisierung }
-                : eintrag;
+              return eintrag.id === mitarbeiterId ? { ...eintrag, ...aktualisierung } : eintrag;
             })
             .filter((eintrag) => {
               return !kontext.filialId || eintrag.filialIds.includes(kontext.filialId);
@@ -295,10 +293,66 @@ export const MitarbeiterStore = signalStore(
           }
           setKontext(schluessel, {
             ...kontext,
-            mitarbeiter: kontext.mitarbeiter.filter((eintrag) => {
-              return eintrag.id !== mitarbeiterId;
-            }),
+            mitarbeiter: kontext.mitarbeiter.filter((eintrag) => eintrag.id !== mitarbeiterId),
           });
+        } catch (error: unknown) {
+          if (aktuelleGeneration === generation) {
+            patchState(store, { error: getFirebaseErrorMessage(error) });
+          }
+          throw error;
+        } finally {
+          if (aktuelleGeneration === generation) {
+            patchState(store, { inProgress: false });
+          }
+        }
+      }
+
+      /**
+       * Führt einen doppelten Mitarbeiter in einen Zielmitarbeiter derselben Firma über.
+       *
+       * @param unternehmerId - Die Dokument-ID des ausgewählten Unternehmers.
+       * @param firmaId - Die Dokument-ID der ausgewählten Firma.
+       * @param quellMitarbeiterId - Mitarbeiter-ID des Duplikats.
+       * @param zielMitarbeiterId - Mitarbeiter-ID des bestehen bleibenden Mitarbeiters.
+       * @returns Ein Promise, das nach der bestätigten Zusammenführung abgeschlossen ist.
+       * @throws Wenn Kontext oder Mitarbeiter fehlen oder das Zusammenführen fehlschlägt.
+       */
+      async function mergeMitarbeiter(
+        unternehmerId: string,
+        firmaId: string,
+        quellMitarbeiterId: string,
+        zielMitarbeiterId: string,
+      ): Promise<void> {
+        const [schluessel, kontext] = getEindeutigenFirmenkontext(unternehmerId, firmaId);
+        const quelle = kontext.mitarbeiter.find((eintrag) => {
+          return eintrag.id === quellMitarbeiterId;
+        });
+        const ziel = kontext.mitarbeiter.find((eintrag) => {
+          return eintrag.id === zielMitarbeiterId;
+        });
+        if (!quelle || !ziel || quelle.id === ziel.id) {
+          throw new Error('Quell- oder Zielmitarbeiter ist für die Zusammenführung ungültig.');
+        }
+        const aktuelleGeneration = generation;
+
+        patchState(store, { inProgress: true, error: null });
+        try {
+          await mitarbeiterService.mergeMitarbeiter(
+            unternehmerId,
+            firmaId,
+            quellMitarbeiterId,
+            zielMitarbeiterId,
+          );
+          if (aktuelleGeneration !== generation) return;
+
+          const filialIds = [...new Set([...ziel.filialIds, ...quelle.filialIds])];
+          const rollen = [...new Set([...ziel.rollen, ...quelle.rollen])];
+          const mitarbeiter = kontext.mitarbeiter
+            .filter((eintrag) => eintrag.id !== quellMitarbeiterId)
+            .map((eintrag) => {
+              return eintrag.id === zielMitarbeiterId ? { ...eintrag, filialIds, rollen } : eintrag;
+            });
+          setKontext(schluessel, { ...kontext, mitarbeiter: sortMitarbeiter(mitarbeiter) });
         } catch (error: unknown) {
           if (aktuelleGeneration === generation) {
             patchState(store, { error: getFirebaseErrorMessage(error) });
@@ -556,6 +610,7 @@ export const MitarbeiterStore = signalStore(
         createMitarbeiter,
         updateMitarbeiter,
         deleteMitarbeiter,
+        mergeMitarbeiter,
         getMitarbeiter,
         getMitarbeiterNachFilialen,
         isMitarbeiterKontextLoaded,

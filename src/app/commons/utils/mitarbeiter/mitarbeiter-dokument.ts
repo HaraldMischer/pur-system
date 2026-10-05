@@ -7,7 +7,18 @@ import {
 } from '../../models/domain/mitarbeiter';
 import { asRecord, getOptionalString, getString } from '../firestore/firestore-dokumentwerte';
 
-const MITARBEITER_ROLLEN: readonly TMitarbeiterRolle[] = ['service', 'kasse', 'admin'];
+const MITARBEITER_ROLLEN: readonly TMitarbeiterRolle[] = [
+  'filialkasse',
+  'servicekraft',
+  'administrator',
+  'kassierer',
+  'techniker',
+];
+const LEGACY_ROLLEN: Readonly<Record<string, TMitarbeiterRolle>> = {
+  service: 'servicekraft',
+  kasse: 'filialkasse',
+  admin: 'administrator',
+};
 
 /**
  * Bildet unveränderte Firestore-Daten als fachlichen Mitarbeitereintrag ab.
@@ -25,14 +36,13 @@ export function mapMitarbeiterEintrag(
   daten: Record<string, unknown>,
 ): IMitarbeiterEintrag {
   const person = mapPerson(daten['person']);
-  const rolle = daten['rolle'];
 
   return {
     id,
     unternehmerId,
     firmaId,
     person,
-    rolle: isMitarbeiterRolle(rolle) ? rolle : 'service',
+    rollen: mapRollen(daten['rollen'], daten['rolle']),
     filialIds: getDokumentIds(daten['filialIds']),
     aktiv: daten['aktiv'] === true,
   };
@@ -113,6 +123,21 @@ function getDokumentIds(value: unknown): string[] {
   return [...new Set(value.map((eintrag) => getString(eintrag)).filter(Boolean))];
 }
 
-function isMitarbeiterRolle(value: unknown): value is TMitarbeiterRolle {
-  return typeof value === 'string' && MITARBEITER_ROLLEN.includes(value as TMitarbeiterRolle);
+function mapRollen(rollen: unknown, legacyRolle: unknown): TMitarbeiterRolle[] {
+  if (Array.isArray(rollen)) {
+    const gueltigeRollen = rollen.filter((rolle): rolle is TMitarbeiterRolle => {
+      return typeof rolle === 'string' && MITARBEITER_ROLLEN.includes(rolle as TMitarbeiterRolle);
+    });
+    if (gueltigeRollen.length > 0) return [...new Set(gueltigeRollen)];
+  }
+
+  if (typeof legacyRolle === 'string') {
+    if (MITARBEITER_ROLLEN.includes(legacyRolle as TMitarbeiterRolle)) {
+      return [legacyRolle as TMitarbeiterRolle];
+    }
+    const rolle = LEGACY_ROLLEN[legacyRolle];
+    if (rolle) return [rolle];
+  }
+
+  return ['servicekraft'];
 }
