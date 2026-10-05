@@ -17,6 +17,7 @@ describe('MitarbeiterService', () => {
     loadDocument: vi.fn(),
     createDocument: vi.fn(),
     updateDocument: vi.fn(),
+    replaceDocumentFields: vi.fn(),
     deleteDocument: vi.fn(),
     createServerTimestamp: vi.fn(),
   };
@@ -45,6 +46,7 @@ describe('MitarbeiterService', () => {
     firestoreDbServiceMock.loadDocument.mockResolvedValue(null);
     firestoreDbServiceMock.createDocument.mockResolvedValue('mitarbeiter-123');
     firestoreDbServiceMock.updateDocument.mockResolvedValue(undefined);
+    firestoreDbServiceMock.replaceDocumentFields.mockResolvedValue(undefined);
     firestoreDbServiceMock.deleteDocument.mockResolvedValue(undefined);
     firestoreDbServiceMock.createServerTimestamp.mockReturnValue('server-zeitstempel');
 
@@ -277,6 +279,23 @@ describe('MitarbeiterService', () => {
   });
 
   it('should delete an employee document', async () => {
+    firestoreDbServiceMock.loadCollection.mockResolvedValue([
+      {
+        id: 'kunde-1',
+        daten: {
+          unternehmerId: 'u',
+          firmenIds: { 'firma-alt': 'f' },
+          mitarbeiterIds: {
+            'firma-alt': {
+              'filiale-alt': {
+                'mitarbeiter-alt': 'm-1',
+                'mitarbeiter-bleibt': 'm-2',
+              },
+            },
+          },
+        },
+      },
+    ]);
     const service = TestBed.inject(MitarbeiterService);
 
     await service.deleteMitarbeiter('u', 'f', 'm-1');
@@ -284,6 +303,41 @@ describe('MitarbeiterService', () => {
     expect(firestoreDbServiceMock.deleteDocument).toHaveBeenCalledWith(
       'unternehmer/u/firma/f/mitarbeiter/m-1',
     );
+    expect(firestoreDbServiceMock.replaceDocumentFields).toHaveBeenCalledWith(
+      'systemMigrationen/kunde-1',
+      {
+        mitarbeiterIds: {
+          'firma-alt': {
+            'filiale-alt': {
+              'mitarbeiter-bleibt': 'm-2',
+            },
+          },
+        },
+        aktualisiertAm: 'server-zeitstempel',
+      },
+    );
+  });
+
+  it('should leave unrelated migration mappings unchanged when an employee is deleted', async () => {
+    firestoreDbServiceMock.loadCollection.mockResolvedValue([
+      {
+        id: 'kunde-1',
+        daten: {
+          unternehmerId: 'u',
+          firmenIds: { 'andere-firma-alt': 'andere-firma' },
+          mitarbeiterIds: {
+            'andere-firma-alt': {
+              'filiale-alt': { 'mitarbeiter-alt': 'm-1' },
+            },
+          },
+        },
+      },
+    ]);
+    const service = TestBed.inject(MitarbeiterService);
+
+    await service.deleteMitarbeiter('u', 'f', 'm-1');
+
+    expect(firestoreDbServiceMock.replaceDocumentFields).not.toHaveBeenCalled();
   });
 
   it('should propagate Firestore errors', async () => {

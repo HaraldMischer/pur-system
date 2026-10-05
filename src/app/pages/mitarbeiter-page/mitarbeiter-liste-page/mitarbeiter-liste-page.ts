@@ -68,6 +68,10 @@ export class MitarbeiterListePage {
       hatMitarbeiterVerwaltungszugriffAufFirma(profil, unternehmerId, firmaId),
     );
   });
+  readonly darfLoeschen: Signal<boolean> = computed(() => {
+    const profil = this.benutzerStore.benutzerProfil();
+    return profil?.aktiv === true && profil.userRole === 'master';
+  });
   readonly mitarbeiter: Signal<readonly IMitarbeiterEintrag[]> = computed(() => {
     const kontext = this.getSelectedMitarbeiterKontext();
     if (!kontext) return [];
@@ -159,6 +163,34 @@ export class MitarbeiterListePage {
     this.dialog.open(MitarbeiterBearbeitenDialog, {
       data: { ...kontext, mitarbeiter },
     });
+  }
+
+  /**
+   * Löscht nach Bestätigung einen Mitarbeiter und seine Migrationszuordnungen.
+   *
+   * @param mitarbeiter - Der zu löschende Mitarbeiter.
+   */
+  async deleteMitarbeiter(mitarbeiter: IMitarbeiterEintrag): Promise<void> {
+    if (
+      !this.darfLoeschen() ||
+      this.mitarbeiterStore.inProgress() ||
+      !this.mitarbeiter().some((eintrag) => eintrag.id === mitarbeiter.id)
+    ) {
+      return;
+    }
+
+    const name = `${mitarbeiter.person.vorname} ${mitarbeiter.person.nachname}`.trim();
+    if (!window.confirm(`Mitarbeiter „${name}“ wirklich löschen?`)) return;
+
+    try {
+      await this.mitarbeiterStore.deleteMitarbeiter(
+        mitarbeiter.unternehmerId,
+        mitarbeiter.firmaId,
+        mitarbeiter.id,
+      );
+    } catch {
+      // Der MitarbeiterStore stellt die Fehlermeldung für die Oberfläche bereit.
+    }
   }
 
   // ===== Interne Helfer =======================

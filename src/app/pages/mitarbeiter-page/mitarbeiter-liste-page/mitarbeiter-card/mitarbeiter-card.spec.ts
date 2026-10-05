@@ -64,4 +64,21 @@ describe('MitarbeiterCard', () => {
 
     expect(bearbeitenSpy).toHaveBeenCalledWith(mitarbeiter);
   });
+
+  it('should offer and emit deletion only when it is allowed', () => {
+    const fixture = TestBed.createComponent(MitarbeiterCard);
+    const loeschenSpy = vi.fn();
+    fixture.componentRef.setInput('mitarbeiter', mitarbeiter);
+    fixture.componentInstance.loeschen.subscribe(loeschenSpy);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Löschen');
+
+    fixture.componentRef.setInput('darfLoeschen', true);
+    fixture.detectChanges();
+    const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('button');
+    buttons[0]?.click();
+
+    expect(loeschenSpy).toHaveBeenCalledWith(mitarbeiter);
+  });
 });

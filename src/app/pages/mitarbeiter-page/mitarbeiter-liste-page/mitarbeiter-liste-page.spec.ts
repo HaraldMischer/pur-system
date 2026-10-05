@@ -85,6 +85,8 @@ describe('MitarbeiterListePage', () => {
     isMitarbeiterKontextLoading: ReturnType<typeof vi.fn>;
     isMitarbeiterKontextLoaded: ReturnType<typeof vi.fn>;
     getMitarbeiterKontextError: ReturnType<typeof vi.fn>;
+    deleteMitarbeiter: ReturnType<typeof vi.fn>;
+    error: typeof error;
   };
 
   beforeEach(() => {
@@ -126,6 +128,8 @@ describe('MitarbeiterListePage', () => {
       getMitarbeiterKontextError: vi.fn().mockImplementation(() => {
         return error();
       }),
+      deleteMitarbeiter: vi.fn().mockResolvedValue(undefined),
+      error,
     };
 
     TestBed.configureTestingModule({
@@ -257,6 +261,37 @@ describe('MitarbeiterListePage', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
       'Die Firma hat noch keine Mitarbeiter.',
     );
+  });
+
+  it('should allow only a master to confirm and delete an employee', async () => {
+    benutzerProfil.set({
+      ...benutzerProfil()!,
+      userRole: 'master',
+      zugriffe: {},
+    });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const fixture = TestBed.createComponent(MitarbeiterListePage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const deleteButton = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ].find((button) => button.textContent?.includes('Löschen'));
+    deleteButton?.click();
+    await fixture.whenStable();
+
+    expect(confirmSpy).toHaveBeenCalledWith('Mitarbeiter „Mia Muster“ wirklich löschen?');
+    expect(mitarbeiterStoreMock.deleteMitarbeiter).toHaveBeenCalledWith('u-1', 'f-1', 'm-1');
+  });
+
+  it('should not show employee deletion for an office account', async () => {
+    const fixture = TestBed.createComponent(MitarbeiterListePage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Löschen');
   });
 
   it('should retain the selected company and offer a retry after loading fails', async () => {

@@ -414,6 +414,22 @@ describe('FirestoreDbService', () => {
     expect(setDocMock).toHaveBeenCalledWith('document-ref', { aktiv: false }, { merge: true });
   });
 
+  it('should replace only the explicitly provided document fields', async () => {
+    const service = TestBed.inject(FirestoreDbService);
+    const daten = {
+      mitarbeiterIds: { 'firma-alt': {} },
+      aktualisiertAm: 'server-zeitstempel',
+    };
+
+    await service.replaceDocumentFields('systemMigrationen/kunde-1', daten);
+
+    expect(assertOnlineMock).toHaveBeenCalledOnce();
+    expect(trackWriteMock).toHaveBeenCalledWith(expect.any(Function));
+    expect(setDocMock).toHaveBeenCalledWith('document-ref', daten, {
+      mergeFields: ['mitarbeiterIds', 'aktualisiertAm'],
+    });
+  });
+
   it('should reject writes before accessing Firestore while offline', async () => {
     const error = { code: 'app/offline' };
     assertOnlineMock.mockImplementation(() => {
@@ -425,6 +441,9 @@ describe('FirestoreDbService', () => {
     await expect(service.updateDocument('unternehmer/dokument-1', { aktiv: false })).rejects.toBe(
       error,
     );
+    await expect(
+      service.replaceDocumentFields('unternehmer/dokument-1', { aktiv: false }),
+    ).rejects.toBe(error);
     expect(addDocMock).not.toHaveBeenCalled();
     expect(setDocMock).not.toHaveBeenCalled();
     expect(trackWriteMock).not.toHaveBeenCalled();

@@ -7,6 +7,7 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
+import { ISystemmigrationDokument } from '../../commons/models/domain/datenmigration';
 import {
   IMitarbeiterAktualisierung,
   IMitarbeiterAnlage,
@@ -114,6 +115,40 @@ function sortMitarbeiter(mitarbeiter: readonly IMitarbeiterEintrag[]): IMitarbei
     const nachname = a.person.nachname.localeCompare(b.person.nachname, 'de');
     return nachname || a.person.vorname.localeCompare(b.person.vorname, 'de');
   });
+}
+
+function removeMitarbeiterIdZuordnung(
+  systemmigration: ISystemmigrationDokument,
+  firmaId: string,
+  mitarbeiterId: string,
+): NonNullable<ISystemmigrationDokument['mitarbeiterIds']> | null {
+  const mitarbeiterIds = systemmigration.mitarbeiterIds;
+  if (!mitarbeiterIds) return null;
+
+  let aktualisiert = false;
+  const bereinigteFirmen = Object.fromEntries(
+    Object.entries(mitarbeiterIds).flatMap(([purCompanyId, filialen]) => {
+      if (systemmigration.firmenIds?.[purCompanyId] !== firmaId) {
+        return [[purCompanyId, filialen]];
+      }
+
+      const bereinigteFilialen = Object.fromEntries(
+        Object.entries(filialen).flatMap(([purBranchId, ids]) => {
+          const bereinigteIds = Object.fromEntries(
+            Object.entries(ids).filter(([, zielId]) => {
+              const behalten = zielId !== mitarbeiterId;
+              aktualisiert ||= !behalten;
+              return behalten;
+            }),
+          );
+          return Object.keys(bereinigteIds).length > 0 ? [[purBranchId, bereinigteIds]] : [];
+        }),
+      );
+      return Object.keys(bereinigteFilialen).length > 0 ? [[purCompanyId, bereinigteFilialen]] : [];
+    }),
+  );
+
+  return aktualisiert ? bereinigteFirmen : null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -281,7 +316,7 @@ export class MitarbeiterService {
   }
 
   /**
-   * Löscht einen nicht mit einem Benutzerkonto verknüpften Mitarbeiter.
+   * Löscht einen nicht mit einem Benutzerkonto verknüpften Mitarbeiter und seine Migrationszuordnungen.
    *
    * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
    * @param firmaId - Die Dokument-ID der übergeordneten Firma.
@@ -294,8 +329,28 @@ export class MitarbeiterService {
     firmaId: string,
     mitarbeiterId: string,
   ): Promise<void> {
+    const systemmigrationen =
+      await this.firestoreDbService.loadCollection<ISystemmigrationDokument>(
+        FIRESTORE_COLLECTION_PATHS.systemMigrationen,
+        'networkOnly',
+      );
+    const zuordnungsUpdates = systemmigrationen.flatMap((dokument) => {
+      if (dokument.daten.unternehmerId !== unternehmerId) return [];
+      const mitarbeiterIds = removeMitarbeiterIdZuordnung(dokument.daten, firmaId, mitarbeiterId);
+      return mitarbeiterIds ? [{ purCustomerId: dokument.id, mitarbeiterIds }] : [];
+    });
+
     await this.firestoreDbService.deleteDocument(
       FIRESTORE_DOCUMENT_PATHS.mitarbeiter(unternehmerId, firmaId, mitarbeiterId),
     );
+    for (const update of zuordnungsUpdates) {
+      await this.firestoreDbService.replaceDocumentFields(
+        FIRESTORE_DOCUMENT_PATHS.systemmigration(update.purCustomerId),
+        {
+          mitarbeiterIds: update.mitarbeiterIds,
+          aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
+        },
+      );
+    }
   }
 }

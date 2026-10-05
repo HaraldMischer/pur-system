@@ -44,6 +44,9 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
   `filialenIds.{purCompanyId}.{purBranchId}` unter `systemMigrationen/{purCustomerId}` gespeichert.
 - Jeder Filialmitarbeiter erhält einmalig eine Firestore-Auto-ID. Die Zuordnungen werden dauerhaft als
   `mitarbeiterIds.{purCompanyId}.{purBranchId}.{purEmployeeId}` unter `systemMigrationen/{purCustomerId}` gespeichert.
+- Löscht ein Master einen neuen Firmenmitarbeiter, werden auch alle auf dessen Ziel-ID verweisenden Einträge aus
+  `mitarbeiterIds` entfernt. Das Legacy-Mitarbeiterdokument bleibt unverändert und erhält bei einer erneuten Migration eine neue
+  Ziel-ID.
 - Ein Reset eines Datenbereichs entfernt die gespeicherten Unternehmer-, Firmen-, Filial- und Mitarbeiter-Zuordnungen nicht.
 - Untergeordnete Daten werden nur bei vorhandener Zielstruktur migriert.
 
@@ -128,6 +131,8 @@ technische Umsetzung wird separat in `docs/todo_next.md` geplant.
 
 - Gleiche Namen oder Legacy-IDs in verschiedenen Filialen führen durch die verschachtelte Zuordnung nicht zu einem
   Überschreiben und bleiben für die spätere manuelle Prüfung nachvollziehbar.
+- Master können solche getrennten Einträge einzeln aus der neuen Firmenstruktur löschen. Mitarbeiter mit verknüpftem
+  Benutzerkonto bleiben durch die Firestore-Regeln vor dem Löschen geschützt.
 - `firstName`, `lastName`, `address`, `email`, `phone`, `birthday`, `role`, `active` und `deleted` werden in die
   vorhandene Personen-, Rollen-, Filial- und Statusstruktur überführt.
 - `active` wird als Boolean sowie bei fehlerhaften Legacy-Daten als Array mit genau einem Boolean akzeptiert.

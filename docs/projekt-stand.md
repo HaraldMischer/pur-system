@@ -102,6 +102,9 @@ Stand: 02.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   übernommen. Jeder Quellmitarbeiter erhält eine Firestore-Auto-ID, die verschachtelt nach Legacy-Firma, -Filiale und
   -Mitarbeiter unter `systemMigrationen/{purCustomerId}.mitarbeiterIds` gespeichert wird. `filialIds` enthält die zugeordnete
   neue Filial-ID. Gleiche Namen oder Legacy-IDs in unterschiedlichen Filialen bleiben getrennte, nachvollziehbare Mitarbeiter.
+  Master können ein Mitarbeiterdokument aus der neuen Firmenstruktur löschen. Zugehörige Ziel-ID-Zuordnungen werden dabei aus
+  `systemMigrationen` entfernt, während die Legacy-Quelle unverändert bleibt und bei einer erneuten Migration wieder angelegt
+  werden kann. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Löschen geschützt.
 - `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
   sondern greifen über den `FirestoreDbService` zu.
 - Der `AppSitzungsInitService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und

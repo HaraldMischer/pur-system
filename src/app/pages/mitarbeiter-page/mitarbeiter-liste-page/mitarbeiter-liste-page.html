@@ -26,6 +26,9 @@
         </button>
       </div>
     } @else if (mitarbeiterIsLoaded()) {
+      @if (mitarbeiterStore.error(); as error) {
+        <p class="pur-form__error" role="alert">{{ error }}</p>
+      }
       <div class="mitarbeiter-liste-page__grid">
         <mat-card class="pur-card pur-card--hinzufuegen" appearance="outlined">
           <button
@@ -41,7 +44,9 @@
         @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
           <app-mitarbeiter-card
             [mitarbeiter]="mitarbeiter"
+            [darfLoeschen]="darfLoeschen()"
             (bearbeiten)="openMitarbeiterBearbeitenDialog($event)"
+            (loeschen)="deleteMitarbeiter($event)"
           />
         }
       </div>

@@ -343,6 +343,28 @@ export class FirestoreDbService {
   }
 
   /**
+   * Ersetzt ausschließlich die übergebenen Dokumentfelder vollständig.
+   *
+   * @param documentPath - Vollständiger Pfad des Dokuments.
+   * @param daten - Dokumentfelder, deren bisherige Werte vollständig ersetzt werden.
+   * @returns Ein Promise, das nach dem bestätigten Schreibvorgang abgeschlossen ist.
+   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
+   */
+  async replaceDocumentFields<T extends DocumentData>(
+    documentPath: string,
+    daten: T,
+  ): Promise<void> {
+    this.netzwerkStatusService.assertOnline();
+
+    await this.loadingService.trackWrite(async () => {
+      await this.runInContext(() => {
+        const documentRef = this.doc(this.firestore, documentPath);
+        return this.setDoc(documentRef, daten, { mergeFields: Object.keys(daten) });
+      });
+    });
+  }
+
+  /**
    * Erzeugt einen serverseitig aufgelösten Firestore-Zeitstempel.
    *
    * @returns Platzhalter für den Firestore-Server-Zeitstempel.

@@ -29,7 +29,9 @@ export class MitarbeiterCard {
   // ===== Öffentliche API ======================
 
   readonly mitarbeiter = input.required<IMitarbeiterEintrag>();
+  readonly darfLoeschen = input(false);
   readonly bearbeiten = output<IMitarbeiterEintrag>();
+  readonly loeschen = output<IMitarbeiterEintrag>();
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -54,5 +56,13 @@ export class MitarbeiterCard {
    */
   selectBearbeiten(): void {
     this.bearbeiten.emit(this.mitarbeiter());
+  }
+
+  /**
+   * Meldet den ausgewählten Mitarbeiter zur Löschung an die Liste.
+   */
+  selectLoeschen(): void {
+    if (!this.darfLoeschen()) return;
+    this.loeschen.emit(this.mitarbeiter());
   }
 }
