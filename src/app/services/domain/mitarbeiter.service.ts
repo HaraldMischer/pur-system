@@ -7,149 +7,22 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { ISystemmigrationDokument } from '../../commons/models/domain/datenmigration';
 import {
   IMitarbeiterAktualisierung,
   IMitarbeiterAnlage,
   IMitarbeiterAnlageErgebnis,
   IMitarbeiterEintrag,
-  TMitarbeiterPerson,
-  TMitarbeiterRolle,
 } from '../../commons/models/domain/mitarbeiter';
-import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
+import { removeMitarbeiterIdZuordnung } from '../../commons/utils/datenmigration/mitarbeiter-id-zuordnung';
+import {
+  createAnzeigename,
+  createMitarbeiterPerson,
+  mapMitarbeiterEintrag,
+  sortMitarbeiter,
+} from '../../commons/utils/mitarbeiter/mitarbeiter-dokument';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
-
-// ===== Top-Level Helper =====================
-
-const MITARBEITER_ROLLEN: readonly TMitarbeiterRolle[] = ['service', 'kasse', 'admin'];
-
-function mapMitarbeiterEintrag(
-  unternehmerId: string,
-  firmaId: string,
-  id: string,
-  daten: Record<string, unknown>,
-): IMitarbeiterEintrag {
-  const person = mapPerson(daten['person']);
-  const rolle = daten['rolle'];
-
-  return {
-    id,
-    unternehmerId,
-    firmaId,
-    person,
-    rolle: isMitarbeiterRolle(rolle) ? rolle : 'service',
-    filialIds: getDokumentIds(daten['filialIds']),
-    aktiv: daten['aktiv'] === true,
-  };
-}
-
-function mapPerson(value: unknown): TMitarbeiterPerson {
-  const person = asRecord(value);
-  const adresse = asRecord(person['adresse']);
-  const kontakt = asRecord(person['kontakt']);
-  const geburtstag = getOptionalString(person['geburtstag']);
-  const email = getOptionalString(kontakt['email']);
-  const telefon = getOptionalString(kontakt['telefon']);
-  const mobil = getOptionalString(kontakt['mobil']);
-  const webseite = getOptionalString(kontakt['webseite']);
-
-  return {
-    vorname: getString(person['vorname']),
-    nachname: getString(person['nachname']),
-    adresse: {
-      strasse: getString(adresse['strasse']),
-      hausnummer: getString(adresse['hausnummer']),
-      postleitzahl: getString(adresse['postleitzahl']),
-      ort: getString(adresse['ort']),
-    },
-    kontakt: {
-      ...(email ? { email } : {}),
-      ...(telefon ? { telefon } : {}),
-      ...(mobil ? { mobil } : {}),
-      ...(webseite ? { webseite } : {}),
-    },
-    ...(geburtstag ? { geburtstag } : {}),
-  };
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function getString(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function getOptionalString(value: unknown): string | undefined {
-  const text = getString(value);
-  return text || undefined;
-}
-
-function getDokumentIds(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.map(getString).filter(Boolean))];
-}
-
-function isMitarbeiterRolle(value: unknown): value is TMitarbeiterRolle {
-  return typeof value === 'string' && MITARBEITER_ROLLEN.includes(value as TMitarbeiterRolle);
-}
-
-function createAnzeigename(person: TMitarbeiterPerson): string {
-  return `${person.vorname.trim()} ${person.nachname.trim()}`.trim();
-}
-
-function createMitarbeiterPerson(person: TMitarbeiterPerson): TMitarbeiterPerson {
-  return {
-    vorname: person.vorname,
-    nachname: person.nachname,
-    adresse: person.adresse,
-    kontakt: person.kontakt,
-    ...(person.geburtstag ? { geburtstag: person.geburtstag } : {}),
-  };
-}
-
-function sortMitarbeiter(mitarbeiter: readonly IMitarbeiterEintrag[]): IMitarbeiterEintrag[] {
-  return [...mitarbeiter].sort((a, b) => {
-    const nachname = a.person.nachname.localeCompare(b.person.nachname, 'de');
-    return nachname || a.person.vorname.localeCompare(b.person.vorname, 'de');
-  });
-}
-
-function removeMitarbeiterIdZuordnung(
-  systemmigration: ISystemmigrationDokument,
-  firmaId: string,
-  mitarbeiterId: string,
-): NonNullable<ISystemmigrationDokument['mitarbeiterIds']> | null {
-  const mitarbeiterIds = systemmigration.mitarbeiterIds;
-  if (!mitarbeiterIds) return null;
-
-  let aktualisiert = false;
-  const bereinigteFirmen = Object.fromEntries(
-    Object.entries(mitarbeiterIds).flatMap(([purCompanyId, filialen]) => {
-      if (systemmigration.firmenIds?.[purCompanyId] !== firmaId) {
-        return [[purCompanyId, filialen]];
-      }
-
-      const bereinigteFilialen = Object.fromEntries(
-        Object.entries(filialen).flatMap(([purBranchId, ids]) => {
-          const bereinigteIds = Object.fromEntries(
-            Object.entries(ids).filter(([, zielId]) => {
-              const behalten = zielId !== mitarbeiterId;
-              aktualisiert ||= !behalten;
-              return behalten;
-            }),
-          );
-          return Object.keys(bereinigteIds).length > 0 ? [[purBranchId, bereinigteIds]] : [];
-        }),
-      );
-      return Object.keys(bereinigteFilialen).length > 0 ? [[purCompanyId, bereinigteFilialen]] : [];
-    }),
-  );
-
-  return aktualisiert ? bereinigteFirmen : null;
-}
 
 @Injectable({ providedIn: 'root' })
 export class MitarbeiterService {

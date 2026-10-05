@@ -7,27 +7,15 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
+import { mapUnternehmerEintrag } from '../../commons/mapper/domain/unternehmer-dokument.mapper';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import {
   IUnternehmerAnlage,
   IUnternehmerAnlageErgebnis,
   IUnternehmerEintrag,
 } from '../../commons/models/domain/unternehmer';
-import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
-
-// ===== Top-Level Helper =====================
-
-function mapUnternehmerEintrag(id: string, daten: Record<string, unknown>): IUnternehmerEintrag {
-  const anzeigename = daten['anzeigename'];
-  const nummer = daten['nummer'];
-
-  return {
-    id,
-    anzeigename: typeof anzeigename === 'string' && anzeigename.trim() ? anzeigename.trim() : id,
-    nummer: Number.isInteger(nummer) && Number(nummer) > 0 ? Number(nummer) : 0,
-  };
-}
 
 @Injectable({ providedIn: 'root' })
 export class UnternehmerService {

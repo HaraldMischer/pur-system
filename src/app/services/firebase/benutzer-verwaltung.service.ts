@@ -4,6 +4,7 @@ import { Injectable, Injector, inject, runInInjectionContext } from '@angular/co
 import { Functions } from '@angular/fire/functions';
 
 import { FIRESTORE_COLLECTION_PATHS } from '../../commons/constants/firebase.constants';
+import { mapMitarbeiterAuswahl } from '../../commons/mapper/domain/mitarbeiter-auswahl.mapper';
 import { IBenutzerAnlage, IBenutzerAnlageErgebnis } from '../../commons/models/domain/benutzer';
 import {
   IMitarbeiterAuswahl,
@@ -13,39 +14,6 @@ import { HTTPS_CALLABLE } from '../../commons/tokens/firebase.tokens';
 import { LoadingService } from '../core/loading.service';
 import { NetzwerkStatusService } from '../core/netzwerk-status.service';
 import { FirestoreDbService } from './firestore-db.service';
-
-// ===== Top-Level Helper =====================
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function mapMitarbeiterAuswahl(
-  dokumente: readonly { id: string; daten: Record<string, unknown> }[],
-): IMitarbeiterAuswahl[] {
-  return dokumente
-    .flatMap((dokument) => {
-      if (dokument.daten['aktiv'] !== true) return [];
-
-      const benutzerUid = dokument.daten['benutzerUid'];
-      if (
-        benutzerUid !== undefined &&
-        benutzerUid !== null &&
-        (typeof benutzerUid !== 'string' || benutzerUid.trim())
-      ) {
-        return [];
-      }
-
-      const person = dokument.daten['person'];
-      if (!isRecord(person)) return [];
-      const vorname = typeof person['vorname'] === 'string' ? person['vorname'].trim() : '';
-      const nachname = typeof person['nachname'] === 'string' ? person['nachname'].trim() : '';
-      return vorname && nachname
-        ? [{ id: dokument.id, anzeigename: `${nachname}, ${vorname}` }]
-        : [];
-    })
-    .sort((a, b) => a.anzeigename.localeCompare(b.anzeigename, 'de'));
-}
 
 @Injectable({ providedIn: 'root' })
 export class BenutzerVerwaltungService {

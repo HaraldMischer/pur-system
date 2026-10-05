@@ -7,73 +7,16 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
+import { mapFirmaEintrag } from '../../commons/mapper/domain/firma-dokument.mapper';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import {
   IFirmaAnlage,
   IFirmaAnlageErgebnis,
   IFirmaAktualisierung,
   IFirmaEintrag,
 } from '../../commons/models/domain/firma';
-import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
-
-// ===== Top-Level Helper =====================
-
-function mapFirmaEintrag(id: string, daten: Record<string, unknown>): IFirmaEintrag {
-  const anzeigename = daten['anzeigename'];
-  const firmenname = daten['firmenname'];
-  const nummer = daten['nummer'];
-  const adresse = asRecord(daten['adresse']);
-  const kontakt = asRecord(daten['kontakt']);
-  const email = getOptionalString(kontakt['email']);
-  const telefon = getOptionalString(kontakt['telefon']);
-  const mobil = getOptionalString(kontakt['mobil']);
-  const webseite = getOptionalString(kontakt['webseite']);
-  const strasse = getOptionalString(adresse['strasse']);
-  const hausnummer = getOptionalString(adresse['hausnummer']);
-  const postleitzahl = getOptionalString(adresse['postleitzahl']);
-  const ort = getOptionalString(adresse['ort']);
-  const hatAdresse = Boolean(strasse || hausnummer || postleitzahl || ort);
-
-  return {
-    id,
-    anzeigename: typeof anzeigename === 'string' && anzeigename.trim() ? anzeigename.trim() : id,
-    firmenname: typeof firmenname === 'string' && firmenname.trim() ? firmenname.trim() : id,
-    nummer: Number.isInteger(nummer) && Number(nummer) > 0 ? Number(nummer) : 0,
-    aktiv: daten['aktiv'] === true,
-    ...(hatAdresse
-      ? {
-          adresse: {
-            ...(strasse ? { strasse } : {}),
-            ...(hausnummer ? { hausnummer } : {}),
-            ...(postleitzahl ? { postleitzahl } : {}),
-            ...(ort ? { ort } : {}),
-          },
-        }
-      : {}),
-    kontakt: {
-      ...(email ? { email } : {}),
-      ...(telefon ? { telefon } : {}),
-      ...(mobil ? { mobil } : {}),
-      ...(webseite ? { webseite } : {}),
-    },
-  };
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function getString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
-}
-
-function getOptionalString(value: unknown): string | undefined {
-  const text = getString(value);
-  return text || undefined;
-}
 
 @Injectable({ providedIn: 'root' })
 export class FirmaService {

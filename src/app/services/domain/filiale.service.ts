@@ -7,72 +7,16 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
+import { mapFilialeEintrag } from '../../commons/mapper/domain/filiale-dokument.mapper';
+import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import {
   IFilialeAnlage,
   IFilialeAnlageErgebnis,
   IFilialeAktualisierung,
   IFilialeEintrag,
 } from '../../commons/models/domain/filiale';
-import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { StrukturVerwaltungService } from '../firebase/struktur-verwaltung.service';
-
-// ===== Top-Level Helper =====================
-
-function mapFilialeEintrag(id: string, daten: Record<string, unknown>): IFilialeEintrag {
-  const anzeigename = daten['anzeigename'];
-  const filialname = daten['filialname'];
-  const nummer = daten['nummer'];
-  const adresse = asRecord(daten['adresse']);
-  const strasse = getOptionalString(adresse['strasse']);
-  const hausnummer = getOptionalString(adresse['hausnummer']);
-  const postleitzahl = getOptionalString(adresse['postleitzahl']);
-  const ort = getOptionalString(adresse['ort']);
-  const kontakt = asRecord(daten['kontakt']);
-  const email = getOptionalString(kontakt['email']);
-  const telefon = getOptionalString(kontakt['telefon']);
-  const mobil = getOptionalString(kontakt['mobil']);
-  const webseite = getOptionalString(kontakt['webseite']);
-
-  return {
-    id,
-    anzeigename: typeof anzeigename === 'string' && anzeigename.trim() ? anzeigename.trim() : id,
-    filialname: typeof filialname === 'string' && filialname.trim() ? filialname.trim() : id,
-    nummer: Number.isInteger(nummer) && Number(nummer) > 0 ? Number(nummer) : 0,
-    aktiv: daten['aktiv'] === true,
-    ...(strasse || hausnummer || postleitzahl || ort
-      ? {
-          adresse: {
-            ...(strasse ? { strasse } : {}),
-            ...(hausnummer ? { hausnummer } : {}),
-            ...(postleitzahl ? { postleitzahl } : {}),
-            ...(ort ? { ort } : {}),
-          },
-        }
-      : {}),
-    kontakt: {
-      ...(email ? { email } : {}),
-      ...(telefon ? { telefon } : {}),
-      ...(mobil ? { mobil } : {}),
-      ...(webseite ? { webseite } : {}),
-    },
-  };
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function getString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
-}
-
-function getOptionalString(value: unknown): string | undefined {
-  const text = getString(value);
-  return text || undefined;
-}
 
 @Injectable({ providedIn: 'root' })
 export class FilialeService {
