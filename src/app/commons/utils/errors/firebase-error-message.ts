@@ -23,7 +23,10 @@ const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
     'Dieser Anmeldename wird bereits verwendet. Bitte einen anderen Namensbestandteil wählen.',
   'functions/internal': 'Der Benutzer konnte nicht vollständig angelegt werden.',
   'functions/invalid-argument': 'Die Benutzerdaten sind unvollständig oder ungültig.',
-  'functions/permission-denied': 'Nur ein aktiver Master darf Benutzer anlegen.',
+  'functions/failed-precondition':
+    'Die Aktion ist aufgrund des aktuellen Datenstands nicht möglich.',
+  'functions/not-found': 'Der ausgewählte Datensatz existiert nicht mehr.',
+  'functions/permission-denied': 'Nur ein aktiver Master darf diese Aktion ausführen.',
   'functions/unauthenticated': 'Bitte melde dich erneut an.',
   'functions/unavailable':
     'Der Dienst ist gerade nicht erreichbar. Bitte versuche es später erneut.',

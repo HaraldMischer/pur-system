@@ -5,7 +5,11 @@ import { Functions } from '@angular/fire/functions';
 
 import { FIRESTORE_COLLECTION_PATHS } from '../../commons/constants/firebase.constants';
 import { mapMitarbeiterAuswahl } from '../../commons/mapper/domain/mitarbeiter-auswahl.mapper';
-import { IBenutzerAnlage, IBenutzerAnlageErgebnis } from '../../commons/models/domain/benutzer';
+import {
+  IBenutzerAnlage,
+  IBenutzerAnlageErgebnis,
+  IBenutzerMitarbeiterZuordnung,
+} from '../../commons/models/domain/benutzer';
 import {
   IMitarbeiterAuswahl,
   IMitarbeiterAuswahlAnfrage,
@@ -55,6 +59,50 @@ export class BenutzerVerwaltungService {
       });
 
       return result.data;
+    });
+  }
+
+  /**
+   * Ordnet ein vorhandenes Mitarbeiterkonto einem anderen fachlichen Mitarbeiter zu.
+   *
+   * @param uid - UID des neu zuzuordnenden Benutzerkontos.
+   * @param zuordnung - Neuer Unternehmer-, Firmen- und Mitarbeiterkontext.
+   * @returns Ein Promise, das nach der serverseitig bestätigten Neuzuordnung abgeschlossen ist.
+   */
+  async updateMitarbeiterZuordnung(
+    uid: string,
+    zuordnung: IBenutzerMitarbeiterZuordnung,
+  ): Promise<void> {
+    this._netzwerkStatusService.assertOnline();
+
+    await this._loadingService.trackWrite(async () => {
+      await runInInjectionContext(this._injector, () => {
+        const updateMitarbeiterZuordnung = this._httpsCallable<
+          IBenutzerMitarbeiterZuordnung & { uid: string },
+          void
+        >(this._functions, 'updateMitarbeiterZuordnung');
+        return updateMitarbeiterZuordnung({ uid, ...zuordnung });
+      });
+    });
+  }
+
+  /**
+   * Löscht ein Mitarbeiterkonto einschließlich Profil und fachlicher Verknüpfung.
+   *
+   * @param uid - UID des zu löschenden Mitarbeiterkontos.
+   * @returns Ein Promise, das nach der serverseitig bestätigten Löschung abgeschlossen ist.
+   */
+  async deleteBenutzer(uid: string): Promise<void> {
+    this._netzwerkStatusService.assertOnline();
+
+    await this._loadingService.trackWrite(async () => {
+      await runInInjectionContext(this._injector, () => {
+        const deleteBenutzer = this._httpsCallable<{ uid: string }, void>(
+          this._functions,
+          'deleteBenutzer',
+        );
+        return deleteBenutzer({ uid });
+      });
     });
   }
 }

@@ -140,13 +140,7 @@ describe('StammdatenStore', () => {
       lesestrategie: 'networkOnly',
     });
 
-    await store.loadFilialenNachIds(
-      'mitarbeiter-1',
-      'u-1',
-      'f-1',
-      ['b-2', 'b-1'],
-      'networkOnly',
-    );
+    await store.loadFilialenNachIds('mitarbeiter-1', 'u-1', 'f-1', ['b-2', 'b-1'], 'networkOnly');
 
     expect(filialeServiceMock.loadFilialeEintrag).toHaveBeenCalledWith(
       'u-1',
@@ -160,10 +154,7 @@ describe('StammdatenStore', () => {
       'b-1',
       'networkOnly',
     );
-    expect(store.getFilialen('u-1', 'f-1').map((filiale) => filiale.id)).toEqual([
-      'b-1',
-      'b-2',
-    ]);
+    expect(store.getFilialen('u-1', 'f-1').map((filiale) => filiale.id)).toEqual(['b-1', 'b-2']);
     expect(store.isLoaded()).toBe(true);
   });
 
@@ -228,9 +219,11 @@ describe('StammdatenStore', () => {
     store.removeFiliale('u-1', 'f-1', 'b-2');
     store.removeFirma('u-1', 'f-2');
     store.removeUnternehmer('u-2');
+    store.removeBenutzerprofil('profil-1');
     expect(store.getFilialen('u-1', 'f-1').map((eintrag) => eintrag.id)).toEqual(['b-1']);
     expect(store.getFirmen('u-1').some((eintrag) => eintrag.id === 'f-2')).toBe(false);
     expect(store.unternehmer().some((eintrag) => eintrag.id === 'u-2')).toBe(false);
+    expect(store.benutzerprofile()).toEqual([]);
 
     store.reset();
     expect(store.snapshot()).toEqual({

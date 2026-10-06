@@ -7,6 +7,8 @@
     id="benutzer-bearbeiten-form"
     class="pur-form pur-form--grid"
     [formGroup]="benutzerForm"
+    [attr.aria-busy]="verwaltungStore.inProgress()"
+    [attr.inert]="verwaltungStore.inProgress() ? '' : null"
     (ngSubmit)="onSubmit()"
   >
     <!-- Profildaten -->
@@ -43,6 +45,129 @@
         <mat-checkbox formControlName="aktiv">Benutzerprofil aktiv</mat-checkbox>
       </div>
     </div>
+
+    @if (mitarbeiterZuordnung(); as zuordnung) {
+      <!-- Mitarbeiterzuordnung -->
+      <div class="pur-form__group">
+        <h2 class="pur-form__group-titel">Mitarbeiterzuordnung</h2>
+
+        @if (zuordnungBearbeiten()) {
+          <div class="pur-form pur-form--grid" [formGroup]="mitarbeiterZuordnungForm">
+            <mat-form-field appearance="outline" class="pur-form__field">
+              <mat-label>Neuer Unternehmer</mat-label>
+              <mat-select
+                formControlName="unternehmerId"
+                (selectionChange)="handleZuordnungUnternehmerChange()"
+              >
+                @for (eintrag of unternehmer(); track eintrag.id) {
+                  <mat-option [value]="eintrag.id">{{ eintrag.anzeigename }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="pur-form__field">
+              <mat-label>Neue Firma</mat-label>
+              <mat-select
+                formControlName="firmaId"
+                (selectionChange)="handleZuordnungFirmaChange()"
+              >
+                @for (eintrag of getZuordnungsFirmen(); track eintrag.id) {
+                  <mat-option [value]="eintrag.id">{{ eintrag.anzeigename }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="pur-form__field">
+              <mat-label>Neuer fachlicher Mitarbeiter</mat-label>
+              <mat-select formControlName="firmaMitarbeiterId">
+                @for (mitarbeiter of mitarbeiterAuswahl(); track mitarbeiter.id) {
+                  <mat-option [value]="mitarbeiter.id">{{ mitarbeiter.anzeigename }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            @if (mitarbeiterAuswahlDownload()) {
+              <p role="status">Mitarbeiter werden geladen.</p>
+            } @else if (mitarbeiterAuswahlError(); as error) {
+              <p class="pur-form__error" role="alert">Mitarbeiter: {{ error }}</p>
+            } @else if (
+              mitarbeiterZuordnungForm.controls.firmaId.value && mitarbeiterAuswahl().length === 0
+            ) {
+              <p role="status">Keine verfügbaren Mitarbeiter vorhanden.</p>
+            }
+
+            <div class="pur-form__row pur-form__row--actions-end">
+              <button matButton type="button" (click)="cancelMitarbeiterZuordnung()">
+                Abbrechen
+              </button>
+              <button
+                matButton="filled"
+                type="button"
+                [disabled]="
+                  mitarbeiterZuordnungForm.invalid ||
+                  mitarbeiterAuswahlDownload() ||
+                  verwaltungStore.inProgress()
+                "
+                (click)="saveMitarbeiterZuordnung()"
+              >
+                Neu zuordnen
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="pur-form__row">
+            <mat-form-field appearance="outline" class="pur-form__field">
+              <mat-label>Unternehmer</mat-label>
+              <input
+                matInput
+                name="zuordnung-unternehmer"
+                [value]="zuordnung.unternehmer"
+                readonly
+              />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="pur-form__field">
+              <mat-label>Firma</mat-label>
+              <input matInput name="zuordnung-firma" [value]="zuordnung.firma" readonly />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="pur-form__field">
+              <mat-label>Fachlicher Mitarbeiter</mat-label>
+              <input
+                matInput
+                name="zuordnung-mitarbeiter"
+                [value]="zuordnung.mitarbeiter"
+                readonly
+              />
+            </mat-form-field>
+          </div>
+
+          @if (loeschenBestaetigen()) {
+            <p class="pur-form__error" role="alert">
+              Das Benutzerkonto, sein Benutzerprofil und die Mitarbeiterverknüpfung werden endgültig
+              gelöscht.
+            </p>
+            <div class="pur-form__row pur-form__row--actions-end">
+              <button matButton type="button" (click)="loeschenBestaetigen.set(false)">
+                Nicht löschen
+              </button>
+              <button matButton="filled" type="button" (click)="deleteBenutzer()">
+                Endgültig löschen
+              </button>
+            </div>
+          } @else {
+            <div class="pur-form__row">
+              <button matButton="outlined" type="button" (click)="startMitarbeiterZuordnung()">
+                Zuordnung ändern
+              </button>
+              <button matButton="outlined" type="button" (click)="startBenutzerLoeschen()">
+                Benutzerkonto löschen
+              </button>
+            </div>
+          }
+        }
+      </div>
+    }
 
     <!-- Erlaubte Bereiche -->
     <div class="pur-form__group" formGroupName="erlaubteBereiche">
@@ -102,6 +227,8 @@
       benutzerForm.invalid ||
       !datenAuswahlGueltig() ||
       !hatAenderungen() ||
+      zuordnungBearbeiten() ||
+      loeschenBestaetigen() ||
       verwaltungStore.inProgress()
     "
   >

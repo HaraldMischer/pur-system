@@ -27,6 +27,8 @@ describe('BenutzerVerwaltungStore', () => {
   let serviceMock: {
     loadMitarbeiterAuswahl: ReturnType<typeof vi.fn>;
     createBenutzer: ReturnType<typeof vi.fn>;
+    updateMitarbeiterZuordnung: ReturnType<typeof vi.fn>;
+    deleteBenutzer: ReturnType<typeof vi.fn>;
   };
   let benutzerServiceMock: { updateBenutzerProfil: ReturnType<typeof vi.fn> };
   let authServiceMock: { getAktuelleBenutzerId: ReturnType<typeof vi.fn> };
@@ -42,6 +44,8 @@ describe('BenutzerVerwaltungStore', () => {
         anmeldename: 'testbenutzer-office',
         email: 'testbenutzer-office@pur-system.invalid',
       }),
+      updateMitarbeiterZuordnung: vi.fn().mockResolvedValue(undefined),
+      deleteBenutzer: vi.fn().mockResolvedValue(undefined),
     };
     benutzerServiceMock = {
       updateBenutzerProfil: vi
@@ -245,6 +249,63 @@ describe('BenutzerVerwaltungStore', () => {
     ).rejects.toThrow('Ungültige Änderung');
     expect(benutzerServiceMock.updateBenutzerProfil).not.toHaveBeenCalled();
     expect(store.updateError()).toContain('nicht deaktiviert');
+  });
+
+  it('should reassign a selected employee account without reloading profiles', async () => {
+    const store = TestBed.inject(BenutzerVerwaltungStore);
+    const stammdatenStore = TestBed.inject(StammdatenStore);
+    stammdatenStore.upsertBenutzerprofil({
+      uid: 'mitarbeiter-1',
+      email: 'mitarbeiter@example.com',
+      anzeigename: 'Mitarbeiter',
+      aktiv: true,
+      userRole: 'mitarbeiter',
+      erlaubteBereiche: ['dashboard'],
+      zugriffe: { 'u-alt': { 'f-alt': [] } },
+      firmaMitarbeiterId: 'm-alt',
+    });
+    store.selectBenutzer('mitarbeiter-1');
+
+    const result = await store.updateMitarbeiterZuordnung({
+      unternehmerId: 'u-neu',
+      firmaId: 'f-neu',
+      firmaMitarbeiterId: 'm-neu',
+    });
+
+    expect(serviceMock.updateMitarbeiterZuordnung).toHaveBeenCalledWith('mitarbeiter-1', {
+      unternehmerId: 'u-neu',
+      firmaId: 'f-neu',
+      firmaMitarbeiterId: 'm-neu',
+    });
+    expect(result).toMatchObject({
+      zugriffe: { 'u-neu': { 'f-neu': [] } },
+      firmaMitarbeiterId: 'm-neu',
+    });
+    expect(store.selectedBenutzer()).toMatchObject({ firmaMitarbeiterId: 'm-neu' });
+    expect(store.updateSuccess()).toContain('neu zugeordnet');
+  });
+
+  it('should delete a selected employee account from the local profile list', async () => {
+    const store = TestBed.inject(BenutzerVerwaltungStore);
+    const stammdatenStore = TestBed.inject(StammdatenStore);
+    stammdatenStore.upsertBenutzerprofil({
+      uid: 'mitarbeiter-1',
+      email: 'mitarbeiter@example.com',
+      anzeigename: 'Mitarbeiter',
+      aktiv: true,
+      userRole: 'mitarbeiter',
+      erlaubteBereiche: ['dashboard'],
+      zugriffe: { u: { f: [] } },
+      firmaMitarbeiterId: 'm-1',
+    });
+    store.selectBenutzer('mitarbeiter-1');
+
+    await store.deleteBenutzer();
+
+    expect(serviceMock.deleteBenutzer).toHaveBeenCalledWith('mitarbeiter-1');
+    expect(stammdatenStore.benutzerprofile()).toEqual([]);
+    expect(store.selectedBenutzer()).toBeNull();
+    expect(store.updateSuccess()).toContain('gelöscht');
   });
   function prepareDaten() {
     const daten = TestBed.inject(DatenzugriffService);

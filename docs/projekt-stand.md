@@ -528,6 +528,15 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Manuelle Nachbearbeitung: UID aus dem Fehlerlog prüfen, eventuell vorhandenes Auth-Konto deaktivieren/entfernen und vorhandenes
   Profil auf `aktiv: false` setzen. Das Profil als Sperrdokument erhalten. Wenn mehrere externe Aufrufe scheitern, ist eine
   vollständige automatische Bereinigung nicht garantiert; die Fehlermeldung fordert die Administratorprüfung an.
+- Der Bearbeitungsdialog zeigt bei Mitarbeiterkonten die gespeicherte Zuordnung zu Unternehmer, Firma und fachlichem Mitarbeiter.
+  Nicht mehr auflösbare Referenzen bleiben mit ihrer gespeicherten ID erkennbar.
+- Aktive Master können jedes Mitarbeiterkonto einem anderen Unternehmer, einer anderen Firma und einem dort vorhandenen aktiven,
+  noch nicht verknüpften Mitarbeiter zuordnen. Die Callable Function `updateMitarbeiterZuordnung` löst eine noch vorhandene alte
+  Verknüpfung und aktualisiert den neuen Mitarbeiter sowie das Benutzerprofil gemeinsam in einer Firestore-Transaktion.
+- Mitarbeiterkonten können nach einer Sicherheitsabfrage über die Callable Function `deleteBenutzer` endgültig gelöscht
+  werden. Die Function entfernt zuerst das Firebase-Auth-Konto und danach das Profil sowie eine noch vorhandene
+  Mitarbeiterverknüpfung, damit kein Auth-Konto ohne schützendes Pur-System-Profil und damit keine vorübergehenden Legacy-Rechte
+  entstehen.
 - Angemeldete Benutzer können ihr Passwort nach erneuter Authentifizierung über die Toolbar und `/passwort` ändern. Auf dieser
   separaten Seite werden neues Passwort und Bestätigung validiert; es gelten mindestens 8 Zeichen.
 - Die Functions-Codebase `pur-system` nutzt Node.js 22 und die Region `europe-west1`.

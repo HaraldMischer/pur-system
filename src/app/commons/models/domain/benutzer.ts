@@ -35,6 +35,12 @@ export interface IBenutzerProfilAktualisierung {
   zugriffe: TBenutzerZugriffe;
 }
 
+export interface IBenutzerMitarbeiterZuordnung {
+  unternehmerId: string;
+  firmaId: string;
+  firmaMitarbeiterId: string;
+}
+
 // ===== Firestore-Dokumente ==================
 
 export interface IBenutzerProfilDokument {

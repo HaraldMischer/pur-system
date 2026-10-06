@@ -5,6 +5,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import {
   IBenutzerAnlage,
   IBenutzerAnlageErgebnis,
+  IBenutzerMitarbeiterZuordnung,
   IBenutzerProfilAktualisierung,
   IBenutzerProfilEintrag,
   TBenutzerZugriffe,
@@ -454,6 +455,81 @@ export const BenutzerVerwaltungStore = signalStore(
         }
       }
 
+      /**
+       * Ordnet das ausgewählte Mitarbeiterkonto einem anderen fachlichen Mitarbeiter zu.
+       *
+       * @param zuordnung - Neuer Unternehmer-, Firmen- und Mitarbeiterkontext.
+       * @returns Das lokal aktualisierte Benutzerprofil.
+       * @throws Gibt Validierungs- und Callable-Fehler an die aufrufende Stelle weiter.
+       */
+      async function updateMitarbeiterZuordnung(
+        zuordnung: IBenutzerMitarbeiterZuordnung,
+      ): Promise<IBenutzerProfilEintrag> {
+        const profil = store.selectedBenutzer();
+        if (!profil || profil.userRole !== 'mitarbeiter') {
+          throw new Error('Kein Mitarbeiterkonto ausgewählt.');
+        }
+
+        patchState(store, {
+          inProgress: true,
+          error: null,
+          createdBenutzer: null,
+          updateError: null,
+          updateSuccess: null,
+        });
+        try {
+          await service.updateMitarbeiterZuordnung(profil.uid, zuordnung);
+          const aktualisiertesProfil: IBenutzerProfilEintrag = {
+            ...profil,
+            zugriffe: { [zuordnung.unternehmerId]: { [zuordnung.firmaId]: [] } },
+            firmaMitarbeiterId: zuordnung.firmaMitarbeiterId,
+          };
+          stammdatenStore.upsertBenutzerprofil(aktualisiertesProfil);
+          patchState(store, {
+            updateSuccess: `Benutzer ${aktualisiertesProfil.email} wurde neu zugeordnet.`,
+          });
+          return aktualisiertesProfil;
+        } catch (error: unknown) {
+          patchState(store, { updateError: getFirebaseErrorMessage(error) });
+          throw error;
+        } finally {
+          patchState(store, { inProgress: false });
+        }
+      }
+
+      /**
+       * Löscht das ausgewählte Mitarbeiterkonto und entfernt es aus dem lokalen Profilbestand.
+       *
+       * @throws Gibt Validierungs- und Callable-Fehler an die aufrufende Stelle weiter.
+       */
+      async function deleteBenutzer(): Promise<void> {
+        const profil = store.selectedBenutzer();
+        if (!profil || profil.userRole !== 'mitarbeiter') {
+          throw new Error('Kein Mitarbeiterkonto ausgewählt.');
+        }
+
+        patchState(store, {
+          inProgress: true,
+          error: null,
+          createdBenutzer: null,
+          updateError: null,
+          updateSuccess: null,
+        });
+        try {
+          await service.deleteBenutzer(profil.uid);
+          stammdatenStore.removeBenutzerprofil(profil.uid);
+          patchState(store, {
+            selectedBenutzerUid: null,
+            updateSuccess: `Benutzer ${profil.email} wurde gelöscht.`,
+          });
+        } catch (error: unknown) {
+          patchState(store, { updateError: getFirebaseErrorMessage(error) });
+          throw error;
+        } finally {
+          patchState(store, { inProgress: false });
+        }
+      }
+
       // ===== Methoden: Sonstige Aktionen ==========
 
       /**
@@ -624,6 +700,8 @@ export const BenutzerVerwaltungStore = signalStore(
         loadMitarbeiterAuswahl,
         createBenutzer,
         updateBenutzerProfil,
+        updateMitarbeiterZuordnung,
+        deleteBenutzer,
         selectFilialen,
         selectFirmen,
         selectUnternehmer,

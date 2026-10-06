@@ -130,6 +130,33 @@ describe('BenutzerVerwaltungService', () => {
     await expect(service.createBenutzer(anlage)).rejects.toBe(error);
   });
 
+  it('should call the server-side employee reassignment function', async () => {
+    const service = TestBed.inject(BenutzerVerwaltungService);
+
+    await service.updateMitarbeiterZuordnung('user-1', {
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      firmaMitarbeiterId: 'm-1',
+    });
+
+    expect(httpsCallableMock).toHaveBeenCalledWith(functionsMock, 'updateMitarbeiterZuordnung');
+    expect(callableMock).toHaveBeenCalledWith({
+      uid: 'user-1',
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      firmaMitarbeiterId: 'm-1',
+    });
+  });
+
+  it('should call the server-side employee account deletion function', async () => {
+    const service = TestBed.inject(BenutzerVerwaltungService);
+
+    await service.deleteBenutzer('user-1');
+
+    expect(httpsCallableMock).toHaveBeenCalledWith(functionsMock, 'deleteBenutzer');
+    expect(callableMock).toHaveBeenCalledWith({ uid: 'user-1' });
+  });
+
   it('should reject user creation before calling the function while offline', async () => {
     const error = { code: 'app/offline' };
     assertOnlineMock.mockImplementation(() => {

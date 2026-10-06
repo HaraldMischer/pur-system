@@ -460,6 +460,63 @@ verändert.
 - [x] Die aktualisierte Store-Liste und Oberfläche zeigen den gespeicherten Stand ohne erneutes Laden.
 - [x] Tests, Rules-Tests, Build und manuelle Prüfung sind erfolgreich.
 
+### 4.4 Mitarbeiterkonten neu zuordnen und löschen
+
+#### Ziel
+
+Ein Master kann die fachliche Verknüpfung eines vorhandenen Mitarbeiterkontos vollständig neu auswählen oder das
+Mitarbeiterkonto endgültig löschen. Verwaiste Firmen- oder Mitarbeiterreferenzen verhindern beide Aktionen nicht.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- `functions/src/index.ts`
+- `src/app/commons/models/domain/benutzer.ts`
+- `src/app/commons/utils/errors/firebase-error-message.ts`
+- `src/app/services/firebase/benutzer-verwaltung.service.ts`
+- `src/app/stores/app/stammdaten.store.ts`
+- `src/app/stores/domain/benutzer-verwaltung.store.ts`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/`
+- zugehörige Tests und `docs/projekt-stand.md`
+
+Neu hinzuzufügen:
+
+- `functions/src/update-mitarbeiter-zuordnung.ts`
+- `functions/src/update-mitarbeiter-zuordnung.spec.ts`
+- `functions/src/delete-benutzer.ts`
+- `functions/src/delete-benutzer.spec.ts`
+
+#### Schritt 1: Vorhandene Zuordnung darstellen
+
+- [x] Unternehmer, Firma und fachlichen Mitarbeiter im Bearbeitungsdialog lesend anzeigen.
+- [x] Nicht mehr auflösbare Referenzen mit ihrer gespeicherten ID kenntlich machen.
+
+#### Schritt 2: Mitarbeiterkonto neu zuordnen
+
+- [x] Unternehmer, davon abhängige Firma und aktiven, noch nicht verknüpften Mitarbeiter auswählbar machen.
+- [x] Alte Verknüpfung, neue Verknüpfung und Benutzerprofil serverseitig in einer Transaktion aktualisieren.
+- [x] Die Aktion ausschließlich für aktive Master und Benutzerprofile der Rolle `mitarbeiter` zulassen.
+
+#### Schritt 3: Mitarbeiterkonto löschen
+
+- [x] Eine ausdrückliche Sicherheitsabfrage vor der endgültigen Löschung anzeigen.
+- [x] Zuerst das Firebase-Auth-Konto und danach Profil und Mitarbeiterverknüpfung entfernen.
+- [x] Das gelöschte Profil unmittelbar aus dem lokalen Profilbestand entfernen.
+
+#### Tests und Abschluss
+
+- [x] Function-, Service-, Store- und Dialogtests für Neuzuordnung, Löschung und Fehlerfälle ergänzen.
+- [x] Vollständige Angular-Testsuite, Functions-Tests, Functions-Build und Master-Build erfolgreich ausführen.
+- [x] `projekt-stand.md` mit dem neuen Verhalten aktualisieren.
+
+#### Erledigt, wenn
+
+- [x] Jedes Mitarbeiterkonto kann einem beliebigen verfügbaren fachlichen Mitarbeiter neu zugeordnet werden.
+- [x] Verwaiste Mitarbeiterkonten können neu zugeordnet oder vollständig gelöscht werden.
+- [x] Kein Löschablauf erzeugt vorübergehend ein authentifizierbares Konto ohne Pur-System-Profil.
+- [x] Oberfläche und lokaler Profilbestand zeigen den bestätigten Serverstand unmittelbar an.
+
 ## 5. Done Todo: Verwaltung
 
 ### 5.1 Firmen- und Filialdaten bearbeiten

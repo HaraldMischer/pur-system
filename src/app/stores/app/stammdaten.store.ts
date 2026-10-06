@@ -267,6 +267,17 @@ export const StammdatenStore = signalStore(
       }
 
       /**
+       * Entfernt ein Benutzerprofil aus dem Sitzungsspeicher.
+       *
+       * @param uid - UID des entfernten Benutzerprofils.
+       */
+      function removeBenutzerprofil(uid: string): void {
+        patchState(store, {
+          benutzerprofile: store.benutzerprofile().filter((eintrag) => eintrag.uid !== uid),
+        });
+      }
+
+      /**
        * Entfernt einen Unternehmer und seine untergeordneten Cache-Einträge.
        *
        * @param unternehmerId - ID des entfernten Unternehmers.
@@ -532,6 +543,7 @@ export const StammdatenStore = signalStore(
         upsertFirma,
         upsertFiliale,
         upsertBenutzerprofil,
+        removeBenutzerprofil,
         removeUnternehmer,
         removeFirma,
         removeFiliale,
