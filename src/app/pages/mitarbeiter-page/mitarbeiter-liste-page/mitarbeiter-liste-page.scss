@@ -1,21 +1,11 @@
 // pur-system/src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page.scss
 
-.mitarbeiter-liste-page {
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 16px;
-  }
-
-  &__error {
-    display: grid;
-    justify-items: start;
-    gap: 12px;
-  }
+:host {
+  --pur-card-grid-min-width: 300px;
 }
 
-@media (max-width: 600px) {
-  .mitarbeiter-liste-page__grid {
-    grid-template-columns: 1fr;
-  }
-}
+
+// oder für verschiedene grids pro page
+//.pur-page__card-grid {
+//  --pur-card-grid-min-width: 300px;
+//}

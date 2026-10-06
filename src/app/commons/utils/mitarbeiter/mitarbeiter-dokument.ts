@@ -1,10 +1,7 @@
 // pur-system/src/app/commons/utils/mitarbeiter/mitarbeiter-dokument.ts
 
-import {
-  IMitarbeiterEintrag,
-  TMitarbeiterPerson,
-  TMitarbeiterRolle,
-} from '../../models/domain/mitarbeiter';
+import { IMitarbeiterEintrag, TMitarbeiterRolle } from '../../models/domain/mitarbeiter';
+import { EGender, IPerson } from '../../models/domain/person';
 import { asRecord, getOptionalString, getString } from '../firestore/firestore-dokumentwerte';
 
 const MITARBEITER_ROLLEN: readonly TMitarbeiterRolle[] = [
@@ -54,7 +51,7 @@ export function mapMitarbeiterEintrag(
  * @param person - Personendaten des Mitarbeiters.
  * @returns Der bereinigte Anzeigename.
  */
-export function createAnzeigename(person: TMitarbeiterPerson): string {
+export function createAnzeigename(person: IPerson): string {
   return `${person.vorname.trim()} ${person.nachname.trim()}`.trim();
 }
 
@@ -64,13 +61,14 @@ export function createAnzeigename(person: TMitarbeiterPerson): string {
  * @param person - Zu speichernde Personendaten.
  * @returns Die bereinigten Personendaten ohne nicht unterstützte Felder.
  */
-export function createMitarbeiterPerson(person: TMitarbeiterPerson): TMitarbeiterPerson {
+export function createMitarbeiterPerson(person: IPerson): IPerson {
   return {
     vorname: person.vorname,
     nachname: person.nachname,
     adresse: person.adresse,
     kontakt: person.kontakt,
     ...(person.geburtstag ? { geburtstag: person.geburtstag } : {}),
+    ...(person.geschlecht ? { geschlecht: person.geschlecht } : {}),
   };
 }
 
@@ -89,11 +87,12 @@ export function sortMitarbeiter(
   });
 }
 
-function mapPerson(value: unknown): TMitarbeiterPerson {
+function mapPerson(value: unknown): IPerson {
   const person = asRecord(value);
   const adresse = asRecord(person['adresse']);
   const kontakt = asRecord(person['kontakt']);
   const geburtstag = getOptionalString(person['geburtstag']);
+  const geschlecht = Object.values(EGender).find((wert) => wert === person['geschlecht']);
   const email = getOptionalString(kontakt['email']);
   const telefon = getOptionalString(kontakt['telefon']);
   const mobil = getOptionalString(kontakt['mobil']);
@@ -115,6 +114,7 @@ function mapPerson(value: unknown): TMitarbeiterPerson {
       ...(webseite ? { webseite } : {}),
     },
     ...(geburtstag ? { geburtstag } : {}),
+    ...(geschlecht ? { geschlecht } : {}),
   };
 }
 

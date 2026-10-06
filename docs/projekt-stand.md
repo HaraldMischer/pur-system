@@ -308,10 +308,9 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
   Bearbeitungsdialog. Beide Reactive Forms erfassen Vorname, Nachname, optionale Adress- und Kontaktdaten, mindestens eine der
   betrieblichen Rollen `filialkasse`, `servicekraft`, `administrator`, `kassierer` oder `techniker` und mindestens eine
-  verpflichtende Filialzuordnung. Ein Mitarbeiter kann mehrere Rollen besitzen. Ein Geschlecht wird nicht erfasst oder
-  gespeichert. Der Anzeigename des
-  Firestore-Dokuments wird automatisch aus Vor- und Nachname gebildet und bei Namensänderungen aktualisiert. Geburtstag, Telefon
-  und Webseite sind derzeit in der Oberfläche ausgeblendet; bereits gespeicherte Werte bleiben beim Bearbeiten erhalten. Der
+  verpflichtende Filialzuordnung. Ein Mitarbeiter kann mehrere Rollen besitzen. Der Anzeigename des Firestore-Dokuments wird
+  automatisch aus Vor- und Nachname gebildet und bei Namensänderungen aktualisiert. Geburtstag, Telefon und Webseite sind
+  derzeit in der Oberfläche ausgeblendet; bereits gespeicherte Werte bleiben beim Bearbeiten erhalten. Der
   Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer, Firma sowie Mitarbeiter-ID unveränderlich an. Bereits
   vorhandene, für den Bearbeiter nicht sichtbare Filialzuordnungen erfüllen diese Pflicht weiterhin. Vorname und Nachname,
   E-Mail-Adresse und Mobilnummer sowie Rollen und Filialauswahl werden auf breiten Dialogen jeweils als 50/50-Zeile dargestellt

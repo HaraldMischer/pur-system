@@ -154,7 +154,11 @@ describe('MitarbeiterListePage', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    fixture.componentInstance.openMitarbeiterAnlegenDialog();
+    const addButton = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
+      (button) => button.textContent?.includes('Mitarbeiter hinzufügen'),
+    );
+    expect(addButton).toBeDefined();
+    addButton?.click();
     fixture.componentInstance.openMitarbeiterBearbeitenDialog(mitarbeiter);
 
     expect(dialogMock.open).toHaveBeenNthCalledWith(

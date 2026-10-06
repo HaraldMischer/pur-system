@@ -239,6 +239,9 @@ export class MitarbeiterBearbeitenDialog {
           ...(kontakt.webseite.trim() ? { webseite: kontakt.webseite.trim() } : {}),
         },
         ...(geburtstag ? { geburtstag } : {}),
+        ...(this.dialogDaten.mitarbeiter.person.geschlecht
+          ? { geschlecht: this.dialogDaten.mitarbeiter.person.geschlecht }
+          : {}),
       },
       rollen: value.rollen,
       filialIds: [

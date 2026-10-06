@@ -1,24 +1,36 @@
 <!-- pur-system/src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page.html -->
 
-<section class="pur-page pur-page--limited mitarbeiter-liste-page">
+<section class="pur-page pur-page--limited">
   <!-- Mitarbeiterliste -->
   <section class="pur-page-section">
     <header class="pur-page-section__header">
       <h2 class="pur-page-section__title">Mitarbeiterliste</h2>
-      <mat-button-toggle-group
-        aria-label="Mitarbeiteransicht"
-        [value]="mitarbeiterAnsicht()"
-        (change)="mitarbeiterAnsicht.set($event.value)"
-      >
-        <mat-button-toggle value="aktiv">Aktiv</mat-button-toggle>
-        <mat-button-toggle value="inaktiv">Inaktiv</mat-button-toggle>
-        <mat-button-toggle value="alle">Alle</mat-button-toggle>
-      </mat-button-toggle-group>
-      @if (mitarbeiterIsLoaded()) {
-        <span class="pur-page-section__meta">
-          {{ mitarbeiter().length }}
-        </span>
-      }
+      <div class="pur-page-section__header-actions">
+        @if (mitarbeiterIsLoaded()) {
+          <span class="pur-page-section__meta pur-page-section__meta--badge">
+            {{ mitarbeiter().length }}
+          </span>
+        }
+
+        <button
+          matButton="outlined"
+          type="button"
+          [disabled]="!mitarbeiterIsLoaded() || !darfSchreiben() || mitarbeiterStore.inProgress()"
+          (click)="openMitarbeiterAnlegenDialog()"
+        >
+          <mat-icon aria-hidden="true">person_add</mat-icon>
+          Mitarbeiter hinzufügen
+        </button>
+        <mat-button-toggle-group
+          aria-label="Mitarbeiteransicht"
+          [value]="mitarbeiterAnsicht()"
+          (change)="mitarbeiterAnsicht.set($event.value)"
+        >
+          <mat-button-toggle value="aktiv">Aktiv</mat-button-toggle>
+          <mat-button-toggle value="inaktiv">Inaktiv</mat-button-toggle>
+          <mat-button-toggle value="alle">Alle</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
     </header>
 
     @if (!appKontextStore.selectedFirma()) {
@@ -28,7 +40,7 @@
     } @else if (mitarbeiterDownload()) {
       <p class="pur-page-section__message" role="status">Mitarbeiter werden geladen.</p>
     } @else if (mitarbeiterError(); as error) {
-      <div class="mitarbeiter-liste-page__error">
+      <div class="pur-page-section__error-state">
         <p class="pur-form__error" role="alert">{{ error }}</p>
         <button matButton="outlined" type="button" (click)="retryLoadMitarbeiter()">
           Erneut laden
@@ -38,18 +50,7 @@
       @if (mitarbeiterStore.error(); as error) {
         <p class="pur-form__error" role="alert">{{ error }}</p>
       }
-      <div class="mitarbeiter-liste-page__grid">
-        <mat-card class="pur-card pur-card--hinzufuegen" appearance="outlined">
-          <button
-            matButton
-            type="button"
-            [disabled]="!darfSchreiben() || mitarbeiterStore.inProgress()"
-            (click)="openMitarbeiterAnlegenDialog()"
-          >
-            <mat-icon aria-hidden="true">person_add</mat-icon>
-            Mitarbeiter hinzufügen
-          </button>
-        </mat-card>
+      <div class="pur-page__card-grid">
         @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
           <app-mitarbeiter-card
             [mitarbeiter]="mitarbeiter"

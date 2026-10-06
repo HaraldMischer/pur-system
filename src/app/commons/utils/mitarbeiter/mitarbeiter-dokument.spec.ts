@@ -1,6 +1,7 @@
 // pur-system/src/app/commons/utils/mitarbeiter/mitarbeiter-dokument.spec.ts
 
-import { IMitarbeiterEintrag, TMitarbeiterPerson } from '../../models/domain/mitarbeiter';
+import { IMitarbeiterEintrag } from '../../models/domain/mitarbeiter';
+import { EGender, IPerson } from '../../models/domain/person';
 import {
   createAnzeigename,
   createMitarbeiterPerson,
@@ -9,7 +10,7 @@ import {
 } from './mitarbeiter-dokument';
 
 describe('Mitarbeiter-Dokument-Utilities', () => {
-  const person: TMitarbeiterPerson = {
+  const person: IPerson = {
     vorname: ' Mia ',
     nachname: ' Muster ',
     adresse: {
@@ -27,6 +28,7 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
         person: {
           ...person,
           kontakt: { email: ' mia@example.com ', mobil: '', unbekannt: 'wert' },
+          geschlecht: EGender.FEMALE,
         },
         rolle: 'unbekannt',
         filialIds: [' b-1 ', 'b-1', '', null],
@@ -41,6 +43,7 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
         nachname: 'Muster',
         adresse: person.adresse,
         kontakt: { email: 'mia@example.com' },
+        geschlecht: EGender.FEMALE,
       },
       rollen: ['servicekraft'],
       filialIds: ['b-1'],
@@ -50,9 +53,16 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
 
   it('should create the display name and supported person data', () => {
     expect(createAnzeigename(person)).toBe('Mia Muster');
-    expect(createMitarbeiterPerson({ ...person, geburtstag: '1990-01-02' })).toEqual({
+    expect(
+      createMitarbeiterPerson({
+        ...person,
+        geburtstag: '1990-01-02',
+        geschlecht: EGender.DIVERSE,
+      }),
+    ).toEqual({
       ...person,
       geburtstag: '1990-01-02',
+      geschlecht: EGender.DIVERSE,
     });
   });
 

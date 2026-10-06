@@ -6,6 +6,7 @@ import {
   IMitarbeiterAktualisierung,
   IMitarbeiterAnlage,
 } from '../../commons/models/domain/mitarbeiter';
+import { EGender } from '../../commons/models/domain/person';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { MitarbeiterService } from './mitarbeiter.service';
 
@@ -71,7 +72,7 @@ describe('MitarbeiterService', () => {
             ...anlage.person,
             vorname: ' Zoe ',
             nachname: ' Zimmer ',
-            geschlecht: 'weiblich',
+            geschlecht: EGender.FEMALE,
           },
           filialIds: ['filiale-2', 'filiale-2', ' filiale-1 '],
           aktiv: true,
@@ -105,7 +106,12 @@ describe('MitarbeiterService', () => {
         id: 'z',
         unternehmerId: 'unternehmer-1',
         firmaId: 'firma-1',
-        person: { ...anlage.person, vorname: 'Zoe', nachname: 'Zimmer' },
+        person: {
+          ...anlage.person,
+          vorname: 'Zoe',
+          nachname: 'Zimmer',
+          geschlecht: EGender.FEMALE,
+        },
         rollen: ['servicekraft'],
         filialIds: ['filiale-2', 'filiale-1'],
         aktiv: true,

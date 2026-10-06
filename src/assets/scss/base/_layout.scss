@@ -24,6 +24,15 @@
     font: var(--mat-sys-display-small);
   }
 
+  &__card-grid {
+    display: grid;
+    grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(var(--pur-card-grid-min-width, 260px), 100%), 1fr)
+  );
+    gap: 16px;
+  }
+
   &__header > button,
   &__header > mat-button-toggle-group {
     max-width: 100%;

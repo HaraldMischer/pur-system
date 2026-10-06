@@ -4,9 +4,7 @@ import { Timestamp } from 'firebase/firestore';
 
 import { IPerson } from './person';
 
-export type TMitarbeiterRolle =
-  'filialkasse' | 'servicekraft' | 'administrator' | 'kassierer' | 'techniker';
-export type TMitarbeiterPerson = Omit<IPerson, 'geschlecht'>;
+export type TMitarbeiterRolle = 'filialkasse' | 'servicekraft' | 'administrator' | 'kassierer' | 'techniker';
 
 // ===== Anwendungs-Typen ====================
 
@@ -21,7 +19,7 @@ export interface IMitarbeiterAuswahlAnfrage {
 }
 
 export interface IMitarbeiterAnlage {
-  person: TMitarbeiterPerson;
+  person: IPerson;
   rollen: TMitarbeiterRolle[];
   filialIds: string[];
   aktiv: boolean;

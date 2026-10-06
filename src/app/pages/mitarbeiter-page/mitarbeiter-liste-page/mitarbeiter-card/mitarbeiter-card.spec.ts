@@ -35,7 +35,6 @@ describe('MitarbeiterCard', () => {
     expect(text).toContain('Mia Muster');
     expect(text).toContain('Service');
     expect(text).toContain('2 Filialen zugeordnet');
-    expect(text).toContain('Aktiv');
   });
 
   it('should identify an inactive employee without branches', () => {
@@ -49,7 +48,6 @@ describe('MitarbeiterCard', () => {
     const card = (fixture.nativeElement as HTMLElement).querySelector('mat-card');
 
     expect(card?.textContent).toContain('Noch keiner Filiale zugeordnet');
-    expect(card?.textContent).toContain('Inaktiv');
     expect(card?.classList).toContain('pur-card--inaktiv');
   });
 

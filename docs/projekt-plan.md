@@ -372,8 +372,8 @@ unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}
 Pflichtdaten sind `person.vorname`, `person.nachname` und mindestens eine betriebliche Rolle im Array `rollen`. Vorgesehen sind
 `filialkasse`, `servicekraft`, `administrator`, `kassierer` und `techniker`; ein Mitarbeiter kann mehrere dieser Rollen besitzen.
 `person.adresse` und `person.kontakt` werden als Objekte geführt; ihre einzelnen Werte sowie `person.geburtstag` sind optional.
-Ein Geschlecht wird für Mitarbeiter nicht erfasst. `aktiv` kennzeichnet, ob der Mitarbeiter fachlich verwendet werden darf.
-`erstelltAm` und `aktualisiertAm` werden serverseitig gepflegt.
+`aktiv` kennzeichnet, ob der Mitarbeiter fachlich verwendet werden darf. `erstelltAm` und `aktualisiertAm` werden serverseitig
+gepflegt.
 
 `filialIds` enthält mindestens eine eindeutige Filial-ID der übergeordneten Firma, weil jeder Mitarbeiter in mindestens einer
 Filiale arbeitet. Filialkonten dürfen die Mitarbeiter ihrer Firma lesen, laden über eine `array-contains`-Abfrage aber direkt nur

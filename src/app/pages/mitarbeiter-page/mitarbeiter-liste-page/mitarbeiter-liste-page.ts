@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -31,7 +30,7 @@ type TMitarbeiterAnsicht = 'aktiv' | 'inaktiv' | 'alle';
 
 @Component({
   selector: 'app-mitarbeiter-liste-page',
-  imports: [MatButtonModule, MatButtonToggleModule, MatCardModule, MatIconModule, MitarbeiterCard],
+  imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, MitarbeiterCard],
   templateUrl: './mitarbeiter-liste-page.html',
   styleUrl: './mitarbeiter-liste-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

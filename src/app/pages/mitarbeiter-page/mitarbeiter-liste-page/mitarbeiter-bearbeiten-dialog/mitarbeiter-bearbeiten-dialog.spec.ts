@@ -7,6 +7,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { IBenutzerProfilDokument } from '../../../../commons/models/domain/benutzer';
 import { IMitarbeiterEintrag } from '../../../../commons/models/domain/mitarbeiter';
+import { EGender } from '../../../../commons/models/domain/person';
 import { BenutzerStore } from '../../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../../stores/domain/mitarbeiter.store';
 import { MitarbeiterBearbeitenDialog } from './mitarbeiter-bearbeiten-dialog';
@@ -185,6 +186,29 @@ describe('MitarbeiterBearbeitenDialog', () => {
     );
     expect(dialogRefMock.close).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'm-1', filialIds: ['b-3', 'b-1'], aktiv: false }),
+    );
+  });
+
+  it('should preserve an existing gender that is not part of the form', async () => {
+    aktuelleDialogDaten = {
+      ...dialogDaten,
+      mitarbeiter: {
+        ...mitarbeiter,
+        person: { ...mitarbeiter.person, geschlecht: EGender.FEMALE },
+      },
+    };
+    const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
+    component.mitarbeiterForm.controls.person.controls.vorname.setValue('Mia Neu');
+
+    await component.onSubmit();
+
+    expect(updateMitarbeiterMock).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      'm-1',
+      expect.objectContaining({
+        person: expect.objectContaining({ geschlecht: EGender.FEMALE }),
+      }),
     );
   });
 
