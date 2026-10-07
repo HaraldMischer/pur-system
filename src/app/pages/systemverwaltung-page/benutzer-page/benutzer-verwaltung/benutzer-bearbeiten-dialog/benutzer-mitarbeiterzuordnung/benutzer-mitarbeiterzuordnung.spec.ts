@@ -82,7 +82,7 @@ describe('BenutzerMitarbeiterzuordnung', () => {
 
   it('should show the current employee assignment', () => {
     const fixture = createComponent();
-    const titel = fixture.nativeElement.querySelector('.pur-form__group-titel') as HTMLElement;
+    const titel = fixture.nativeElement.querySelector('h2') as HTMLElement;
     const unternehmerInput = fixture.nativeElement.querySelector(
       'input[name="zuordnung-unternehmer"]',
     ) as HTMLInputElement;

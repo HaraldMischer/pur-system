@@ -70,6 +70,12 @@ describe('FilialeBearbeitenDialog', () => {
       kontakt: filiale.kontakt,
     });
     expect(component.filialeForm.valid).toBe(true);
+    const labels = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('mat-label'),
+      (label) => label.textContent?.trim(),
+    );
+    expect(labels).not.toContain('Mobil');
+    expect(labels).not.toContain('Webseite');
     expect(
       (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
         'button[type="submit"]',

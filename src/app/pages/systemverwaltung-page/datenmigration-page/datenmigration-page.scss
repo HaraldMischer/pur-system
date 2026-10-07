@@ -12,11 +12,9 @@
       width: 100%;
     }
 
-    .pur-form__error,
-    .pur-form__message,
-    button {
+    > .pur-page-section__error-state,
+    > .pur-page-section__message {
       grid-column: 1 / -1;
-      justify-self: start;
     }
   }
 

@@ -19,13 +19,13 @@
 
       <div class="pur-form pur-form--grid">
         <!-- Anzeigename -->
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Anzeigename</mat-label>
           <input formControlName="anzeigename" matInput type="text" autocomplete="off" />
         </mat-form-field>
 
         <!-- Benutzerrolle -->
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Benutzerrolle</mat-label>
           <mat-select formControlName="userRole">
             @for (rolle of rollen; track rolle.value) {
@@ -35,13 +35,13 @@
         </mat-form-field>
 
         <!-- Anmeldename -->
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Anmeldename</mat-label>
           <input matInput type="text" [value]="getAnmeldenameVorschau()" readonly />
         </mat-form-field>
 
         <!-- Passwort -->
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Passwort min. 8 Zeichen</mat-label>
           <input
             formControlName="passwort"
@@ -74,7 +74,12 @@
 
       <div class="pur-form__row">
         @for (bereich of bereiche; track bereich.value) {
-          <mat-checkbox [formControlName]="bereich.value">{{ bereich.label }}</mat-checkbox>
+          <mat-checkbox
+            class="pur-form__item pur-form__item--checkbox"
+            [formControlName]="bereich.value"
+          >
+            {{ bereich.label }}
+          </mat-checkbox>
         }
       </div>
     </div>
@@ -99,7 +104,7 @@
             <mat-form-field
               datenzugriffZusatzfeld
               appearance="outline"
-              class="pur-form__field"
+              class="pur-form__item pur-form__item--field"
             >
               <mat-label>Mitarbeiter</mat-label>
               <mat-select
@@ -114,17 +119,28 @@
           </app-datenzugriff-selector>
 
           @if (verwaltungStore.mitarbeiterAuswahlDownload()) {
-            <p role="status">Mitarbeiter werden geladen.</p>
+            <p class="pur-form__item pur-form__item--message" role="status">
+              Mitarbeiter werden geladen.
+            </p>
           } @else if (verwaltungStore.mitarbeiterAuswahlError(); as error) {
-            <p class="pur-form__error" role="alert">Mitarbeiter: {{ error }}</p>
-            <button matButton type="button" (click)="verwaltungStore.loadMitarbeiterAuswahl()">
+            <p class="pur-form__item pur-form__item--error" role="alert">
+              Mitarbeiter: {{ error }}
+            </p>
+            <button
+              class="pur-form__item pur-form__item--auto"
+              matButton
+              type="button"
+              (click)="verwaltungStore.loadMitarbeiterAuswahl()"
+            >
               Erneut laden
             </button>
           } @else if (
             verwaltungStore.mitarbeiterAuswahlIsLoaded() &&
             verwaltungStore.mitarbeiterAuswahl().length === 0
           ) {
-            <p class="pur-form__error" role="alert">Die Firma hat noch keine Mitarbeiter.</p>
+            <p class="pur-form__item pur-form__item--error" role="alert">
+              Die Firma hat noch keine Mitarbeiter.
+            </p>
           }
         } @else if (benutzerForm.controls.userRole.value === 'filiale') {
           <app-datenzugriff-selector
@@ -162,7 +178,7 @@
           verwaltungStore.unternehmerIds().length > 0 &&
           !datenAuswahlGueltig()
         ) {
-          <p>
+          <p class="pur-form__item pur-form__item--message">
             Wähle für jeden Unternehmer mindestens eine Firma und für jede Firma mindestens eine
             Filiale.
           </p>
@@ -171,12 +187,21 @@
         <!-- Ladestatus -->
         @for (status of verwaltungStore.datenStatus(); track status.key) {
           @if (status.error) {
-            <p class="pur-form__error" role="alert">{{ status.name }}: {{ status.error }}</p>
-            <button matButton type="button" (click)="verwaltungStore.loadAuswahl()">
+            <p class="pur-form__item pur-form__item--error" role="alert">
+              {{ status.name }}: {{ status.error }}
+            </p>
+            <button
+              class="pur-form__item pur-form__item--auto"
+              matButton
+              type="button"
+              (click)="verwaltungStore.loadAuswahl()"
+            >
               Erneut laden
             </button>
           } @else if (status.isLoaded && status.daten.length === 0) {
-            <p role="status">{{ status.name }}: Keine Einträge vorhanden.</p>
+            <p class="pur-form__item pur-form__item--message" role="status">
+              {{ status.name }}: Keine Einträge vorhanden.
+            </p>
           }
         }
       </div>
@@ -184,19 +209,20 @@
 
     <!-- Fehlermeldung -->
     @if (verwaltungStore.error(); as error) {
-      <p class="pur-form__error" role="alert">{{ error }}</p>
+      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
     }
 
     <!-- Ergebnis -->
     @if (verwaltungStore.createdBenutzer(); as benutzer) {
-      <p class="pur-form__success" role="status">
+      <p class="pur-form__item pur-form__item--success" role="status">
         Benutzer {{ benutzer.anmeldename }} wurde angelegt.
       </p>
     }
 
     <!-- Benutzer anlegen -->
-    <div class="pur-form__row pur-form__row--actions-end">
+    <div class="pur-form__row">
       <button
+        class="pur-form__item pur-form__item--auto pur-form__item--end"
         matButton="filled"
         type="submit"
         [disabled]="benutzerForm.invalid || !datenAuswahlGueltig() || verwaltungStore.inProgress()"

@@ -70,7 +70,7 @@ describe('PasswortPage', () => {
     expect(component.passwortForm.pristine).toBe(true);
     expect(component.passwortForm.untouched).toBe(true);
     expect(fixture.nativeElement.querySelectorAll('.mat-mdc-form-field-invalid')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelector('.pur-form__success')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.pur-form__item--success')).not.toBeNull();
   });
 
   it('should toggle every password field independently without submitting', () => {

@@ -162,7 +162,10 @@ export class MitarbeiterListePage {
     const kontext = this.getDialogKontext();
     if (!kontext || !this.darfSchreiben() || this.mitarbeiterStore.inProgress()) return;
 
-    this.dialog.open(MitarbeiterAnlegenDialog, { data: kontext });
+    this.dialog.open(MitarbeiterAnlegenDialog, {
+      data: kontext,
+      panelClass: ['pur-dialog__panel'],
+    });
   }
 
   /**
@@ -183,6 +186,7 @@ export class MitarbeiterListePage {
 
     this.dialog.open(MitarbeiterBearbeitenDialog, {
       data: { ...kontext, mitarbeiter },
+      panelClass: ['pur-dialog__panel'],
     });
   }
 

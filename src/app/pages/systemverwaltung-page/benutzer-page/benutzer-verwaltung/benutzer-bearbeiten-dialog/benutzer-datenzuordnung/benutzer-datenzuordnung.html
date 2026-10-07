@@ -28,15 +28,22 @@
 
     @if (zuordnungBearbeiten()) {
       @if (!datenAuswahlGueltig()) {
-        <p class="pur-form__error" role="alert">
+        <p class="pur-form__item pur-form__item--error" role="alert">
           Wähle eine vollständige und zur Benutzerrolle passende Datenzuordnung.
         </p>
       }
-      <div class="pur-form__row pur-form__row--actions-end">
-        <button matButton type="button" [disabled]="inProgress()" (click)="cancelZuordnung()">
+      <div class="pur-form__row">
+        <button
+          class="pur-form__item pur-form__item--auto pur-form__item--end"
+          matButton
+          type="button"
+          [disabled]="inProgress()"
+          (click)="cancelZuordnung()"
+        >
           Abbrechen
         </button>
         <button
+          class="pur-form__item pur-form__item--auto"
           matButton="filled"
           type="button"
           [disabled]="!datenAuswahlGueltig() || !hatAenderungen() || inProgress()"
@@ -48,6 +55,7 @@
     } @else {
       <div class="pur-form__row">
         <button
+          class="pur-form__item pur-form__item--auto"
           matButton="outlined"
           type="button"
           [disabled]="inProgress()"

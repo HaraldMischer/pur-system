@@ -1,6 +1,6 @@
 <!-- pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/datenstruktur-page.html -->
 
-<section class="pur-page-section">
+<section class="pur-page-section datenstruktur-page">
   <mat-stepper
     class="pur-stepper pur-stepper--flush"
     [linear]="true"
@@ -11,8 +11,8 @@
       <form class="pur-form pur-form--grid" [formGroup]="unternehmerForm">
         <h3 class="pur-form__group-titel">Unternehmer wählen oder neu anlegen</h3>
 
-        <div class="pur-form__row pur-form__row--action">
-          <mat-form-field appearance="outline" class="pur-form__field">
+        <div class="pur-form__row datenstruktur-page__auswahl">
+          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
             <mat-label>Unternehmer</mat-label>
             <mat-select formControlName="id">
               @for (unternehmer of unternehmerStore.unternehmer(); track unternehmer.id) {
@@ -24,7 +24,7 @@
           </mat-form-field>
 
           <button
-            class="pur-form__button"
+            class="pur-form__item pur-form__item--button"
             matButton="outlined"
             type="button"
             [disabled]="!unternehmerStore.isLoaded()"
@@ -36,18 +36,24 @@
         </div>
 
         @if (unternehmerStore.error(); as error) {
-          <p class="pur-form__error" role="alert">{{ error }}</p>
-          <button matButton type="button" (click)="unternehmerStore.loadUnternehmer()">
+          <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+          <button
+            class="pur-form__item pur-form__item--auto"
+            matButton
+            type="button"
+            (click)="unternehmerStore.loadUnternehmer()"
+          >
             Erneut laden
           </button>
         } @else if (unternehmerStore.isLoaded() && unternehmerStore.unternehmer().length === 0) {
-          <p class="pur-form__message" role="status">
+          <p class="pur-form__item pur-form__item--message" role="status">
             Keine Unternehmer vorhanden. Lege den ersten Unternehmer an.
           </p>
         }
 
-        <div class="pur-form__row pur-form__row--actions-end">
+        <div class="pur-form__row">
           <button
+            class="pur-form__item pur-form__item--auto pur-form__item--end"
             matButton="filled"
             matStepperNext
             type="button"
@@ -66,8 +72,8 @@
           Firma für {{ getUnternehmerBezeichnung() }} wählen oder neu anlegen
         </h3>
 
-        <div class="pur-form__row pur-form__row--action">
-          <mat-form-field appearance="outline" class="pur-form__field">
+        <div class="pur-form__row datenstruktur-page__auswahl">
+          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
             <mat-label>Firma</mat-label>
             <mat-select formControlName="id">
               @for (firma of firmaStore.firmen(); track firma.id) {
@@ -79,7 +85,7 @@
           </mat-form-field>
 
           <button
-            class="pur-form__button"
+            class="pur-form__item pur-form__item--button"
             matButton="outlined"
             type="button"
             [disabled]="!firmaStore.isLoaded()"
@@ -91,8 +97,9 @@
         </div>
 
         @if (firmaStore.error(); as error) {
-          <p class="pur-form__error" role="alert">{{ error }}</p>
+          <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
           <button
+            class="pur-form__item pur-form__item--auto"
             matButton
             type="button"
             (click)="firmaStore.loadFirmen(unternehmerForm.controls.id.value)"
@@ -100,14 +107,22 @@
             Erneut laden
           </button>
         } @else if (firmaStore.isLoaded() && firmaStore.firmen().length === 0) {
-          <p class="pur-form__message" role="status">
+          <p class="pur-form__item pur-form__item--message" role="status">
             Keine Firmen vorhanden. Lege die erste Firma an.
           </p>
         }
 
-        <div class="pur-form__row pur-form__row--actions-end">
-          <button matButton type="button" matStepperPrevious>Zurück</button>
+        <div class="pur-form__row">
           <button
+            class="pur-form__item pur-form__item--auto pur-form__item--end"
+            matButton
+            type="button"
+            matStepperPrevious
+          >
+            Zurück
+          </button>
+          <button
+            class="pur-form__item pur-form__item--auto"
             matButton="filled"
             matStepperNext
             type="button"
@@ -125,8 +140,9 @@
         <h3 class="pur-form__group-titel">Filiale für {{ getFirmaBezeichnung() }} anlegen</h3>
 
         @if (filialeStore.error(); as error) {
-          <p class="pur-form__error" role="alert">{{ error }}</p>
+          <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
           <button
+            class="pur-form__item pur-form__item--auto"
             matButton
             type="button"
             (click)="
@@ -139,9 +155,9 @@
             Erneut laden
           </button>
         } @else if (!filialeStore.download()) {
-          <div class="pur-form__row pur-form__row--action">
+          <div class="pur-form__row datenstruktur-page__auswahl">
             <button
-              class="pur-form__button"
+              class="pur-form__item pur-form__item--button"
               matButton="outlined"
               type="button"
               [disabled]="!filialeStore.isLoaded()"
@@ -154,7 +170,9 @@
         }
 
         @if (filialeForm.controls.id.value) {
-          <p class="pur-form__success" role="status">Die Filiale wurde angelegt.</p>
+          <p class="pur-form__item pur-form__item--success" role="status">
+            Die Filiale wurde angelegt.
+          </p>
         }
 
         <!-- Zusammenfassung -->
@@ -173,8 +191,15 @@
           </div>
         </div>
 
-        <div class="pur-form__row pur-form__row--actions-end">
-          <button matButton type="button" matStepperPrevious>Zurück</button>
+        <div class="pur-form__row">
+          <button
+            class="pur-form__item pur-form__item--auto pur-form__item--end"
+            matButton
+            type="button"
+            matStepperPrevious
+          >
+            Zurück
+          </button>
         </div>
       </form>
     </mat-step>

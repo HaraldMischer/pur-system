@@ -13,7 +13,7 @@
       @if (verwaltungStore.istMaster()) {
         <div class="pur-form__row">
           <!-- Unternehmer wählen -->
-          <mat-form-field appearance="outline" class="pur-form__field">
+          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
             <mat-label>Unternehmer</mat-label>
             <mat-select
               [value]="verwaltungStore.selectedUnternehmerId()"
@@ -34,9 +34,9 @@
       }
 
       <!-- Firma -->
-      <div class="pur-form__row pur-form__row--action">
+      <div class="pur-form__row">
         <!-- Firma wählen -->
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field class="pur-form__item pur-form__item--field" appearance="outline">
           <mat-label>Firma</mat-label>
           <mat-select
             [value]="verwaltungStore.selectedFirmaId()"
@@ -56,7 +56,7 @@
         </mat-form-field>
         <!-- Firma bearbeiten -->
         <button
-          class="pur-form__button"
+          class="pur-form__item pur-form__item--button pur-form__item--end"
           matButton="outlined"
           type="button"
           [disabled]="!verwaltungStore.selectedFirma() || verwaltungStore.inProgress()"
@@ -68,9 +68,9 @@
       </div>
 
       <!-- Filiale -->
-      <div class="pur-form__row pur-form__row--action">
+      <div class="pur-form__row">
         <!-- Filiale wählen -->
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field class="pur-form__item pur-form__item--field" appearance="outline">
           <mat-label>Filiale</mat-label>
           <mat-select
             [value]="verwaltungStore.selectedFilialeId()"
@@ -90,7 +90,7 @@
         </mat-form-field>
         <!-- Filiale bearbeiten -->
         <button
-          class="pur-form__button"
+          class="pur-form__item pur-form__item--button pur-form__item--end"
           matButton="outlined"
           type="button"
           [disabled]="!verwaltungStore.selectedFiliale() || verwaltungStore.inProgress()"
@@ -102,46 +102,61 @@
       </div>
 
       @if (verwaltungStore.updateSuccess(); as erfolg) {
-        <p class="pur-form__success" role="status">{{ erfolg }}</p>
+        <p class="pur-form__item pur-form__item--success" role="status">{{ erfolg }}</p>
       }
 
       @if (verwaltungStore.updateError(); as error) {
-        <p class="pur-form__error" role="alert">{{ error }}</p>
+        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
       }
 
       @if (verwaltungStore.unternehmerListe().error; as error) {
-        <p class="pur-form__error" role="alert">{{ error }}</p>
-        <button matButton type="button" (click)="verwaltungStore.loadUnternehmer()">
+        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <button
+          class="pur-form__item pur-form__item--end"
+          matButton="tonal"
+          type="button"
+          (click)="verwaltungStore.loadUnternehmer()"
+        >
           Unternehmer erneut laden
         </button>
       } @else if (
         verwaltungStore.unternehmerListe().isLoaded && verwaltungStore.unternehmer().length === 0
       ) {
-        <p class="pur-form__message" role="status">
+        <p class="pur-form__item pur-form__item--message" role="status">
           Dem Benutzer sind keine Unternehmer zugeordnet.
         </p>
       }
 
       @if (verwaltungStore.firmenListe().error; as error) {
-        <p class="pur-form__error" role="alert">{{ error }}</p>
-        <button matButton type="button" (click)="verwaltungStore.loadFirmen()">
+        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <button
+          class="pur-form__item pur-form__item--end"
+          matButton="tonal"
+          type="button"
+          (click)="verwaltungStore.loadFirmen()"
+        >
           Firmen erneut laden
         </button>
       } @else if (verwaltungStore.firmenListe().isLoaded && verwaltungStore.firmen().length === 0) {
-        <p class="pur-form__message" role="status">
+        <p class="pur-form__item pur-form__item--message" role="status">
           Dem gewählten Unternehmer sind keine Firmen zugeordnet.
         </p>
       }
 
       @if (verwaltungStore.filialenListe().error; as error) {
-        <p class="pur-form__error" role="alert">{{ error }}</p>
-        <button matButton type="button" (click)="verwaltungStore.loadFilialen()">
+        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <button
+          class="pur-form__item pur-form__item--end"
+          matButton="tonal"
+          type="button"
+          (click)="verwaltungStore.loadFilialen()"
+        >
           Filialen erneut laden
         </button>
       } @else if (
         verwaltungStore.filialenListe().isLoaded && verwaltungStore.filialen().length === 0
       ) {
-        <p class="pur-form__message" role="status">
+        <p class="pur-form__item pur-form__item--message" role="status">
           Der gewählten Firma sind keine Filialen zugeordnet.
         </p>
       }

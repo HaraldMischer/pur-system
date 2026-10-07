@@ -208,7 +208,7 @@ describe('AppSidenav', () => {
 
     expect(toggle?.getAttribute('aria-label')).toBe('Systemverwaltung einklappen');
     expect(children?.classList).not.toContain('app-sidenav-nested-navigation__children--hidden');
-    expect(children?.textContent).toContain('Datenstruktur anlegen');
+    expect(children?.textContent).toContain('Datenstruktur');
     expect(children?.textContent).toContain('Benutzerverwaltung');
     expect(children?.textContent).toContain('Datenmigration');
   });

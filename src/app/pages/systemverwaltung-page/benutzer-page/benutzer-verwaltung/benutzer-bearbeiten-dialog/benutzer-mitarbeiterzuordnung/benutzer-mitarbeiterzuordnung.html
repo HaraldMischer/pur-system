@@ -5,7 +5,7 @@
 
   @if (zuordnungBearbeiten()) {
     <div class="pur-form pur-form--grid" [formGroup]="zuordnungForm">
-      <mat-form-field appearance="outline" class="pur-form__field">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Neuer Unternehmer</mat-label>
         <mat-select formControlName="unternehmerId" (selectionChange)="handleUnternehmerChange()">
           @for (eintrag of unternehmer(); track eintrag.id) {
@@ -14,7 +14,7 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="pur-form__field">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Neue Firma</mat-label>
         <mat-select formControlName="firmaId" (selectionChange)="handleFirmaChange()">
           @for (eintrag of getZuordnungsFirmen(); track eintrag.id) {
@@ -23,7 +23,7 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="pur-form__field">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Neuer fachlicher Mitarbeiter</mat-label>
         <mat-select formControlName="firmaMitarbeiterId">
           @for (mitarbeiter of mitarbeiterAuswahl(); track mitarbeiter.id) {
@@ -33,18 +33,29 @@
       </mat-form-field>
 
       @if (mitarbeiterAuswahlDownload()) {
-        <p role="status">Mitarbeiter werden geladen.</p>
+        <p class="pur-form__item pur-form__item--message" role="status">
+          Mitarbeiter werden geladen.
+        </p>
       } @else if (mitarbeiterAuswahlError(); as error) {
-        <p class="pur-form__error" role="alert">Mitarbeiter: {{ error }}</p>
+        <p class="pur-form__item pur-form__item--error" role="alert">Mitarbeiter: {{ error }}</p>
       } @else if (zuordnungForm.controls.firmaId.value && mitarbeiterAuswahl().length === 0) {
-        <p role="status">Keine verfügbaren Mitarbeiter vorhanden.</p>
+        <p class="pur-form__item pur-form__item--message" role="status">
+          Keine verfügbaren Mitarbeiter vorhanden.
+        </p>
       }
 
-      <div class="pur-form__row pur-form__row--actions-end">
-        <button matButton type="button" [disabled]="inProgress()" (click)="cancelZuordnung()">
+      <div class="pur-form__row">
+        <button
+          class="pur-form__item pur-form__item--auto pur-form__item--end"
+          matButton
+          type="button"
+          [disabled]="inProgress()"
+          (click)="cancelZuordnung()"
+        >
           Abbrechen
         </button>
         <button
+          class="pur-form__item pur-form__item--auto"
           matButton="filled"
           type="button"
           [disabled]="zuordnungForm.invalid || mitarbeiterAuswahlDownload() || inProgress()"
@@ -56,7 +67,7 @@
     </div>
   } @else {
     <div class="pur-form__row">
-      <mat-form-field appearance="outline" class="pur-form__field">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Unternehmer</mat-label>
         <input
           matInput
@@ -66,12 +77,12 @@
         />
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="pur-form__field">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Firma</mat-label>
         <input matInput name="zuordnung-firma" [value]="aktuelleZuordnung().firma" readonly />
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="pur-form__field">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Fachlicher Mitarbeiter</mat-label>
         <input
           matInput
@@ -84,6 +95,7 @@
 
     <div class="pur-form__row">
       <button
+        class="pur-form__item pur-form__item--auto"
         matButton="outlined"
         type="button"
         [disabled]="inProgress()"

@@ -56,7 +56,7 @@ const SYSTEMVERWALTUNG_NAVIGATION: INavigationGruppe = {
     {
       typ: 'link',
       id: 'datenstruktur',
-      label: 'Datenstruktur anlegen',
+      label: 'Datenstruktur',
       icon: 'account_tree',
       route: '/systemverwaltung/datenstruktur',
       bereich: 'systemverwaltung',

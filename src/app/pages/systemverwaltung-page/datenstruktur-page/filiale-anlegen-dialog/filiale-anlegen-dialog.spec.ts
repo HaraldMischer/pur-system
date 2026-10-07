@@ -73,7 +73,7 @@ describe('FilialeAnlegenDialog', () => {
     expect(dialogContent?.classList).toContain('pur-dialog__content');
     expect(form?.contains(dialogActions)).toBe(false);
     expect(submitButton?.getAttribute('form')).toBe('filiale-anlegen-form');
-    expect(compiled.querySelectorAll('.pur-form__row')).toHaveLength(4);
+    expect(compiled.querySelectorAll('.pur-form__row')).toHaveLength(5);
     expect(compiled.querySelector('[class*="filiale-anlegen-dialog__"]')).toBeNull();
   });
 

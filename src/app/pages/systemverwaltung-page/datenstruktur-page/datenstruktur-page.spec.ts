@@ -175,7 +175,7 @@ describe('DatenstrukturPage', () => {
 
     expect(unternehmerStoreMock.clearError).toHaveBeenCalled();
     expect(dialogOpenMock).toHaveBeenCalledWith(UnternehmerAnlegenDialog, {
-      panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+      panelClass: ['pur-dialog__panel'],
     });
     expect(component.unternehmerForm.controls.id.value).toBe('unternehmer-neu');
     expect(component.unternehmerForm.valid).toBe(true);
@@ -215,7 +215,7 @@ describe('DatenstrukturPage', () => {
     expect(firmaStoreMock.clearError).toHaveBeenCalled();
     expect(dialogOpenMock).toHaveBeenCalledWith(FirmaAnlegenDialog, {
       data: { unternehmerId: 'unternehmer-1' },
-      panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+      panelClass: ['pur-dialog__panel'],
     });
     expect(component.firmaForm.controls.id.value).toBe('firma-neu');
     expect(component.firmaForm.valid).toBe(true);
@@ -253,7 +253,7 @@ describe('DatenstrukturPage', () => {
     expect(filialeStoreMock.clearError).toHaveBeenCalled();
     expect(dialogOpenMock).toHaveBeenCalledWith(FilialeAnlegenDialog, {
       data: { unternehmerId: 'unternehmer-1', firmaId: 'firma-1' },
-      panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+      panelClass: ['pur-dialog__panel'],
     });
     expect(component.filialeForm.controls.id.value).toBe('filiale-neu');
     expect(component.filialeForm.valid).toBe(true);

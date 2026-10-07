@@ -41,14 +41,18 @@
       <p class="pur-page-section__message" role="status">Mitarbeiter werden geladen.</p>
     } @else if (mitarbeiterError(); as error) {
       <div class="pur-page-section__error-state">
-        <p class="pur-form__error" role="alert">{{ error }}</p>
-        <button matButton="outlined" type="button" (click)="retryLoadMitarbeiter()">
+        <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+          {{ error }}
+        </p>
+        <button matButton="tonal" type="button" (click)="retryLoadMitarbeiter()">
           Erneut laden
         </button>
       </div>
     } @else if (mitarbeiterIsLoaded()) {
       @if (mitarbeiterStore.error(); as error) {
-        <p class="pur-form__error" role="alert">{{ error }}</p>
+        <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+          {{ error }}
+        </p>
       }
       <div class="pur-page__card-grid">
         @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {

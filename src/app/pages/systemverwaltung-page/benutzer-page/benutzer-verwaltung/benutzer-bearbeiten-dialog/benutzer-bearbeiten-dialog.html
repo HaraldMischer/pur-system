@@ -16,12 +16,14 @@
       <h2 class="pur-form__group-titel">Profildaten</h2>
 
       <div class="pur-form__row">
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Anzeigename</mat-label>
           <input matInput formControlName="anzeigename" type="text" autocomplete="name" />
         </mat-form-field>
 
-        <mat-checkbox formControlName="aktiv">Profil aktiv</mat-checkbox>
+        <mat-checkbox class="pur-form__item pur-form__item--checkbox" formControlName="aktiv">
+          Profil aktiv
+        </mat-checkbox>
       </div>
     </div>
 
@@ -30,7 +32,12 @@
       <h2 class="pur-form__group-titel">Erlaubte Bereiche</h2>
       <div class="pur-form__row">
         @for (bereich of bereiche; track bereich.value) {
-          <mat-checkbox [formControlName]="bereich.value">{{ bereich.label }}</mat-checkbox>
+          <mat-checkbox
+            class="pur-form__item pur-form__item--checkbox"
+            [formControlName]="bereich.value"
+          >
+            {{ bereich.label }}
+          </mat-checkbox>
         }
       </div>
     </div>
@@ -52,11 +59,12 @@
       <div class="pur-form__group">
         <h2 class="pur-form__group-titel">Benutzerkonto</h2>
         @if (loeschenBestaetigen()) {
-          <p class="pur-form__error" role="alert">
+          <p class="pur-form__item pur-form__item--error" role="alert">
             Das Benutzerkonto und sein Benutzerprofil werden endgültig gelöscht.
           </p>
-          <div class="pur-form__row pur-form__row--actions-end">
+          <div class="pur-form__row">
             <button
+              class="pur-form__item pur-form__item--auto pur-form__item--end"
               matButton
               type="button"
               [disabled]="verwaltungStore.inProgress()"
@@ -65,6 +73,7 @@
               Nicht löschen
             </button>
             <button
+              class="pur-form__item pur-form__item--auto"
               matButton="filled"
               type="button"
               [disabled]="verwaltungStore.inProgress()"
@@ -76,6 +85,7 @@
         } @else {
           <div class="pur-form__row">
             <button
+              class="pur-form__item pur-form__item--auto"
               matButton="outlined"
               type="button"
               [disabled]="zuordnungAktionAktiv() || verwaltungStore.inProgress()"
@@ -89,7 +99,7 @@
     }
 
     @if (verwaltungStore.updateError(); as error) {
-      <p class="pur-form__error" role="alert">{{ error }}</p>
+      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
     }
   </form>
 </mat-dialog-content>

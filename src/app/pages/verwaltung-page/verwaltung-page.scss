@@ -1,16 +1,7 @@
 // pur-system/src/app/pages/verwaltung-page/verwaltung-page.scss
 
 
-//.pur-form__row--action > .pur-form__button {
-//  inline-size: 250px;
-//}
-
-// Bevorzugte Zeilenbreite: 260px Feldbasis + 16px Abstand + 250px Button = 526px.
-// Der Breakpoint enthält mit 540px etwas Reserve.
-
-//@container (max-width: 540px) {
-//  .pur-form__row--action > .pur-form__button {
-//    min-inline-size: 0;
-//    inline-size: 100%;
-//  }
-//}
+.pur-form__item--button {
+  inline-size: 210px;
+  max-inline-size: 100%;
+}

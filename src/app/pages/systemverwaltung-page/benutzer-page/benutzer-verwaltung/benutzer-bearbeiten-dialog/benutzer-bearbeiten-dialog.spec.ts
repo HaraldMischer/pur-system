@@ -164,7 +164,7 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(fixture.nativeElement.querySelector('input[name="benutzerrolle"]')).toBeNull();
     expect(
       Array.from(
-        fixture.nativeElement.querySelectorAll('.pur-form__group-titel') as NodeListOf<HTMLElement>,
+        fixture.nativeElement.querySelectorAll('mat-dialog-content h2') as NodeListOf<HTMLElement>,
       ).map((titel) => titel.textContent?.trim()),
     ).toEqual(['Profildaten', 'Erlaubte Bereiche', 'Datenzuordnung', 'Benutzerkonto']);
     expect(fixture.nativeElement.querySelectorAll('mat-checkbox')).toHaveLength(4);

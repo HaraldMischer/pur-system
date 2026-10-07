@@ -111,7 +111,7 @@ export class DatenstrukturPage implements OnInit {
     const ergebnis = await firstValueFrom(
       this.dialog
         .open(UnternehmerAnlegenDialog, {
-          panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+          panelClass: ['pur-dialog__panel'],
         })
         .afterClosed(),
     );
@@ -136,7 +136,7 @@ export class DatenstrukturPage implements OnInit {
       this.dialog
         .open(FirmaAnlegenDialog, {
           data: { unternehmerId },
-          panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+          panelClass: ['pur-dialog__panel'],
         })
         .afterClosed(),
     );
@@ -162,7 +162,7 @@ export class DatenstrukturPage implements OnInit {
       this.dialog
         .open(FilialeAnlegenDialog, {
           data: { unternehmerId, firmaId },
-          panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+          panelClass: ['pur-dialog__panel'],
         })
         .afterClosed(),
     );

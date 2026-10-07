@@ -1,1 +1,16 @@
 // pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-verwaltung.scss
+
+.benutzer-verwaltung__auswahl {
+  container-type: inline-size;
+
+  > .pur-form__item--button {
+    inline-size: 210px;
+    max-inline-size: 100%;
+  }
+
+  @container (max-width: 500px) {
+    > .pur-form__item--button {
+      inline-size: 100%;
+    }
+  }
+}

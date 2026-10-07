@@ -168,7 +168,7 @@ describe('LoginPage', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
 
-    expect(compiled.querySelector('.pur-form__error')?.textContent).toContain(
+    expect(compiled.querySelector('.pur-form__item--error')?.textContent).toContain(
       'Anmeldename oder Passwort ist nicht korrekt.',
     );
   });

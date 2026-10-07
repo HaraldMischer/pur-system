@@ -44,6 +44,7 @@ export class VerwaltungPage implements OnInit {
 
     this.dialog.open(FirmaBearbeitenDialog, {
       data: { firma },
+      panelClass: ['pur-dialog__panel'],
     });
   }
 
@@ -56,6 +57,7 @@ export class VerwaltungPage implements OnInit {
 
     this.dialog.open(FilialeBearbeitenDialog, {
       data: { filiale },
+      panelClass: ['pur-dialog__panel'],
     });
   }
 }

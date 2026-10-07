@@ -11,15 +11,15 @@
   >
     <!-- Grunddaten -->
     <div class="pur-form__group">
-      <h2 class="pur-form__group-titel">Filialdaten</h2>
-
       <div class="pur-form__row">
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Anzeigename</mat-label>
           <input matInput formControlName="anzeigename" type="text" autocomplete="organization" />
         </mat-form-field>
+      </div>
 
-        <mat-form-field appearance="outline" class="pur-form__field">
+      <div class="pur-form__row">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Filialname</mat-label>
           <input matInput formControlName="filialname" type="text" autocomplete="organization" />
         </mat-form-field>
@@ -31,24 +31,24 @@
       <h2 class="pur-form__group-titel">Adresse</h2>
 
       <div class="pur-form__row">
-        <mat-form-field appearance="outline" class="pur-form__field pur-form__field--80">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field pur-form__item--80">
           <mat-label>Straße</mat-label>
           <input matInput formControlName="strasse" type="text" autocomplete="street-address" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="pur-form__field pur-form__field--20">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field pur-form__item--20">
           <mat-label>Nr.</mat-label>
           <input matInput formControlName="hausnummer" type="text" autocomplete="off" />
         </mat-form-field>
       </div>
 
       <div class="pur-form__row">
-        <mat-form-field appearance="outline" class="pur-form__field pur-form__field--20">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field pur-form__item--20">
           <mat-label>PLZ</mat-label>
           <input matInput formControlName="postleitzahl" type="text" autocomplete="postal-code" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="pur-form__field pur-form__field--80">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field pur-form__item--80">
           <mat-label>Ort</mat-label>
           <input matInput formControlName="ort" type="text" autocomplete="address-level2" />
         </mat-form-field>
@@ -60,7 +60,7 @@
       <h2 class="pur-form__group-titel">Kontaktdaten</h2>
 
       <div class="pur-form__row">
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field pur-form__item--50">
           <mat-label>E-Mail-Adresse</mat-label>
           <input matInput formControlName="email" type="email" autocomplete="email" />
           @if (filialeForm.controls.kontakt.controls.email.hasError('email')) {
@@ -68,25 +68,15 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field pur-form__item--50">
           <mat-label>Telefon</mat-label>
           <input matInput formControlName="telefon" type="tel" autocomplete="tel" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="pur-form__field">
-          <mat-label>Mobil</mat-label>
-          <input matInput formControlName="mobil" type="tel" autocomplete="tel" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="pur-form__field">
-          <mat-label>Webseite</mat-label>
-          <input matInput formControlName="webseite" type="url" autocomplete="url" />
         </mat-form-field>
       </div>
     </div>
 
     @if (verwaltungStore.updateError(); as error) {
-      <p class="pur-form__error" role="alert">{{ error }}</p>
+      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
     }
   </form>
 </mat-dialog-content>

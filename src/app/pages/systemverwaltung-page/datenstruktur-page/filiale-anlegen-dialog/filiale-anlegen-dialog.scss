@@ -1,1 +1,31 @@
 // pur-system/src/app/pages/systemverwaltung-page/datenstruktur-page/filiale-anlegen-dialog/filiale-anlegen-dialog.scss
+
+@use '../../../../../assets/scss/variables/breakpoints' as breakpoints;
+
+// Globale Stapelung lokal zurücksetzen.
+.pur-form__row > .pur-form__item--20 {
+  flex: 20 1 0;
+}
+
+.pur-form__row > .pur-form__item--50 {
+  flex: 50 1 0;
+}
+
+.pur-form__row > .pur-form__item--80 {
+  flex: 80 1 0;
+}
+
+// Nur 50/50-Zeilen auf kompakten Ansichten stapeln.
+@media (max-width: breakpoints.$breakpoint-small-device) {
+  .pur-form__row > .pur-form__item--50 {
+    flex: 1 1 100%;
+  }
+}
+
+// Auch 20/80-Zeilen auf sehr kompakten Ansichten stapeln.
+@media (max-width: breakpoints.$breakpoint-extra-small-device) {
+  .pur-form__row > .pur-form__item--20,
+  .pur-form__row > .pur-form__item--80 {
+    flex: 1 1 100%;
+  }
+}

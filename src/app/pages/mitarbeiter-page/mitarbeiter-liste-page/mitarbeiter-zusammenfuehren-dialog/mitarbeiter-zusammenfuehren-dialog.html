@@ -16,7 +16,7 @@
 
     <div class="pur-form__group">
       <h2 class="pur-form__group-titel">Zielmitarbeiter</h2>
-      <mat-form-field appearance="outline" class="pur-form__field">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Mitarbeiter auswählen</mat-label>
         <mat-select formControlName="zielMitarbeiterId">
           @for (mitarbeiter of zielMitarbeiter; track mitarbeiter.id) {
@@ -38,7 +38,7 @@
     }
 
     @if (mitarbeiterStore.error(); as error) {
-      <p class="pur-form__error" role="alert">{{ error }}</p>
+      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
     }
   </form>
 </mat-dialog-content>

@@ -17,7 +17,7 @@
         [attr.inert]="passwortStore.inProgress() ? '' : null"
         (ngSubmit)="onSubmit()"
       >
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Aktuelles Passwort</mat-label>
           <input
             formControlName="aktuellesPasswort"
@@ -47,7 +47,7 @@
           </button>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Neues Passwort</mat-label>
           <input
             formControlName="neuesPasswort"
@@ -80,7 +80,7 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="pur-form__field">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Neues Passwort bestätigen</mat-label>
           <input
             formControlName="passwortBestaetigung"
@@ -112,21 +112,25 @@
 
         <!-- Fehlermeldungen -->
         @if (passwortForm.hasError('passwoerterUngleich')) {
-          <p class="pur-form__error" role="alert">Die Passwörter stimmen nicht überein.</p>
+          <p class="pur-form__item pur-form__item--error" role="alert">
+            Die Passwörter stimmen nicht überein.
+          </p>
         }
 
         @if (passwortStore.error(); as error) {
-          <p class="pur-form__error" role="alert">{{ error }}</p>
+          <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
         }
 
         <!-- Erfolgsmeldung -->
         @if (passwortStore.erfolgreich()) {
-          <p class="pur-form__success" role="status">Das Passwort wurde erfolgreich geändert.</p>
+          <p class="pur-form__item pur-form__item--success" role="status">
+            Das Passwort wurde erfolgreich geändert.
+          </p>
         }
 
         <!-- Passwort ändern -->
         <button
-          class="pur-form__submit"
+          class="pur-form__item pur-form__item--button pur-form__item--full"
           matButton="filled"
           type="submit"
           [disabled]="passwortForm.invalid || passwortStore.inProgress()"

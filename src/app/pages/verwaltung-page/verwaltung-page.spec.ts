@@ -75,6 +75,7 @@ describe('VerwaltungPage', () => {
     expect(compiled.querySelectorAll('mat-select')).toHaveLength(3);
     expect(compiled.querySelector<HTMLButtonElement>('button')?.disabled).toBe(true);
     expect(compiled.textContent).toContain('Dem Benutzer sind keine Unternehmer zugeordnet.');
+    expect(compiled.querySelector('.pur-form--grid')).not.toBeNull();
     expect(verwaltungStoreMock.loadUnternehmer).toHaveBeenCalledOnce();
   });
 
@@ -134,6 +135,7 @@ describe('VerwaltungPage', () => {
 
     expect(openDialogMock).toHaveBeenCalledWith(FirmaBearbeitenDialog, {
       data: { firma },
+      panelClass: ['pur-dialog__panel'],
     });
   });
 
@@ -171,6 +173,7 @@ describe('VerwaltungPage', () => {
 
     expect(openDialogMock).toHaveBeenCalledWith(FilialeBearbeitenDialog, {
       data: { filiale },
+      panelClass: ['pur-dialog__panel'],
     });
   });
 });
