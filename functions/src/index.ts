@@ -14,6 +14,11 @@ import {
 import { handleDeleteBenutzer, IDeleteBenutzerData } from './delete-benutzer';
 import { handleDeleteStruktureintrag, IDeleteStruktureintragData } from './delete-struktureintrag';
 import {
+  handleUpdateBenutzerDatenzuordnung,
+  IUpdateBenutzerDatenzuordnungData,
+} from './update-benutzer-datenzuordnung';
+import { handleUpdateBenutzerProfil, IUpdateBenutzerProfilData } from './update-benutzer-profil';
+import {
   handleUpdateMitarbeiterZuordnung,
   IUpdateMitarbeiterZuordnungData,
 } from './update-mitarbeiter-zuordnung';
@@ -175,6 +180,64 @@ export const createBenutzer = onCall<ICreateBenutzerData, Promise<ICreateBenutze
         },
       },
     ),
+);
+
+export const updateBenutzerProfil = onCall<IUpdateBenutzerProfilData, Promise<void>>(
+  { region: 'europe-west1' },
+  async (request) =>
+    handleUpdateBenutzerProfil(
+      { auth: request.auth, data: request.data },
+      {
+        getBenutzerProfil: async (uid) => {
+          const snapshot = await firestore.doc(`benutzerprofil/${uid}`).get();
+          return snapshot.exists ? snapshot.data() : null;
+        },
+        updateBenutzerProfil: async (uid, data) => {
+          await firestore.doc(`benutzerprofil/${uid}`).update({
+            ...data,
+            aktualisiertAm: FieldValue.serverTimestamp(),
+          });
+        },
+      },
+    ),
+);
+
+export const updateBenutzerDatenzuordnung = onCall<
+  IUpdateBenutzerDatenzuordnungData,
+  Promise<void>
+>({ region: 'europe-west1' }, async (request) =>
+  handleUpdateBenutzerDatenzuordnung(
+    { auth: request.auth, data: request.data },
+    {
+      getBenutzerProfil: async (uid) => {
+        const snapshot = await firestore.doc(`benutzerprofil/${uid}`).get();
+        return snapshot.exists ? snapshot.data() : null;
+      },
+      existierenDokumente: async (pfade) => {
+        const dokumente = await firestore.getAll(...pfade.map((pfad) => firestore.doc(pfad)));
+        return dokumente.every((dokument) => dokument.exists);
+      },
+      updateDatenzuordnung: async (uid, zugriffe) => {
+        const profilRef = firestore.doc(`benutzerprofil/${uid}`);
+        await firestore.runTransaction(async (transaction) => {
+          const profil = await transaction.get(profilRef);
+          if (!profil.exists) {
+            throw new HttpsError('not-found', 'Das Benutzerprofil existiert nicht.');
+          }
+          if (!['office', 'filiale'].includes(profil.get('userRole'))) {
+            throw new HttpsError(
+              'failed-precondition',
+              'Nur Office- und Filialkonten können so neu zugeordnet werden.',
+            );
+          }
+          transaction.update(profilRef, {
+            zugriffe,
+            aktualisiertAm: FieldValue.serverTimestamp(),
+          });
+        });
+      },
+    },
+  ),
 );
 
 export const updateMitarbeiterZuordnung = onCall<IUpdateMitarbeiterZuordnungData, Promise<void>>(

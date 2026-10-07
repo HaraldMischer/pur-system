@@ -13,7 +13,7 @@
       @if (verwaltungStore.istMaster()) {
         <div class="pur-form__row">
           <!-- Unternehmer wählen -->
-          <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+          <mat-form-field appearance="outline" class="pur-form__field">
             <mat-label>Unternehmer</mat-label>
             <mat-select
               [value]="verwaltungStore.selectedUnternehmerId()"
@@ -36,7 +36,7 @@
       <!-- Firma -->
       <div class="pur-form__row pur-form__row--action">
         <!-- Firma wählen -->
-        <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+        <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Firma</mat-label>
           <mat-select
             [value]="verwaltungStore.selectedFirmaId()"
@@ -70,7 +70,7 @@
       <!-- Filiale -->
       <div class="pur-form__row pur-form__row--action">
         <!-- Filiale wählen -->
-        <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+        <mat-form-field appearance="outline" class="pur-form__field">
           <mat-label>Filiale</mat-label>
           <mat-select
             [value]="verwaltungStore.selectedFilialeId()"

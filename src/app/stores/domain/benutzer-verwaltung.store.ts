@@ -5,6 +5,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import {
   IBenutzerAnlage,
   IBenutzerAnlageErgebnis,
+  IBenutzerDatenzuordnung,
   IBenutzerMitarbeiterZuordnung,
   IBenutzerProfilAktualisierung,
   IBenutzerProfilEintrag,
@@ -15,9 +16,9 @@ import {
   IUnternehmerAuswahl,
 } from '../../commons/models/domain/datenzugriff';
 import { IMitarbeiterAuswahl } from '../../commons/models/domain/mitarbeiter';
+import { buildErlaubteBereiche } from '../../commons/utils/benutzer/erlaubte-bereiche';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
-import { BenutzerService } from '../../services/domain/benutzer.service';
 import { DatenzugriffService } from '../../services/domain/datenzugriff.service';
 import { AuthService } from '../../services/firebase/auth.service';
 import { BenutzerVerwaltungService } from '../../services/firebase/benutzer-verwaltung.service';
@@ -201,7 +202,6 @@ export const BenutzerVerwaltungStore = signalStore(
       stammdatenStore = inject(StammdatenStore),
       datenService = inject(DatenzugriffService),
       service = inject(BenutzerVerwaltungService),
-      benutzerService = inject(BenutzerService),
       authService = inject(AuthService),
       benutzerStore = inject(BenutzerStore),
       destroyRef = inject(DestroyRef),
@@ -403,7 +403,7 @@ export const BenutzerVerwaltungStore = signalStore(
        *
        * @param aktualisierung - Die bearbeitbaren Profilfelder.
        * @returns Der aktualisierte Profileintrag.
-       * @throws Gibt Validierungs- und Firestore-Fehler an die aufrufende Stelle weiter.
+       * @throws Gibt Validierungs- und Callable-Fehler an die aufrufende Stelle weiter.
        */
       async function updateBenutzerProfil(
         aktualisierung: IBenutzerProfilAktualisierung,
@@ -429,11 +429,14 @@ export const BenutzerVerwaltungStore = signalStore(
           updateSuccess: null,
         });
         try {
-          const gespeicherteAktualisierung = await benutzerService.updateBenutzerProfil(
-            profil.uid,
-            profil.userRole,
-            aktualisierung,
-          );
+          const gespeicherteAktualisierung: IBenutzerProfilAktualisierung = {
+            ...aktualisierung,
+            erlaubteBereiche: buildErlaubteBereiche(
+              profil.userRole,
+              aktualisierung.erlaubteBereiche,
+            ),
+          };
+          await service.updateBenutzerProfil(profil.uid, gespeicherteAktualisierung);
           const aktualisiertesProfil: IBenutzerProfilEintrag = {
             ...profil,
             ...gespeicherteAktualisierung,
@@ -445,6 +448,47 @@ export const BenutzerVerwaltungStore = signalStore(
           }
           patchState(store, {
             updateSuccess: `Benutzer ${aktualisiertesProfil.email} wurde aktualisiert.`,
+          });
+          return aktualisiertesProfil;
+        } catch (error: unknown) {
+          patchState(store, { updateError: getFirebaseErrorMessage(error) });
+          throw error;
+        } finally {
+          patchState(store, { inProgress: false });
+        }
+      }
+
+      /**
+       * Ordnet das ausgewählte Office- oder Filialkonto einem neuen Datenkontext zu.
+       *
+       * @param zuordnung - Vollständige neue Datenzuordnung.
+       * @returns Das lokal aktualisierte Benutzerprofil.
+       * @throws Gibt Validierungs- und Callable-Fehler an die aufrufende Stelle weiter.
+       */
+      async function updateDatenzuordnung(
+        zuordnung: IBenutzerDatenzuordnung,
+      ): Promise<IBenutzerProfilEintrag> {
+        const profil = store.selectedBenutzer();
+        if (!profil || (profil.userRole !== 'office' && profil.userRole !== 'filiale')) {
+          throw new Error('Kein Office- oder Filialkonto ausgewählt.');
+        }
+
+        patchState(store, {
+          inProgress: true,
+          error: null,
+          createdBenutzer: null,
+          updateError: null,
+          updateSuccess: null,
+        });
+        try {
+          await service.updateDatenzuordnung(profil.uid, zuordnung);
+          const aktualisiertesProfil: IBenutzerProfilEintrag = {
+            ...profil,
+            zugriffe: zuordnung.zugriffe,
+          };
+          stammdatenStore.upsertBenutzerprofil(aktualisiertesProfil);
+          patchState(store, {
+            updateSuccess: `Benutzer ${aktualisiertesProfil.email} wurde neu zugeordnet.`,
           });
           return aktualisiertesProfil;
         } catch (error: unknown) {
@@ -498,14 +542,14 @@ export const BenutzerVerwaltungStore = signalStore(
       }
 
       /**
-       * Löscht das ausgewählte Mitarbeiterkonto und entfernt es aus dem lokalen Profilbestand.
+       * Löscht das ausgewählte Office-, Filial- oder Mitarbeiterkonto.
        *
        * @throws Gibt Validierungs- und Callable-Fehler an die aufrufende Stelle weiter.
        */
       async function deleteBenutzer(): Promise<void> {
         const profil = store.selectedBenutzer();
-        if (!profil || profil.userRole !== 'mitarbeiter') {
-          throw new Error('Kein Mitarbeiterkonto ausgewählt.');
+        if (!profil || profil.userRole === 'master') {
+          throw new Error('Kein löschbares Benutzerkonto ausgewählt.');
         }
 
         patchState(store, {
@@ -700,6 +744,7 @@ export const BenutzerVerwaltungStore = signalStore(
         loadMitarbeiterAuswahl,
         createBenutzer,
         updateBenutzerProfil,
+        updateDatenzuordnung,
         updateMitarbeiterZuordnung,
         deleteBenutzer,
         selectFilialen,

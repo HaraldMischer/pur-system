@@ -34,7 +34,7 @@ function parseUid(value: unknown): string {
 }
 
 /**
- * Löscht ein Mitarbeiterkonto und entfernt seine fachliche Verknüpfung.
+ * Löscht ein Office-, Filial- oder Mitarbeiterkonto und entfernt bei Bedarf seine Verknüpfung.
  *
  * @param request - Authentifizierter Callable-Aufruf mit der Benutzer-UID.
  * @param dependencies - Serverseitige Authentifizierungs-, Profil- und Transaktionszugriffe.
@@ -53,10 +53,7 @@ export async function handleDeleteBenutzer(
     masterProfil['aktiv'] !== true ||
     masterProfil['userRole'] !== 'master'
   ) {
-    throw new HttpsError(
-      'permission-denied',
-      'Nur aktive Master dürfen Mitarbeiterkonten löschen.',
-    );
+    throw new HttpsError('permission-denied', 'Nur aktive Master dürfen Benutzerkonten löschen.');
   }
 
   const uid = parseUid(isRecord(request.data) ? request.data['uid'] : undefined);
@@ -64,10 +61,10 @@ export async function handleDeleteBenutzer(
   if (!isRecord(zielProfil)) {
     throw new HttpsError('not-found', 'Das Benutzerprofil existiert nicht.');
   }
-  if (zielProfil['userRole'] !== 'mitarbeiter') {
+  if (!['office', 'filiale', 'mitarbeiter'].includes(String(zielProfil['userRole']))) {
     throw new HttpsError(
       'failed-precondition',
-      'Über diese Aktion können nur Mitarbeiterkonten gelöscht werden.',
+      'Masterkonten können über diese Aktion nicht gelöscht werden.',
     );
   }
 
@@ -78,7 +75,7 @@ export async function handleDeleteBenutzer(
     if (error instanceof HttpsError) throw error;
     throw new HttpsError(
       'unavailable',
-      'Das Mitarbeiterkonto konnte nicht vollständig gelöscht werden. Bitte erneut versuchen.',
+      'Das Benutzerkonto konnte nicht vollständig gelöscht werden. Bitte erneut versuchen.',
     );
   }
 }

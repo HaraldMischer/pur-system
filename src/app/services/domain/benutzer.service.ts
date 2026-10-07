@@ -8,7 +8,6 @@ import {
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
 import {
-  IBenutzerProfilAktualisierung,
   IBenutzerProfilDokument,
   IBenutzerProfilEintrag,
   TBenutzerZugriffe,
@@ -99,36 +98,6 @@ export class BenutzerService {
         ...this.mapBenutzerProfil(dokument.daten),
       }))
       .sort((a, b) => a.anzeigename.localeCompare(b.anzeigename, 'de'));
-  }
-
-  /**
-   * Aktualisiert die direkt bearbeitbaren Felder eines Benutzerprofils.
-   *
-   * @param uid - UID des zu aktualisierenden Benutzerprofils.
-   * @param userRole - Unveränderliche Rolle des Benutzerprofils.
-   * @param aktualisierung - Die bearbeitbaren Profilfelder.
-   * @returns Die tatsächlich gespeicherte Profilaktualisierung.
-   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
-   */
-  async updateBenutzerProfil(
-    uid: string,
-    userRole: TUserRole,
-    aktualisierung: IBenutzerProfilAktualisierung,
-  ): Promise<IBenutzerProfilAktualisierung> {
-    const gespeicherteAktualisierung: IBenutzerProfilAktualisierung = {
-      ...aktualisierung,
-      erlaubteBereiche: buildErlaubteBereiche(userRole, aktualisierung.erlaubteBereiche),
-    };
-
-    await this.firestoreDbService.replaceDocumentFields(
-      FIRESTORE_DOCUMENT_PATHS.benutzerprofil(uid),
-      {
-        ...gespeicherteAktualisierung,
-        aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
-      },
-    );
-
-    return gespeicherteAktualisierung;
   }
 
   // ===== Interne Helfer =======================

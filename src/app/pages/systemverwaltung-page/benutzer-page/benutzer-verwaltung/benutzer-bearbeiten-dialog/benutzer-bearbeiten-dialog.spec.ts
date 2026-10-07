@@ -27,6 +27,10 @@ describe('BenutzerBearbeitenDialog', () => {
   const aktualisiertesProfil = { ...profil, anzeigename: 'Office Neu' };
   const closeMock = vi.fn();
   const updateBenutzerProfilMock = vi.fn().mockResolvedValue(aktualisiertesProfil);
+  const updateDatenzuordnungMock = vi.fn().mockResolvedValue({
+    ...profil,
+    zugriffe: { u: { f: ['b'] } },
+  });
   const updateMitarbeiterZuordnungMock = vi.fn().mockResolvedValue({
     ...profil,
     uid: 'mitarbeiter-1',
@@ -40,6 +44,7 @@ describe('BenutzerBearbeitenDialog', () => {
     inProgress: signal(false),
     updateError: signal<string | null>(null),
     updateBenutzerProfil: updateBenutzerProfilMock,
+    updateDatenzuordnung: updateDatenzuordnungMock,
     updateMitarbeiterZuordnung: updateMitarbeiterZuordnungMock,
     deleteBenutzer: deleteBenutzerMock,
   };
@@ -93,6 +98,10 @@ describe('BenutzerBearbeitenDialog', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     updateBenutzerProfilMock.mockResolvedValue(aktualisiertesProfil);
+    updateDatenzuordnungMock.mockResolvedValue({
+      ...profil,
+      zugriffe: { u: { f: ['b'] } },
+    });
     updateMitarbeiterZuordnungMock.mockResolvedValue({
       ...profil,
       uid: 'mitarbeiter-1',
@@ -134,19 +143,11 @@ describe('BenutzerBearbeitenDialog', () => {
     }).compileComponents();
   });
 
-  it('should initialize editable profile data and preserve login data and role as read-only', () => {
+  it('should initialize the editable profile data without immutable account fields', () => {
     const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
     fixture.detectChanges();
     const component = fixture.componentInstance;
-    const emailInput = fixture.nativeElement.querySelector(
-      'input[type="email"]',
-    ) as HTMLInputElement;
-    const anmeldenameInput = fixture.nativeElement.querySelector(
-      'input[name="anmeldename"]',
-    ) as HTMLInputElement;
-    const rollenInput = fixture.nativeElement.querySelector(
-      'input[name="benutzerrolle"]',
-    ) as HTMLInputElement;
+    const dialogTitel = fixture.nativeElement.querySelector('[mat-dialog-title]') as HTMLElement;
 
     expect(component.benutzerForm.getRawValue()).toEqual({
       anzeigename: 'Office Benutzer',
@@ -157,12 +158,15 @@ describe('BenutzerBearbeitenDialog', () => {
         verwaltung: true,
       },
     });
-    expect(anmeldenameInput.readOnly).toBe(true);
-    expect(anmeldenameInput.value).toBe('officebenutzer-office');
-    expect(emailInput.readOnly).toBe(true);
-    expect(emailInput.value).toBe('office@example.com');
-    expect(rollenInput.readOnly).toBe(true);
-    expect(rollenInput.value).toBe('Office');
+    expect(fixture.nativeElement.querySelector('input[name="anmeldename"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[type="email"]')).toBeNull();
+    expect(dialogTitel.textContent?.trim()).toBe('Office-Benutzer bearbeiten');
+    expect(fixture.nativeElement.querySelector('input[name="benutzerrolle"]')).toBeNull();
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll('.pur-form__group-titel') as NodeListOf<HTMLElement>,
+      ).map((titel) => titel.textContent?.trim()),
+    ).toEqual(['Profildaten', 'Erlaubte Bereiche', 'Datenzuordnung', 'Benutzerkonto']);
     expect(fixture.nativeElement.querySelectorAll('mat-checkbox')).toHaveLength(4);
     expect(
       (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
@@ -179,6 +183,23 @@ describe('BenutzerBearbeitenDialog', () => {
 
     component.benutzerForm.controls.anzeigename.setValue('Office Benutzer');
     expect(component.hatAenderungen()).toBe(false);
+  });
+
+  it('should identify a branch account in the dialog title', () => {
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: {
+        profil: {
+          ...profil,
+          uid: 'filiale-1',
+          userRole: 'filiale',
+        },
+      },
+    });
+    const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
+    fixture.detectChanges();
+    const dialogTitel = fixture.nativeElement.querySelector('[mat-dialog-title]') as HTMLElement;
+
+    expect(dialogTitel.textContent?.trim()).toBe('Filial-Benutzer bearbeiten');
   });
 
   it('should not update an unchanged user profile', async () => {
@@ -200,7 +221,6 @@ describe('BenutzerBearbeitenDialog', () => {
       anzeigename: 'Office Neu',
       aktiv: true,
       erlaubteBereiche: ['dashboard', 'verwaltung'],
-      zugriffe: { u: { f: ['b'] } },
     });
     expect(closeMock).toHaveBeenCalledWith(aktualisiertesProfil);
   });
@@ -239,9 +259,7 @@ describe('BenutzerBearbeitenDialog', () => {
     const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
     fixture.detectChanges();
     const component = fixture.componentInstance;
-    const rollenInput = fixture.nativeElement.querySelector(
-      'input[name="benutzerrolle"]',
-    ) as HTMLInputElement;
+    const dialogTitel = fixture.nativeElement.querySelector('[mat-dialog-title]') as HTMLElement;
     const unternehmerInput = fixture.nativeElement.querySelector(
       'input[name="zuordnung-unternehmer"]',
     ) as HTMLInputElement;
@@ -252,7 +270,7 @@ describe('BenutzerBearbeitenDialog', () => {
       'input[name="zuordnung-mitarbeiter"]',
     ) as HTMLInputElement;
 
-    expect(rollenInput.value).toBe('Mitarbeiter');
+    expect(dialogTitel.textContent?.trim()).toBe('Mitarbeiter-Benutzer bearbeiten');
     expect(unternehmerInput.value).toBe('Unternehmer');
     expect(firmaInput.value).toBe('Firma');
     expect(mitarbeiterInput.value).toBe('Mia Muster');
@@ -280,8 +298,16 @@ describe('BenutzerBearbeitenDialog', () => {
       anzeigename: 'Mitarbeiter Neu',
       aktiv: true,
       erlaubteBereiche: ['dashboard', 'schichtplan'],
-      zugriffe: { u: { f: [] } },
     });
+  });
+
+  it('should save an office assignment emitted by the assignment component', async () => {
+    const component = TestBed.createComponent(BenutzerBearbeitenDialog).componentInstance;
+
+    await component.saveDatenzuordnung({ zugriffe: { u: { f: ['b'] } } });
+
+    expect(updateDatenzuordnungMock).toHaveBeenCalledWith({ zugriffe: { u: { f: ['b'] } } });
+    expect(closeMock).toHaveBeenCalled();
   });
 
   it('should show the stored employee id when the linked employee is unavailable', () => {
@@ -307,7 +333,7 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(mitarbeiterInput.value).toBe('Nicht verfügbar (ID: m-fehlt)');
   });
 
-  it('should select and save a complete new employee assignment', async () => {
+  it('should save an employee assignment emitted by the assignment component', async () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
         profil: {
@@ -322,18 +348,12 @@ describe('BenutzerBearbeitenDialog', () => {
     });
     const component = TestBed.createComponent(BenutzerBearbeitenDialog).componentInstance;
 
-    component.startMitarbeiterZuordnung();
-    component.mitarbeiterZuordnungForm.controls.unternehmerId.setValue('u');
-    component.handleZuordnungUnternehmerChange();
-    component.mitarbeiterZuordnungForm.controls.firmaId.setValue('f');
-    await component.handleZuordnungFirmaChange();
-    component.mitarbeiterZuordnungForm.controls.firmaMitarbeiterId.setValue('m-2');
-    await component.saveMitarbeiterZuordnung();
-
-    expect(benutzerVerwaltungServiceMock.loadMitarbeiterAuswahl).toHaveBeenCalledWith({
+    await component.saveMitarbeiterZuordnung({
       unternehmerId: 'u',
       firmaId: 'f',
+      firmaMitarbeiterId: 'm-2',
     });
+
     expect(updateMitarbeiterZuordnungMock).toHaveBeenCalledWith({
       unternehmerId: 'u',
       firmaId: 'f',
@@ -342,37 +362,7 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(closeMock).toHaveBeenCalled();
   });
 
-  it('should replace the current assignment fields while editing the assignment', () => {
-    TestBed.overrideProvider(MAT_DIALOG_DATA, {
-      useValue: {
-        profil: {
-          ...profil,
-          uid: 'mitarbeiter-1',
-          userRole: 'mitarbeiter',
-          erlaubteBereiche: ['dashboard'],
-          zugriffe: { u: { f: [] } },
-          firmaMitarbeiterId: 'm-1',
-        },
-      },
-    });
-    const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelectorAll('input[name^="zuordnung-"]')).toHaveLength(3);
-
-    fixture.componentInstance.startMitarbeiterZuordnung();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelectorAll('input[name^="zuordnung-"]')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelectorAll('mat-select')).toHaveLength(3);
-
-    fixture.componentInstance.cancelMitarbeiterZuordnung();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelectorAll('input[name^="zuordnung-"]')).toHaveLength(3);
-  });
-
-  it('should require confirmation before deleting an employee account', async () => {
+  it('should require confirmation before deleting a non-master account', async () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
         profil: {
@@ -412,13 +402,15 @@ describe('BenutzerBearbeitenDialog', () => {
     const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
     fixture.detectChanges();
     const component = fixture.componentInstance;
+    const dialogTitel = fixture.nativeElement.querySelector('[mat-dialog-title]') as HTMLElement;
     component.benutzerForm.controls.erlaubteBereiche.controls.verwaltung.setValue(true);
 
+    expect(dialogTitel.textContent?.trim()).toBe('Master-Benutzer bearbeiten');
     expect(
       Array.from(
         (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('mat-checkbox'),
       ).map((checkbox) => checkbox.textContent?.trim()),
-    ).toEqual(['Benutzerprofil aktiv', 'Schichtplan', 'Mitarbeiter', 'Verwaltung']);
+    ).toEqual(['Profil aktiv', 'Schichtplan', 'Mitarbeiter', 'Verwaltung']);
 
     await component.onSubmit();
 
@@ -426,7 +418,6 @@ describe('BenutzerBearbeitenDialog', () => {
       anzeigename: 'Office Benutzer',
       aktiv: true,
       erlaubteBereiche: ['dashboard', 'verwaltung', 'systemverwaltung'],
-      zugriffe: {},
     });
   });
 });

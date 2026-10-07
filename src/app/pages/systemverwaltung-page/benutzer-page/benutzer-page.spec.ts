@@ -4,7 +4,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';
 import { FormGroupDirective } from '@angular/forms';
 import { By } from '@angular/platform-browser';
-import { DatenzugriffSelector } from '../../../components/data-selectors/datenzugriff-selector/datenzugriff-selector';
+import { DatenzugriffSelector } from './datenzugriff-selector/datenzugriff-selector';
 import { TestBed } from '@angular/core/testing';
 
 import { DatenzugriffService } from '../../../services/domain/datenzugriff.service';

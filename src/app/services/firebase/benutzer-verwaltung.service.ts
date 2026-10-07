@@ -8,7 +8,9 @@ import { mapMitarbeiterAuswahl } from '../../commons/mapper/domain/mitarbeiter-a
 import {
   IBenutzerAnlage,
   IBenutzerAnlageErgebnis,
+  IBenutzerDatenzuordnung,
   IBenutzerMitarbeiterZuordnung,
+  IBenutzerProfilAktualisierung,
 } from '../../commons/models/domain/benutzer';
 import {
   IMitarbeiterAuswahl,
@@ -63,6 +65,49 @@ export class BenutzerVerwaltungService {
   }
 
   /**
+   * Aktualisiert die allgemeinen Profildaten eines Benutzerkontos serverseitig.
+   *
+   * @param uid - UID des zu aktualisierenden Benutzerkontos.
+   * @param aktualisierung - Bearbeitbare allgemeine Profildaten.
+   */
+  async updateBenutzerProfil(
+    uid: string,
+    aktualisierung: IBenutzerProfilAktualisierung,
+  ): Promise<void> {
+    this._netzwerkStatusService.assertOnline();
+
+    await this._loadingService.trackWrite(async () => {
+      await runInInjectionContext(this._injector, () => {
+        const updateBenutzerProfil = this._httpsCallable<
+          IBenutzerProfilAktualisierung & { uid: string },
+          void
+        >(this._functions, 'updateBenutzerProfil');
+        return updateBenutzerProfil({ uid, ...aktualisierung });
+      });
+    });
+  }
+
+  /**
+   * Aktualisiert die Datenzuordnung eines Office- oder Filialkontos serverseitig.
+   *
+   * @param uid - UID des neu zuzuordnenden Benutzerkontos.
+   * @param zuordnung - Vollständige neue Datenzuordnung.
+   */
+  async updateDatenzuordnung(uid: string, zuordnung: IBenutzerDatenzuordnung): Promise<void> {
+    this._netzwerkStatusService.assertOnline();
+
+    await this._loadingService.trackWrite(async () => {
+      await runInInjectionContext(this._injector, () => {
+        const updateBenutzerDatenzuordnung = this._httpsCallable<
+          IBenutzerDatenzuordnung & { uid: string },
+          void
+        >(this._functions, 'updateBenutzerDatenzuordnung');
+        return updateBenutzerDatenzuordnung({ uid, ...zuordnung });
+      });
+    });
+  }
+
+  /**
    * Ordnet ein vorhandenes Mitarbeiterkonto einem anderen fachlichen Mitarbeiter zu.
    *
    * @param uid - UID des neu zuzuordnenden Benutzerkontos.
@@ -87,9 +132,9 @@ export class BenutzerVerwaltungService {
   }
 
   /**
-   * Löscht ein Mitarbeiterkonto einschließlich Profil und fachlicher Verknüpfung.
+   * Löscht ein Office-, Filial- oder Mitarbeiterkonto einschließlich Profil.
    *
-   * @param uid - UID des zu löschenden Mitarbeiterkontos.
+   * @param uid - UID des zu löschenden Benutzerkontos.
    * @returns Ein Promise, das nach der serverseitig bestätigten Löschung abgeschlossen ist.
    */
   async deleteBenutzer(uid: string): Promise<void> {

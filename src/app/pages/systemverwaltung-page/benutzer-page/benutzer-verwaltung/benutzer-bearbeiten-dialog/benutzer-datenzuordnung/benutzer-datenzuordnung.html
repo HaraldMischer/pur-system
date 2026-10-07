@@ -1,0 +1,61 @@
+<!-- pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-datenzuordnung/benutzer-datenzuordnung.html -->
+
+@if (profil().userRole === 'mitarbeiter') {
+  <app-benutzer-mitarbeiterzuordnung
+    [profil]="profil()"
+    [unternehmer]="unternehmer()"
+    [inProgress]="inProgress()"
+    (aktionAktivChange)="aktionAktivChange.emit($event)"
+    (zuordnungSpeichern)="mitarbeiterZuordnungSpeichern.emit($event)"
+  />
+} @else if (profil().userRole === 'office' || profil().userRole === 'filiale') {
+  <div class="pur-form__group">
+    <h2 class="pur-form__group-titel">Datenzuordnung</h2>
+
+    <app-datenzugriff-selector
+      [unternehmer]="unternehmer()"
+      [unternehmerIds]="unternehmerIds()"
+      (unternehmerIdsChange)="unternehmerIds.set($event)"
+      [firmaIds]="firmaIds()"
+      (firmaIdsChange)="firmaIds.set($event)"
+      [filialen]="filialen()"
+      (filialenChange)="filialen.set($event)"
+      [unternehmerMehrfach]="false"
+      [firmenMehrfach]="profil().userRole === 'office'"
+      [filialenMehrfach]="profil().userRole === 'office'"
+      [disabled]="!zuordnungBearbeiten() || inProgress()"
+    />
+
+    @if (zuordnungBearbeiten()) {
+      @if (!datenAuswahlGueltig()) {
+        <p class="pur-form__error" role="alert">
+          Wähle eine vollständige und zur Benutzerrolle passende Datenzuordnung.
+        </p>
+      }
+      <div class="pur-form__row pur-form__row--actions-end">
+        <button matButton type="button" [disabled]="inProgress()" (click)="cancelZuordnung()">
+          Abbrechen
+        </button>
+        <button
+          matButton="filled"
+          type="button"
+          [disabled]="!datenAuswahlGueltig() || !hatAenderungen() || inProgress()"
+          (click)="saveZuordnung()"
+        >
+          Neu zuordnen
+        </button>
+      </div>
+    } @else {
+      <div class="pur-form__row">
+        <button
+          matButton="outlined"
+          type="button"
+          [disabled]="inProgress()"
+          (click)="startZuordnungBearbeiten()"
+        >
+          Zuordnung ändern
+        </button>
+      </div>
+    }
+  </div>
+}

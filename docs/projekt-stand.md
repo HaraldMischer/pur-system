@@ -243,8 +243,9 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   FormGroupDirective zurückgesetzt; leere Pflichtfelder zeigen dadurch keine Fehler. Nach Erfolg oder Fehler wird das Formular
   wieder aktiviert. Erfolgs- und Fehlermeldungen werden beim Start einer neuen Aktion sowie beim Verlassen der Seite
   zurückgesetzt; bei Fehlern bleiben die Eingaben erhalten.
-- Die Benutzerauswahl zeigt Anzeigename und Rollenbezeichnung. Im Bearbeitungsdialog bleiben Anmeldename und technische
-  Firebase-Adresse einsehbar; die Profilkarte der App-Shell zeigt unter dem Anzeigenamen den Anmeldenamen. Der
+- Die Benutzerauswahl zeigt Anzeigename und Rollenbezeichnung. Unveränderliche Kontoangaben wie Anmeldename und technische
+  Firebase-Adresse werden im Bearbeitungsdialog nicht erneut angezeigt; die Profilkarte der App-Shell zeigt unter dem
+  Anzeigenamen den Anmeldenamen. Der
   Bearbeitungsdialog vergleicht das normalisierte Profil einschließlich der außerhalb des Reactive Forms verwalteten
   Datenzugriffszuordnungen mit dem Ausgangszustand. Ohne fachliche Änderung bleibt die Speicheraktion deaktiviert und es wird
   keine Firestore-Anfrage ausgelöst.
@@ -381,11 +382,18 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Es werden keine produktiven Mockprofile verwendet. Die für Master zentral geladenen Benutzerprofile werden direkt aus dem
   Sitzungsbestand verwendet; Leer-, Lade- und Fehlerzustände bleiben unterscheidbar.
 - `IBenutzerProfilEintrag` bildet ein geladenes Profil mit seiner Dokument-ID als `uid` ab. `IBenutzerProfilAktualisierung`
-  begrenzt die vorbereiteten Änderungen auf Anzeigename, Aktivstatus, erlaubte Bereiche und Datenzugriffe; Benutzerrolle,
+  begrenzt allgemeine Profiländerungen auf Anzeigename, Aktivstatus und erlaubte Bereiche;
+  `IBenutzerDatenzuordnung` bildet die davon getrennte Datenzuordnung für Office- und Filialkonten ab. Benutzerrolle,
   E-Mail-Adresse und Passwort sind ausgeschlossen.
-- Der Bearbeitungsdialog verwendet die vorhandene Datenzugriffsauswahl mit rollenabhängiger Validierung. Erfolgreiche
-  Aktualisierungen setzen `aktualisiertAm` serverseitig und werden ohne erneutes Laden in den Stammdaten- und Verwaltungsbestand
-  übernommen.
+- Der Bearbeitungsdialog gliedert Profildaten, erlaubte Bereiche, Datenzuordnung und die Kontolöschung in getrennte fachliche
+  Bereiche. Office-, Filial- und Mitarbeiterkonten zeigen ihre aktuelle Datenzuordnung zunächst lesend an und geben die
+  rollenabhängige Auswahl erst über `Zuordnung ändern` frei. Eine gemeinsame lokale Unterkomponente kapselt die
+  rollenabhängige Office-/Filial- beziehungsweise Mitarbeiterzuordnung vollständig gegenüber dem Hauptdialog. Masterprofile
+  besitzen keine Datenzuordnung.
+- Allgemeine Profiländerungen werden über `updateBenutzerProfil`, Office-/Filialzuordnungen über
+  `updateBenutzerDatenzuordnung` und Mitarbeiterzuordnungen über `updateMitarbeiterZuordnung` serverseitig validiert. Direkte
+  Client-Schreibzugriffe auf `benutzerprofil` sind durch die Firestore Rules gesperrt. Erfolgreiche Aktualisierungen setzen
+  `aktualisiertAm` serverseitig und werden ohne erneutes Laden in den Stammdaten- und Verwaltungsbestand übernommen.
 - In Benutzeranlage und Bearbeitungsdialog werden die optionalen Bereiche gemäß App-Bereich-Matrix rollenabhängig als Checkboxen
   angezeigt. `dashboard` wird für jede Rolle verbindlich ergänzt; `systemverwaltung` wird ausschließlich für Master ergänzt und
   bei allen anderen Rollen entfernt. Die Callable Function ergänzt bei der Anlage nur diese Pflichtbereiche und übernimmt die
@@ -393,7 +401,7 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Profilaktualisierung. Die Firestore Rules leiten aus `erlaubteBereiche` keine Datenrechte oder rollenabhängigen
   Bereichskombinationen ab. Die vorhandenen Rollen-Guards bleiben die funktionale Zugriffssicherung.
 - Das eigene Masterprofil kann nicht deaktiviert werden. Die Benutzerrolle ist für sämtliche Profile unveränderlich. Dieser
-  Selbstschutz sowie die weiteren unveränderlichen Profilfelder sind zusätzlich durch Firestore Rules abgesichert.
+  Selbstschutz und die zulässigen Aktualisierungsfelder werden in den Callable Functions geprüft.
 - Änderungen am aktuell angemeldeten Profil werden über den Echtzeit-Listener unmittelbar in den lokalen Benutzer-Store
   übernommen. Bei einer Deaktivierung setzt der `AppSitzungsInitService` die sitzungsbezogenen Stammdaten zurück und der
   `GlobalBannerService` zeigt unter der Toolbar den nicht ausblendbaren Hinweis „Dieses Profil ist inaktiv. Bitte wende dich an
@@ -452,8 +460,9 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Datenzugriff-Auswahl mit Firebase
 
-- Die wiederverwendbare Component liegt unter `src/app/components/data-selectors/datenzugriff-selector`; ihre Auswahlmodelle
-  liegen in `src/app/commons/models/domain/datenzugriff.ts`.
+- Die ausschließlich von Benutzeranlage und Benutzerbearbeitung verwendete Component liegt lokal unter
+  `src/app/pages/systemverwaltung-page/benutzer-page/datenzugriff-selector`; ihre Auswahlmodelle liegen in
+  `src/app/commons/models/domain/datenzugriff.ts`.
 - Der `AppKontextSelector` liegt unter `src/app/components/data-selectors/app-kontext-selector`, verbindet den globalen
   `AppKontextStore` mit der Sidebar und setzt sich aus internen Unternehmer-, Firmen- und Filial-Selektoren zusammen. Die drei
   Unterkomponenten liegen in eigenen Unterordnern und werden außerhalb des `AppKontextSelector` nicht direkt verwendet. Über
@@ -533,10 +542,13 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Aktive Master können jedes Mitarbeiterkonto einem anderen Unternehmer, einer anderen Firma und einem dort vorhandenen aktiven,
   noch nicht verknüpften Mitarbeiter zuordnen. Die Callable Function `updateMitarbeiterZuordnung` löst eine noch vorhandene alte
   Verknüpfung und aktualisiert den neuen Mitarbeiter sowie das Benutzerprofil gemeinsam in einer Firestore-Transaktion.
-- Mitarbeiterkonten können nach einer Sicherheitsabfrage über die Callable Function `deleteBenutzer` endgültig gelöscht
-  werden. Die Function entfernt zuerst das Firebase-Auth-Konto und danach das Profil sowie eine noch vorhandene
-  Mitarbeiterverknüpfung, damit kein Auth-Konto ohne schützendes Pur-System-Profil und damit keine vorübergehenden Legacy-Rechte
-  entstehen.
+- Aktive Master können Office- und Filialkonten über dieselbe Dialogaktion neu zuordnen. Die Callable Function
+  `updateBenutzerDatenzuordnung` prüft die Zielrolle, die vollständige Unternehmer-/Firmen-/Filialstruktur und die Existenz aller
+  ausgewählten Dokumente. Filialkonten bleiben dabei auf genau einen Unternehmer, eine Firma und eine Filiale begrenzt.
+- Office-, Filial- und Mitarbeiterkonten können nach einer Sicherheitsabfrage über die Callable Function `deleteBenutzer`
+  endgültig gelöscht werden; Masterkonten sind von dieser Aktion ausgeschlossen. Die Function entfernt zuerst das
+  Firebase-Auth-Konto und danach das Profil sowie bei Mitarbeiterkonten eine noch vorhandene Mitarbeiterverknüpfung, damit kein
+  Auth-Konto ohne schützendes Pur-System-Profil und damit keine vorübergehenden Legacy-Rechte entsteht.
 - Angemeldete Benutzer können ihr Passwort nach erneuter Authentifizierung über die Toolbar und `/passwort` ändern. Auf dieser
   separaten Seite werden neues Passwort und Bestätigung validiert; es gelten mindestens 8 Zeichen.
 - Die Functions-Codebase `pur-system` nutzt Node.js 22 und die Region `europe-west1`.

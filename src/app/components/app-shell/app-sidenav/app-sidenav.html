@@ -7,47 +7,49 @@
     <span>{{ title }}</span>
   </mat-toolbar>
 
-  <!-- Benutzerkarte -->
-  <mat-card class="pur-card pur-card--user" appearance="outlined">
-    <mat-card-content>
-      <div class="pur-card__avatar" aria-hidden="true">
-        <mat-icon>account_circle</mat-icon>
-      </div>
-      <div class="pur-card__text">
-        <span>{{
-          benutzerProfil()?.anzeigename || (benutzerProfil() ? 'Benutzer' : 'Nicht angemeldet')
-        }}</span>
-        @if (benutzerProfil()?.anmeldename) {
-          <small [matTooltip]="benutzerProfil()?.anmeldename ?? ''">{{
-            benutzerProfil()?.anmeldename
-          }}</small>
-        }
-      </div>
-    </mat-card-content>
-  </mat-card>
+  <div class="app-sidenav__body">
+    <!-- Benutzerkarte -->
+    <mat-card class="pur-card pur-card--user" appearance="outlined">
+      <mat-card-content>
+        <div class="pur-card__avatar" aria-hidden="true">
+          <mat-icon>account_circle</mat-icon>
+        </div>
+        <div class="pur-card__text">
+          <span>{{
+            benutzerProfil()?.anzeigename || (benutzerProfil() ? 'Benutzer' : 'Nicht angemeldet')
+          }}</span>
+          @if (benutzerProfil()?.anmeldename) {
+            <small [matTooltip]="benutzerProfil()?.anmeldename ?? ''">{{
+              benutzerProfil()?.anmeldename
+            }}</small>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
 
-  <!-- Arbeitskontext -->
-  @defer (when appKontextSelectorSichtbar()) {
-    @if (appKontextSelectorSichtbar()) {
-      <app-kontext-selector [konfiguration]="appKontextSelectorKonfiguration()" />
+    <!-- Arbeitskontext -->
+    @defer (when appKontextSelectorSichtbar()) {
+      @if (appKontextSelectorSichtbar()) {
+        <app-kontext-selector [konfiguration]="appKontextSelectorKonfiguration()" />
+      }
     }
-  }
 
-  <!-- Hauptnavigation -->
-  @if (navigation(); as rollenNavigation) {
-    @if (rollenNavigation.darstellung === 'flat') {
-      <app-sidenav-flat-navigation
-        [eintraege]="flacheNavigationEintraege()"
-        (navigationSelected)="closeOnHandset()"
-      />
-    } @else {
-      <app-sidenav-nested-navigation
-        [eintraege]="rollenNavigation.eintraege"
-        (navigationSelected)="closeOnHandset()"
-      />
+    <!-- Hauptnavigation -->
+    @if (navigation(); as rollenNavigation) {
+      @if (rollenNavigation.darstellung === 'flat') {
+        <app-sidenav-flat-navigation
+          [eintraege]="flacheNavigationEintraege()"
+          (navigationSelected)="closeOnHandset()"
+        />
+      } @else {
+        <app-sidenav-nested-navigation
+          [eintraege]="rollenNavigation.eintraege"
+          (navigationSelected)="closeOnHandset()"
+        />
+      }
     }
-  }
 
-  <!-- Anwendungsversion -->
-  <small class="app-sidenav__version">v{{ appVersion }}</small>
+    <!-- Anwendungsversion -->
+    <small class="app-sidenav__version">v{{ appVersion }}</small>
+  </div>
 </div>

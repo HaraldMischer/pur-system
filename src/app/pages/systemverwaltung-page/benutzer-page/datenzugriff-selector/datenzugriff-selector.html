@@ -1,8 +1,8 @@
-<!-- pur-system/src/app/components/data-selectors/datenzugriff-selector/datenzugriff-selector.html -->
+<!-- pur-system/src/app/pages/systemverwaltung-page/benutzer-page/datenzugriff-selector/datenzugriff-selector.html -->
 
 <div class="pur-form pur-form--grid">
   <!-- Unternehmer -->
-  <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+  <mat-form-field appearance="outline" class="pur-form__field">
     <mat-label>Unternehmer</mat-label>
     <mat-select
       [multiple]="unternehmerMehrfach()"
@@ -13,7 +13,7 @@
             ? unternehmerIds()[0]
             : null
       "
-      [disabled]="unternehmer().length === 0"
+      [disabled]="disabled() || unternehmer().length === 0"
       (selectionChange)="selectUnternehmer($event.value)"
     >
       @if (ausgewaehlteUnternehmer().length > 1) {
@@ -28,12 +28,12 @@
   </mat-form-field>
 
   <!-- Firmen -->
-  <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+  <mat-form-field appearance="outline" class="pur-form__field">
     <mat-label>Firmen</mat-label>
     <mat-select
       [multiple]="firmenMehrfach()"
       [value]="firmenMehrfach() ? firmaIds() : firmaIds().length ? firmaIds()[0] : null"
-      [disabled]="firmenLaden() || firmen().length === 0"
+      [disabled]="disabled() || firmenLaden() || firmen().length === 0"
       (selectionChange)="selectFirmen($event.value)"
     >
       @if (ausgewaehlteFirmen().length > 1) {
@@ -59,7 +59,7 @@
 
   @if (filialenSichtbar()) {
     <!-- Filialen -->
-    <mat-form-field appearance="outline" class="pur-form__field" subscriptSizing="dynamic">
+    <mat-form-field appearance="outline" class="pur-form__field">
       <mat-label>Filialen</mat-label>
       <mat-select
         [multiple]="filialenMehrfach()"
@@ -70,7 +70,7 @@
               ? filialSchluessel()[0]
               : null
         "
-        [disabled]="filialenLaden() || !hatFilialen()"
+        [disabled]="disabled() || filialenLaden() || !hatFilialen()"
         (selectionChange)="selectFilialen($event.value)"
       >
         @if (filialAnzahl() > 1) {

@@ -1,5 +1,7 @@
 // pur-system/src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.scss
 
+@use '../../../../assets/scss/variables/breakpoints' as breakpoints;
+
 .datenmigration-page {
   &__auswahl {
     display: grid;
@@ -99,14 +101,14 @@
     }
   }
 
-  @media (max-width: 720px) {
+  @media (max-width: breakpoints.$breakpoint-large-device) {
     &__auswahl,
     &__status {
       grid-template-columns: 1fr;
     }
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: breakpoints.$breakpoint-small-device) {
     &__status {
       grid-template-columns: 1fr;
     }

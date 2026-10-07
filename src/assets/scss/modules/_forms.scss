@@ -1,5 +1,7 @@
 // pur-system/src/assets/scss/modules/_forms.scss
 
+@use '../variables/breakpoints' as breakpoints;
+
 .pur-form {
   &__field {
     min-width: 0;
@@ -54,7 +56,7 @@
       }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: breakpoints.$breakpoint-medium-device) {
       > .pur-form__field--20,
       > .pur-form__field--50,
       > .pur-form__field--80 {
@@ -104,6 +106,7 @@
     color: var(--mat-sys-error);
   }
 
+  // Für einfache, flache Formulare mit automatisch umbrechenden direkten Feldern.
   &--flex {
     display: flex;
     flex-wrap: wrap;
@@ -119,13 +122,14 @@
       flex: 1 0 100%;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: breakpoints.$breakpoint-medium-device) {
       .pur-form__field {
         flex-basis: 100%;
       }
     }
   }
 
+  // Für strukturierte Formulare mit Gruppen und gezielt aufgebauten Flex-Zeilen.
   &--grid {
     display: grid;
 

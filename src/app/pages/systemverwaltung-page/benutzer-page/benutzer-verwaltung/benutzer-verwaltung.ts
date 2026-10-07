@@ -61,6 +61,7 @@ export class BenutzerVerwaltung {
 
     this.dialog.open(BenutzerBearbeitenDialog, {
       data: { profil },
+      panelClass: ['pur-dialog__panel'],
     });
   }
 }

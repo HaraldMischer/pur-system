@@ -1,4 +1,4 @@
-// pur-system/src/app/components/data-selectors/datenzugriff-selector/datenzugriff-selector.spec.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/datenzugriff-selector/datenzugriff-selector.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';

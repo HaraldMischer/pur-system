@@ -2,13 +2,8 @@
 
 import { TestBed } from '@angular/core/testing';
 
-import {
-  IBenutzerAnlage,
-  IBenutzerProfilAktualisierung,
-  TUserRole,
-} from '../../commons/models/domain/benutzer';
+import { IBenutzerAnlage } from '../../commons/models/domain/benutzer';
 import { DatenzugriffService } from '../../services/domain/datenzugriff.service';
-import { BenutzerService } from '../../services/domain/benutzer.service';
 import { AuthService } from '../../services/firebase/auth.service';
 import { BenutzerVerwaltungService } from '../../services/firebase/benutzer-verwaltung.service';
 import { BenutzerStore } from '../app/benutzer.store';
@@ -27,10 +22,11 @@ describe('BenutzerVerwaltungStore', () => {
   let serviceMock: {
     loadMitarbeiterAuswahl: ReturnType<typeof vi.fn>;
     createBenutzer: ReturnType<typeof vi.fn>;
+    updateBenutzerProfil: ReturnType<typeof vi.fn>;
+    updateDatenzuordnung: ReturnType<typeof vi.fn>;
     updateMitarbeiterZuordnung: ReturnType<typeof vi.fn>;
     deleteBenutzer: ReturnType<typeof vi.fn>;
   };
-  let benutzerServiceMock: { updateBenutzerProfil: ReturnType<typeof vi.fn> };
   let authServiceMock: { getAktuelleBenutzerId: ReturnType<typeof vi.fn> };
   let benutzerStoreMock: { setBenutzerProfil: ReturnType<typeof vi.fn> };
 
@@ -44,17 +40,10 @@ describe('BenutzerVerwaltungStore', () => {
         anmeldename: 'testbenutzer-office',
         email: 'testbenutzer-office@pur-system.invalid',
       }),
+      updateBenutzerProfil: vi.fn().mockResolvedValue(undefined),
+      updateDatenzuordnung: vi.fn().mockResolvedValue(undefined),
       updateMitarbeiterZuordnung: vi.fn().mockResolvedValue(undefined),
       deleteBenutzer: vi.fn().mockResolvedValue(undefined),
-    };
-    benutzerServiceMock = {
-      updateBenutzerProfil: vi
-        .fn()
-        .mockImplementation(
-          (_uid: string, _userRole: TUserRole, aktualisierung: IBenutzerProfilAktualisierung) => {
-            return Promise.resolve(aktualisierung);
-          },
-        ),
     };
     authServiceMock = {
       getAktuelleBenutzerId: vi.fn().mockReturnValue('master-1'),
@@ -72,7 +61,6 @@ describe('BenutzerVerwaltungStore', () => {
             loadFilialen: vi.fn().mockResolvedValue([]),
           },
         },
-        { provide: BenutzerService, useValue: benutzerServiceMock },
         { provide: AuthService, useValue: authServiceMock },
         { provide: BenutzerStore, useValue: benutzerStoreMock },
         { provide: BenutzerVerwaltungService, useValue: serviceMock },
@@ -181,12 +169,10 @@ describe('BenutzerVerwaltungStore', () => {
       anzeigename: 'Office Neu',
       aktiv: true,
       erlaubteBereiche: ['dashboard', 'verwaltung'],
-      zugriffe: { u: { f: ['b'] } },
     });
 
-    expect(benutzerServiceMock.updateBenutzerProfil).toHaveBeenCalledWith(
+    expect(serviceMock.updateBenutzerProfil).toHaveBeenCalledWith(
       'office-1',
-      'office',
       expect.objectContaining({ anzeigename: 'Office Neu' }),
     );
     expect(result.anzeigename).toBe('Office Neu');
@@ -215,7 +201,6 @@ describe('BenutzerVerwaltungStore', () => {
       anzeigename: 'Office Neu',
       aktiv: true,
       erlaubteBereiche: ['dashboard'],
-      zugriffe: { u: { f: ['b'] } },
     });
     expect(store.createdBenutzer()).toBeNull();
     expect(store.updateSuccess()).not.toBeNull();
@@ -244,11 +229,35 @@ describe('BenutzerVerwaltungStore', () => {
         anzeigename: 'Master',
         aktiv: false,
         erlaubteBereiche: ['systemverwaltung'],
-        zugriffe: {},
       }),
     ).rejects.toThrow('Ungültige Änderung');
-    expect(benutzerServiceMock.updateBenutzerProfil).not.toHaveBeenCalled();
+    expect(serviceMock.updateBenutzerProfil).not.toHaveBeenCalled();
     expect(store.updateError()).toContain('nicht deaktiviert');
+  });
+
+  it('should reassign a selected office account without reloading profiles', async () => {
+    const store = TestBed.inject(BenutzerVerwaltungStore);
+    const stammdatenStore = TestBed.inject(StammdatenStore);
+    stammdatenStore.upsertBenutzerprofil({
+      uid: 'office-1',
+      email: 'office@example.com',
+      anzeigename: 'Office',
+      aktiv: true,
+      userRole: 'office',
+      erlaubteBereiche: ['dashboard'],
+      zugriffe: { 'u-alt': { 'f-alt': ['b-alt'] } },
+    });
+    store.selectBenutzer('office-1');
+
+    const result = await store.updateDatenzuordnung({
+      zugriffe: { 'u-neu': { 'f-neu': ['b-neu'] } },
+    });
+
+    expect(serviceMock.updateDatenzuordnung).toHaveBeenCalledWith('office-1', {
+      zugriffe: { 'u-neu': { 'f-neu': ['b-neu'] } },
+    });
+    expect(result.zugriffe).toEqual({ 'u-neu': { 'f-neu': ['b-neu'] } });
+    expect(store.updateSuccess()).toContain('neu zugeordnet');
   });
 
   it('should reassign a selected employee account without reloading profiles', async () => {

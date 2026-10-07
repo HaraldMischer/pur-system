@@ -1,5 +1,7 @@
 // pur-system/src/app/app.scss
 
+@use '../assets/scss/variables/breakpoints' as breakpoints;
+
 .app-shell {
   height: 100dvh;
   background: var(--mat-sys-surface);
@@ -33,7 +35,7 @@
     calc(32px + env(safe-area-inset-left));
 }
 
-@media (max-width: 720px) {
+@media (max-width: breakpoints.$breakpoint-large-device) {
   .app-sidenav {
     width: min(304px, 84vw);
   }

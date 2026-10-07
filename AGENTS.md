@@ -192,6 +192,8 @@
 ## Styles und UI
 
 - Nutze Angular Material/CDK als bestehendes UI-System.
+- Jeder über `MatDialog` geöffnete Dialog erhält standardmäßig `panelClass: ['pur-dialog__panel']`. Benötigt ein Dialog mehr
+  Platz, wird die Standardklasse durch `pur-dialog__panel--large` ergänzt.
 - Für eigene Layoutwerte werden grundsätzlich `px` verwendet, insbesondere für Breiten, Höhen, Abstände und Breakpoints.
 - `rem` wird nur verwendet, wenn eine Größe ausdrücklich mit der Root-Schriftgröße skalieren soll.
 - Vorhandene Angular-Material-Tokens bleiben von dieser Einheitenregel unberührt.

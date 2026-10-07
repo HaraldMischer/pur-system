@@ -34,46 +34,8 @@ service cloud.firestore {
       return hasProfil() && profil().aktiv == true && profil().userRole in ['office', 'filiale'];
     }
 
-    function isValidMitarbeiterProfilWrite() {
-      return !('userRole' in request.resource.data)
-        || request.resource.data.userRole != 'mitarbeiter'
-        || (
-          resource.data.userRole == 'mitarbeiter'
-          && request.resource.data.zugriffe == resource.data.zugriffe
-          && request.resource.data.firmaMitarbeiterId == resource.data.firmaMitarbeiterId
-        );
-    }
-
     function istEigenesProfil(uid) {
       return isAuthenticated() && request.auth.uid == uid;
-    }
-
-    function darfBenutzerprofilBearbeiten(uid) {
-      return isMaster()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'anzeigename',
-          'aktiv',
-          'erlaubteBereiche',
-          'zugriffe',
-          'aktualisiertAm'
-        ])
-        && isValidMitarbeiterProfilWrite()
-        && hatGueltigeFilialProfilZugriffe()
-        && (request.auth.uid != uid || request.resource.data.aktiv == true);
-    }
-
-    function hatGueltigeFilialProfilZugriffe() {
-      let zugriffe = request.resource.data.zugriffe;
-      return request.resource.data.userRole != 'filiale'
-        || (
-          zugriffe is map
-          && zugriffe.size() == 1
-          && zugriffe.values()[0] is map
-          && zugriffe.values()[0].size() == 1
-          && zugriffe.values()[0].values()[0] is list
-          && zugriffe.values()[0].values()[0].size() == 1
-          && zugriffe.values()[0].values()[0][0] is string
-        );
     }
 
     function darfUnternehmerLesen(unternehmerId) {
@@ -239,12 +201,11 @@ service cloud.firestore {
     }
 
     // ===============================================================================
-    // 2. Benutzerprofile lesen und durch Master bearbeiten
+    // 2. Benutzerprofile clientseitig ausschließlich lesen
     // ===============================================================================
 
     match /benutzerprofil/{uid} {
       allow read: if isMaster() || istEigenesProfil(uid);
-      allow update: if darfBenutzerprofilBearbeiten(uid);
 
       match /{subcollection}/{document=**} {
         allow read, write: if isMaster();

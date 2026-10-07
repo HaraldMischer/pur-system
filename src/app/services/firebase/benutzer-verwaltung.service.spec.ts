@@ -148,6 +148,36 @@ describe('BenutzerVerwaltungService', () => {
     });
   });
 
+  it('should call the server-side profile update function', async () => {
+    const service = TestBed.inject(BenutzerVerwaltungService);
+
+    await service.updateBenutzerProfil('user-1', {
+      anzeigename: 'Benutzer Neu',
+      aktiv: true,
+      erlaubteBereiche: ['dashboard', 'verwaltung'],
+    });
+
+    expect(httpsCallableMock).toHaveBeenCalledWith(functionsMock, 'updateBenutzerProfil');
+    expect(callableMock).toHaveBeenCalledWith({
+      uid: 'user-1',
+      anzeigename: 'Benutzer Neu',
+      aktiv: true,
+      erlaubteBereiche: ['dashboard', 'verwaltung'],
+    });
+  });
+
+  it('should call the server-side office and branch assignment function', async () => {
+    const service = TestBed.inject(BenutzerVerwaltungService);
+
+    await service.updateDatenzuordnung('user-1', { zugriffe: { u: { f: ['b'] } } });
+
+    expect(httpsCallableMock).toHaveBeenCalledWith(functionsMock, 'updateBenutzerDatenzuordnung');
+    expect(callableMock).toHaveBeenCalledWith({
+      uid: 'user-1',
+      zugriffe: { u: { f: ['b'] } },
+    });
+  });
+
   it('should call the server-side employee account deletion function', async () => {
     const service = TestBed.inject(BenutzerVerwaltungService);
 

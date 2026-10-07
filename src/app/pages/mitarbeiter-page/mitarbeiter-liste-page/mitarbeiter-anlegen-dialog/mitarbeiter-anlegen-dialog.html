@@ -96,7 +96,7 @@
       </div>
       @if (benutzerStore.benutzerProfil()?.userRole !== 'filiale') {
         <div class="pur-form__row">
-          <mat-form-field appearance="outline" class="pur-form__field pur-form__field--50">
+          <mat-form-field appearance="outline" class="pur-form__field">
             <mat-label>Filialen</mat-label>
             <mat-select formControlName="filialIds" multiple>
               <mat-select-trigger>

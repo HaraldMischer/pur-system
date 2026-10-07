@@ -20,7 +20,7 @@ function createDependencies() {
 }
 
 describe('handleDeleteBenutzer', () => {
-  it('should delete authentication before the employee profile', async () => {
+  it('should delete authentication before the user profile', async () => {
     const dependencies = createDependencies();
 
     await handleDeleteBenutzer(
@@ -51,7 +51,7 @@ describe('handleDeleteBenutzer', () => {
     ).rejects.toMatchObject<Partial<HttpsError>>({ code: 'permission-denied' });
   });
 
-  it('should reject invalid identifiers and non-employee profiles', async () => {
+  it('should reject invalid identifiers and master profiles', async () => {
     const dependencies = createDependencies();
 
     await expect(
@@ -62,13 +62,27 @@ describe('handleDeleteBenutzer', () => {
     ).rejects.toMatchObject<Partial<HttpsError>>({ code: 'invalid-argument' });
 
     dependencies.getBenutzerProfil.mockResolvedValueOnce({ aktiv: true, userRole: 'master' });
-    dependencies.getBenutzerProfil.mockResolvedValueOnce({ aktiv: true, userRole: 'office' });
+    dependencies.getBenutzerProfil.mockResolvedValueOnce({ aktiv: true, userRole: 'master' });
     await expect(
       handleDeleteBenutzer(
         { auth: { uid: 'master-1' }, data: { uid: 'office-user' } },
         dependencies,
       ),
     ).rejects.toMatchObject<Partial<HttpsError>>({ code: 'failed-precondition' });
+  });
+
+  it.each(['office', 'filiale', 'mitarbeiter'])('should delete a %s account', async (userRole) => {
+    const dependencies = createDependencies();
+    dependencies.getBenutzerProfil.mockResolvedValueOnce({ aktiv: true, userRole: 'master' });
+    dependencies.getBenutzerProfil.mockResolvedValueOnce({ aktiv: true, userRole });
+
+    await handleDeleteBenutzer(
+      { auth: { uid: 'master-1' }, data: { uid: `${userRole}-user` } },
+      dependencies,
+    );
+
+    expect(dependencies.deleteAuthBenutzer).toHaveBeenCalledWith(`${userRole}-user`);
+    expect(dependencies.deleteBenutzerProfil).toHaveBeenCalledWith(`${userRole}-user`);
   });
 
   it('should not delete the profile when authentication deletion fails', async () => {

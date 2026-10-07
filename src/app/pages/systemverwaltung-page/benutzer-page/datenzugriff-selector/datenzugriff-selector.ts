@@ -1,4 +1,4 @@
-// pur-system/src/app/components/data-selectors/datenzugriff-selector/datenzugriff-selector.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/datenzugriff-selector/datenzugriff-selector.ts
 
 import {
   ChangeDetectionStrategy,
@@ -10,7 +10,8 @@ import {
 } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { IUnternehmerAuswahl } from '../../../commons/models/domain/datenzugriff';
+
+import { IUnternehmerAuswahl } from '../../../../commons/models/domain/datenzugriff';
 
 @Component({
   selector: 'app-datenzugriff-selector',
@@ -26,6 +27,7 @@ export class DatenzugriffSelector {
   readonly firmenMehrfach = input(false, { transform: booleanAttribute });
   readonly filialenMehrfach = input(false, { transform: booleanAttribute });
   readonly filialenSichtbar = input(true, { transform: booleanAttribute });
+  readonly disabled = input(false, { transform: booleanAttribute });
   readonly firmenLaden = input(false);
   readonly filialenLaden = input(false);
   readonly unternehmerIds = model<readonly string[]>([]);

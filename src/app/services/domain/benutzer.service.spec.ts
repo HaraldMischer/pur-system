@@ -2,10 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 
-import {
-  IBenutzerProfilAktualisierung,
-  IBenutzerProfilDokument,
-} from '../../commons/models/domain/benutzer';
+import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
 import { BenutzerService } from './benutzer.service';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 
@@ -218,27 +215,5 @@ describe('BenutzerService', () => {
       'benutzerprofil',
       'networkOnly',
     );
-  });
-
-  it('should update editable profile data with a server timestamp', async () => {
-    const service = TestBed.inject(BenutzerService);
-    const aktualisierung: IBenutzerProfilAktualisierung = {
-      anzeigename: 'Office Neu',
-      aktiv: true,
-      erlaubteBereiche: ['systemverwaltung', 'verwaltung'],
-      zugriffe: { u: { f: ['b'] } },
-    };
-
-    const ergebnis = await service.updateBenutzerProfil('office-1', 'office', aktualisierung);
-
-    expect(firestoreDbServiceMock.replaceDocumentFields).toHaveBeenCalledWith(
-      'benutzerprofil/office-1',
-      {
-        ...aktualisierung,
-        erlaubteBereiche: ['dashboard', 'verwaltung'],
-        aktualisiertAm: 'server-timestamp',
-      },
-    );
-    expect(ergebnis.erlaubteBereiche).toEqual(['dashboard', 'verwaltung']);
   });
 });

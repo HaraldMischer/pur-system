@@ -32,6 +32,9 @@ export interface IBenutzerProfilAktualisierung {
   anzeigename: string;
   aktiv: boolean;
   erlaubteBereiche: TAppBereich[];
+}
+
+export interface IBenutzerDatenzuordnung {
   zugriffe: TBenutzerZugriffe;
 }
 

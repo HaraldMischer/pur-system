@@ -39,7 +39,7 @@ import {
 } from '../../../../commons/utils/benutzer/erlaubte-bereiche';
 import { nichtLeerValidator } from '../../../../commons/validators/nicht-leer.validator';
 import { BenutzerVerwaltungStore } from '../../../../stores/domain/benutzer-verwaltung.store';
-import { DatenzugriffSelector } from '../../../../components/data-selectors/datenzugriff-selector/datenzugriff-selector';
+import { DatenzugriffSelector } from '../datenzugriff-selector/datenzugriff-selector';
 
 // ===== Top-Level Helper =====================
 

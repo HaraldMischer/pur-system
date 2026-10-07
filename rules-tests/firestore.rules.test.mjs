@@ -590,7 +590,7 @@ for (const role of ['master', 'office', 'filiale']) {
   });
 }
 
-test('active master can write business data and update profiles', async () => {
+test('active master can write business data but cannot update profiles directly', async () => {
   const db = await seedProfile('master');
 
   await assertSucceeds(setDoc(doc(db, 'unternehmer/new'), { anzeigename: 'Unternehmer Neu' }));
@@ -602,7 +602,7 @@ test('active master can write business data and update profiles', async () => {
   );
   await assertSucceeds(setDoc(doc(db, filialePath), { name: 'updated' }, { merge: true }));
   await assertSucceeds(setDoc(doc(db, `${filialePath}/mitarbeiter/new`), { name: 'new' }));
-  await assertSucceeds(
+  await assertFails(
     setDoc(doc(db, 'benutzerprofil/other'), { anzeigename: 'updated' }, { merge: true }),
   );
   await assertFails(setDoc(doc(db, 'other/new'), { name: 'new' }));
@@ -615,10 +615,10 @@ test('active master can write business data and update profiles', async () => {
   await assertFails(deleteDoc(doc(db, 'benutzerprofil/other')));
 });
 
-test('active master cannot deactivate or delete the own profile', async () => {
+test('active master cannot update or delete the own profile directly', async () => {
   const db = await seedProfile('master');
 
-  await assertSucceeds(
+  await assertFails(
     setDoc(doc(db, 'benutzerprofil/scoped'), { anzeigename: 'Master Neu' }, { merge: true }),
   );
   await assertFails(setDoc(doc(db, 'benutzerprofil/scoped'), { aktiv: false }, { merge: true }));
@@ -636,24 +636,22 @@ test('active master cannot change immutable profile fields', async () => {
   );
 });
 
-test('active master may store client-managed profile areas', async () => {
+test('active master cannot store client-managed profile areas directly', async () => {
   const db = await seedProfile('master');
   const eigenesProfil = doc(db, 'benutzerprofil/scoped');
   const anderesProfil = doc(db, 'benutzerprofil/other');
 
-  await assertSucceeds(setDoc(eigenesProfil, { erlaubteBereiche: ['dashboard'] }, { merge: true }));
-  await assertSucceeds(
-    setDoc(anderesProfil, { erlaubteBereiche: ['verwaltung'] }, { merge: true }),
-  );
-  await assertSucceeds(
+  await assertFails(setDoc(eigenesProfil, { erlaubteBereiche: ['dashboard'] }, { merge: true }));
+  await assertFails(setDoc(anderesProfil, { erlaubteBereiche: ['verwaltung'] }, { merge: true }));
+  await assertFails(
     setDoc(anderesProfil, { erlaubteBereiche: ['dashboard', 'systemverwaltung'] }, { merge: true }),
   );
-  await assertSucceeds(
+  await assertFails(
     setDoc(anderesProfil, { erlaubteBereiche: ['dashboard', 'verwaltung'] }, { merge: true }),
   );
 });
 
-test('active master must preserve exactly one entrepreneur, company and branch for branch profiles', async () => {
+test('active master cannot change branch profile assignments directly', async () => {
   const db = await seedProfile('master');
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), 'benutzerprofil/filiale'), {
@@ -666,7 +664,7 @@ test('active master must preserve exactly one entrepreneur, company and branch f
   });
   const profil = doc(db, 'benutzerprofil/filiale');
 
-  await assertSucceeds(setDoc(profil, { anzeigename: 'Filiale Neu' }, { merge: true }));
+  await assertFails(setDoc(profil, { anzeigename: 'Filiale Neu' }, { merge: true }));
   await assertFails(updateDoc(profil, { zugriffe: {} }));
   await assertFails(updateDoc(profil, { zugriffe: { 'u-1': { 'f-1': ['b-1', 'b-2'] } } }));
   await assertFails(
@@ -674,10 +672,10 @@ test('active master must preserve exactly one entrepreneur, company and branch f
       zugriffe: { 'u-1': { 'f-1': ['b-1'] }, 'u-2': { 'f-2': ['b-2'] } },
     }),
   );
-  await assertSucceeds(updateDoc(profil, { zugriffe: { 'u-2': { 'f-2': ['b-2'] } } }));
+  await assertFails(updateDoc(profil, { zugriffe: { 'u-2': { 'f-2': ['b-2'] } } }));
 });
 
-test('active master updates an employee account while preserving its employee assignment', async () => {
+test('active master cannot update employee profiles directly', async () => {
   const db = await seedProfile('master');
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), 'benutzerprofil/mitarbeiter'), {
@@ -691,9 +689,9 @@ test('active master updates an employee account while preserving its employee as
   });
   const profil = doc(db, 'benutzerprofil/mitarbeiter');
 
-  await assertSucceeds(setDoc(profil, { anzeigename: 'Mitarbeiter Neu' }, { merge: true }));
-  await assertSucceeds(setDoc(profil, { erlaubteBereiche: ['dashboard'] }, { merge: true }));
-  await assertSucceeds(setDoc(profil, { aktiv: false }, { merge: true }));
+  await assertFails(setDoc(profil, { anzeigename: 'Mitarbeiter Neu' }, { merge: true }));
+  await assertFails(setDoc(profil, { erlaubteBereiche: ['dashboard'] }, { merge: true }));
+  await assertFails(setDoc(profil, { aktiv: false }, { merge: true }));
   await assertFails(setDoc(profil, { zugriffe: {} }, { merge: true }));
   await assertFails(setDoc(profil, { zugriffe: { 'u-1': { 'f-2': [] } } }, { merge: true }));
   await assertFails(setDoc(profil, { firmaMitarbeiterId: 'm-2' }, { merge: true }));

@@ -1,11 +1,14 @@
 // pur-system/src/assets/scss/modules/_sections.scss
 
+@use '../variables/breakpoints' as breakpoints;
+
 .pur-page-section {
   display: grid;
   gap: 16px;
 
   &__header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 12px;
     min-width: 0;
@@ -20,8 +23,12 @@
 
   &__header-actions {
     display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: 12px;
+    min-width: 0;
     margin-inline-start: auto;
   }
 
@@ -83,35 +90,11 @@
       font: var(--mat-sys-label-large);
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: breakpoints.$breakpoint-medium-device) {
       > div {
         grid-template-columns: 1fr;
         gap: 4px;
       }
-    }
-  }
-
-  @media (max-width: 600px) {
-    &__header {
-      display: grid;
-    }
-
-    &__header-actions {
-      flex-wrap: wrap;
-      width: 100%;
-      margin-inline-start: 0;
-    }
-
-    &__header-actions > button {
-      flex: 1 1 auto;
-    }
-
-    &__header-actions > mat-button-toggle-group {
-      width: 100%;
-    }
-
-    &__header-actions > mat-button-toggle-group > mat-button-toggle {
-      flex: 1;
     }
   }
 }

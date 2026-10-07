@@ -86,6 +86,7 @@ describe('BenutzerVerwaltung', () => {
     expect(storeMock.selectBenutzer).toHaveBeenCalledWith(profil.uid);
     expect(openMock).toHaveBeenCalledWith(BenutzerBearbeitenDialog, {
       data: { profil },
+      panelClass: ['pur-dialog__panel'],
     });
   });
 

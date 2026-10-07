@@ -1,5 +1,7 @@
 // pur-system/src/app/components/app-shell/app-toolbar/app-toolbar.scss
 
+@use '../../../../assets/scss/variables/breakpoints' as breakpoints;
+
 .app-toolbar {
   position: relative;
   z-index: 1;
@@ -84,7 +86,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: breakpoints.$breakpoint-large-device) {
   .app-toolbar__update-status > span {
     display: none;
   }

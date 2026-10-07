@@ -139,10 +139,10 @@ Rolle, Aktivstatus und Bereichsfreigaben werden erst aus dem über die Firebase-
 
 Bei der Benutzeranlage erfasst der Master Anzeigename, Benutzerrolle und Anfangspasswort. Die Anwendung bildet daraus automatisch
 den nicht bearbeitbaren Anmeldenamen und zeigt ihn im Formular an. Die technische Firebase-Adresse bleibt bei der Anlage verborgen
-und wird erst in der Benutzerbearbeitung angezeigt. Die Anwendung übergibt den aus dem Anzeigenamen abgeleiteten
-Namensbestandteil zusammen mit dem Anzeigenamen und der Rolle. Die Callable Function normalisiert diesen Namensbestandteil erneut
-und erzeugt Anmeldename und technische Adresse verbindlich. Dadurch bleibt die technische Kennung nach der Anlage unabhängig von
-späteren Änderungen des Anzeigenamens.
+und wird auch in der Benutzerbearbeitung nicht angezeigt. Die Anwendung übergibt den aus dem Anzeigenamen abgeleiteten
+Namensbestandteil zusammen mit dem Anzeigenamen und der Rolle. Die Callable Function normalisiert diesen Namensbestandteil
+erneut und erzeugt Anmeldename und technische Adresse verbindlich. Dadurch bleibt die technische Kennung nach der Anlage
+unabhängig von späteren Änderungen des Anzeigenamens.
 
 ### Benutzerprofil und Bereichsfreigaben
 

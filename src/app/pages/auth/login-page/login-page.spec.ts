@@ -50,10 +50,13 @@ describe('LoginPage', () => {
     const fixture = TestBed.createComponent(LoginPage);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
+    const masterButton = Array.from(compiled.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Master',
+    );
 
-    compiled.querySelector<HTMLButtonElement>('mat-card-title button')?.click();
+    masterButton?.click();
 
-    expect(compiled.querySelector('mat-card-title button')?.textContent).toContain('Master');
+    expect(masterButton).toBeDefined();
     expect(fixture.componentInstance.loginForm.getRawValue()).toEqual({
       anmeldename: 'harry-master',
       password: '',

@@ -297,7 +297,7 @@ bleibt ausgeschlossen und die Sitzung des Masters bleibt erhalten.
 
 - src/app/commons/models/domain/benutzer.ts
 - src/app/commons/models/domain/datenzugriff.ts
-- src/app/components/data-selectors/datenzugriff-selector/
+- src/app/pages/systemverwaltung-page/benutzer-page/datenzugriff-selector/
 - src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/
 - src/app/services/domain/benutzer.service.ts
 - src/app/stores/app/stammdaten.store.ts
@@ -380,7 +380,7 @@ bleibt ausgeschlossen und die Sitzung des Masters bleibt erhalten.
 #### Ziel
 
 Ein Master kann vorhandene Profile aus `benutzerprofil` auswählen und deren Anzeigename, Aktivstatus, erlaubte Bereiche und
-Datenzugriffe bearbeiten. Die Benutzerrolle, E-Mail-Adresse und der Firebase-Auth-Status werden in dieser ersten Ausbaustufe nicht
+getrennt davon die Datenzuordnung bearbeiten. Die Benutzerrolle, E-Mail-Adresse und der Firebase-Auth-Status werden nicht
 verändert.
 
 #### Betroffene Dateien
@@ -426,7 +426,7 @@ verändert.
 - [x] Den Bereich `systemverwaltung` aus der unveränderlichen Rolle ableiten: für Master fest aktiviert, für Office und Filiale
       fest deaktiviert.
 - [x] Den vorhandenen `DatenzugriffSelector` wiederverwenden und rollenabhängige Validierung aus der Benutzeranlage übernehmen.
-- [x] Firebase-Service um das Aktualisieren von `benutzerprofil/{uid}` erweitern.
+- [x] Firebase-Service um geschützte Callable-Aufrufe für Profildaten und Datenzuordnungen erweitern.
 - [x] Beim Speichern `aktualisiertAm` mit einem Server-Timestamp setzen.
 - [x] Aktualisierten Eintrag ohne erneutes Laden in die Store-Liste übernehmen.
 - [x] Erfolgs-, Fehler-, Lade- und Speicherzustand in der Oberfläche anzeigen.
@@ -435,6 +435,8 @@ verändert.
 
 - [x] Verhindern, dass ein Master sich selbst deaktiviert; Rollenänderungen generell nicht zulassen.
 - [x] Firestore Rules beziehungsweise Backend-Schutz für erlaubte Profilaktualisierungen gezielt testen.
+- [x] Direkte Client-Schreibzugriffe auf Benutzerprofile vollständig sperren und Änderungen ausschließlich über Callable
+      Functions ausführen.
 - [x] Festlegen, wie angemeldete Benutzer geänderte Bereiche und Zugriffe ohne erneute Anmeldung erhalten: Das aktuell
       bearbeitende Masterprofil wird sofort im lokalen Store aktualisiert; andere bereits angemeldete Konten erhalten UI-Freigaben
       spätestens nach einem Neuladen, während die Rules den neuen Profilstand sofort auswerten.
@@ -460,19 +462,23 @@ verändert.
 - [x] Die aktualisierte Store-Liste und Oberfläche zeigen den gespeicherten Stand ohne erneutes Laden.
 - [x] Tests, Rules-Tests, Build und manuelle Prüfung sind erfolgreich.
 
-### 4.4 Mitarbeiterkonten neu zuordnen und löschen
+### 4.4 Benutzerkonten neu zuordnen und löschen
 
 #### Ziel
 
-Ein Master kann die fachliche Verknüpfung eines vorhandenen Mitarbeiterkontos vollständig neu auswählen oder das
-Mitarbeiterkonto endgültig löschen. Verwaiste Firmen- oder Mitarbeiterreferenzen verhindern beide Aktionen nicht.
+Ein Master kann die Datenzuordnung vorhandener Office-, Filial- und Mitarbeiterkonten vollständig neu auswählen oder das Konto
+endgültig löschen. Verwaiste Firmen- oder Mitarbeiterreferenzen verhindern die Neuzuordnung oder Löschung eines
+Mitarbeiterkontos nicht.
 
 #### Betroffene Dateien
 
 Änderungen:
 
 - `functions/src/index.ts`
+- `functions/src/delete-benutzer.ts`
+- `functions/src/delete-benutzer.spec.ts`
 - `src/app/commons/models/domain/benutzer.ts`
+- `src/app/pages/systemverwaltung-page/benutzer-page/datenzugriff-selector/`
 - `src/app/commons/utils/errors/firebase-error-message.ts`
 - `src/app/services/firebase/benutzer-verwaltung.service.ts`
 - `src/app/stores/app/stammdaten.store.ts`
@@ -484,8 +490,10 @@ Neu hinzuzufügen:
 
 - `functions/src/update-mitarbeiter-zuordnung.ts`
 - `functions/src/update-mitarbeiter-zuordnung.spec.ts`
-- `functions/src/delete-benutzer.ts`
-- `functions/src/delete-benutzer.spec.ts`
+- `functions/src/update-benutzer-profil.ts`
+- `functions/src/update-benutzer-profil.spec.ts`
+- `functions/src/update-benutzer-datenzuordnung.ts`
+- `functions/src/update-benutzer-datenzuordnung.spec.ts`
 
 #### Schritt 1: Vorhandene Zuordnung darstellen
 
@@ -498,9 +506,17 @@ Neu hinzuzufügen:
 - [x] Alte Verknüpfung, neue Verknüpfung und Benutzerprofil serverseitig in einer Transaktion aktualisieren.
 - [x] Die Aktion ausschließlich für aktive Master und Benutzerprofile der Rolle `mitarbeiter` zulassen.
 
-#### Schritt 3: Mitarbeiterkonto löschen
+#### Schritt 3: Office- und Filialkonten neu zuordnen
 
-- [x] Eine ausdrückliche Sicherheitsabfrage vor der endgültigen Löschung anzeigen.
+- [x] Vorhandene Datenzuordnungen zunächst lesend anzeigen und erst über `Zuordnung ändern` zur Bearbeitung freigeben.
+- [x] Office-Zuordnungen auf einen Unternehmer sowie mindestens eine vollständige Firmen-/Filialzuordnung begrenzen.
+- [x] Filialzuordnungen auf genau einen Unternehmer, eine Firma und eine Filiale begrenzen.
+- [x] Die neue Zuordnung durch eine Callable Function serverseitig prüfen und speichern.
+
+#### Schritt 4: Benutzerkonto löschen
+
+- [x] Für Office-, Filial- und Mitarbeiterkonten eine ausdrückliche Sicherheitsabfrage vor der endgültigen Löschung anzeigen.
+- [x] Masterkonten von der Löschaktion ausschließen.
 - [x] Zuerst das Firebase-Auth-Konto und danach Profil und Mitarbeiterverknüpfung entfernen.
 - [x] Das gelöschte Profil unmittelbar aus dem lokalen Profilbestand entfernen.
 
@@ -513,6 +529,8 @@ Neu hinzuzufügen:
 #### Erledigt, wenn
 
 - [x] Jedes Mitarbeiterkonto kann einem beliebigen verfügbaren fachlichen Mitarbeiter neu zugeordnet werden.
+- [x] Office- und Filialkonten können innerhalb ihrer Rollenregeln vollständig neu zugeordnet werden.
+- [x] Office-, Filial- und Mitarbeiterkonten können vollständig gelöscht werden; Masterkonten nicht.
 - [x] Verwaiste Mitarbeiterkonten können neu zugeordnet oder vollständig gelöscht werden.
 - [x] Kein Löschablauf erzeugt vorübergehend ein authentifizierbares Konto ohne Pur-System-Profil.
 - [x] Oberfläche und lokaler Profilbestand zeigen den bestätigten Serverstand unmittelbar an.
@@ -1587,7 +1605,7 @@ dieser Verknüpfung getrennt.
 
 - src/app/commons/models/domain/benutzer.ts
 - src/app/commons/models/domain/mitarbeiter.ts
-- src/app/components/data-selectors/datenzugriff-selector/
+- src/app/pages/systemverwaltung-page/benutzer-page/datenzugriff-selector/
 - src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/
 - src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.spec.ts
 - src/app/services/domain/benutzer.service.ts

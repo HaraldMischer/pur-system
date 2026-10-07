@@ -1,19 +1,19 @@
 <!-- pur-system/src/app/pages/auth/login-page/login-page.html -->
 
 <section class="pur-page">
+  @if (isDevelopmentMode) {
+    <div class="login-page__development-actions">
+      <button type="button" (click)="patchLoginForm('harry-master')">Master</button>
+      <button type="button" (click)="patchLoginForm('gevelsberg02-filiale')">Filiale</button>
+      <button type="button" (click)="patchLoginForm('harry-office')">Office</button>
+      <button type="button" (click)="patchLoginForm('harry-mitarbeiter')">Mitarbeiter</button>
+    </div>
+  }
+
   <mat-card class="pur-card">
     <!-- Kartenkopf -->
     <mat-card-header>
-      <mat-card-title>
-        Anmelden
-        @if (isDevelopmentMode) {
-          <span class="flex-spacer"></span>
-          <button type="button" (click)="patchLoginForm('harry-master')">Master</button>
-          <button type="button" (click)="patchLoginForm('gevelsberg02-filiale')">Filiale</button>
-          <button type="button" (click)="patchLoginForm('harry-office')">Office</button>
-          <button type="button" (click)="patchLoginForm('harry-mitarbeiter')">Mitarbeiter</button>
-        }
-      </mat-card-title>
+      <mat-card-title>Anmelden</mat-card-title>
       <mat-card-subtitle>Melde dich mit deinem Anmeldenamen an.</mat-card-subtitle>
     </mat-card-header>
 
