@@ -4,20 +4,26 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 
 import { TUserRole } from '../../../../commons/models/domain/benutzer';
 import { BenutzerVerwaltungStore } from '../../../../stores/domain/benutzer-verwaltung.store';
 import { BenutzerBearbeitenDialog } from './benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog';
+import { BenutzerDatenzuordnungDialog } from './benutzer-datenzuordnung-dialog/benutzer-datenzuordnung-dialog';
+import { BenutzerLoeschenDialog } from './benutzer-loeschen-dialog/benutzer-loeschen-dialog';
 
 @Component({
   selector: 'app-benutzer-verwaltung',
   imports: [
     MatButtonModule,
+    MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
+    MatMenuModule,
     MatSelectModule,
     ReactiveFormsModule,
   ],
@@ -60,6 +66,32 @@ export class BenutzerVerwaltung {
     if (!profil || this.verwaltungStore.inProgress()) return;
 
     this.dialog.open(BenutzerBearbeitenDialog, {
+      data: { profil },
+      panelClass: ['pur-dialog__panel'],
+    });
+  }
+
+  /**
+   * Öffnet den Datenzuordnungsdialog für das ausgewählte Benutzerprofil.
+   */
+  openBenutzerDatenzuordnungDialog(): void {
+    const profil = this.verwaltungStore.selectedBenutzer();
+    if (!profil || profil.userRole === 'master' || this.verwaltungStore.inProgress()) return;
+
+    this.dialog.open(BenutzerDatenzuordnungDialog, {
+      data: { profil },
+      panelClass: ['pur-dialog__panel'],
+    });
+  }
+
+  /**
+   * Öffnet den Löschdialog für das ausgewählte Benutzerprofil.
+   */
+  openBenutzerLoeschenDialog(): void {
+    const profil = this.verwaltungStore.selectedBenutzer();
+    if (!profil || profil.userRole === 'master' || this.verwaltungStore.inProgress()) return;
+
+    this.dialog.open(BenutzerLoeschenDialog, {
       data: { profil },
       panelClass: ['pur-dialog__panel'],
     });

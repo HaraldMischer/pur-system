@@ -3,7 +3,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   effect,
   inject,
   signal,
@@ -17,12 +16,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
 import {
-  IBenutzerDatenzuordnung,
-  IBenutzerMitarbeiterZuordnung,
   IBenutzerProfilAktualisierung,
   IBenutzerProfilEintrag,
 } from '../../../../../commons/models/domain/benutzer';
-import { IUnternehmerAuswahl } from '../../../../../commons/models/domain/datenzugriff';
 import {
   buildErlaubteBereiche,
   getWaehlbareAppBereiche,
@@ -30,9 +26,7 @@ import {
 } from '../../../../../commons/utils/benutzer/erlaubte-bereiche';
 import { nichtLeerValidator } from '../../../../../commons/validators/nicht-leer.validator';
 import { AuthService } from '../../../../../services/firebase/auth.service';
-import { StammdatenStore } from '../../../../../stores/app/stammdaten.store';
 import { BenutzerVerwaltungStore } from '../../../../../stores/domain/benutzer-verwaltung.store';
-import { BenutzerDatenzuordnung } from './benutzer-datenzuordnung/benutzer-datenzuordnung';
 
 // ===== Top-Level Helper =====================
 
@@ -45,7 +39,6 @@ export interface IBenutzerBearbeitenDialogDaten {
 @Component({
   selector: 'app-benutzer-bearbeiten-dialog',
   imports: [
-    BenutzerDatenzuordnung,
     MatButtonModule,
     MatCheckboxModule,
     MatDialogModule,
@@ -65,7 +58,6 @@ export class BenutzerBearbeitenDialog {
     MatDialogRef<BenutzerBearbeitenDialog, IBenutzerProfilEintrag | undefined>,
   );
   private readonly dialogDaten = inject<IBenutzerBearbeitenDialogDaten>(MAT_DIALOG_DATA);
-  private readonly stammdatenStore = inject(StammdatenStore);
   readonly verwaltungStore = inject(BenutzerVerwaltungStore);
 
   // ===== Interner State =======================
@@ -85,23 +77,7 @@ export class BenutzerBearbeitenDialog {
           ? 'Mitarbeiter-Benutzer bearbeiten'
           : 'Master-Benutzer bearbeiten';
   readonly bereiche = getWaehlbareAppBereiche(this.profil.userRole);
-  readonly unternehmer = computed<readonly IUnternehmerAuswahl[]>(() => {
-    return this.stammdatenStore.unternehmer().map((unternehmer) => ({
-      id: unternehmer.id,
-      anzeigename: unternehmer.anzeigename,
-      firmen: this.stammdatenStore.getFirmen(unternehmer.id).map((firma) => ({
-        id: firma.id,
-        anzeigename: firma.anzeigename,
-        filialen: this.stammdatenStore.getFilialen(unternehmer.id, firma.id).map((filiale) => ({
-          id: filiale.id,
-          anzeigename: filiale.anzeigename,
-        })),
-      })),
-    }));
-  });
   readonly hatAenderungen = signal(false);
-  readonly zuordnungAktionAktiv = signal(false);
-  readonly loeschenBestaetigen = signal(false);
   readonly benutzerForm = new FormGroup({
     anzeigename: new FormControl(this.profil.anzeigename, {
       nonNullable: true,
@@ -157,76 +133,6 @@ export class BenutzerBearbeitenDialog {
     try {
       const ergebnis = await this.verwaltungStore.updateBenutzerProfil(this.getAktualisierung());
       this.dialogRef.close(ergebnis);
-    } catch {
-      // Der Store stellt die benutzerfreundliche Fehlermeldung bereit.
-    } finally {
-      this.dialogRef.disableClose = false;
-    }
-  }
-
-  /**
-   * Speichert eine neue Office- oder Filial-Datenzuordnung serverseitig.
-   *
-   * @param zuordnung - Vollständige neue Datenzuordnung.
-   */
-  async saveDatenzuordnung(zuordnung: IBenutzerDatenzuordnung): Promise<void> {
-    if (this.verwaltungStore.inProgress()) return;
-
-    this.dialogRef.disableClose = true;
-    try {
-      const ergebnis = await this.verwaltungStore.updateDatenzuordnung(zuordnung);
-      this.dialogRef.close(ergebnis);
-    } catch {
-      // Der Store stellt die benutzerfreundliche Fehlermeldung bereit.
-    } finally {
-      this.dialogRef.disableClose = false;
-    }
-  }
-
-  /**
-   * Speichert die ausgewählte neue Mitarbeiterzuordnung serverseitig.
-   *
-   * @param zuordnung - Vollständige neue Mitarbeiterzuordnung.
-   */
-  async saveMitarbeiterZuordnung(zuordnung: IBenutzerMitarbeiterZuordnung): Promise<void> {
-    if (this.verwaltungStore.inProgress()) return;
-
-    this.dialogRef.disableClose = true;
-    try {
-      const ergebnis = await this.verwaltungStore.updateMitarbeiterZuordnung(zuordnung);
-      this.dialogRef.close(ergebnis);
-    } catch {
-      // Der Store stellt die benutzerfreundliche Fehlermeldung bereit.
-    } finally {
-      this.dialogRef.disableClose = false;
-    }
-  }
-
-  /**
-   * Blendet die Sicherheitsabfrage für die endgültige Kontolöschung ein.
-   */
-  startBenutzerLoeschen(): void {
-    if (this.profil.userRole === 'master' || this.zuordnungAktionAktiv()) return;
-    this.loeschenBestaetigen.set(true);
-  }
-
-  /**
-   * Bricht die Kontolöschung ab.
-   */
-  cancelBenutzerLoeschen(): void {
-    this.loeschenBestaetigen.set(false);
-  }
-
-  /**
-   * Löscht das ausgewählte Konto nach bestätigter Sicherheitsabfrage.
-   */
-  async deleteBenutzer(): Promise<void> {
-    if (!this.loeschenBestaetigen() || this.verwaltungStore.inProgress()) return;
-
-    this.dialogRef.disableClose = true;
-    try {
-      await this.verwaltungStore.deleteBenutzer();
-      this.dialogRef.close(undefined);
     } catch {
       // Der Store stellt die benutzerfreundliche Fehlermeldung bereit.
     } finally {

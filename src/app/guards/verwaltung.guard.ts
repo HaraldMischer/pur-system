@@ -4,7 +4,6 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 import { BenutzerStore } from '../stores/app/benutzer.store';
-import { getErlaubteStartRoute } from './guard-navigation';
 
 export const verwaltungGuard: CanActivateFn = () => {
   const benutzerStore = inject(BenutzerStore);
@@ -18,5 +17,5 @@ export const verwaltungGuard: CanActivateFn = () => {
   const darfVerwalten =
     benutzerProfil.userRole === 'office' || benutzerProfil.userRole === 'master';
 
-  return darfVerwalten || router.createUrlTree([getErlaubteStartRoute(benutzerProfil) ?? '/login']);
+  return darfVerwalten || router.createUrlTree(['/dashboard']);
 };

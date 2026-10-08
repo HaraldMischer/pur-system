@@ -2436,3 +2436,118 @@ Sammelaktion einzuführen.
 - [x] Ein erneuter Lauf aktualisiert dieselben Ziel-IDs und erhält ausschließlich im Ziel vorhandene Dokumente.
 - [x] Es existiert keine Aktion zur Migration aller `purCustomers`.
 - [x] Tests und Build laufen erfolgreich.
+
+## 18. Done Todo: Benutzerverwaltung in getrennte Aktionsdialoge aufteilen
+
+### Ziel
+
+Die Benutzerverwaltung bietet für Office-, Filial- und Mitarbeiterprofile ein kompaktes Menü `Benutzer bearbeiten` an. Die
+Einträge `Benutzerdaten bearbeiten`, `Datenzuordnung ändern` und `Benutzerkonto löschen` öffnen jeweils einen eigenständigen
+Dialog direkt aus der Benutzerverwaltung. Bei Masterprofilen öffnet der Bearbeiten-Button den einzigen zulässigen Profildialog
+direkt. Es werden keine Dialoge aus einem bereits geöffneten Dialog heraus geöffnet. Jeder Dialog enthält nur den zugehörigen
+fachlichen Schreibvorgang und besitzt eine eindeutige Abschlussaktion.
+
+### Rollenabhängiges Verhalten
+
+- `master`
+  - [x] `Benutzerdaten bearbeiten` direkt anbieten.
+  - [x] Anzeigename, Aktivstatus und die optionalen Bereiche bearbeiten; `dashboard` und `systemverwaltung` bleiben
+        verpflichtend.
+  - [x] Das eigene Masterprofil nicht deaktivierbar machen.
+  - [x] Weder `Datenzuordnung ändern` noch `Benutzerkonto löschen` anbieten.
+- `office`
+  - [x] Alle drei Menüaktionen anbieten.
+  - [x] Genau einen Unternehmer und mindestens eine vollständige Firmen-/Filialzuordnung verlangen.
+  - [x] Mehrere Firmen und mehrere Filialen innerhalb des ausgewählten Unternehmers zulassen.
+- `filiale`
+  - [x] Alle drei Menüaktionen anbieten.
+  - [x] Genau einen Unternehmer, eine Firma und eine Filiale verlangen.
+- `mitarbeiter`
+  - [x] Alle drei Menüaktionen anbieten.
+  - [x] Genau einen Unternehmer, eine Firma und einen zugehörigen fachlichen Mitarbeiter verlangen.
+  - [x] Die Filialliste im Benutzerprofil leer halten und `firmaMitarbeiterId` über die besondere Mitarbeiterzuordnung
+        verwalten.
+- Für alle Rollen
+  - [x] Die Benutzerrolle unveränderlich lassen.
+  - [x] `dashboard` als verpflichtenden Bereich erhalten.
+  - [x] Nur die für die Rolle zulässigen optionalen Bereiche bearbeiten lassen.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-verwaltung.html`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-verwaltung.ts`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-verwaltung.scss`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-verwaltung.spec.ts`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/`
+- `src/app/stores/domain/benutzer-verwaltung.store.spec.ts`
+- `docs/projekt-stand.md`
+
+Neu hinzugefügt:
+
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-datenzuordnung-dialog/`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-loeschen-dialog/`
+
+### Schritt 1: Benutzeraktionen im Auswahlbereich bündeln
+
+- [x] Den direkten Bearbeiten-Button für Nicht-Masterprofile durch einen beschrifteten Menü-Trigger `Benutzer bearbeiten`
+      ersetzen.
+- [x] Die Menüeinträge `Benutzerdaten bearbeiten`, `Datenzuordnung ändern` und `Benutzerkonto löschen` bereitstellen.
+- [x] Die Löschaktion im Menü optisch von den beiden Bearbeitungsaktionen trennen.
+- [x] Menü-Trigger und Aktionen ohne ausgewähltes Profil sowie während eines laufenden Schreibvorgangs deaktivieren.
+- [x] Für Masterprofile den Profildialog direkt und keine unzulässige Löschaktion anbieten.
+
+### Schritt 2: Profildialog auf Benutzerdaten begrenzen
+
+- [x] Im bestehenden Bearbeitungsdialog ausschließlich Anzeigename, Aktivstatus und erlaubte Bereiche bearbeiten.
+- [x] Datenzuordnung und Kontolöschung einschließlich ihrer lokalen Aktionszustände aus dem Profildialog entfernen.
+- [x] `Änderungen speichern` nur bei gültigen und tatsächlich geänderten Profildaten aktivieren.
+- [x] Den bestehenden Selbstschutz gegen die Deaktivierung des eigenen Masterprofils erhalten.
+
+### Schritt 3: Eigenständigen Datenzuordnungsdialog umsetzen
+
+- [x] Einen rollenabhängig betitelten Datenzuordnungsdialog direkt aus der Benutzerverwaltung öffnen.
+- [x] Die vorhandenen Komponenten für Office-, Filial- und Mitarbeiterzuordnungen im neuen Dialog wiederverwenden.
+- [x] Den Datenzuordnungsdialog direkt mit der vorausgewählten aktuellen Zuordnung in den Select-Feldern öffnen.
+- [x] Abbrechen und Speichern vollständig im Datenzuordnungsdialog behandeln.
+- [x] Den Dialog erst nach serverseitig bestätigter Aktualisierung schließen und den bestätigten Store-Zustand anzeigen.
+- [x] Nicht mehr auflösbare Referenzen weiterhin mit ihrer gespeicherten ID kenntlich machen.
+
+### Schritt 4: Eigenständigen Löschdialog umsetzen
+
+- [x] Einen kompakten Bestätigungsdialog mit dem betroffenen Anzeigenamen und einem eindeutigen Warntext öffnen.
+- [x] Die Aktionen `Abbrechen` und `Benutzerkonto endgültig löschen` anbieten.
+- [x] Die Löschaktion während des Schreibvorgangs gegen wiederholte Aufrufe schützen.
+- [x] Den Dialog nach erfolgreicher Löschung schließen und die gelöschte Auswahl aus der Benutzerverwaltung entfernen.
+- [x] Fehler im geöffneten Löschdialog anzeigen, ohne die Bestätigung oder den ausgewählten Benutzer vorzeitig zu verlieren.
+
+### Schritt 5: Veraltete Dialogzustände und Abhängigkeiten bereinigen
+
+- [x] Nicht mehr benötigte Outputs, Signale, Methoden und Imports des bisherigen kombinierten Dialogs entfernen.
+- [x] Die bestehenden Zuordnungskomponenten nur soweit für ihren neuen Dialogkontext erforderlich verschieben oder anpassen.
+- [x] Dialoge einheitlich mit `pur-dialog__panel` und bei zusätzlichem Platzbedarf mit `pur-dialog__panel--large` öffnen.
+- [x] Alle Formulare während ihrer eigenen Schreiboperation vollständig deaktivieren und wiederholte Submit-Aufrufe verhindern.
+
+### Tests und Abschluss
+
+- [x] Die Menüeinträge, deaktivierten Zustände und die rollenabhängig fehlende Löschaktion testen.
+- [x] Profildialogtests auf den eigenständigen Profilspeichervorgang begrenzen.
+- [x] Datenzuordnungsdialog für Office-, Filial- und Mitarbeiterkonten einschließlich Abbruch, Erfolg und Fehler testen.
+- [x] Löschdialog für Sicherheitsabfrage, Masterausschluss, laufenden Schreibvorgang, Erfolg und Fehler testen.
+- [x] Store-Zustand und ausgewähltes Profil nach Aktualisierung beziehungsweise Löschung prüfen.
+- [x] Die vollständige Testsuite mit `npm test` ausführen.
+- [x] Den Office-Build mit `npm run build:office` ausführen.
+- [x] Alle drei Dialoge auf Desktop und kleinem Viewport einschließlich Tastaturbedienung manuell prüfen.
+- [x] `docs/projekt-stand.md` nach erfolgreichem Abschluss aktualisieren.
+
+### Erledigt, wenn
+
+- [x] Für Nicht-Masterprofile sind die drei zulässigen Aktionen über ein verständliches Menü erreichbar; Masterprofile öffnen
+      ihre einzige zulässige Bearbeitungsaktion direkt.
+- [x] Profilbearbeitung, Datenzuordnung und Kontolöschung finden in voneinander unabhängigen Dialogen statt.
+- [x] Zu keinem Zeitpunkt liegen zwei Anwendungsdialoge übereinander.
+- [x] Jeder Dialog besitzt genau die zu seinem Schreibvorgang gehörenden Eingaben, Zustände und Abschlussaktionen.
+- [x] Masterkonten können nicht gelöscht und eigene Masterprofile nicht deaktiviert werden.
+- [x] Oberfläche und Store zeigen nach jeder bestätigten Aktion unmittelbar den aktuellen Stand.
+- [x] Tests, Build und manuelle responsive Prüfung sind erfolgreich.

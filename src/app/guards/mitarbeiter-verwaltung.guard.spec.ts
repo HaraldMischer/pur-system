@@ -79,21 +79,20 @@ describe('mitarbeiterVerwaltungGuard', () => {
     expect(routerMock.createUrlTree).toHaveBeenCalledWith(['/dashboard']);
   });
 
-  it('should reject an incomplete data scope without redirecting back to employees', async () => {
-    const loginUrlTree = {} as UrlTree;
+  it('should redirect an incomplete data scope to dashboard', async () => {
+    const dashboardUrlTree = {} as UrlTree;
     benutzerProfil.set({
       ...profil,
-      erlaubteBereiche: ['mitarbeiter'],
       zugriffe: { 'u-1': { 'f-1': [] } },
     });
-    routerMock.createUrlTree.mockReturnValue(loginUrlTree);
+    routerMock.createUrlTree.mockReturnValue(dashboardUrlTree);
 
     const result = await TestBed.runInInjectionContext(() => {
       return mitarbeiterVerwaltungGuard({} as never, {} as never);
     });
 
-    expect(result).toBe(loginUrlTree);
-    expect(routerMock.createUrlTree).toHaveBeenCalledWith(['/login']);
+    expect(result).toBe(dashboardUrlTree);
+    expect(routerMock.createUrlTree).toHaveBeenCalledWith(['/dashboard']);
   });
 
   it('should redirect unauthenticated and inactive users to login', async () => {

@@ -21,16 +21,65 @@
         </mat-select>
       </mat-form-field>
 
-      <button
-        class="pur-form__item pur-form__item--button"
-        matButton="outlined"
-        type="button"
-        [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
-        (click)="openBenutzerBearbeitenDialog()"
-      >
-        <mat-icon aria-hidden="true">edit</mat-icon>
-        Benutzer bearbeiten
-      </button>
+      @if (verwaltungStore.selectedBenutzer()?.userRole === 'master') {
+        <button
+          class="pur-form__item pur-form__item--button"
+          matButton="outlined"
+          type="button"
+          [disabled]="verwaltungStore.inProgress()"
+          (click)="openBenutzerBearbeitenDialog()"
+        >
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          Benutzer bearbeiten
+        </button>
+      } @else {
+        <button
+          class="pur-form__item pur-form__item--button"
+          matButton="outlined"
+          type="button"
+          [matMenuTriggerFor]="benutzerBearbeitenMenu"
+          [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
+        >
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          Benutzer bearbeiten
+        </button>
+      }
+
+      <mat-menu #benutzerBearbeitenMenu="matMenu">
+        <button
+          mat-menu-item
+          type="button"
+          [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
+          (click)="openBenutzerBearbeitenDialog()"
+        >
+          <mat-icon aria-hidden="true">person_edit</mat-icon>
+          <span>Benutzerdaten bearbeiten</span>
+        </button>
+
+        @if (verwaltungStore.selectedBenutzer()?.userRole !== 'master') {
+          <button
+            mat-menu-item
+            type="button"
+            [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
+            (click)="openBenutzerDatenzuordnungDialog()"
+          >
+            <mat-icon aria-hidden="true">account_tree</mat-icon>
+            <span>Datenzuordnung ändern</span>
+          </button>
+
+          <mat-divider />
+
+          <button
+            mat-menu-item
+            type="button"
+            [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
+            (click)="openBenutzerLoeschenDialog()"
+          >
+            <mat-icon aria-hidden="true">delete</mat-icon>
+            <span>Benutzerkonto löschen</span>
+          </button>
+        }
+      </mat-menu>
     </div>
 
     @if (verwaltungStore.benutzerprofileError(); as error) {

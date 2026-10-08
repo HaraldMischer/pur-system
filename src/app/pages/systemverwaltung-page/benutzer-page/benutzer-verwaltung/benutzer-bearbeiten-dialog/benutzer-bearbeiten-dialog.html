@@ -13,16 +13,13 @@
   >
     <!-- Profildaten -->
     <div class="pur-form__group">
-      <h2 class="pur-form__group-titel">Profildaten</h2>
-
       <div class="pur-form__row">
         <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Anzeigename</mat-label>
           <input matInput formControlName="anzeigename" type="text" autocomplete="name" />
         </mat-form-field>
-
         <mat-checkbox class="pur-form__item pur-form__item--checkbox" formControlName="aktiv">
-          Profil aktiv
+          Benutzerprofil aktiv
         </mat-checkbox>
       </div>
     </div>
@@ -41,62 +38,6 @@
         }
       </div>
     </div>
-
-    <!-- Datenzuordnung -->
-    @if (profil.userRole !== 'master') {
-      <app-benutzer-datenzuordnung
-        [profil]="profil"
-        [unternehmer]="unternehmer()"
-        [inProgress]="verwaltungStore.inProgress()"
-        (aktionAktivChange)="zuordnungAktionAktiv.set($event)"
-        (zuordnungSpeichern)="saveDatenzuordnung($event)"
-        (mitarbeiterZuordnungSpeichern)="saveMitarbeiterZuordnung($event)"
-      />
-    }
-
-    @if (profil.userRole !== 'master') {
-      <!-- Benutzerkonto -->
-      <div class="pur-form__group">
-        <h2 class="pur-form__group-titel">Benutzerkonto</h2>
-        @if (loeschenBestaetigen()) {
-          <p class="pur-form__item pur-form__item--error" role="alert">
-            Das Benutzerkonto und sein Benutzerprofil werden endgültig gelöscht.
-          </p>
-          <div class="pur-form__row">
-            <button
-              class="pur-form__item pur-form__item--auto pur-form__item--end"
-              matButton
-              type="button"
-              [disabled]="verwaltungStore.inProgress()"
-              (click)="cancelBenutzerLoeschen()"
-            >
-              Nicht löschen
-            </button>
-            <button
-              class="pur-form__item pur-form__item--auto"
-              matButton="filled"
-              type="button"
-              [disabled]="verwaltungStore.inProgress()"
-              (click)="deleteBenutzer()"
-            >
-              Endgültig löschen
-            </button>
-          </div>
-        } @else {
-          <div class="pur-form__row">
-            <button
-              class="pur-form__item pur-form__item--auto"
-              matButton="outlined"
-              type="button"
-              [disabled]="zuordnungAktionAktiv() || verwaltungStore.inProgress()"
-              (click)="startBenutzerLoeschen()"
-            >
-              Benutzerkonto löschen
-            </button>
-          </div>
-        }
-      </div>
-    }
 
     @if (verwaltungStore.updateError(); as error) {
       <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
@@ -118,13 +59,7 @@
     matButton="filled"
     type="submit"
     form="benutzer-bearbeiten-form"
-    [disabled]="
-      benutzerForm.invalid ||
-      !hatAenderungen() ||
-      zuordnungAktionAktiv() ||
-      loeschenBestaetigen() ||
-      verwaltungStore.inProgress()
-    "
+    [disabled]="benutzerForm.invalid || !hatAenderungen() || verwaltungStore.inProgress()"
   >
     {{ verwaltungStore.inProgress() ? 'Benutzer wird gespeichert' : 'Änderungen speichern' }}
   </button>

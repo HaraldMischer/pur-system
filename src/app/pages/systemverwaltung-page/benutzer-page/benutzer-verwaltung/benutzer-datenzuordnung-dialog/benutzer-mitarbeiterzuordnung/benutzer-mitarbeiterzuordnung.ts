@@ -1,4 +1,4 @@
-// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-mitarbeiterzuordnung/benutzer-mitarbeiterzuordnung.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-datenzuordnung-dialog/benutzer-mitarbeiterzuordnung/benutzer-mitarbeiterzuordnung.ts
 
 import {
   ChangeDetectionStrategy,
@@ -9,11 +9,11 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import {
@@ -33,21 +33,10 @@ type TMitarbeiterZuordnungForm = {
   firmaId: FormControl<string>;
   firmaMitarbeiterId: FormControl<string>;
 };
-type TMitarbeiterZuordnungAnzeige = {
-  unternehmer: string;
-  firma: string;
-  mitarbeiter: string;
-};
 
 @Component({
   selector: 'app-benutzer-mitarbeiterzuordnung',
-  imports: [
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    ReactiveFormsModule,
-  ],
+  imports: [MatFormFieldModule, MatSelectModule, ReactiveFormsModule],
   templateUrl: './benutzer-mitarbeiterzuordnung.html',
   styleUrl: './benutzer-mitarbeiterzuordnung.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -63,19 +52,19 @@ export class BenutzerMitarbeiterzuordnung {
   readonly profil = input.required<IBenutzerProfilEintrag>();
   readonly unternehmer = input.required<readonly IUnternehmerAuswahl[]>();
   readonly inProgress = input(false);
-  readonly aktionAktivChange = output<boolean>();
   readonly zuordnungSpeichern = output<IBenutzerMitarbeiterZuordnung>();
 
   // ===== Interner State =======================
 
   private mitarbeiterAuswahlGeneration = 0;
+  private urspruenglicherDatenwert = '';
 
   // ===== Öffentliche Werte ====================
 
-  readonly zuordnungBearbeiten = signal(false);
   readonly mitarbeiterAuswahl = signal<readonly IMitarbeiterAuswahl[]>([]);
   readonly mitarbeiterAuswahlDownload = signal(false);
   readonly mitarbeiterAuswahlError = signal<string | null>(null);
+  readonly hatAenderungen = signal(false);
   readonly zuordnungForm = new FormGroup<TMitarbeiterZuordnungForm>({
     unternehmerId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     firmaId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -87,28 +76,25 @@ export class BenutzerMitarbeiterzuordnung {
 
   // ===== Öffentliche Ableitungen ==============
 
-  readonly aktuelleZuordnung = computed<TMitarbeiterZuordnungAnzeige>(() => {
-    const profil = this.profil();
-    const [unternehmerEintrag] = Object.entries(profil.zugriffe);
-    const unternehmerId = unternehmerEintrag?.[0] ?? '';
-    const [firmaId = ''] = Object.keys(unternehmerEintrag?.[1] ?? {});
-    const mitarbeiterId = profil.firmaMitarbeiterId ?? '';
-    const unternehmer = this.unternehmer().find((eintrag) => eintrag.id === unternehmerId);
-    const firma = unternehmer?.firmen.find((eintrag) => eintrag.id === firmaId);
-    const mitarbeiter = this.mitarbeiterStore
-      .getMitarbeiter(unternehmerId, firmaId)
-      .find((eintrag) => eintrag.id === mitarbeiterId);
-
-    return {
-      unternehmer: unternehmer?.anzeigename ?? this.getNichtVerfuegbarWert(unternehmerId),
-      firma: firma?.anzeigename ?? this.getNichtVerfuegbarWert(firmaId),
-      mitarbeiter: mitarbeiter
-        ? `${mitarbeiter.person.vorname} ${mitarbeiter.person.nachname}`.trim()
-        : this.getNichtVerfuegbarWert(mitarbeiterId),
-    };
+  readonly speichernDeaktiviert = computed(() => {
+    return (
+      this.zuordnungForm.invalid ||
+      !this.hatAenderungen() ||
+      this.mitarbeiterAuswahlDownload() ||
+      this.inProgress()
+    );
   });
 
   constructor() {
+    this.zuordnungForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.updateAenderungsstatus();
+    });
+    effect(() => {
+      const profil = this.profil();
+      untracked(() => {
+        this.initialisiereZuordnung(profil);
+      });
+    });
     effect(() => {
       if (this.inProgress()) {
         this.zuordnungForm.disable({ emitEvent: false });
@@ -119,34 +105,6 @@ export class BenutzerMitarbeiterzuordnung {
   }
 
   // ===== Öffentliche Aktionen =================
-
-  /**
-   * Öffnet die Auswahl für eine neue fachliche Mitarbeiterzuordnung.
-   */
-  startZuordnungBearbeiten(): void {
-    this.zuordnungBearbeiten.set(true);
-    this.aktionAktivChange.emit(true);
-    this.mitarbeiterAuswahlGeneration++;
-    this.mitarbeiterAuswahl.set([]);
-    this.mitarbeiterAuswahlError.set(null);
-    this.zuordnungForm.reset({
-      unternehmerId: '',
-      firmaId: '',
-      firmaMitarbeiterId: '',
-    });
-  }
-
-  /**
-   * Bricht die begonnene Neuzuordnung ab und verwirft die Auswahl.
-   */
-  cancelZuordnung(): void {
-    this.zuordnungBearbeiten.set(false);
-    this.aktionAktivChange.emit(false);
-    this.mitarbeiterAuswahlGeneration++;
-    this.mitarbeiterAuswahl.set([]);
-    this.mitarbeiterAuswahlDownload.set(false);
-    this.mitarbeiterAuswahlError.set(null);
-  }
 
   /**
    * Verwirft abhängige Firmen- und Mitarbeiterauswahlen nach einem Unternehmerwechsel.
@@ -179,12 +137,59 @@ export class BenutzerMitarbeiterzuordnung {
     this.zuordnungForm.controls.firmaMitarbeiterId.setValue('');
     this.mitarbeiterAuswahl.set([]);
     this.mitarbeiterAuswahlError.set(null);
-    const generation = ++this.mitarbeiterAuswahlGeneration;
     if (!unternehmerId || !firmaId) {
       this.mitarbeiterAuswahlDownload.set(false);
       return;
     }
+    await this.loadMitarbeiterAuswahl(unternehmerId, firmaId);
+  }
 
+  /**
+   * Gibt die vollständige neue Mitarbeiterzuordnung an den Bearbeitungsdialog weiter.
+   */
+  saveZuordnung(): void {
+    if (this.speichernDeaktiviert()) {
+      this.zuordnungForm.markAllAsTouched();
+      return;
+    }
+
+    this.zuordnungSpeichern.emit(this.zuordnungForm.getRawValue());
+  }
+
+  // ===== Interne Helfer =======================
+
+  private initialisiereZuordnung(profil: IBenutzerProfilEintrag): void {
+    const [unternehmerEintrag] = Object.entries(profil.zugriffe);
+    const unternehmerId = unternehmerEintrag?.[0] ?? '';
+    const [firmaId = ''] = Object.keys(unternehmerEintrag?.[1] ?? {});
+    const firmaMitarbeiterId = profil.firmaMitarbeiterId ?? '';
+    const zuordnung = { unternehmerId, firmaId, firmaMitarbeiterId };
+
+    this.mitarbeiterAuswahlGeneration++;
+    this.mitarbeiterAuswahl.set(
+      this.getAktuelleMitarbeiterAuswahl(unternehmerId, firmaId, firmaMitarbeiterId),
+    );
+    this.mitarbeiterAuswahlError.set(null);
+    this.zuordnungForm.reset(zuordnung, { emitEvent: false });
+    this.urspruenglicherDatenwert = JSON.stringify(zuordnung);
+    this.updateAenderungsstatus();
+    if (unternehmerId && firmaId) {
+      void this.loadMitarbeiterAuswahl(unternehmerId, firmaId, firmaMitarbeiterId);
+    }
+  }
+
+  private async loadMitarbeiterAuswahl(
+    unternehmerId: string,
+    firmaId: string,
+    aktuellerMitarbeiterId = '',
+  ): Promise<void> {
+    const generation = ++this.mitarbeiterAuswahlGeneration;
+    const aktuelleAuswahl = this.getAktuelleMitarbeiterAuswahl(
+      unternehmerId,
+      firmaId,
+      aktuellerMitarbeiterId,
+    );
+    this.mitarbeiterAuswahl.set(aktuelleAuswahl);
     this.mitarbeiterAuswahlDownload.set(true);
     try {
       const mitarbeiter = await this.benutzerVerwaltungService.loadMitarbeiterAuswahl({
@@ -192,7 +197,12 @@ export class BenutzerMitarbeiterzuordnung {
         firmaId,
       });
       if (generation === this.mitarbeiterAuswahlGeneration) {
-        this.mitarbeiterAuswahl.set(mitarbeiter);
+        this.mitarbeiterAuswahl.set([
+          ...aktuelleAuswahl,
+          ...mitarbeiter.filter((eintrag) => {
+            return !aktuelleAuswahl.some((aktuell) => aktuell.id === eintrag.id);
+          }),
+        ]);
       }
     } catch (error: unknown) {
       if (generation === this.mitarbeiterAuswahlGeneration) {
@@ -205,21 +215,28 @@ export class BenutzerMitarbeiterzuordnung {
     }
   }
 
-  /**
-   * Gibt die vollständige neue Mitarbeiterzuordnung an den Bearbeitungsdialog weiter.
-   */
-  saveZuordnung(): void {
-    if (this.zuordnungForm.invalid || this.inProgress()) {
-      this.zuordnungForm.markAllAsTouched();
-      return;
-    }
-
-    this.zuordnungSpeichern.emit(this.zuordnungForm.getRawValue());
+  private getAktuelleMitarbeiterAuswahl(
+    unternehmerId: string,
+    firmaId: string,
+    mitarbeiterId: string,
+  ): readonly IMitarbeiterAuswahl[] {
+    if (!mitarbeiterId) return [];
+    const mitarbeiter = this.mitarbeiterStore
+      .getMitarbeiter(unternehmerId, firmaId)
+      .find((eintrag) => eintrag.id === mitarbeiterId);
+    return [
+      {
+        id: mitarbeiterId,
+        anzeigename: mitarbeiter
+          ? `${mitarbeiter.person.vorname} ${mitarbeiter.person.nachname}`.trim()
+          : `Nicht verfügbar (ID: ${mitarbeiterId})`,
+      },
+    ];
   }
 
-  // ===== Interne Helfer =======================
-
-  private getNichtVerfuegbarWert(id: string): string {
-    return id ? `Nicht verfügbar (ID: ${id})` : 'Nicht verfügbar';
+  private updateAenderungsstatus(): void {
+    this.hatAenderungen.set(
+      JSON.stringify(this.zuordnungForm.getRawValue()) !== this.urspruenglicherDatenwert,
+    );
   }
 }

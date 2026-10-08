@@ -138,5 +138,6 @@
   // Für strukturierte Formulare mit Gruppen und gezielt aufgebauten Flex-Zeilen.
   &--grid {
     display: grid;
+    column-gap: 16px;
   }
 }

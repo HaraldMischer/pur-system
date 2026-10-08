@@ -5,7 +5,6 @@ import { CanActivateFn, Router } from '@angular/router';
 
 import { TAppBereich } from '../commons/models/app/app-bereich';
 import { BenutzerStore } from '../stores/app/benutzer.store';
-import { getErlaubteStartRoute } from './guard-navigation';
 
 export const bereichGuard: CanActivateFn = (route) => {
   const benutzerStore = inject(BenutzerStore);
@@ -21,5 +20,5 @@ export const bereichGuard: CanActivateFn = (route) => {
     return true;
   }
 
-  return router.createUrlTree([getErlaubteStartRoute(benutzerProfil) ?? '/login']);
+  return router.createUrlTree(['/dashboard']);
 };

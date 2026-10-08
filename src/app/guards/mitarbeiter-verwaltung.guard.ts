@@ -5,7 +5,6 @@ import { CanActivateFn, Router } from '@angular/router';
 
 import { darfMitarbeiterBereichNutzen } from '../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
 import { BenutzerStore } from '../stores/app/benutzer.store';
-import { getErlaubteStartRoute } from './guard-navigation';
 
 export const mitarbeiterVerwaltungGuard: CanActivateFn = () => {
   const benutzerStore = inject(BenutzerStore);
@@ -18,11 +17,5 @@ export const mitarbeiterVerwaltungGuard: CanActivateFn = () => {
     return true;
   }
 
-  const profilOhneMitarbeiterbereich = {
-    ...profil,
-    erlaubteBereiche: profil.erlaubteBereiche.filter((bereich) => {
-      return bereich !== 'mitarbeiter';
-    }),
-  };
-  return router.createUrlTree([getErlaubteStartRoute(profilOhneMitarbeiterbereich) ?? '/login']);
+  return router.createUrlTree(['/dashboard']);
 };

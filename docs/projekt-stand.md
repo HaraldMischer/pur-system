@@ -385,11 +385,12 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   begrenzt allgemeine Profiländerungen auf Anzeigename, Aktivstatus und erlaubte Bereiche;
   `IBenutzerDatenzuordnung` bildet die davon getrennte Datenzuordnung für Office- und Filialkonten ab. Benutzerrolle,
   E-Mail-Adresse und Passwort sind ausgeschlossen.
-- Der Bearbeitungsdialog gliedert Profildaten, erlaubte Bereiche, Datenzuordnung und die Kontolöschung in getrennte fachliche
-  Bereiche. Office-, Filial- und Mitarbeiterkonten zeigen ihre aktuelle Datenzuordnung zunächst lesend an und geben die
-  rollenabhängige Auswahl erst über `Zuordnung ändern` frei. Eine gemeinsame lokale Unterkomponente kapselt die
-  rollenabhängige Office-/Filial- beziehungsweise Mitarbeiterzuordnung vollständig gegenüber dem Hauptdialog. Masterprofile
-  besitzen keine Datenzuordnung.
+- Für Office-, Filial- und Mitarbeiterkonten bündelt das Menü `Benutzer bearbeiten` die Aktionen `Benutzerdaten bearbeiten`,
+  `Datenzuordnung ändern` und `Benutzerkonto löschen`. Jede Aktion öffnet direkt einen eigenständigen Dialog; es werden keine
+  Dialoge übereinander geöffnet. Bei Masterprofilen öffnet der Bearbeiten-Button den Profildialog ohne vorgeschaltetes Menü.
+- Der Profildialog bearbeitet ausschließlich Anzeigename, Aktivstatus und erlaubte Bereiche. Der Datenzuordnungsdialog zeigt die
+  rollenabhängigen Select-Felder unmittelbar mit der aktuellen Zuordnung vorausgewählt an. Der Löschdialog kapselt die eindeutige
+  Sicherheitsabfrage. Masterprofile besitzen keine Datenzuordnung und können nicht gelöscht werden.
 - Allgemeine Profiländerungen werden über `updateBenutzerProfil`, Office-/Filialzuordnungen über
   `updateBenutzerDatenzuordnung` und Mitarbeiterzuordnungen über `updateMitarbeiterZuordnung` serverseitig validiert. Direkte
   Client-Schreibzugriffe auf `benutzerprofil` sind durch die Firestore Rules gesperrt. Erfolgreiche Aktualisierungen setzen
@@ -631,9 +632,9 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Tests und Build
 
-Am 05.10.2026 für den aktuellen Stand erfolgreich geprüft:
+Am 08.10.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 674 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
+- 698 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
   konsistenter
   Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,
@@ -646,6 +647,8 @@ Am 05.10.2026 für den aktuellen Stand erfolgreich geprüft:
 - Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
 - Datenstruktur-Anlage und Benutzerverwaltung wurden unter ihren getrennten Systemverwaltungsrouten auf Desktop und einem
   kleinen Viewport erfolgreich manuell geprüft.
+- Die getrennten Dialoge für Profildaten, Datenzuordnung und Kontolöschung sowie der direkte Master-Aufruf wurden auf Desktop und
+  einem kleinen Viewport geprüft. Die zugehörigen Menü- und Dialogaktionen sind per Tastatur erreichbar.
 - Die Echtzeitbeobachtung des eigenen Profils wurde manuell mit Deaktivierung, Neustart, Wiederverbindung und erneuter Aktivierung
   geprüft. Ein inaktives, weiterhin authentifiziertes Profil wird auf der Loginseite durch den globalen Banner kenntlich gemacht;
   nach erneuter Aktivierung wechselt die Anwendung selbstständig zum Dashboard.

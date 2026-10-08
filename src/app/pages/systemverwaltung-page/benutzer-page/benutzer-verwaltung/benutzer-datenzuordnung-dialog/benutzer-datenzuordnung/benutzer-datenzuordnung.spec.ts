@@ -1,4 +1,4 @@
-// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-datenzuordnung/benutzer-datenzuordnung.spec.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-datenzuordnung-dialog/benutzer-datenzuordnung/benutzer-datenzuordnung.spec.ts
 
 import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
@@ -59,39 +59,23 @@ describe('BenutzerDatenzuordnung', () => {
     return fixture;
   }
 
-  it('should initially show the stored assignment as disabled', () => {
+  it('should immediately show the selector with the stored assignment', () => {
     const fixture = createComponent();
-    const selects = fixture.nativeElement.querySelectorAll('mat-select') as NodeListOf<HTMLElement>;
+    const component = fixture.componentInstance;
 
-    expect(fixture.componentInstance.zuordnungBearbeiten()).toBe(false);
-    expect(fixture.componentInstance.datenAuswahlGueltig()).toBe(true);
-    expect(selects).toHaveLength(3);
-    expect(
-      Array.from(selects).every((select) => select.getAttribute('aria-disabled') === 'true'),
-    ).toBe(true);
-  });
-
-  it('should enable editing and restore the stored assignment on cancel', () => {
-    const component = createComponent().componentInstance;
-    const aktionAktivChange = vi.fn();
-    component.aktionAktivChange.subscribe(aktionAktivChange);
-
-    component.startZuordnungBearbeiten();
-    component.filialen.set({ [JSON.stringify(['u', 'f'])]: ['b-neu'] });
-    expect(component.hatAenderungen()).toBe(true);
-
-    component.cancelZuordnung();
-
+    expect(fixture.nativeElement.querySelector('app-datenzugriff-selector')).not.toBeNull();
+    expect(component.unternehmerIds()).toEqual(['u']);
+    expect(component.firmaIds()).toEqual([JSON.stringify(['u', 'f'])]);
     expect(component.filialen()).toEqual({ [JSON.stringify(['u', 'f'])]: ['b'] });
-    expect(aktionAktivChange).toHaveBeenNthCalledWith(1, true);
-    expect(aktionAktivChange).toHaveBeenNthCalledWith(2, false);
+    expect(component.datenAuswahlGueltig()).toBe(true);
+    expect(component.hatAenderungen()).toBe(false);
+    expect(component.speichernDeaktiviert()).toBe(true);
   });
 
   it('should emit a valid changed office assignment', () => {
     const component = createComponent().componentInstance;
     const zuordnungSpeichern = vi.fn();
     component.zuordnungSpeichern.subscribe(zuordnungSpeichern);
-    component.startZuordnungBearbeiten();
     component.filialen.set({ [JSON.stringify(['u', 'f'])]: ['b-neu'] });
 
     component.saveZuordnung();
@@ -99,12 +83,39 @@ describe('BenutzerDatenzuordnung', () => {
     expect(zuordnungSpeichern).toHaveBeenCalledWith({ zugriffe: { u: { f: ['b-neu'] } } });
   });
 
+  it('should disable assignment actions and reject saves while saving', () => {
+    const fixture = createComponent();
+    const component = fixture.componentInstance;
+    const zuordnungSpeichern = vi.fn();
+    component.zuordnungSpeichern.subscribe(zuordnungSpeichern);
+    component.filialen.set({ [JSON.stringify(['u', 'f'])]: ['b-neu'] });
+    fixture.componentRef.setInput('inProgress', true);
+    fixture.detectChanges();
+    const buttons = fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
+
+    component.saveZuordnung();
+
+    expect(Array.from(buttons).every((button) => button.disabled)).toBe(true);
+    expect(zuordnungSpeichern).not.toHaveBeenCalled();
+  });
+
   it('should require exactly one branch for a branch account', () => {
     const component = createComponent({ ...profil, userRole: 'filiale' }).componentInstance;
-    component.startZuordnungBearbeiten();
     component.filialen.set({ [JSON.stringify(['u', 'f'])]: ['b', 'b-neu'] });
 
     expect(component.datenAuswahlGueltig()).toBe(false);
+  });
+
+  it('should identify stored references that are no longer available', () => {
+    const fixture = createComponent({
+      ...profil,
+      zugriffe: { 'u-fehlt': { 'f-fehlt': ['b-fehlt'] } },
+    });
+    const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
+
+    expect(alert.textContent?.replace(/\s+/g, ' ').trim()).toContain(
+      'Unternehmer-ID: u-fehlt, Firmen-ID: f-fehlt, Filial-ID: b-fehlt',
+    );
   });
 
   it('should encapsulate and forward the employee assignment', () => {

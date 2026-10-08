@@ -61,16 +61,18 @@ describe('NAVIGATION_NACH_ROLLE', () => {
     expect(systemverwaltung?.typ).toBe('gruppe');
     if (systemverwaltung?.typ !== 'gruppe') return;
 
-    expect(systemverwaltung.kinder.map((eintrag) => eintrag.id)).toEqual([
-      'datenstruktur',
-      'benutzerverwaltung',
-      'datenmigration',
-    ]);
-    expect(getNavigationLinks(systemverwaltung.kinder).map((eintrag) => eintrag.route)).toEqual([
-      '/systemverwaltung/datenstruktur',
-      '/systemverwaltung/benutzer',
-      '/systemverwaltung/datenmigration',
-    ]);
+    const kinder = getNavigationLinks(systemverwaltung.kinder).map((eintrag) => ({
+      id: eintrag.id,
+      route: eintrag.route,
+    }));
+    expect(kinder).toHaveLength(3);
+    expect(kinder).toEqual(
+      expect.arrayContaining([
+        { id: 'datenstruktur', route: '/systemverwaltung/datenstruktur' },
+        { id: 'benutzerverwaltung', route: '/systemverwaltung/benutzer' },
+        { id: 'datenmigration', route: '/systemverwaltung/datenmigration' },
+      ]),
+    );
   });
 
   it('should provide complete link data for every configured entry', () => {

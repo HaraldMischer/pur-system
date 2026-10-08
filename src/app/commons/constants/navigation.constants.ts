@@ -55,18 +55,18 @@ const SYSTEMVERWALTUNG_NAVIGATION: INavigationGruppe = {
   kinder: [
     {
       typ: 'link',
-      id: 'datenstruktur',
-      label: 'Datenstruktur',
-      icon: 'account_tree',
-      route: '/systemverwaltung/datenstruktur',
-      bereich: 'systemverwaltung',
-    },
-    {
-      typ: 'link',
       id: 'benutzerverwaltung',
       label: 'Benutzerverwaltung',
       icon: 'manage_accounts',
       route: '/systemverwaltung/benutzer',
+      bereich: 'systemverwaltung',
+    },
+    {
+      typ: 'link',
+      id: 'datenstruktur',
+      label: 'Datenstruktur',
+      icon: 'account_tree',
+      route: '/systemverwaltung/datenstruktur',
       bereich: 'systemverwaltung',
     },
     {

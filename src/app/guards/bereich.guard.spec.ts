@@ -86,29 +86,6 @@ describe('bereichGuard', () => {
     expect(routerMock.createUrlTree).toHaveBeenCalledWith(['/dashboard']);
   });
 
-  it('should redirect to the first allowed area when dashboard is not allowed', async () => {
-    const schichtplanUrlTree = {} as UrlTree;
-    benutzerProfil.set({
-      email: 'mitarbeiter@example.com',
-      anzeigename: 'Mitarbeiter',
-      aktiv: true,
-      userRole: 'mitarbeiter',
-      erlaubteBereiche: ['schichtplan'],
-      zugriffe: {},
-    });
-    routerMock.createUrlTree.mockReturnValue(schichtplanUrlTree);
-
-    const result = await TestBed.runInInjectionContext(() =>
-      bereichGuard(
-        { data: { bereich: 'dashboard' } } as unknown as ActivatedRouteSnapshot,
-        {} as never,
-      ),
-    );
-
-    expect(result).toBe(schichtplanUrlTree);
-    expect(routerMock.createUrlTree).toHaveBeenCalledWith(['/schichtplan']);
-  });
-
   it('should redirect to login when no user is signed in', async () => {
     const loginUrlTree = {} as UrlTree;
     benutzerProfil.set(null);

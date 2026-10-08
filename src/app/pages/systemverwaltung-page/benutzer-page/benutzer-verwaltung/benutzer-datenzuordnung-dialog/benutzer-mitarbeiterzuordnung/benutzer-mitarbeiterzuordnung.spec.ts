@@ -1,4 +1,4 @@
-// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-mitarbeiterzuordnung/benutzer-mitarbeiterzuordnung.spec.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-datenzuordnung-dialog/benutzer-mitarbeiterzuordnung/benutzer-mitarbeiterzuordnung.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -80,43 +80,22 @@ describe('BenutzerMitarbeiterzuordnung', () => {
     return fixture;
   }
 
-  it('should show the current employee assignment', () => {
-    const fixture = createComponent();
-    const titel = fixture.nativeElement.querySelector('h2') as HTMLElement;
-    const unternehmerInput = fixture.nativeElement.querySelector(
-      'input[name="zuordnung-unternehmer"]',
-    ) as HTMLInputElement;
-    const firmaInput = fixture.nativeElement.querySelector(
-      'input[name="zuordnung-firma"]',
-    ) as HTMLInputElement;
-    const mitarbeiterInput = fixture.nativeElement.querySelector(
-      'input[name="zuordnung-mitarbeiter"]',
-    ) as HTMLInputElement;
-
-    expect(titel.textContent?.trim()).toBe('Datenzuordnung');
-    expect(unternehmerInput.value).toBe('Unternehmer');
-    expect(firmaInput.value).toBe('Firma');
-    expect(mitarbeiterInput.value).toBe('Mia Muster');
-  });
-
-  it('should replace the current assignment fields while editing', () => {
+  it('should preselect the current employee assignment', () => {
     const fixture = createComponent();
     const component = fixture.componentInstance;
-    const aktionAktivChange = vi.fn();
-    component.aktionAktivChange.subscribe(aktionAktivChange);
 
-    component.startZuordnungBearbeiten();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelectorAll('input[name^="zuordnung-"]')).toHaveLength(0);
+    expect(component.zuordnungForm.getRawValue()).toEqual({
+      unternehmerId: 'u',
+      firmaId: 'f',
+      firmaMitarbeiterId: 'm-1',
+    });
+    expect(component.mitarbeiterAuswahl()).toContainEqual({
+      id: 'm-1',
+      anzeigename: 'Mia Muster',
+    });
+    expect(component.hatAenderungen()).toBe(false);
+    expect(component.speichernDeaktiviert()).toBe(true);
     expect(fixture.nativeElement.querySelectorAll('mat-select')).toHaveLength(3);
-    expect(aktionAktivChange).toHaveBeenLastCalledWith(true);
-
-    component.cancelZuordnung();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelectorAll('input[name^="zuordnung-"]')).toHaveLength(3);
-    expect(aktionAktivChange).toHaveBeenLastCalledWith(false);
   });
 
   it('should load selectable employees and emit a complete assignment', async () => {
@@ -125,7 +104,6 @@ describe('BenutzerMitarbeiterzuordnung', () => {
     const zuordnungSpeichern = vi.fn();
     component.zuordnungSpeichern.subscribe(zuordnungSpeichern);
 
-    component.startZuordnungBearbeiten();
     component.zuordnungForm.controls.unternehmerId.setValue('u');
     component.handleUnternehmerChange();
     component.zuordnungForm.controls.firmaId.setValue('f');
@@ -141,16 +119,38 @@ describe('BenutzerMitarbeiterzuordnung', () => {
     });
   });
 
+  it('should disable the complete assignment form and reject saves while saving', () => {
+    const fixture = createComponent();
+    const component = fixture.componentInstance;
+    const zuordnungSpeichern = vi.fn();
+    component.zuordnungSpeichern.subscribe(zuordnungSpeichern);
+    component.zuordnungForm.setValue({
+      unternehmerId: 'u',
+      firmaId: 'f',
+      firmaMitarbeiterId: 'm-2',
+    });
+    fixture.componentRef.setInput('inProgress', true);
+    fixture.detectChanges();
+
+    component.saveZuordnung();
+
+    expect(component.zuordnungForm.disabled).toBe(true);
+    expect(zuordnungSpeichern).not.toHaveBeenCalled();
+  });
+
   it('should show the stored employee id when the employee is unavailable', () => {
     mitarbeiterStoreMock.getMitarbeiter.mockReturnValue([]);
     const fixture = TestBed.createComponent(BenutzerMitarbeiterzuordnung);
     fixture.componentRef.setInput('profil', { ...profil, firmaMitarbeiterId: 'm-fehlt' });
     fixture.componentRef.setInput('unternehmer', unternehmer);
     fixture.detectChanges();
-    const mitarbeiterInput = fixture.nativeElement.querySelector(
-      'input[name="zuordnung-mitarbeiter"]',
-    ) as HTMLInputElement;
 
-    expect(mitarbeiterInput.value).toBe('Nicht verfügbar (ID: m-fehlt)');
+    expect(fixture.componentInstance.zuordnungForm.controls.firmaMitarbeiterId.value).toBe(
+      'm-fehlt',
+    );
+    expect(fixture.componentInstance.mitarbeiterAuswahl()).toContainEqual({
+      id: 'm-fehlt',
+      anzeigename: 'Nicht verfügbar (ID: m-fehlt)',
+    });
   });
 });

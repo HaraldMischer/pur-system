@@ -7,10 +7,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { IBenutzerProfilEintrag } from '../../../../../commons/models/domain/benutzer';
 import { AuthService } from '../../../../../services/firebase/auth.service';
-import { BenutzerVerwaltungService } from '../../../../../services/firebase/benutzer-verwaltung.service';
-import { StammdatenStore } from '../../../../../stores/app/stammdaten.store';
 import { BenutzerVerwaltungStore } from '../../../../../stores/domain/benutzer-verwaltung.store';
-import { MitarbeiterStore } from '../../../../../stores/domain/mitarbeiter.store';
 import { BenutzerBearbeitenDialog } from './benutzer-bearbeiten-dialog';
 
 describe('BenutzerBearbeitenDialog', () => {
@@ -27,107 +24,22 @@ describe('BenutzerBearbeitenDialog', () => {
   const aktualisiertesProfil = { ...profil, anzeigename: 'Office Neu' };
   const closeMock = vi.fn();
   const updateBenutzerProfilMock = vi.fn().mockResolvedValue(aktualisiertesProfil);
-  const updateDatenzuordnungMock = vi.fn().mockResolvedValue({
-    ...profil,
-    zugriffe: { u: { f: ['b'] } },
-  });
-  const updateMitarbeiterZuordnungMock = vi.fn().mockResolvedValue({
-    ...profil,
-    uid: 'mitarbeiter-1',
-    userRole: 'mitarbeiter',
-    zugriffe: { u: { f: [] } },
-    firmaMitarbeiterId: 'm-2',
-  });
-  const deleteBenutzerMock = vi.fn().mockResolvedValue(undefined);
   const dialogRefMock = { close: closeMock, disableClose: false };
   const verwaltungStoreMock = {
     inProgress: signal(false),
     updateError: signal<string | null>(null),
     updateBenutzerProfil: updateBenutzerProfilMock,
-    updateDatenzuordnung: updateDatenzuordnungMock,
-    updateMitarbeiterZuordnung: updateMitarbeiterZuordnungMock,
-    deleteBenutzer: deleteBenutzerMock,
-  };
-  const stammdatenStoreMock = {
-    unternehmer: signal([
-      { id: 'u', anzeigename: 'Unternehmer', nummer: 1, aktiv: true, person: {} },
-    ]),
-    getFirmen: vi.fn().mockReturnValue([
-      {
-        id: 'f',
-        anzeigename: 'Firma',
-        firmenname: 'Firma GmbH',
-        nummer: 1,
-        aktiv: true,
-        adresse: {},
-        kontakt: {},
-      },
-    ]),
-    getFilialen: vi.fn().mockReturnValue([
-      {
-        id: 'b',
-        anzeigename: 'Filiale',
-        filialname: 'Filiale',
-        nummer: 1,
-        aktiv: true,
-        adresse: {},
-        kontakt: {},
-      },
-    ]),
   };
   const authServiceMock = {
     getAktuelleBenutzerId: vi.fn().mockReturnValue('master-1'),
   };
-  const mitarbeiterStoreMock = {
-    getMitarbeiter: vi.fn().mockReturnValue([
-      {
-        id: 'm-1',
-        unternehmerId: 'u',
-        firmaId: 'f',
-        person: { vorname: 'Mia', nachname: 'Muster' },
-        rollen: ['servicekraft'],
-        filialIds: ['b'],
-        aktiv: true,
-      },
-    ]),
-  };
-  const benutzerVerwaltungServiceMock = {
-    loadMitarbeiterAuswahl: vi.fn().mockResolvedValue([{ id: 'm-2', anzeigename: 'Neu, Nina' }]),
-  };
-
   beforeEach(async () => {
     vi.clearAllMocks();
     updateBenutzerProfilMock.mockResolvedValue(aktualisiertesProfil);
-    updateDatenzuordnungMock.mockResolvedValue({
-      ...profil,
-      zugriffe: { u: { f: ['b'] } },
-    });
-    updateMitarbeiterZuordnungMock.mockResolvedValue({
-      ...profil,
-      uid: 'mitarbeiter-1',
-      userRole: 'mitarbeiter',
-      zugriffe: { u: { f: [] } },
-      firmaMitarbeiterId: 'm-2',
-    });
-    deleteBenutzerMock.mockResolvedValue(undefined);
     dialogRefMock.disableClose = false;
     verwaltungStoreMock.inProgress.set(false);
     verwaltungStoreMock.updateError.set(null);
     authServiceMock.getAktuelleBenutzerId.mockReturnValue('master-1');
-    mitarbeiterStoreMock.getMitarbeiter.mockReturnValue([
-      {
-        id: 'm-1',
-        unternehmerId: 'u',
-        firmaId: 'f',
-        person: { vorname: 'Mia', nachname: 'Muster' },
-        rollen: ['servicekraft'],
-        filialIds: ['b'],
-        aktiv: true,
-      },
-    ]);
-    benutzerVerwaltungServiceMock.loadMitarbeiterAuswahl.mockResolvedValue([
-      { id: 'm-2', anzeigename: 'Neu, Nina' },
-    ]);
 
     await TestBed.configureTestingModule({
       imports: [BenutzerBearbeitenDialog, NoopAnimationsModule],
@@ -135,10 +47,7 @@ describe('BenutzerBearbeitenDialog', () => {
         { provide: MAT_DIALOG_DATA, useValue: { profil } },
         { provide: MatDialogRef, useValue: dialogRefMock },
         { provide: AuthService, useValue: authServiceMock },
-        { provide: BenutzerVerwaltungService, useValue: benutzerVerwaltungServiceMock },
-        { provide: StammdatenStore, useValue: stammdatenStoreMock },
         { provide: BenutzerVerwaltungStore, useValue: verwaltungStoreMock },
-        { provide: MitarbeiterStore, useValue: mitarbeiterStoreMock },
       ],
     }).compileComponents();
   });
@@ -166,7 +75,9 @@ describe('BenutzerBearbeitenDialog', () => {
       Array.from(
         fixture.nativeElement.querySelectorAll('mat-dialog-content h2') as NodeListOf<HTMLElement>,
       ).map((titel) => titel.textContent?.trim()),
-    ).toEqual(['Profildaten', 'Erlaubte Bereiche', 'Datenzuordnung', 'Benutzerkonto']);
+    ).toEqual(['Erlaubte Bereiche']);
+    expect(fixture.nativeElement.querySelector('app-benutzer-datenzuordnung')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Benutzerkonto löschen');
     expect(fixture.nativeElement.querySelectorAll('mat-checkbox')).toHaveLength(4);
     expect(
       (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
@@ -225,6 +136,20 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(closeMock).toHaveBeenCalledWith(aktualisiertesProfil);
   });
 
+  it('should disable the complete profile form and reject submits while saving', async () => {
+    const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
+    const component = fixture.componentInstance;
+    component.benutzerForm.controls.anzeigename.setValue('Office Neu');
+    verwaltungStoreMock.inProgress.set(true);
+    fixture.detectChanges();
+
+    await component.onSubmit();
+
+    expect(component.benutzerForm.disabled).toBe(true);
+    expect(updateBenutzerProfilMock).not.toHaveBeenCalled();
+    expect(closeMock).not.toHaveBeenCalled();
+  });
+
   it('should disable the active state for the own master profile', async () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
@@ -243,7 +168,7 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(component.benutzerForm.controls.aktiv.disabled).toBe(true);
   });
 
-  it('should update selected employee account areas while preserving its company assignment', async () => {
+  it('should update only the allowed areas of an employee profile', async () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
         profil: {
@@ -260,23 +185,8 @@ describe('BenutzerBearbeitenDialog', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
     const dialogTitel = fixture.nativeElement.querySelector('[mat-dialog-title]') as HTMLElement;
-    const unternehmerInput = fixture.nativeElement.querySelector(
-      'input[name="zuordnung-unternehmer"]',
-    ) as HTMLInputElement;
-    const firmaInput = fixture.nativeElement.querySelector(
-      'input[name="zuordnung-firma"]',
-    ) as HTMLInputElement;
-    const mitarbeiterInput = fixture.nativeElement.querySelector(
-      'input[name="zuordnung-mitarbeiter"]',
-    ) as HTMLInputElement;
 
     expect(dialogTitel.textContent?.trim()).toBe('Mitarbeiter-Benutzer bearbeiten');
-    expect(unternehmerInput.value).toBe('Unternehmer');
-    expect(firmaInput.value).toBe('Firma');
-    expect(mitarbeiterInput.value).toBe('Mia Muster');
-    expect(unternehmerInput.readOnly).toBe(true);
-    expect(firmaInput.readOnly).toBe(true);
-    expect(mitarbeiterInput.readOnly).toBe(true);
     expect(component.benutzerForm.controls.erlaubteBereiche.getRawValue()).toEqual({
       schichtplan: false,
       mitarbeiter: false,
@@ -299,92 +209,6 @@ describe('BenutzerBearbeitenDialog', () => {
       aktiv: true,
       erlaubteBereiche: ['dashboard', 'schichtplan'],
     });
-  });
-
-  it('should save an office assignment emitted by the assignment component', async () => {
-    const component = TestBed.createComponent(BenutzerBearbeitenDialog).componentInstance;
-
-    await component.saveDatenzuordnung({ zugriffe: { u: { f: ['b'] } } });
-
-    expect(updateDatenzuordnungMock).toHaveBeenCalledWith({ zugriffe: { u: { f: ['b'] } } });
-    expect(closeMock).toHaveBeenCalled();
-  });
-
-  it('should show the stored employee id when the linked employee is unavailable', () => {
-    mitarbeiterStoreMock.getMitarbeiter.mockReturnValue([]);
-    TestBed.overrideProvider(MAT_DIALOG_DATA, {
-      useValue: {
-        profil: {
-          ...profil,
-          uid: 'mitarbeiter-1',
-          userRole: 'mitarbeiter',
-          erlaubteBereiche: ['dashboard'],
-          zugriffe: { u: { f: [] } },
-          firmaMitarbeiterId: 'm-fehlt',
-        },
-      },
-    });
-    const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
-    fixture.detectChanges();
-    const mitarbeiterInput = fixture.nativeElement.querySelector(
-      'input[name="zuordnung-mitarbeiter"]',
-    ) as HTMLInputElement;
-
-    expect(mitarbeiterInput.value).toBe('Nicht verfügbar (ID: m-fehlt)');
-  });
-
-  it('should save an employee assignment emitted by the assignment component', async () => {
-    TestBed.overrideProvider(MAT_DIALOG_DATA, {
-      useValue: {
-        profil: {
-          ...profil,
-          uid: 'mitarbeiter-1',
-          userRole: 'mitarbeiter',
-          erlaubteBereiche: ['dashboard'],
-          zugriffe: { u: { f: [] } },
-          firmaMitarbeiterId: 'm-1',
-        },
-      },
-    });
-    const component = TestBed.createComponent(BenutzerBearbeitenDialog).componentInstance;
-
-    await component.saveMitarbeiterZuordnung({
-      unternehmerId: 'u',
-      firmaId: 'f',
-      firmaMitarbeiterId: 'm-2',
-    });
-
-    expect(updateMitarbeiterZuordnungMock).toHaveBeenCalledWith({
-      unternehmerId: 'u',
-      firmaId: 'f',
-      firmaMitarbeiterId: 'm-2',
-    });
-    expect(closeMock).toHaveBeenCalled();
-  });
-
-  it('should require confirmation before deleting a non-master account', async () => {
-    TestBed.overrideProvider(MAT_DIALOG_DATA, {
-      useValue: {
-        profil: {
-          ...profil,
-          uid: 'mitarbeiter-1',
-          userRole: 'mitarbeiter',
-          erlaubteBereiche: ['dashboard'],
-          zugriffe: { u: { f: [] } },
-          firmaMitarbeiterId: 'm-1',
-        },
-      },
-    });
-    const component = TestBed.createComponent(BenutzerBearbeitenDialog).componentInstance;
-
-    await component.deleteBenutzer();
-    expect(deleteBenutzerMock).not.toHaveBeenCalled();
-
-    component.startBenutzerLoeschen();
-    await component.deleteBenutzer();
-
-    expect(deleteBenutzerMock).toHaveBeenCalledOnce();
-    expect(closeMock).toHaveBeenCalledWith(undefined);
   });
 
   it('should add system administration automatically when saving a master profile', async () => {
@@ -410,7 +234,7 @@ describe('BenutzerBearbeitenDialog', () => {
       Array.from(
         (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('mat-checkbox'),
       ).map((checkbox) => checkbox.textContent?.trim()),
-    ).toEqual(['Profil aktiv', 'Schichtplan', 'Mitarbeiter', 'Verwaltung']);
+    ).toEqual(['Benutzerprofil aktiv', 'Schichtplan', 'Mitarbeiter', 'Verwaltung']);
 
     await component.onSubmit();
 

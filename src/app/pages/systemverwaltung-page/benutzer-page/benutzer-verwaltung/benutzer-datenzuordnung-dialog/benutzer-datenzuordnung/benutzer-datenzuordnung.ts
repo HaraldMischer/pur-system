@@ -1,4 +1,4 @@
-// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-datenzuordnung/benutzer-datenzuordnung.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-datenzuordnung-dialog/benutzer-datenzuordnung/benutzer-datenzuordnung.ts
 
 import {
   ChangeDetectionStrategy,
@@ -9,8 +9,8 @@ import {
   output,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 
 import {
   IBenutzerDatenzuordnung,
@@ -24,7 +24,7 @@ import { BenutzerMitarbeiterzuordnung } from '../benutzer-mitarbeiterzuordnung/b
 
 @Component({
   selector: 'app-benutzer-datenzuordnung',
-  imports: [BenutzerMitarbeiterzuordnung, DatenzugriffSelector, MatButtonModule],
+  imports: [BenutzerMitarbeiterzuordnung, DatenzugriffSelector],
   templateUrl: './benutzer-datenzuordnung.html',
   styleUrl: './benutzer-datenzuordnung.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,13 +35,15 @@ export class BenutzerDatenzuordnung {
   readonly profil = input.required<IBenutzerProfilEintrag>();
   readonly unternehmer = input.required<readonly IUnternehmerAuswahl[]>();
   readonly inProgress = input(false);
-  readonly aktionAktivChange = output<boolean>();
   readonly zuordnungSpeichern = output<IBenutzerDatenzuordnung>();
   readonly mitarbeiterZuordnungSpeichern = output<IBenutzerMitarbeiterZuordnung>();
 
+  // ===== View Queries =========================
+
+  readonly mitarbeiterZuordnung = viewChild(BenutzerMitarbeiterzuordnung);
+
   // ===== Öffentliche Werte ====================
 
-  readonly zuordnungBearbeiten = signal(false);
   readonly unternehmerIds = signal<readonly string[]>([]);
   readonly firmaIds = signal<readonly string[]>([]);
   readonly filialen = signal<Readonly<Partial<Record<string, readonly string[]>>>>({});
@@ -61,12 +63,36 @@ export class BenutzerDatenzuordnung {
   readonly hatAenderungen = computed(() => {
     return JSON.stringify(this.getZugriffe()) !== JSON.stringify(this.profil().zugriffe);
   });
+  readonly speichernDeaktiviert = computed(() => {
+    if (this.inProgress()) return true;
+    if (this.profil().userRole === 'mitarbeiter') {
+      return this.mitarbeiterZuordnung()?.speichernDeaktiviert() ?? true;
+    }
+    return !this.datenAuswahlGueltig() || !this.hatAenderungen();
+  });
+  readonly nichtVerfuegbareReferenzen = computed<readonly string[]>(() => {
+    const referenzen: string[] = [];
+    for (const [unternehmerId, firmen] of Object.entries(this.profil().zugriffe)) {
+      const unternehmer = this.unternehmer().find((eintrag) => eintrag.id === unternehmerId);
+      if (!unternehmer) referenzen.push(`Unternehmer-ID: ${unternehmerId}`);
+      for (const [firmaId, filialIds] of Object.entries(firmen)) {
+        const firma = unternehmer?.firmen.find((eintrag) => eintrag.id === firmaId);
+        if (!firma) referenzen.push(`Firmen-ID: ${firmaId}`);
+        for (const filialId of filialIds) {
+          if (!firma?.filialen.some((eintrag) => eintrag.id === filialId)) {
+            referenzen.push(`Filial-ID: ${filialId}`);
+          }
+        }
+      }
+    }
+    return referenzen;
+  });
 
   constructor() {
     effect(() => {
       this.profil().zugriffe;
       untracked(() => {
-        if (!this.zuordnungBearbeiten()) this.resetAuswahl();
+        this.resetAuswahl();
       });
     });
   }
@@ -74,27 +100,13 @@ export class BenutzerDatenzuordnung {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Öffnet die Datenzugriffsauswahl zur Bearbeitung.
-   */
-  startZuordnungBearbeiten(): void {
-    this.resetAuswahl();
-    this.zuordnungBearbeiten.set(true);
-    this.aktionAktivChange.emit(true);
-  }
-
-  /**
-   * Bricht die Bearbeitung ab und stellt die gespeicherte Datenzuordnung wieder her.
-   */
-  cancelZuordnung(): void {
-    this.resetAuswahl();
-    this.zuordnungBearbeiten.set(false);
-    this.aktionAktivChange.emit(false);
-  }
-
-  /**
    * Gibt eine gültige, geänderte Datenzuordnung an den Bearbeitungsdialog weiter.
    */
   saveZuordnung(): void {
+    if (this.profil().userRole === 'mitarbeiter') {
+      this.mitarbeiterZuordnung()?.saveZuordnung();
+      return;
+    }
     if (!this.datenAuswahlGueltig() || !this.hatAenderungen() || this.inProgress()) return;
     this.zuordnungSpeichern.emit({ zugriffe: this.getZugriffe() });
   }
