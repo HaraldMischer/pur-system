@@ -209,7 +209,7 @@ export class MitarbeiterListePage {
     }
 
     this.dialog.open(MitarbeiterZusammenfuehrenDialog, {
-      data: { quelle: mitarbeiter, mitarbeiter: alleMitarbeiter },
+      data: { ziel: mitarbeiter, mitarbeiter: alleMitarbeiter },
     });
   }
 

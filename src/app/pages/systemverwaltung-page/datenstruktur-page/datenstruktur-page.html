@@ -9,7 +9,7 @@
     <!-- Unternehmer -->
     <mat-step [stepControl]="unternehmerForm" label="Unternehmer">
       <form class="pur-form pur-form--grid" [formGroup]="unternehmerForm">
-        <h3 class="pur-form__group-titel">Unternehmer wählen oder neu anlegen</h3>
+        <h2 class="pur-form__titel">Unternehmer wählen oder neu anlegen</h2>
 
         <div class="pur-form__row datenstruktur-page__auswahl">
           <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
@@ -68,9 +68,9 @@
     <!-- Firma -->
     <mat-step [stepControl]="firmaForm" label="Firma">
       <form class="pur-form pur-form--grid" [formGroup]="firmaForm">
-        <h3 class="pur-form__group-titel">
+        <h2 class="pur-form__titel">
           Firma für {{ getUnternehmerBezeichnung() }} wählen oder neu anlegen
-        </h3>
+        </h2>
 
         <div class="pur-form__row datenstruktur-page__auswahl">
           <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
@@ -137,7 +137,7 @@
     <!-- Filiale -->
     <mat-step [stepControl]="filialeForm" label="Filiale">
       <form class="pur-form pur-form--grid" [formGroup]="filialeForm">
-        <h3 class="pur-form__group-titel">Filiale für {{ getFirmaBezeichnung() }} anlegen</h3>
+        <h2 class="pur-form__titel">Filiale für {{ getFirmaBezeichnung() }} anlegen</h2>
 
         @if (filialeStore.error(); as error) {
           <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>

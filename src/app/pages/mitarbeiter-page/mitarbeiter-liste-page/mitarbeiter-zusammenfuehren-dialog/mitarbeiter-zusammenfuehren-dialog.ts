@@ -9,10 +9,11 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { IMitarbeiterEintrag } from '../../../../commons/models/domain/mitarbeiter';
 import { sortMitarbeiter } from '../../../../commons/utils/mitarbeiter/mitarbeiter-dokument';
+import { istAehnlicherMitarbeiterName } from '../../../../commons/utils/mitarbeiter/mitarbeiter-namensaehnlichkeit';
 import { MitarbeiterStore } from '../../../../stores/domain/mitarbeiter.store';
 
 export interface IMitarbeiterZusammenfuehrenDialogDaten {
-  quelle: IMitarbeiterEintrag;
+  ziel: IMitarbeiterEintrag;
   mitarbeiter: readonly IMitarbeiterEintrag[];
 }
 
@@ -38,13 +39,16 @@ export class MitarbeiterZusammenfuehrenDialog {
 
   // ===== Öffentliche Werte ====================
 
-  readonly zielMitarbeiter = sortMitarbeiter(
+  readonly duplikate = sortMitarbeiter(
     this.dialogDaten.mitarbeiter.filter((mitarbeiter) => {
-      return mitarbeiter.id !== this.dialogDaten.quelle.id;
+      return (
+        mitarbeiter.id !== this.dialogDaten.ziel.id &&
+        istAehnlicherMitarbeiterName(this.dialogDaten.ziel.person, mitarbeiter.person)
+      );
     }),
   );
   readonly zusammenfuehrenForm = new FormGroup({
-    zielMitarbeiterId: new FormControl('', {
+    duplikatIds: new FormControl<string[]>([], {
       nonNullable: true,
       validators: [Validators.required],
     }),
@@ -66,17 +70,15 @@ export class MitarbeiterZusammenfuehrenDialog {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Liefert den aktuell im Formular ausgewählten Zielmitarbeiter.
+   * Liefert die aktuell im Formular ausgewählten Duplikate.
    *
-   * @returns Der Zielmitarbeiter oder `null`, solange kein Ziel ausgewählt ist.
+   * @returns Die ausgewählten Mitarbeiter in der Reihenfolge der Auswahlliste.
    */
-  getAusgewaehlterZielMitarbeiter(): IMitarbeiterEintrag | null {
-    const zielMitarbeiterId = this.zusammenfuehrenForm.controls.zielMitarbeiterId.value;
-    return (
-      this.zielMitarbeiter.find((mitarbeiter) => {
-        return mitarbeiter.id === zielMitarbeiterId;
-      }) ?? null
-    );
+  getAusgewaehlteDuplikate(): readonly IMitarbeiterEintrag[] {
+    const duplikatIds = new Set(this.zusammenfuehrenForm.controls.duplikatIds.value);
+    return this.duplikate.filter((mitarbeiter) => {
+      return duplikatIds.has(mitarbeiter.id);
+    });
   }
 
   /**
@@ -88,15 +90,15 @@ export class MitarbeiterZusammenfuehrenDialog {
       return;
     }
 
-    const quelle = this.dialogDaten.quelle;
-    const zielMitarbeiterId = this.zusammenfuehrenForm.controls.zielMitarbeiterId.value;
+    const ziel = this.dialogDaten.ziel;
+    const duplikatIds = this.getAusgewaehlteDuplikate().map((mitarbeiter) => mitarbeiter.id);
     this.dialogRef.disableClose = true;
     try {
       await this.mitarbeiterStore.mergeMitarbeiter(
-        quelle.unternehmerId,
-        quelle.firmaId,
-        quelle.id,
-        zielMitarbeiterId,
+        ziel.unternehmerId,
+        ziel.firmaId,
+        duplikatIds,
+        ziel.id,
       );
       this.dialogRef.close(true);
     } catch {

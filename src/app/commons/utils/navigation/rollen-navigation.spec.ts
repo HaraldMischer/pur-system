@@ -99,18 +99,18 @@ describe('rollen-navigation', () => {
         kinder: [
           {
             typ: 'link',
-            id: 'datenstruktur',
-            label: 'Datenstruktur anlegen',
-            icon: 'account_tree',
-            route: '/systemverwaltung/datenstruktur',
+            id: 'benutzeranlage',
+            label: 'Benutzer anlegen',
+            icon: 'person_add',
+            route: '/systemverwaltung/benutzer/anlegen',
             bereich: 'systemverwaltung',
           },
           {
             typ: 'link',
-            id: 'benutzer',
-            label: 'Benutzerverwaltung',
+            id: 'benutzerverwaltung',
+            label: 'Benutzer verwalten',
             icon: 'manage_accounts',
-            route: '/systemverwaltung/benutzer',
+            route: '/systemverwaltung/benutzer/verwalten',
             bereich: 'systemverwaltung',
           },
         ],
@@ -119,8 +119,8 @@ describe('rollen-navigation', () => {
 
     expect(getNavigationLinks(eintraege).map((eintrag) => eintrag.id)).toEqual([
       'dashboard',
-      'datenstruktur',
-      'benutzer',
+      'benutzeranlage',
+      'benutzerverwaltung',
     ]);
   });
 });

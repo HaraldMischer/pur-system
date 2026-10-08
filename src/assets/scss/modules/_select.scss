@@ -1,0 +1,13 @@
+// pur-system/src/assets/scss/modules/_select.scss
+
+.pur-select {
+  &__panel {
+    &--grouped {
+      .mat-mdc-optgroup-label {
+        color: var(--mat-sys-on-surface);
+        font: var(--mat-sys-label-large);
+        min-height: 24px;
+      }
+    }
+  }
+}

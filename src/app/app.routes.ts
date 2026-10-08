@@ -101,11 +101,29 @@ export const routes: Routes = [
       },
       {
         path: 'benutzer',
-        title: 'Benutzerverwaltung',
-        loadComponent: () =>
-          import('./pages/systemverwaltung-page/benutzer-page/benutzer-page').then(
-            (m) => m.BenutzerPage,
-          ),
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            redirectTo: 'verwalten',
+          },
+          {
+            path: 'anlegen',
+            title: 'Benutzer anlegen',
+            loadComponent: () =>
+              import(
+                './pages/systemverwaltung-page/benutzer-page/benutzer-anlegen-page/benutzer-anlegen-page'
+              ).then((m) => m.BenutzerAnlegenPage),
+          },
+          {
+            path: 'verwalten',
+            title: 'Benutzer verwalten',
+            loadComponent: () =>
+              import(
+                './pages/systemverwaltung-page/benutzer-page/benutzer-verwalten-page/benutzer-verwalten-page'
+              ).then((m) => m.BenutzerVerwaltenPage),
+          },
+        ],
       },
       {
         path: 'datenmigration',

@@ -2551,3 +2551,94 @@ Neu hinzugefügt:
 - [x] Masterkonten können nicht gelöscht und eigene Masterprofile nicht deaktiviert werden.
 - [x] Oberfläche und Store zeigen nach jeder bestätigten Aktion unmittelbar den aktuellen Stand.
 - [x] Tests, Build und manuelle responsive Prüfung sind erfolgreich.
+
+## 19. Done Todo: Benutzeranlage und Benutzerverwaltung auf eigene Seiten aufteilen
+
+### Ziel
+
+Die bisher gemeinsam unter `/systemverwaltung/benutzer` dargestellten Bereiche `Benutzer anlegen` und `Benutzer verwalten`
+werden als eigenständige Routenseiten bereitgestellt. Beide Seiten bleiben ausschließlich für Master erreichbar und verwenden
+weiterhin die vorhandenen fachlichen Komponenten, Dialoge und den gemeinsamen `BenutzerVerwaltungStore`. Die Systemnavigation
+verlinkt beide Seiten direkt; der bisherige Benutzerpfad bleibt als Weiterleitung erhalten.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- `src/app/app.routes.ts`
+- `src/app/app.routes.spec.ts`
+- `src/app/commons/constants/navigation.constants.ts`
+- `src/app/commons/constants/navigation.constants.spec.ts`
+- `src/app/commons/utils/navigation/rollen-navigation.spec.ts`
+- `src/app/components/app-shell/app-sidenav/app-sidenav.spec.ts`
+- `src/app/components/app-shell/app-sidenav/app-sidenav-nested-navigation/app-sidenav-nested-navigation.spec.ts`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.html`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.scss`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.spec.ts`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.ts`
+- `docs/projekt-plan.md`
+- `docs/projekt-stand.md`
+
+Neu hinzugefügt:
+
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlegen-page/`
+- `src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwalten-page/`
+
+### Schritt 1: Eigenständige Benutzerseiten und Unterrouten vorbereiten
+
+- [x] Die Routenseite `BenutzerAnlegenPage` unter `benutzer-page/benutzer-anlegen-page` anlegen.
+- [x] Die Routenseite `BenutzerVerwaltenPage` unter `benutzer-page/benutzer-verwalten-page` anlegen.
+- [x] `/systemverwaltung/benutzer/anlegen` mit dem Toolbar-Titel `Benutzer anlegen` bereitstellen.
+- [x] `/systemverwaltung/benutzer/verwalten` mit dem Toolbar-Titel `Benutzer verwalten` bereitstellen.
+- [x] `/systemverwaltung/benutzer` auf `/systemverwaltung/benutzer/verwalten` weiterleiten.
+- [x] Den bestehenden Schutz durch Authentifizierungs-, Initialisierungs-, Bereichs- und Master-Guard unverändert übernehmen.
+
+### Schritt 2: Benutzeranlage auf die eigene Seite übernehmen
+
+- [x] Die vorhandene Komponente `BenutzerAnlage` ausschließlich auf der neuen Anlegen-Seite darstellen.
+- [x] Das Seitenlayout mit `pur-page pur-page--limited` bereitstellen und die bestehende Formularstruktur unverändert erhalten.
+- [x] Laden, Auswahl und Zurücksetzen der rollenabhängigen Datenzuordnung unverändert über den gemeinsamen Store abwickeln.
+- [x] Erfolgs- und Fehlerrückmeldungen beim Verlassen der Anlegen-Seite bereinigen.
+- [x] Die vorhandenen Tests der Benutzeranlage auf die neue Routenseite und ihre fachliche Komponente aufteilen.
+
+### Schritt 3: Benutzerverwaltung auf die eigene Seite übernehmen
+
+- [x] Die vorhandene Komponente `BenutzerVerwaltung` ausschließlich auf der neuen Verwalten-Seite darstellen.
+- [x] Profildialog, Datenzuordnungsdialog und Löschdialog unverändert direkt aus der Benutzerverwaltung öffnen.
+- [x] Auswahl-, Erfolgs- und Fehlerzustände beim Verlassen der Verwalten-Seite kontrolliert bereinigen.
+- [x] Die vorhandenen Tests für Profilauswahl, Aktionsmenü und direkten Master-Aufruf erhalten.
+
+### Schritt 4: Systemnavigation auf zwei Benutzerlinks umstellen
+
+- [x] Den bisherigen Navigationseintrag `Benutzerverwaltung` durch `Benutzer anlegen` und `Benutzer verwalten` ersetzen.
+- [x] Für beide Einträge eindeutige IDs, passende Material-Icons und die neuen Routen verwenden.
+- [x] Reihenfolge und aktive Hervorhebung beider Links in der aufgeklappten Gruppe `Systemverwaltung` absichern.
+- [x] Die rollenabhängige Filterung unverändert beibehalten, sodass beide Links ausschließlich für Master erscheinen.
+
+### Schritt 5: Kombinierte Seite entfernen und Dokumentation aktualisieren
+
+- [x] Den Divider und die nicht mehr benötigte kombinierte Darstellung aus `BenutzerPage` entfernen.
+- [x] Nicht mehr benötigte Dateien der bisherigen kombinierten Routenseite löschen, sobald alle Tests migriert sind.
+- [x] Veraltete Verweise auf die gemeinsame Benutzerseite in Projektplan und Projektstand anpassen.
+- [x] Die beiden eigenständigen Seiten auf Desktop und kleinem Viewport prüfen.
+
+### Tests und Abschluss
+
+- [x] Routentests für beide Zielrouten, ihre Toolbar-Titel und die Weiterleitung ergänzen.
+- [x] Navigationstests auf beide Links, Reihenfolge, Master-Sichtbarkeit und aktive Route anpassen.
+- [x] Seitentests für getrennte Darstellung und Feedback-Bereinigung ergänzen.
+- [x] Sicherstellen, dass Anlage-, Profil-, Datenzuordnungs- und Löschabläufe fachlich unverändert funktionieren.
+- [x] Die vollständige Testsuite mit `npm test` ohne Watch-Modus ausführen.
+- [x] Den Office-Build mit `npm run build:office` ausführen.
+- [x] Beide Seiten einschließlich Tastaturbedienung manuell prüfen.
+- [x] `docs/projekt-stand.md` nach erfolgreichem Abschluss aktualisieren.
+- [x] Das vollständig abgeschlossene Todo unter Erhalt aller Markierungen nach `docs/todo_done.md` verschieben.
+
+### Erledigt, wenn
+
+- [x] `Benutzer anlegen` und `Benutzer verwalten` sind eigenständige, direkt aufrufbare Seiten.
+- [x] Die Systemnavigation enthält für Master zwei eindeutige und korrekt hervorgehobene Benutzerlinks.
+- [x] Der bisherige Pfad `/systemverwaltung/benutzer` führt ohne Fehler zur Benutzerverwaltung.
+- [x] Die kombinierte Darstellung mit Divider wird nicht mehr verwendet.
+- [x] Alle bestehenden Benutzeranlage- und Benutzerverwaltungsabläufe funktionieren unverändert.
+- [x] Tests, Office-Build und manuelle responsive Prüfung sind erfolgreich.

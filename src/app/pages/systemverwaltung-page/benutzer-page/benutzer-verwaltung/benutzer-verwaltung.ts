@@ -1,6 +1,6 @@
 // pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-verwaltung.ts
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -40,12 +40,35 @@ export class BenutzerVerwaltung {
   // ===== Öffentliche Werte ====================
 
   readonly benutzerUid = new FormControl('', { nonNullable: true });
+  readonly rollenReihenfolge: readonly TUserRole[] = ['filiale', 'office', 'mitarbeiter', 'master'];
   readonly rollenLabels: Readonly<Record<TUserRole, string>> = {
     filiale: 'Filiale',
     office: 'Office',
     mitarbeiter: 'Mitarbeiter',
     master: 'Master',
   };
+
+  // ===== Öffentliche Ableitungen ==============
+
+  readonly benutzergruppen = computed(() => {
+    const benutzerprofile = this.verwaltungStore.benutzerprofile();
+
+    return this.rollenReihenfolge
+      .map((rolle) => {
+        const benutzer = benutzerprofile
+          .filter((profil) => profil.userRole === rolle)
+          .sort((a, b) => {
+            return a.anzeigename.localeCompare(b.anzeigename, 'de') || a.uid.localeCompare(b.uid);
+          });
+
+        return {
+          rolle,
+          label: this.rollenLabels[rolle],
+          benutzer,
+        };
+      })
+      .filter((gruppe) => gruppe.benutzer.length > 0);
+  });
 
   // ===== Öffentliche Aktionen =================
 

@@ -45,22 +45,24 @@ export function deleteMitarbeiterIdZuordnung(
 }
 
 /**
- * Leitet alle Legacy-Zuordnungen eines Firmenmitarbeiters auf einen anderen Mitarbeiter um.
+ * Leitet alle Legacy-Zuordnungen mehrerer Firmenmitarbeiter auf einen Zielmitarbeiter um.
  *
  * @param systemmigration - Vollständige Migrationszuordnung eines Legacy-Kunden.
  * @param firmaId - Ziel-ID der Firma, deren Mitarbeiterzuordnungen angepasst werden.
- * @param quellMitarbeiterId - Bisherige Mitarbeiter-Ziel-ID.
+ * @param quellMitarbeiterIds - Bisherige Mitarbeiter-Ziel-IDs.
  * @param zielMitarbeiterId - Künftig verwendete Mitarbeiter-Ziel-ID.
  * @returns Die angepasste Zuordnungsstruktur oder `null`, wenn keine Zuordnung gefunden wurde.
  */
-export function replaceMitarbeiterIdZuordnung(
+export function replaceMitarbeiterIdZuordnungen(
   systemmigration: ISystemmigrationDokument,
   firmaId: string,
-  quellMitarbeiterId: string,
+  quellMitarbeiterIds: readonly string[],
   zielMitarbeiterId: string,
 ): NonNullable<ISystemmigrationDokument['mitarbeiterIds']> | null {
   const mitarbeiterIds = systemmigration.mitarbeiterIds;
   if (!mitarbeiterIds) return null;
+  const quellIds = new Set(quellMitarbeiterIds);
+  if (quellIds.size === 0) return null;
 
   let aktualisiert = false;
   const aktualisierteFirmen = Object.fromEntries(
@@ -73,7 +75,7 @@ export function replaceMitarbeiterIdZuordnung(
         Object.entries(filialen).map(([purBranchId, ids]) => {
           const aktualisierteIds = Object.fromEntries(
             Object.entries(ids).map(([purEmployeeId, mitarbeiterId]) => {
-              if (mitarbeiterId !== quellMitarbeiterId) {
+              if (!quellIds.has(mitarbeiterId)) {
                 return [purEmployeeId, mitarbeiterId];
               }
               aktualisiert = true;

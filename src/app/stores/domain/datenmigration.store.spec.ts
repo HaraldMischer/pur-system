@@ -8,6 +8,7 @@ import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { DatenmigrationService } from '../../services/domain/datenmigration.service';
 import { DatenmigrationStore } from './datenmigration.store';
+import { MitarbeiterStore } from './mitarbeiter.store';
 
 describe('DatenmigrationStore', () => {
   const purCustomers: IPurCustomerEintrag[] = [
@@ -36,6 +37,9 @@ describe('DatenmigrationStore', () => {
     logDatenflussTitel: vi.fn(),
     logDatenGeladen: vi.fn(),
   };
+  const mitarbeiterStoreMock = {
+    resetMitarbeiter: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -59,6 +63,7 @@ describe('DatenmigrationStore', () => {
       providers: [
         DatenmigrationStore,
         { provide: DatenmigrationService, useValue: datenmigrationServiceMock },
+        { provide: MitarbeiterStore, useValue: mitarbeiterStoreMock },
         { provide: DebugLogService, useValue: debugLogServiceMock },
         {
           provide: StoreSnapshotService,
@@ -238,6 +243,7 @@ describe('DatenmigrationStore', () => {
     await store.migrateMitarbeiter();
 
     expect(datenmigrationServiceMock.migrateMitarbeiter).toHaveBeenCalledWith('a');
+    expect(mitarbeiterStoreMock.resetMitarbeiter).toHaveBeenCalledOnce();
     expect(datenmigrationServiceMock.loadMitarbeiterZielDokumente).toHaveBeenCalledWith('a');
     expect(store.migrationsstatus().mitarbeiter).toBe(completedStatus);
     expect(store.mitarbeiterZielDokumente()).toBe(4);

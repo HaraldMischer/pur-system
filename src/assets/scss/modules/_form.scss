@@ -108,18 +108,20 @@
     }
   }
 
-  // Gliedert fachlich zusammengehörige Formularinhalte mit einer Überschrift.
+  // Kennzeichnet die Überschrift eines vollständigen Formulars oder einer Formulargruppe.
+  &__titel,
+  &__group-titel {
+    margin: 0 0 12px;
+    font: var(--mat-sys-title-medium);
+  }
+
+  // Gliedert fachlich zusammengehörige Formularinhalte.
   &__group {
     display: grid;
     min-width: 0;
     margin: 0;
     padding: 0;
     border: 0;
-
-    &-titel {
-      margin: 0 0 12px;
-      font: var(--mat-sys-title-medium);
-    }
   }
 
   // Für einfache, flache Formulare mit automatisch umbrechenden direkten Elementen.

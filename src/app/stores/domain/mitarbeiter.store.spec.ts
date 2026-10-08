@@ -279,18 +279,30 @@ describe('MitarbeiterStore', () => {
   });
 
   it('should merge branch assignments and remove the source employee', async () => {
+    const beta: IMitarbeiterEintrag = {
+      ...zulu,
+      id: 'b',
+      rollen: ['kassierer'],
+      filialIds: ['b-3'],
+      person: { ...zulu.person, vorname: 'Berta', nachname: 'Beta' },
+    };
     mitarbeiterServiceMock.loadMitarbeiter.mockResolvedValueOnce([
       { ...alpha, filialIds: ['b-1'] },
       { ...zulu, rollen: ['techniker'], filialIds: ['b-2'] },
+      beta,
     ]);
     const store = TestBed.inject(MitarbeiterStore);
     await store.loadMitarbeiter('u', 'f');
 
-    await store.mergeMitarbeiter('u', 'f', 'z', 'a');
+    await store.mergeMitarbeiter('u', 'f', ['z', 'b'], 'a');
 
-    expect(mitarbeiterServiceMock.mergeMitarbeiter).toHaveBeenCalledWith('u', 'f', 'z', 'a');
+    expect(mitarbeiterServiceMock.mergeMitarbeiter).toHaveBeenCalledWith('u', 'f', ['z', 'b'], 'a');
     expect(store.getMitarbeiter('u', 'f')).toEqual([
-      { ...alpha, rollen: ['servicekraft', 'techniker'], filialIds: ['b-1', 'b-2'] },
+      {
+        ...alpha,
+        rollen: ['servicekraft', 'techniker', 'kassierer'],
+        filialIds: ['b-1', 'b-2', 'b-3'],
+      },
     ]);
   });
 

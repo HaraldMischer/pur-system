@@ -65,14 +65,12 @@ describe('NAVIGATION_NACH_ROLLE', () => {
       id: eintrag.id,
       route: eintrag.route,
     }));
-    expect(kinder).toHaveLength(3);
-    expect(kinder).toEqual(
-      expect.arrayContaining([
-        { id: 'datenstruktur', route: '/systemverwaltung/datenstruktur' },
-        { id: 'benutzerverwaltung', route: '/systemverwaltung/benutzer' },
-        { id: 'datenmigration', route: '/systemverwaltung/datenmigration' },
-      ]),
-    );
+    expect(kinder).toEqual([
+      { id: 'benutzeranlage', route: '/systemverwaltung/benutzer/anlegen' },
+      { id: 'benutzerverwaltung', route: '/systemverwaltung/benutzer/verwalten' },
+      { id: 'datenstruktur', route: '/systemverwaltung/datenstruktur' },
+      { id: 'datenmigration', route: '/systemverwaltung/datenmigration' },
+    ]);
   });
 
   it('should provide complete link data for every configured entry', () => {

@@ -324,8 +324,12 @@ describe('MitarbeiterService', () => {
   it('should merge employees and redirect all matching migration mappings atomically', async () => {
     firestoreDbServiceMock.loadDocument
       .mockResolvedValueOnce({
-        id: 'm-quelle',
+        id: 'm-quelle-1',
         daten: { ...anlage, rollen: ['techniker'], filialIds: ['b-1'], aktiv: false },
+      })
+      .mockResolvedValueOnce({
+        id: 'm-quelle-2',
+        daten: { ...anlage, rollen: ['kassierer'], filialIds: ['b-3'], aktiv: false },
       })
       .mockResolvedValueOnce({
         id: 'm-ziel',
@@ -340,8 +344,9 @@ describe('MitarbeiterService', () => {
           mitarbeiterIds: {
             'firma-alt': {
               'filiale-alt': {
-                'mitarbeiter-alt-1': 'm-quelle',
-                'mitarbeiter-alt-2': 'm-ziel',
+                'mitarbeiter-alt-1': 'm-quelle-1',
+                'mitarbeiter-alt-2': 'm-quelle-2',
+                'mitarbeiter-alt-3': 'm-ziel',
               },
             },
           },
@@ -350,19 +355,23 @@ describe('MitarbeiterService', () => {
     ]);
     const service = TestBed.inject(MitarbeiterService);
 
-    await service.mergeMitarbeiter('u', 'f', 'm-quelle', 'm-ziel');
+    await service.mergeMitarbeiter('u', 'f', ['m-quelle-1', 'm-quelle-2'], 'm-ziel');
 
     expect(firestoreDbServiceMock.updateDocumentsAtomically).toHaveBeenCalledWith([
       {
         documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-ziel',
         daten: {
-          filialIds: ['b-2', 'b-1'],
-          rollen: ['servicekraft', 'techniker'],
+          filialIds: ['b-2', 'b-1', 'b-3'],
+          rollen: ['servicekraft', 'techniker', 'kassierer'],
           aktualisiertAm: 'server-zeitstempel',
         },
       },
       {
-        documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-quelle',
+        documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-quelle-1',
+        delete: true,
+      },
+      {
+        documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-quelle-2',
         delete: true,
       },
       {
@@ -373,6 +382,7 @@ describe('MitarbeiterService', () => {
               'filiale-alt': {
                 'mitarbeiter-alt-1': 'm-ziel',
                 'mitarbeiter-alt-2': 'm-ziel',
+                'mitarbeiter-alt-3': 'm-ziel',
               },
             },
           },

@@ -30,6 +30,10 @@ describe('MitarbeiterZusammenfuehrenDialog', () => {
     person: { ...quelle.person, vorname: 'Maria' },
     filialIds: ['b-2'],
   };
+  const zielZwei: IMitarbeiterEintrag = {
+    ...ziel,
+    id: 'm-ziel-zwei',
+  };
   const zielSpaeter: IMitarbeiterEintrag = {
     ...ziel,
     id: 'm-ziel-spaeter',
@@ -48,8 +52,8 @@ describe('MitarbeiterZusammenfuehrenDialog', () => {
         {
           provide: MAT_DIALOG_DATA,
           useValue: {
-            quelle,
-            mitarbeiter: [zielSpaeter, quelle, ziel],
+            ziel: quelle,
+            mitarbeiter: [zielSpaeter, quelle, ziel, zielZwei],
           },
         },
         { provide: MatDialogRef, useValue: { close, disableClose: false } },
@@ -61,21 +65,30 @@ describe('MitarbeiterZusammenfuehrenDialog', () => {
     });
   });
 
-  it('should offer only existing target employees and describe the effects', () => {
+  it('should offer only similar target employees and describe the effects', () => {
     const fixture = TestBed.createComponent(MitarbeiterZusammenfuehrenDialog);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.zielMitarbeiter).toEqual([ziel, zielSpaeter]);
+    expect(fixture.componentInstance.duplikate).toEqual([ziel, zielZwei]);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Mia Muster');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Auswirkung');
   });
 
-  it('should merge the source into the selected target', async () => {
+  it('should merge all selected duplicates into the target employee', async () => {
     const fixture = TestBed.createComponent(MitarbeiterZusammenfuehrenDialog);
-    fixture.componentInstance.zusammenfuehrenForm.controls.zielMitarbeiterId.setValue('m-ziel');
+    fixture.componentInstance.zusammenfuehrenForm.controls.duplikatIds.setValue([
+      'm-ziel',
+      'm-ziel-zwei',
+    ]);
 
     await fixture.componentInstance.onSubmit();
 
-    expect(mergeMitarbeiter).toHaveBeenCalledWith('u-1', 'f-1', 'm-quelle', 'm-ziel');
+    expect(mergeMitarbeiter).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      ['m-ziel', 'm-ziel-zwei'],
+      'm-quelle',
+    );
     expect(close).toHaveBeenCalledWith(true);
   });
 });

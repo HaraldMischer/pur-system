@@ -1,20 +1,25 @@
 <!-- pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-verwaltung/benutzer-verwaltung.html -->
 
 <section class="pur-page-section benutzer-verwaltung">
-  <header class="pur-page-section__header">
-    <h2 class="pur-page-section__title">Benutzer verwalten</h2>
-  </header>
-
   <!-- Benutzerauswahl -->
   <div class="pur-form pur-form--grid">
+    <h2 class="pur-form__titel">Benutzer auswählen</h2>
+
     <div class="pur-form__row benutzer-verwaltung__auswahl">
       <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Benutzer</mat-label>
-        <mat-select [formControl]="benutzerUid" (selectionChange)="selectBenutzer($event.value)">
-          @for (profil of verwaltungStore.benutzerprofile(); track profil.uid) {
-            <mat-option [value]="profil.uid">
-              {{ profil.anzeigename }} - {{ rollenLabels[profil.userRole] }}
-            </mat-option>
+        <mat-select
+          class="pur-select"
+          [panelClass]="['pur-select__panel', 'pur-select__panel--grouped']"
+          [formControl]="benutzerUid"
+          (selectionChange)="selectBenutzer($event.value)"
+        >
+          @for (gruppe of benutzergruppen(); track gruppe.rolle) {
+            <mat-optgroup [label]="gruppe.label">
+              @for (profil of gruppe.benutzer; track profil.uid) {
+                <mat-option [value]="profil.uid">{{ profil.anzeigename }}</mat-option>
+              }
+            </mat-optgroup>
           } @empty {
             <mat-option disabled>Keine Benutzerprofile verfügbar</mat-option>
           }

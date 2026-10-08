@@ -69,9 +69,6 @@ describe('BenutzerVerwaltung', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     const bearbeitenButton = compiled.querySelector<HTMLButtonElement>('button');
 
-    expect(compiled.querySelector('.pur-page-section__title')?.textContent).toContain(
-      'Benutzer verwalten',
-    );
     expect(compiled.textContent).toContain('Keine Benutzerprofile verfügbar');
     expect(bearbeitenButton?.disabled).toBe(true);
   });
@@ -184,17 +181,36 @@ describe('BenutzerVerwaltung', () => {
     });
   });
 
-  it('should show the display name and role instead of technical login data', () => {
-    storeMock.benutzerprofile.set([profil]);
+  it('should group profiles by role frequency and sort their display names', () => {
+    storeMock.benutzerprofile.set([
+      { ...profil, uid: 'master-1', anzeigename: 'Master Benutzer', userRole: 'master' },
+      {
+        ...profil,
+        uid: 'mitarbeiter-1',
+        anzeigename: 'Mitarbeiter Benutzer',
+        userRole: 'mitarbeiter',
+      },
+      profil,
+      { ...profil, uid: 'filiale-2', anzeigename: 'Zweite Filiale', userRole: 'filiale' },
+      { ...profil, uid: 'filiale-1', anzeigename: 'Erste Filiale', userRole: 'filiale' },
+    ]);
     const fixture = TestBed.createComponent(BenutzerVerwaltung);
     fixture.detectChanges();
     const select = fixture.debugElement.query(By.directive(MatSelect))
       .componentInstance as MatSelect;
+    const gruppenLabels = select.optionGroups.map((gruppe) => gruppe.label);
     const optionTexts = select.options.map((option) =>
       option.viewValue.replace(/\s+/g, ' ').trim(),
     );
 
-    expect(optionTexts).toContain('Office Benutzer - Office');
+    expect(gruppenLabels).toEqual(['Filiale', 'Office', 'Mitarbeiter', 'Master']);
+    expect(optionTexts).toEqual([
+      'Erste Filiale',
+      'Zweite Filiale',
+      'Office Benutzer',
+      'Mitarbeiter Benutzer',
+      'Master Benutzer',
+    ]);
     expect(optionTexts.join(' ')).not.toContain('officebenutzer-office');
     expect(optionTexts.join(' ')).not.toContain('office@example.com');
   });

@@ -234,7 +234,7 @@ describe('BenutzerBearbeitenDialog', () => {
       Array.from(
         (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('mat-checkbox'),
       ).map((checkbox) => checkbox.textContent?.trim()),
-    ).toEqual(['Benutzerprofil aktiv', 'Schichtplan', 'Mitarbeiter', 'Verwaltung']);
+    ).toEqual(['Aktiv', 'Schichtplan', 'Mitarbeiter', 'Verwaltung']);
 
     await component.onSubmit();
 

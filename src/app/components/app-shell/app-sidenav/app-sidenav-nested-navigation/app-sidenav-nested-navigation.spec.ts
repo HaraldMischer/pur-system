@@ -29,18 +29,26 @@ const EINTRAEGE: readonly TNavigationEintrag[] = [
     kinder: [
       {
         typ: 'link',
-        id: 'datenstruktur',
-        label: 'Datenstruktur anlegen',
-        icon: 'account_tree',
-        route: '/systemverwaltung/datenstruktur',
+        id: 'benutzeranlage',
+        label: 'Benutzer anlegen',
+        icon: 'person_add',
+        route: '/systemverwaltung/benutzer/anlegen',
         bereich: 'systemverwaltung',
       },
       {
         typ: 'link',
-        id: 'benutzer',
-        label: 'Benutzerverwaltung',
+        id: 'benutzerverwaltung',
+        label: 'Benutzer verwalten',
         icon: 'manage_accounts',
-        route: '/systemverwaltung/benutzer',
+        route: '/systemverwaltung/benutzer/verwalten',
+        bereich: 'systemverwaltung',
+      },
+      {
+        typ: 'link',
+        id: 'datenstruktur',
+        label: 'Datenstruktur',
+        icon: 'account_tree',
+        route: '/systemverwaltung/datenstruktur',
         bereich: 'systemverwaltung',
       },
     ],
@@ -57,7 +65,8 @@ describe('AppSidenavNestedNavigation', () => {
         provideRouter([
           { path: 'dashboard', component: TestRouteComponent },
           { path: 'systemverwaltung/datenstruktur', component: TestRouteComponent },
-          { path: 'systemverwaltung/benutzer', component: TestRouteComponent },
+          { path: 'systemverwaltung/benutzer/anlegen', component: TestRouteComponent },
+          { path: 'systemverwaltung/benutzer/verwalten', component: TestRouteComponent },
         ]),
       ],
     }).compileComponents();
@@ -106,7 +115,7 @@ describe('AppSidenavNestedNavigation', () => {
     compiled.querySelector<HTMLButtonElement>('button[mat-list-item]')?.click();
     fixture.detectChanges();
     const childLink = [...compiled.querySelectorAll<HTMLAnchorElement>('a[mat-list-item]')].find(
-      (link) => link.textContent?.includes('Benutzerverwaltung'),
+      (link) => link.textContent?.includes('Benutzer verwalten'),
     );
 
     childLink?.click();
@@ -114,10 +123,13 @@ describe('AppSidenavNestedNavigation', () => {
     expect(navigationSelectedSpy).toHaveBeenCalledOnce();
   });
 
-  it('should automatically expand the group of the active child route', async () => {
+  it.each([
+    ['/systemverwaltung/benutzer/anlegen', 'Benutzer anlegen'],
+    ['/systemverwaltung/benutzer/verwalten', 'Benutzer verwalten'],
+  ])('should expand the group for the active child route %s', async (route, label) => {
     const router = TestBed.inject(Router);
 
-    await router.navigateByUrl('/systemverwaltung/benutzer');
+    await router.navigateByUrl(route);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -126,7 +138,7 @@ describe('AppSidenavNestedNavigation', () => {
     const activeLink = compiled.querySelector('.active-nav-item');
 
     expect(children?.classList).not.toContain('app-sidenav-nested-navigation__children--hidden');
-    expect(activeLink?.textContent).toContain('Benutzerverwaltung');
+    expect(activeLink?.textContent).toContain(label);
   });
 
   it('should omit groups without visible children', () => {

@@ -55,10 +55,18 @@ const SYSTEMVERWALTUNG_NAVIGATION: INavigationGruppe = {
   kinder: [
     {
       typ: 'link',
+      id: 'benutzeranlage',
+      label: 'Benutzer anlegen',
+      icon: 'person_add',
+      route: '/systemverwaltung/benutzer/anlegen',
+      bereich: 'systemverwaltung',
+    },
+    {
+      typ: 'link',
       id: 'benutzerverwaltung',
-      label: 'Benutzerverwaltung',
+      label: 'Benutzer verwalten',
       icon: 'manage_accounts',
-      route: '/systemverwaltung/benutzer',
+      route: '/systemverwaltung/benutzer/verwalten',
       bereich: 'systemverwaltung',
     },
     {

@@ -486,7 +486,9 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
    Die Route erfordert zusätzlich die Bereichsfreigabe `verwaltung`; Filialkonten bleiben ausgeschlossen.
 
 5. **Systemverwaltung (`/systemverwaltung`):** Administrativer Bereich für `master`. Er umfasst die hierarchische
-   Datenstruktur-Anlage unter `/systemverwaltung/datenstruktur` sowie Benutzeranlage und Bearbeitung vorhandener Benutzerprofile
-   unter `/systemverwaltung/benutzer`. In der Sidebar ist der Bereich eine ausklappbare Gruppe mit beiden Unterseiten. Die
-   Auth-Benutzeranlage erfolgt serverseitig über eine geschützte Firebase Cloud Function mit Firebase Admin SDK; fachliche
-   Stammdaten darf der Master direkt in Firestore schreiben. `/systemverwaltung` leitet auf die Datenstruktur-Anlage weiter.
+   Datenstruktur-Anlage unter `/systemverwaltung/datenstruktur`, die Benutzeranlage unter
+   `/systemverwaltung/benutzer/anlegen` und die Bearbeitung vorhandener Benutzerprofile unter
+   `/systemverwaltung/benutzer/verwalten`. In der Sidebar ist der Bereich eine ausklappbare Gruppe mit direkten Links auf die
+   administrativen Unterseiten. Die Auth-Benutzeranlage erfolgt serverseitig über eine geschützte Firebase Cloud Function mit
+   Firebase Admin SDK; fachliche Stammdaten darf der Master direkt in Firestore schreiben. `/systemverwaltung` leitet auf die
+   Datenstruktur-Anlage und `/systemverwaltung/benutzer` auf die Verwaltung vorhandener Benutzer weiter.

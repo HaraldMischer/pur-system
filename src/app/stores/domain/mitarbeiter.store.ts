@@ -307,11 +307,11 @@ export const MitarbeiterStore = signalStore(
       }
 
       /**
-       * Führt einen doppelten Mitarbeiter in einen Zielmitarbeiter derselben Firma über.
+       * Führt mehrere doppelte Mitarbeiter in einen Zielmitarbeiter derselben Firma über.
        *
        * @param unternehmerId - Die Dokument-ID des ausgewählten Unternehmers.
        * @param firmaId - Die Dokument-ID der ausgewählten Firma.
-       * @param quellMitarbeiterId - Mitarbeiter-ID des Duplikats.
+       * @param quellMitarbeiterIds - Mitarbeiter-IDs der Duplikate.
        * @param zielMitarbeiterId - Mitarbeiter-ID des bestehen bleibenden Mitarbeiters.
        * @returns Ein Promise, das nach der bestätigten Zusammenführung abgeschlossen ist.
        * @throws Wenn Kontext oder Mitarbeiter fehlen oder das Zusammenführen fehlschlägt.
@@ -319,18 +319,29 @@ export const MitarbeiterStore = signalStore(
       async function mergeMitarbeiter(
         unternehmerId: string,
         firmaId: string,
-        quellMitarbeiterId: string,
+        quellMitarbeiterIds: readonly string[],
         zielMitarbeiterId: string,
       ): Promise<void> {
         const [schluessel, kontext] = getEindeutigenFirmenkontext(unternehmerId, firmaId);
-        const quelle = kontext.mitarbeiter.find((eintrag) => {
-          return eintrag.id === quellMitarbeiterId;
-        });
+        const eindeutigeQuellIds = [...new Set(quellMitarbeiterIds)];
+        const quellIds = new Set(eindeutigeQuellIds);
+        const quellen = eindeutigeQuellIds
+          .map((quellMitarbeiterId) => {
+            return kontext.mitarbeiter.find((eintrag) => {
+              return eintrag.id === quellMitarbeiterId;
+            });
+          })
+          .filter((eintrag) => eintrag !== undefined);
         const ziel = kontext.mitarbeiter.find((eintrag) => {
           return eintrag.id === zielMitarbeiterId;
         });
-        if (!quelle || !ziel || quelle.id === ziel.id) {
-          throw new Error('Quell- oder Zielmitarbeiter ist für die Zusammenführung ungültig.');
+        if (
+          eindeutigeQuellIds.length === 0 ||
+          quellen.length !== eindeutigeQuellIds.length ||
+          !ziel ||
+          quellIds.has(ziel.id)
+        ) {
+          throw new Error('Duplikate oder Zielmitarbeiter sind für die Zusammenführung ungültig.');
         }
         const aktuelleGeneration = generation;
 
@@ -339,15 +350,19 @@ export const MitarbeiterStore = signalStore(
           await mitarbeiterService.mergeMitarbeiter(
             unternehmerId,
             firmaId,
-            quellMitarbeiterId,
+            eindeutigeQuellIds,
             zielMitarbeiterId,
           );
           if (aktuelleGeneration !== generation) return;
 
-          const filialIds = [...new Set([...ziel.filialIds, ...quelle.filialIds])];
-          const rollen = [...new Set([...ziel.rollen, ...quelle.rollen])];
+          const filialIds = [
+            ...new Set([...ziel.filialIds, ...quellen.flatMap((quelle) => quelle.filialIds)]),
+          ];
+          const rollen = [
+            ...new Set([...ziel.rollen, ...quellen.flatMap((quelle) => quelle.rollen)]),
+          ];
           const mitarbeiter = kontext.mitarbeiter
-            .filter((eintrag) => eintrag.id !== quellMitarbeiterId)
+            .filter((eintrag) => !quellIds.has(eintrag.id))
             .map((eintrag) => {
               return eintrag.id === zielMitarbeiterId ? { ...eintrag, filialIds, rollen } : eintrag;
             });

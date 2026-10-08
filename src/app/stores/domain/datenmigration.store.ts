@@ -9,6 +9,7 @@ import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-err
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { DatenmigrationService } from '../../services/domain/datenmigration.service';
+import { MitarbeiterStore } from './mitarbeiter.store';
 
 // ===== Top-Level Helper =====================
 
@@ -55,6 +56,7 @@ export const DatenmigrationStore = signalStore(
     (
       store,
       datenmigrationService = inject(DatenmigrationService),
+      mitarbeiterStore = inject(MitarbeiterStore),
       debugLogService = inject(DebugLogService),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),
@@ -395,6 +397,7 @@ export const DatenmigrationStore = signalStore(
         patchState(store, { inProgress: true, error: null });
         try {
           await datenmigrationService.migrateMitarbeiter(purCustomerId);
+          mitarbeiterStore.resetMitarbeiter();
           const [migrationsstatus, zielDokumente] = await Promise.all([
             datenmigrationService.loadMigrationsstatus(purCustomerId),
             datenmigrationService.loadMitarbeiterZielDokumente(purCustomerId),

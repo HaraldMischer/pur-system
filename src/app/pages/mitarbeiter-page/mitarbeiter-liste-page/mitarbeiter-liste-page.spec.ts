@@ -287,7 +287,7 @@ describe('MitarbeiterListePage', () => {
     mergeButton?.click();
 
     expect(dialogMock.open).toHaveBeenCalledWith(MitarbeiterZusammenfuehrenDialog, {
-      data: { quelle: mitarbeiter, mitarbeiter: [mitarbeiter, ziel] },
+      data: { ziel: mitarbeiter, mitarbeiter: [mitarbeiter, ziel] },
     });
   });
 

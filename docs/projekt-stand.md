@@ -27,9 +27,9 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   sichtbaren Einträge und verändert die konfigurierte Darstellungsart nicht.
 - Flache und verschachtelte Navigationen verwenden getrennte Darstellungskomponenten. Die verschachtelte Component unterstützt
   direkte Links, nicht navigierbare ausklappbare Gruppen, eingerückte Unterpunkte und das automatische Öffnen der Gruppe einer
-  aktiven Unterroute. Die Master-Navigation stellt `Systemverwaltung` als solche Gruppe mit den Unterpunkten
-  `Datenstruktur anlegen` und `Benutzerverwaltung` dar. Office und Filiale erhalten bei gültigem Datenzugriff die Gruppe
-  `Mitarbeiter` mit dem Unterpunkt `Mitarbeiterliste`; Master erhält sie bei optionaler Zuweisung des App-Bereichs.
+  aktiven Unterroute. Die Master-Navigation stellt `Systemverwaltung` als solche Gruppe mit den Unterpunkten `Benutzer anlegen`,
+  `Benutzer verwalten`, `Datenstruktur` und `Datenmigration` dar. Office und Filiale erhalten bei gültigem Datenzugriff die
+  Gruppe `Mitarbeiter` mit dem Unterpunkt `Mitarbeiterliste`; Master erhält sie bei optionaler Zuweisung des App-Bereichs.
 - Die Toolbar zeigt den Titel der aktiven Route und den Menübutton.
 - Die Toolbar bietet einen Dark-/Light-Mode-Umschalter und im Entwicklungsmodus einen Button für die Snapshots der aktiven Stores.
 - Die Toolbar zeigt während zentral registrierter Lese- und Schreibvorgänge eine globale unbestimmte Progress-Bar.
@@ -56,10 +56,11 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `/mitarbeiter/liste` weiter. Die Listenroute ist für aktive Office- und Filialkonten mit vollständigem Datenzugriff sowie für
   aktive Master mit optional zugewiesenem App-Bereich erreichbar. Die Master-Freigabe erweitert nicht die Collection-Rechte.
 - `/` leitet auf `/dashboard` weiter.
-- Die komponentenlose Route `/systemverwaltung` ist der geschützte Elternpfad für `/systemverwaltung/datenstruktur` und
-  `/systemverwaltung/benutzer` und leitet ohne Unterpfad auf die Datenstruktur-Anlage weiter.
-- Die `DatenstrukturPage` ist unter ihrer eigenen Unterroute erreichbar. Die `BenutzerPage` bündelt unter der zweiten Unterroute
-  weiterhin Benutzeranlage und Benutzerverwaltung.
+- Die komponentenlose Route `/systemverwaltung` ist der geschützte Elternpfad für die Datenstruktur, Benutzeranlage,
+  Benutzerverwaltung und Datenmigration und leitet ohne Unterpfad auf die Datenstruktur-Anlage weiter.
+- `BenutzerAnlegenPage` und `BenutzerVerwaltenPage` sind unter `/systemverwaltung/benutzer/anlegen` beziehungsweise
+  `/systemverwaltung/benutzer/verwalten` eigenständig erreichbar. Der komponentenlose Pfad `/systemverwaltung/benutzer` leitet
+  auf die Verwaltung vorhandener Benutzer weiter.
 - Die `DatenmigrationPage` lädt Legacy-Kunden zur Einzelauswahl und bietet für den ausgewählten Kunden die Migration von
   Unternehmer, Firmen, Filialen und Mitarbeitern mit jeweils eigenem Status, Ergebniszahlen und Problemdetails an. Der feste
   Bereichsselektor zeigt die fachliche Reihenfolge; die zugehörige Karte zeigt `Status | Quelle | Migriert` sowie
@@ -222,8 +223,9 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   erhält die ursprünglich angeforderte URL. Dort kann der Benutzer die Initialisierung wiederholen oder sich abmelden. Nach
   einer erfolgreichen Wiederholung wird die ursprüngliche Route geöffnet; die Fehlerroute selbst setzt nur eine
   Firebase-Anmeldung voraus und erzeugt deshalb keine Initialisierungsschleife.
-- Datenstruktur-Anlage und Benutzerverwaltung besitzen getrennte Unterrouten mit eigenen Toolbar-Titeln. Der bisherige gemeinsame
-  Seitencontainer wurde entfernt; die `BenutzerPage` enthält Benutzeranlage und Bearbeitung vorhandener Benutzerprofile.
+- Datenstruktur-Anlage, Benutzeranlage und Benutzerverwaltung besitzen getrennte Unterrouten mit eigenen Toolbar-Titeln. Die
+  Benutzeranlage verwendet `BenutzerAnlegenPage`; Profilauswahl und Benutzeraktionen liegen auf `BenutzerVerwaltenPage`. Der
+  frühere gemeinsame Seitencontainer mit Divider wurde entfernt.
 - Das Formular gliedert sich in Zugangsdaten, erlaubte Bereiche und Datenzugriff. Alle Gruppen verwenden `div`-Elemente mit
   sichtbaren Überschriften, ohne `role="group"`, `aria-label` oder `aria-labelledby`, statt `fieldset`/`legend`. Die
   `h2`-Überschriften werden zentral über `pur-form__group-titel` in `forms.scss` gestaltet. Zugangsdaten enthalten Anzeigename,
@@ -634,7 +636,7 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 Am 08.10.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 698 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
+- 702 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
   konsistenter
   Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,
@@ -645,8 +647,8 @@ Am 08.10.2026 für den aktuellen Stand erfolgreich geprüft:
   Banner-Service, Inaktivhinweis, sichtbarer Anwendungsversion, allen vier Firestore-Lesestrategien, buildabhängiger Cache-Art,
   erzwungenem Server-Neuladen, Benutzertrennung sowie Unternehmer-, Firmen- und Filialmigration.
 - Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
-- Datenstruktur-Anlage und Benutzerverwaltung wurden unter ihren getrennten Systemverwaltungsrouten auf Desktop und einem
-  kleinen Viewport erfolgreich manuell geprüft.
+- Datenstruktur-Anlage und die Benutzerfunktionen wurden unter den Systemverwaltungsrouten auf Desktop und einem kleinen
+  Viewport erfolgreich manuell geprüft.
 - Die getrennten Dialoge für Profildaten, Datenzuordnung und Kontolöschung sowie der direkte Master-Aufruf wurden auf Desktop und
   einem kleinen Viewport geprüft. Die zugehörigen Menü- und Dialogaktionen sind per Tastatur erreichbar.
 - Die Echtzeitbeobachtung des eigenen Profils wurde manuell mit Deaktivierung, Neustart, Wiederverbindung und erneuter Aktivierung

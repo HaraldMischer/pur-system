@@ -3,7 +3,7 @@
 import { ISystemmigrationDokument } from '../../models/domain/datenmigration';
 import {
   deleteMitarbeiterIdZuordnung,
-  replaceMitarbeiterIdZuordnung,
+  replaceMitarbeiterIdZuordnungen,
 } from './mitarbeiter-id-zuordnung';
 
 describe('Mitarbeiter-ID-Zuordnung', () => {
@@ -28,7 +28,7 @@ describe('Mitarbeiter-ID-Zuordnung', () => {
   } as unknown as ISystemmigrationDokument;
 
   it('should replace only matching target ids in the selected company', () => {
-    expect(replaceMitarbeiterIdZuordnung(systemmigration, 'f-1', 'm-1', 'm-ziel')).toEqual({
+    expect(replaceMitarbeiterIdZuordnungen(systemmigration, 'f-1', ['m-1'], 'm-ziel')).toEqual({
       'firma-alt': {
         'filiale-alt': {
           'mitarbeiter-alt': 'm-ziel',
@@ -52,13 +52,13 @@ describe('Mitarbeiter-ID-Zuordnung', () => {
 
   it('should return null without a matching assignment', () => {
     expect(
-      replaceMitarbeiterIdZuordnung(systemmigration, 'f-1', 'nicht-vorhanden', 'm-ziel'),
+      replaceMitarbeiterIdZuordnungen(systemmigration, 'f-1', ['nicht-vorhanden'], 'm-ziel'),
     ).toBeNull();
     expect(
-      replaceMitarbeiterIdZuordnung(
+      replaceMitarbeiterIdZuordnungen(
         { ...systemmigration, mitarbeiterIds: undefined },
         'f-1',
-        'm-1',
+        ['m-1'],
         'm-ziel',
       ),
     ).toBeNull();

@@ -1,28 +1,27 @@
-// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-page.spec.ts
+// pur-system/src/app/pages/systemverwaltung-page/benutzer-page/benutzer-anlage/benutzer-anlage.spec.ts
 
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { FormGroupDirective } from '@angular/forms';
 import { By } from '@angular/platform-browser';
-import { DatenzugriffSelector } from './datenzugriff-selector/datenzugriff-selector';
-import { TestBed } from '@angular/core/testing';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
-import { DatenzugriffService } from '../../../services/domain/datenzugriff.service';
-import { BenutzerService } from '../../../services/domain/benutzer.service';
-import { AuthService } from '../../../services/firebase/auth.service';
-import { BenutzerVerwaltungService } from '../../../services/firebase/benutzer-verwaltung.service';
-import { BenutzerStore } from '../../../stores/app/benutzer.store';
-import { BenutzerVerwaltungStore } from '../../../stores/domain/benutzer-verwaltung.store';
-import { FirmaStore } from '../../../stores/domain/firma.store';
-import { FilialeStore } from '../../../stores/domain/filiale.store';
-import { UnternehmerStore } from '../../../stores/domain/unternehmer.store';
-import { BenutzerAnlage } from './benutzer-anlage/benutzer-anlage';
-import { BenutzerPage } from './benutzer-page';
+import { DatenzugriffService } from '../../../../services/domain/datenzugriff.service';
+import { BenutzerService } from '../../../../services/domain/benutzer.service';
+import { AuthService } from '../../../../services/firebase/auth.service';
+import { BenutzerVerwaltungService } from '../../../../services/firebase/benutzer-verwaltung.service';
+import { BenutzerStore } from '../../../../stores/app/benutzer.store';
+import { BenutzerVerwaltungStore } from '../../../../stores/domain/benutzer-verwaltung.store';
+import { FirmaStore } from '../../../../stores/domain/firma.store';
+import { FilialeStore } from '../../../../stores/domain/filiale.store';
+import { UnternehmerStore } from '../../../../stores/domain/unternehmer.store';
+import { DatenzugriffSelector } from '../datenzugriff-selector/datenzugriff-selector';
+import { BenutzerAnlage } from './benutzer-anlage';
 
-describe('BenutzerPage', () => {
+describe('BenutzerAnlage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [BenutzerAnlage, BenutzerPage, NoopAnimationsModule],
+      imports: [BenutzerAnlage, NoopAnimationsModule],
       providers: [
         BenutzerVerwaltungStore,
         {
@@ -111,17 +110,12 @@ describe('BenutzerPage', () => {
   });
 
   it('should render role and area controls', () => {
-    const fixture = TestBed.createComponent(BenutzerPage);
+    const fixture = TestBed.createComponent(BenutzerAnlage);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(compiled.querySelector('h1')).toBeNull();
-    expect(
-      Array.from(compiled.querySelectorAll('.pur-page-section__title')).map((titel) =>
-        titel.textContent?.trim(),
-      ),
-    ).toEqual(['Benutzer anlegen', 'Benutzer verwalten']);
-    expect(compiled.querySelectorAll('mat-divider')).toHaveLength(1);
+    expect(compiled.querySelector('mat-divider')).toBeNull();
     expect(compiled.querySelector('mat-select')).toBeTruthy();
     expect(compiled.querySelectorAll('mat-checkbox')).toHaveLength(2);
     const bereichCheckboxen = compiled.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
@@ -373,16 +367,6 @@ describe('BenutzerPage', () => {
     });
     expect(component.benutzerForm.controls.passwort.value).toBe('');
     expect(component.benutzerForm.controls.namensbestandteil.value).toBe('');
-  });
-
-  it('should clear user management feedback when leaving the page', () => {
-    const store = TestBed.inject(BenutzerVerwaltungStore);
-    const clearFeedback = vi.spyOn(store, 'clearFeedback');
-    const fixture = TestBed.createComponent(BenutzerPage);
-
-    fixture.destroy();
-
-    expect(clearFeedback).toHaveBeenCalledOnce();
   });
 
   it('should toggle password visibility without submitting or changing the password', () => {

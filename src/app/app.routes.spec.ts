@@ -99,14 +99,29 @@ describe('app routes', () => {
     const benutzerRoute = systemverwaltungRoute?.children?.find(
       (route) => route.path === 'benutzer',
     );
+    const benutzerRedirect = benutzerRoute?.children?.find((route) => route.path === '');
+    const benutzerAnlegenRoute = benutzerRoute?.children?.find(
+      (route) => route.path === 'anlegen',
+    );
+    const benutzerVerwaltenRoute = benutzerRoute?.children?.find(
+      (route) => route.path === 'verwalten',
+    );
     const datenmigrationRoute = systemverwaltungRoute?.children?.find(
       (route) => route.path === 'datenmigration',
     );
 
     expect(datenstrukturRoute?.title).toBe('Datenstruktur anlegen');
     expect(datenstrukturRoute?.loadComponent).toBeDefined();
-    expect(benutzerRoute?.title).toBe('Benutzerverwaltung');
-    expect(benutzerRoute?.loadComponent).toBeDefined();
+    expect(benutzerRoute?.loadComponent).toBeUndefined();
+    expect(benutzerRedirect).toEqual({
+      path: '',
+      pathMatch: 'full',
+      redirectTo: 'verwalten',
+    });
+    expect(benutzerAnlegenRoute?.title).toBe('Benutzer anlegen');
+    expect(benutzerAnlegenRoute?.loadComponent).toBeDefined();
+    expect(benutzerVerwaltenRoute?.title).toBe('Benutzer verwalten');
+    expect(benutzerVerwaltenRoute?.loadComponent).toBeDefined();
     expect(datenmigrationRoute?.title).toBe('Datenmigration');
     expect(datenmigrationRoute?.loadComponent).toBeDefined();
   });

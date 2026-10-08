@@ -17,7 +17,7 @@ import {
 } from '../../commons/models/domain/mitarbeiter';
 import {
   deleteMitarbeiterIdZuordnung,
-  replaceMitarbeiterIdZuordnung,
+  replaceMitarbeiterIdZuordnungen,
 } from '../../commons/utils/datenmigration/mitarbeiter-id-zuordnung';
 import {
   createAnzeigename,
@@ -246,11 +246,11 @@ export class MitarbeiterService {
   }
 
   /**
-   * Führt einen doppelten Mitarbeiter in einen bestehenden Zielmitarbeiter derselben Firma über.
+   * Führt mehrere doppelte Mitarbeiter in einen bestehenden Zielmitarbeiter derselben Firma über.
    *
    * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
    * @param firmaId - Die Dokument-ID der übergeordneten Firma.
-   * @param quellMitarbeiterId - Mitarbeiter-ID des zu entfernenden Duplikats.
+   * @param quellMitarbeiterIds - Mitarbeiter-IDs der zu entfernenden Duplikate.
    * @param zielMitarbeiterId - Mitarbeiter-ID des bestehen bleibenden Mitarbeiters.
    * @returns Ein Promise, das nach der atomaren Zusammenführung abgeschlossen ist.
    * @throws Wenn Mitarbeiter fehlen, unzulässig verknüpft sind oder der Schreibvorgang fehlschlägt.
@@ -258,61 +258,83 @@ export class MitarbeiterService {
   async mergeMitarbeiter(
     unternehmerId: string,
     firmaId: string,
-    quellMitarbeiterId: string,
+    quellMitarbeiterIds: readonly string[],
     zielMitarbeiterId: string,
   ): Promise<void> {
-    if (quellMitarbeiterId === zielMitarbeiterId) {
-      throw new Error('Quell- und Zielmitarbeiter müssen unterschiedlich sein.');
+    const eindeutigeQuellIds = [...new Set(quellMitarbeiterIds)];
+    if (eindeutigeQuellIds.length === 0 || eindeutigeQuellIds.includes(zielMitarbeiterId)) {
+      throw new Error(
+        'Es muss mindestens ein vom Zielmitarbeiter verschiedenes Duplikat ausgewählt sein.',
+      );
     }
 
-    const quellPfad = FIRESTORE_DOCUMENT_PATHS.mitarbeiter(
-      unternehmerId,
-      firmaId,
-      quellMitarbeiterId,
-    );
+    const quellPfade = eindeutigeQuellIds.map((quellMitarbeiterId) => {
+      return FIRESTORE_DOCUMENT_PATHS.mitarbeiter(unternehmerId, firmaId, quellMitarbeiterId);
+    });
     const zielPfad = FIRESTORE_DOCUMENT_PATHS.mitarbeiter(
       unternehmerId,
       firmaId,
       zielMitarbeiterId,
     );
-    const [quelle, ziel, systemmigrationen] = await Promise.all([
-      this.firestoreDbService.loadDocument<Record<string, unknown>>(quellPfad, 'networkOnly'),
+    const [quellen, ziel, systemmigrationen] = await Promise.all([
+      Promise.all(
+        quellPfade.map((quellPfad) => {
+          return this.firestoreDbService.loadDocument<Record<string, unknown>>(
+            quellPfad,
+            'networkOnly',
+          );
+        }),
+      ),
       this.firestoreDbService.loadDocument<Record<string, unknown>>(zielPfad, 'networkOnly'),
       this.firestoreDbService.loadCollection<ISystemmigrationDokument>(
         FIRESTORE_COLLECTION_PATHS.systemMigrationen,
         'networkOnly',
       ),
     ]);
-    if (!quelle || !ziel) {
-      throw new Error('Quell- oder Zielmitarbeiter wurde nicht gefunden.');
+    if (quellen.some((quelle) => !quelle) || !ziel) {
+      throw new Error('Mindestens ein Duplikat oder der Zielmitarbeiter wurde nicht gefunden.');
     }
-    if (typeof quelle.daten['benutzerUid'] === 'string') {
+    const vorhandeneQuellen = quellen.filter((quelle) => {
+      return quelle !== null;
+    });
+    if (vorhandeneQuellen.some((quelle) => typeof quelle.daten['benutzerUid'] === 'string')) {
       throw new Error(
-        'Ein mit einem Benutzerkonto verknüpfter Mitarbeiter kann nicht zusammengeführt werden.',
+        'Ein mit einem Benutzerkonto verknüpftes Duplikat kann nicht zusammengeführt werden.',
       );
     }
-    const quellEintrag = mapMitarbeiterEintrag(unternehmerId, firmaId, quelle.id, quelle.daten);
+    const quellEintraege = vorhandeneQuellen.map((quelle) => {
+      return mapMitarbeiterEintrag(unternehmerId, firmaId, quelle.id, quelle.daten);
+    });
     const zielEintrag = mapMitarbeiterEintrag(unternehmerId, firmaId, ziel.id, ziel.daten);
-    const filialIds = [...new Set([...zielEintrag.filialIds, ...quellEintrag.filialIds])];
-    const rollen = [...new Set([...zielEintrag.rollen, ...quellEintrag.rollen])];
+    const filialIds = [
+      ...new Set([
+        ...zielEintrag.filialIds,
+        ...quellEintraege.flatMap((quelle) => quelle.filialIds),
+      ]),
+    ];
+    const rollen = [
+      ...new Set([...zielEintrag.rollen, ...quellEintraege.flatMap((quelle) => quelle.rollen)]),
+    ];
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
     const operationen: TFirestoreBatchOperation[] = [
       {
         documentPath: zielPfad,
         daten: { filialIds, rollen, aktualisiertAm: zeitstempel },
       },
-      {
-        documentPath: quellPfad,
-        delete: true,
-      },
+      ...quellPfade.map((quellPfad) => {
+        return {
+          documentPath: quellPfad,
+          delete: true as const,
+        };
+      }),
     ];
 
     for (const dokument of systemmigrationen) {
       if (dokument.daten.unternehmerId !== unternehmerId) continue;
-      const mitarbeiterIds = replaceMitarbeiterIdZuordnung(
+      const mitarbeiterIds = replaceMitarbeiterIdZuordnungen(
         dokument.daten,
         firmaId,
-        quellMitarbeiterId,
+        eindeutigeQuellIds,
         zielMitarbeiterId,
       );
       if (!mitarbeiterIds) continue;
