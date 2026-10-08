@@ -399,7 +399,7 @@ for (const role of ['office', 'filiale']) {
       setDoc(
         doc(db, mitarbeiterPath),
         {
-          rollen: ['administrator', 'techniker'],
+          rollen: ['administrator', 'techniker', 'dienstplaner'],
           filialIds: ['b-1'],
           aktualisiertAm: serverTimestamp(),
         },

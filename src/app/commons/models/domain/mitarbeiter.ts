@@ -4,7 +4,8 @@ import { Timestamp } from 'firebase/firestore';
 
 import { IPerson } from './person';
 
-export type TMitarbeiterRolle = 'filialkasse' | 'servicekraft' | 'administrator' | 'kassierer' | 'techniker';
+export type TMitarbeiterRolle =
+  'filialkasse' | 'servicekraft' | 'administrator' | 'kassierer' | 'techniker' | 'dienstplaner';
 
 // ===== Anwendungs-Typen ====================
 

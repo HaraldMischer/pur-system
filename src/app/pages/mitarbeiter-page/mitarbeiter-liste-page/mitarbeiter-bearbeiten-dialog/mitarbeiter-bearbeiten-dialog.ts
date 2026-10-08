@@ -77,6 +77,7 @@ export class MitarbeiterBearbeitenDialog {
     { value: 'administrator', label: 'Administrator' },
     { value: 'kassierer', label: 'Kassierer' },
     { value: 'techniker', label: 'Techniker' },
+    { value: 'dienstplaner', label: 'Dienstplaner' },
   ];
   readonly weitereFilialzuordnungen = this.fremdeFilialIds.length;
   readonly submitError = signal<string | null>(null);

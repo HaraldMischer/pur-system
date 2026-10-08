@@ -280,8 +280,9 @@ automatisch übernommen.
   Master angelegten Mitarbeiterzugang erhalten. Der Master weist die benötigten `erlaubteBereiche` zu und verknüpft den Zugang
   mit genau einem aktiven Firma-Mitarbeiter. Das Benutzerprofil speichert dessen `firmaMitarbeiterId`; der Mitarbeiterdatensatz
   speichert die Gegenreferenz `benutzerUid`. Ein fachlicher Mitarbeiterdatensatz kann weiterhin ohne Mitarbeiterzugang bestehen.
-  Filialzuordnungen, fachliche Mitarbeiterrollen wie Service, Kasse oder Admin, Dienstplandaten, persönliche Aktionen und
-  Push-Benachrichtigungen werden bei konkretem fachlichem Bedarf separat geplant.
+  Filialzuordnungen und fachliche Mitarbeiterrollen gewähren diesem persönlichen Zugang keine Schreibrechte. Auch ein
+  Mitarbeiter mit `dienstplaner` verwendet die Mitarbeiter-App in der ersten Ausbaustufe ausschließlich lesend. Weitere
+  persönliche Aktionen und Push-Benachrichtigungen werden bei konkretem fachlichem Bedarf separat geplant.
 
 Eine Firmenfreigabe gewährt nicht automatisch Zugriff auf alle aktuellen oder zukünftigen Filialen. Filialen werden weiterhin
 ausdrücklich in der verschachtelten Zugriffs-Map zugeordnet. Weitere Schreibrechte für Filial- und Office-Konten sind separat
@@ -370,7 +371,8 @@ unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}
 ```
 
 Pflichtdaten sind `person.vorname`, `person.nachname` und mindestens eine betriebliche Rolle im Array `rollen`. Vorgesehen sind
-`filialkasse`, `servicekraft`, `administrator`, `kassierer` und `techniker`; ein Mitarbeiter kann mehrere dieser Rollen besitzen.
+`filialkasse`, `servicekraft`, `administrator`, `kassierer`, `techniker` und `dienstplaner`; ein Mitarbeiter kann mehrere dieser
+Rollen besitzen.
 `person.adresse` und `person.kontakt` werden als Objekte geführt; ihre einzelnen Werte sowie `person.geburtstag` sind optional.
 `aktiv` kennzeichnet, ob der Mitarbeiter fachlich verwendet werden darf. `erstelltAm` und `aktualisiertAm` werden serverseitig
 gepflegt.
@@ -384,8 +386,9 @@ unverändert.
 `benutzerUid` ist eine optionale, ausschließlich serverseitig gesetzte technische Gegenreferenz zum persönlichen
 Firebase-Auth-Zugang. Sie wird weder im Mitarbeiterformular erfasst noch für den betrieblichen Mitarbeiter-Login verwendet. Der
 betriebliche Login erhält ein eigenes Sicherheits- und Sitzungsmodell und wird nicht im fachlichen Mitarbeiterdatensatz
-vorweggenommen. Die betrieblichen Rollen eines Mitarbeiters sind unabhängig von `TUserRole` und gewähren keine App- oder
-Datenberechtigungen.
+vorweggenommen. Die betrieblichen Rollen eines Mitarbeiters sind unabhängig von `TUserRole` und gewähren keine eigenen
+Firestore-Datenrechte. `dienstplaner` wird ausschließlich im Filial-Frontend als zusätzliche Bedienberechtigung für die dort
+bereits über die Auth-Rolle `filiale` erlaubten Dienstplanaktionen ausgewertet.
 
 Für die Mitarbeiterverwaltung gilt folgende Rollenmatrix:
 
@@ -397,11 +400,13 @@ Für die Mitarbeiterverwaltung gilt folgende Rollenmatrix:
 | `mitarbeiter` | nein                                            | Mitarbeiter der eigenen Firma   | nein                             |
 
 Mit einem persönlichen Mitarbeiterzugang verknüpfte Datensätze dürfen weder gelöscht noch zusammengeführt werden. `aktiv`
-beschreibt den fachlichen Beschäftigungsstatus; berechtigte Rollen können inaktive Mitarbeiter wieder aktivieren. Master führen
-Dubletten gezielt zusammen; dabei wird das nicht verknüpfte Duplikat physisch gelöscht. Eine eigenständige Löschaktion wird in
-der Mitarbeiteroberfläche nicht angeboten. `erlaubteBereiche` steuert nur Sidebar und Routenzugriff; die Lese- und
-Schreibrechte gelten davon unabhängig nach Rolle und `zugriffe`. Der gleichnamige App-Bereich gewährt `userRole: mitarbeiter`
-keine Verwaltungsrechte.
+beschreibt den fachlichen Beschäftigungsstatus; berechtigte Rollen können inaktive Mitarbeiter wieder aktivieren. Beim manuellen
+Zusammenführen ist der Mitarbeiter, von dessen Card die Aktion geöffnet wurde, das bestehen bleibende Ziel. Die Auswahlliste
+enthält Mitarbeiter derselben Firma mit ausreichend ähnlichem Vor- und Nachnamen. Mehrere Duplikate können gemeinsam ausgewählt
+werden; ihre Rollen und Filialzuordnungen werden atomar in das Ziel übernommen, ihre Legacy-Zuordnungen auf das Ziel umgeleitet
+und die Duplikate physisch gelöscht. Eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten.
+`erlaubteBereiche` steuert nur Sidebar und Routenzugriff; die Lese- und Schreibrechte gelten davon unabhängig nach Rolle und
+`zugriffe`. Der gleichnamige App-Bereich gewährt `userRole: mitarbeiter` keine Verwaltungsrechte.
 
 Mitarbeiterlisten werden clientseitig direkt aus Firestore geladen. Master und Office laden die erlaubte Firmen-Collection.
 Filialkonten besitzen das Leserecht innerhalb ihrer eigenen Firma, begrenzen die Clientabfrage mit ihrer zugewiesenen Filial-ID
@@ -492,3 +497,184 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
    administrativen Unterseiten. Die Auth-Benutzeranlage erfolgt serverseitig über eine geschützte Firebase Cloud Function mit
    Firebase Admin SDK; fachliche Stammdaten darf der Master direkt in Firestore schreiben. `/systemverwaltung` leitet auf die
    Datenstruktur-Anlage und `/systemverwaltung/benutzer` auf die Verwaltung vorhandener Benutzer weiter.
+
+## Dienst- und Schichtplanung
+
+Ein Dienstplan gehört genau zu einer Filiale und umfasst in der ersten Ausbaustufe eine vollständige Kalenderwoche von Montag
+bis Sonntag. Der Wochenzeitraum wird mit lokalen Datumswerten und der Zeitzone `Europe/Berlin` beschrieben. Das Startdatum der
+Woche dient als fachlich eindeutige Dienstplan-ID innerhalb der Filiale. Pro Filiale und Kalenderwoche existiert genau ein
+Dienstplan.
+
+Der Dienstplan enthält versionierte Bearbeitungsstände. Jede Version besitzt eine fortlaufende Nummer und genau einen der
+technischen Statuswerte `entwurf`, `veroeffentlicht` oder `archiviert`. Pro Dienstplan darf es höchstens eine Entwurfsversion
+und eine veröffentlichte Version geben. Planer bearbeiten ausschließlich die Entwurfsversion. Die Mitarbeiter-App zeigt
+ausschließlich die veröffentlichte Version. Bei einer erneuten Veröffentlichung wird die bisher veröffentlichte Version
+archiviert und der bisherige Entwurf zum neuen veröffentlichten Stand. Veröffentlichte und archivierte Versionen werden nicht
+mehr verändert.
+
+Die vorgesehene Firestore-Struktur liegt vollständig unter der betroffenen Filiale:
+
+```text
+unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialeId}/dienstplan/{wochenstart}
+  /version/{versionId}
+    /schicht/{schichtId}
+```
+
+### Abfrage- und Cache-Strategie
+
+Jeder Dienstplanzugriff verwendet einen konkreten vollständigen Filialpfad. Collection-Group-Abfragen über mehrere Filialen
+oder eine gemeinsame jahresbezogene Dienstplan-Collection sind in der ersten Ausbaustufe nicht vorgesehen. Das Montagsdatum im
+Format `YYYY-MM-DD` bleibt die Dokument-ID eines Wochenplans; eine einzelne bekannte Woche kann dadurch ohne Zeitraumssuche
+direkt adressiert werden.
+
+Pur Filiale lädt bei jedem Programmstart den vollständigen lesbaren Bestand der eigenen Filiale. Dazu werden über die bestehende
+Stammdatenstrategie `cacheFirst` alle Firma-Mitarbeiter mit der eigenen Filial-ID und mit `networkFirst` alle Dokumente der
+Collection `dienstplan` geladen. Anschließend lädt das Frontend für jeden Dienstplan sämtliche Dokumente aus `version` und für
+jede Version sämtliche Dokumente aus `schicht`. Diese Synchronisierung umfasst Entwürfe, veröffentlichte und archivierte
+Versionen einschließlich aller Schichten und besitzt keine Begrenzung auf ein Jahr oder einen sonstigen Zeitraum. Erst nach
+Abschluss der vollständigen Startladung gilt der fachliche Filialbestand als geladen.
+
+Die vollständige Dienstplansynchronisierung verwendet `networkFirst`. Bei einem Online-Start wird der gesamte erlaubte
+Dienstplanbestand vom Server gelesen und im persistenten, IndexedDB-basierten Firestore-Cache aktualisiert. Bei einem technischen
+Serverfehler wird auf die bereits lokal vorhandenen Dokumente zurückgefallen. Noch nie erfolgreich geladene oder zwischenzeitlich
+aus dem Cache entfernte Daten stehen offline nicht zur Verfügung; Firestore bleibt die verbindliche Datenquelle. Schreibvorgänge
+werden nicht aus IndexedDB nachsynchronisiert, sondern benötigen weiterhin eine aktive Serververbindung.
+
+Pur Master und Pur Office laden Dienstpläne mit `networkOnly`. Nach Auswahl einer konkreten Filiale und Kalenderwoche lesen sie
+das bekannte Dienstplandokument direkt, anschließend die über `entwurfVersionId` beziehungsweise `veroeffentlichteVersionId`
+referenzierte Version und deren Schichten. Archivierte Versionen werden nur beim Öffnen der Historie nachgeladen. Der Kontext
+`Alle Filialen` löst keine Dienstplanabfrage aus.
+
+Pur Mitarbeiter verwendet ebenfalls `networkOnly`. Für jede fachlich erlaubte Filiale wird nur der Dienstplan der ausgewählten
+Woche direkt geladen. Über `veroeffentlichteVersionId` werden ausschließlich die veröffentlichte Version und deren Schichten
+gelesen. Entwürfe und archivierte Versionen werden weder abgefragt noch durch die Firestore Rules freigegeben.
+
+Die Startabfragen von Pur Filiale sind unbeschränkte Collection-Abfragen innerhalb eines bereits bekannten Filialpfads; die
+anderen Varianten verwenden überwiegend direkte Dokumentzugriffe. Versionen und Schichten werden im Frontend nach Nummer und
+Zeit sortiert. Dafür sind in der ersten Ausbaustufe keine zusätzlichen zusammengesetzten Firestore-Indizes vorgesehen. Die
+bestehende Mitarbeiterabfrage mit `array-contains` auf `filialIds` verwendet die vorhandene automatische Feldindizierung.
+
+Dienstplan, Version und Schicht bleiben getrennte kleine Dokumente. Weder sämtliche Wochen noch sämtliche Schichten werden als
+wachsende Arrays in einem einzelnen Dokument gespeichert. Die Dokumentgröße wächst deshalb nicht mit der Anzahl der Jahre,
+Versionen oder Schichten; lediglich die Anzahl der Dokumente und die Zahl der beim Filialstart ausgeführten Lesezugriffe nimmt
+mit der Historie zu. Eine spätere Aufbewahrungs- oder Löschregel wird erst bei einem konkreten betrieblichen Bedarf geplant.
+
+Eine Version darf an einem Tag beliebig viele Schichten enthalten. Jede Schicht gehört in der ersten Ausbaustufe genau einem
+aktiven Mitarbeiter, der beim Anlegen oder Bearbeiten der betroffenen Filiale zugeordnet sein muss. Schichten ohne Mitarbeiter und
+eine gemeinsame Schicht für mehrere Mitarbeiter sind nicht vorgesehen. Derselbe Mitarbeiter darf mehrere nicht überlappende
+Schichten an einem Tag besitzen. Der zum Planungszeitpunkt verwendete Anzeigename wird zusätzlich zur Mitarbeiter-ID als
+Momentaufnahme an der Schicht gespeichert. Dadurch bleiben veröffentlichte und archivierte Stände auch nach einer späteren
+Umbenennung, Deaktivierung oder geänderten Filialzuordnung verständlich.
+
+Eine Schicht speichert Beginn und Ende als absolute Zeitpunkte sowie ihre Pause in ganzen Minuten. Dadurch können auch Schichten
+über Mitternacht eindeutig abgebildet werden. Die anrechenbare Arbeitszeit wird aus Ende minus Beginn minus Pause berechnet und
+nicht redundant gespeichert. Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen Schichtdauer sind
+ungültig. Überlappende Schichten desselben Mitarbeiters sind ein blockierender Konflikt.
+
+Ein Entwurf darf gespeichert werden, solange seine einzelnen Schichten strukturell gültig sind. Überlappungen dürfen während
+der Bearbeitung vorübergehend bestehen, verhindern aber die Veröffentlichung. Weitergehende Hinweise zu langen Arbeitszeiten,
+kurzen Ruhezeiten oder gesetzlichen Grenzen sind nicht Teil der ersten Ausbaustufe. Automatische Planung, Abwesenheiten,
+Zeiterfassung, Schichttausch und Benachrichtigungen werden erst bei konkretem fachlichem Bedarf separat geplant.
+
+### Rollen und Filialgrenzen
+
+Die Navigation und die Route zum Schichtplan erfordern für jede Rolle den App-Bereich `schichtplan`. Diese Bereichsfreigabe
+gewährt keine Datenrechte. Die tatsächlichen Rechte ergeben sich unabhängig davon aus aktivem Benutzerprofil, Auth-Rolle und
+vollständiger Filialzuordnung.
+
+| Auth-Rolle    | Erlaubter Filialkontext                   | Lesbare Stände                       | Planen und veröffentlichen                         |
+| ------------- | ----------------------------------------- | ------------------------------------ | -------------------------------------------------- |
+| `master`      | alle Filialen                             | Entwurf, veröffentlicht und archiviert | ja                                               |
+| `office`      | ausdrücklich freigegebene Filialen        | Entwurf, veröffentlicht und archiviert | ja                                               |
+| `filiale`     | eigene Filiale                            | Entwurf, veröffentlicht und archiviert | ja, im Frontend nur mit `dienstplaner`            |
+| `mitarbeiter` | `filialIds` des aktiven Firma-Mitarbeiters | nur veröffentlicht                   | nein                                               |
+
+Master, Office und Filiale dürfen im jeweils erlaubten Filialkontext Dienstpläne und Entwurfsversionen anlegen sowie
+Entwurfsschichten anlegen, bearbeiten und löschen. Eine vollständige Entwurfsversion darf gelöscht werden, solange sie nie
+veröffentlicht wurde. Veröffentlichte und archivierte Versionen werden weder verändert noch gelöscht. Der Dienstplan selbst
+wird in der ersten Ausbaustufe nicht gelöscht.
+
+In der Filial-App werden diese Planungsaktionen zusätzlich im Frontend auf einen aktiven Firma-Mitarbeiter der eigenen Filiale
+mit der betrieblichen Rolle `dienstplaner` begrenzt. Die Rolle erweitert nicht die Firestore-Rechte des Mitarbeiterzugangs. Die
+Firestore Rules erkennen bei einem Filialkonto ausschließlich die Auth-Rolle `filiale` und den eigenen Filialpfad; sie können den
+im Frontend geführten Firma-Mitarbeiter und dessen Rolle nicht vertrauenswürdig prüfen. Die zusätzliche Rollenprüfung ist daher
+bei einem manipulierten Client umgehbar und keine serverseitig abgesicherte Berechtigungsgrenze.
+
+Mitarbeiter dürfen für jede Filiale aus den `filialIds` ihres verknüpften fachlichen Mitarbeiterdatensatzes den vollständigen
+veröffentlichten Dienstplan einschließlich der Schichten aller eingeplanten Mitarbeiter lesen. Das gilt in der Mitarbeiter-App
+auch für Mitarbeiter mit `dienstplaner`; Entwurfs- und Archivversionen sowie Schreibzugriffe bleiben dort gesperrt. Die
+Mitarbeiter-ID und der gespeicherte Anzeigename gehören damit zu den für alle berechtigten Mitarbeiter der Filiale sichtbaren
+veröffentlichten Dienstplandaten.
+
+Jeder Lese- und Schreibzugriff bezieht sich auf eine konkrete Filiale. Der Sammelkontext `Alle Filialen` erlaubt weder das Laden
+noch das Bearbeiten eines einzelnen Dienstplans. Benutzer mit Zugriff auf mehrere Filialen wählen vor dem Dienstplanzugriff eine
+konkrete Filiale. Eine filialübergreifende Dienstplanübersicht ist nicht Teil der ersten Ausbaustufe.
+
+### Planungs- und Veröffentlichungsablauf
+
+Existiert für eine Woche noch kein Dienstplan, legt ein berechtigter Planer den Dienstplan mit Version 1 im Status `entwurf` an.
+Solange die Version ein Entwurf ist, dürfen berechtigte Planer ihre Schichten gemeinsam bearbeiten. Das Löschen einzelner
+Schichten und der vollständigen, nie veröffentlichten Entwurfsversion ist erlaubt.
+
+Die Veröffentlichung setzt eine vollständig geprüfte und konfliktfreie Entwurfsversion voraus. Sie setzt deren Status auf
+`veroeffentlicht`. Existiert bereits eine veröffentlichte Version, wird diese im selben konsistenten Schreibvorgang auf
+`archiviert` gesetzt. Ein Zurückziehen einer veröffentlichten Version ohne unmittelbar veröffentlichte Ersatzversion ist in der
+ersten Ausbaustufe nicht vorgesehen.
+
+Eine nachträgliche Änderung beginnt immer mit einer neuen Entwurfsversion. Sie übernimmt die Schichten der veröffentlichten
+Version als bearbeitbare Kopien. Der bisher veröffentlichte Stand bleibt für Mitarbeiter sichtbar, bis der neue Entwurf
+erfolgreich veröffentlicht wurde. Veröffentlichte und archivierte Versionen bleiben unveränderliche historische Stände.
+
+Dienstplan, Version und Schicht speichern die UID und den Zeitpunkt ihrer Erstellung und letzten Änderung. Eine Version speichert
+zusätzlich UID und Zeitpunkt ihrer Veröffentlichung beziehungsweise Archivierung. Die unveränderlichen archivierten Versionen
+bilden in der ersten Ausbaustufe das fachliche Änderungsprotokoll; ein separates Ereignisprotokoll ist nicht vorgesehen.
+
+Beim Anlegen oder Bearbeiten einer Schicht dürfen nur aktive Mitarbeiter ausgewählt werden, die der konkreten Filiale zugeordnet
+sind. Wird ein bereits in einem Entwurf verwendeter Mitarbeiter deaktiviert oder aus der Filiale entfernt, bleibt die Schicht
+zur Nachbearbeitung sichtbar, blockiert aber die Veröffentlichung. Veröffentlichte und archivierte Schichten bleiben unverändert
+und über ihren gespeicherten Anzeigenamen verständlich. Eine physische Löschung oder spätere Stammdatenänderung entfernt keine
+historische Schicht.
+
+### Frontend-Transaktionen und parallele Bearbeitung
+
+Sämtliche fachlichen Dienstplanaktionen werden durch das Angular-Frontend über den Firestore Client ausgeführt. Für das Anlegen,
+Kopieren, Bearbeiten, Löschen, Archivieren und Veröffentlichen von Dienstplandaten werden keine Cloud Functions oder anderen
+serverseitigen Fachaktionen eingesetzt. Firestore Rules bleiben die verbindliche serverseitige Zugriffskontrolle, führen aber
+selbst keine fachlichen Aktionen aus.
+
+Jede Dienstplanversion besitzt eine ganzzahlige `revision`. Eine neu angelegte Entwurfsversion beginnt mit Revision 0. Jede
+spätere Änderung einer Schicht und jeder Statuswechsel der Version erhöht die Revision genau um eins. Anlegen, Bearbeiten und
+Löschen einer Schicht erfolgen in einer Firestore-Transaktion, die zuerst das gemeinsame Versionsdokument liest. Die Transaktion
+schreibt nur, wenn die Version weiterhin den Status `entwurf` und die vom Frontend erwartete Revision besitzt. Zusammen mit der
+Schichtänderung aktualisiert sie Revision, Änderungszeitpunkt und ändernde Benutzer-UID im Versionsdokument.
+
+Da jede Schichtänderung dasselbe Versionsdokument einbezieht, werden auch gleichzeitige Änderungen an unterschiedlichen
+Schichten erkannt. Bei einer abweichenden Revision wird die veraltete Änderung nicht gespeichert. Das Frontend lädt den aktuellen
+Dienstplan neu und fordert den Benutzer auf, seine Änderung anhand des neuen Stands erneut zu prüfen. Formulare bleiben während
+des Schreibvorgangs deaktiviert und verhindern wiederholte Submit-Aufrufe.
+
+Vor einer Veröffentlichung lädt das Frontend alle Schichten des Entwurfs, merkt sich die geladene Revision und führt die
+fachliche Konfliktprüfung durch. Die anschließende Veröffentlichungstransaktion prüft erneut Status und Revision. Nur wenn die
+Revision seit der Prüfung unverändert ist, werden der Entwurf veröffentlicht und eine gegebenenfalls bisher veröffentlichte
+Version im selben atomaren Schreibvorgang archiviert. Bei einer zwischenzeitlichen Änderung wird die Veröffentlichung abgebrochen;
+das Frontend lädt den aktuellen Stand und wiederholt die Konfliktprüfung.
+
+Transaktionen und zusammengehörige Batches werden nur als vollständig erfolgreicher Schreibvorgang übernommen. Bei einem Fehler
+bleibt der bisherige Firestore-Stand erhalten. Offline-Schreibvorgänge sind weiterhin nicht vorgesehen; Dienstplantransaktionen
+benötigen eine aktive Firestore-Verbindung.
+
+Firestore Rules sollen für normale Clientänderungen insbesondere den Entwurfsstatus, die erlaubte Filiale, die ändernde
+Benutzer-UID und die Erhöhung der Revision um genau eins validieren. Sie können zeitliche Überschneidungen zwischen mehreren
+Schichtdokumenten nicht selbst berechnen. Die Konfliktprüfung bleibt daher eine Frontend-Fachprüfung und ist ohne vertrauenswürdige
+serverseitige Fachlogik nicht gegen einen absichtlich manipulierten Client absicherbar.
+
+### Abgrenzung späterer Erweiterungen
+
+Automatische Planung und Optimierung, Urlaubs-, Krankheits- und sonstige Abwesenheitsverwaltung, Sollstunden,
+Arbeitszeitkonten, gesetzliche Gesamtprüfungen, Schichttausch, Freigabewünsche, Mitarbeiterbestätigungen,
+Push-Benachrichtigungen, Zeiterfassung, Exporte und Lohnabrechnungsanbindungen sind nicht Teil der ersten Ausbaustufe.
+Offline-Schreibvorgänge werden nur bei einem konkreten fachlichen Bedarf gemeinsam mit dem zurückgestellten Todo 9 geplant.
+Ein späterer Änderungs- oder Tauschwunsch eines Mitarbeiters wird als eigener Antrag mit nachvollziehbarem Bearbeitungsstatus
+wie `offen`, `angenommen`, `abgelehnt` oder `zurueckgezogen` modelliert. Er verändert keinen Dienstplan unmittelbar; erst ein
+berechtigter Planer übernimmt einen angenommenen Wunsch in eine Entwurfsversion und veröffentlicht anschließend den geprüften
+neuen Stand.

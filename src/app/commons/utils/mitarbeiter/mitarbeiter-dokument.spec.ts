@@ -77,6 +77,17 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
     ).toEqual(['filialkasse']);
   });
 
+  it('should preserve the employee planner role', () => {
+    expect(
+      mapMitarbeiterEintrag('u-1', 'f-1', 'm-1', {
+        person,
+        rollen: ['servicekraft', 'dienstplaner'],
+        filialIds: ['b-1'],
+        aktiv: true,
+      }).rollen,
+    ).toEqual(['servicekraft', 'dienstplaner']);
+  });
+
   it('should sort employees by last name and first name without changing the input', () => {
     const zulu: IMitarbeiterEintrag = {
       id: 'z',

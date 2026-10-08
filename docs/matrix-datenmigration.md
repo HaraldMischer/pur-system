@@ -52,8 +52,9 @@ Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/
   `mitarbeiterIds.{purCompanyId}.{purBranchId}.{purEmployeeId}` unter `systemMigrationen/{purCustomerId}` gespeichert.
 - Eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten. Die technische Löschfunktion wird beim
   Zusammenführen verwendet.
-- Beim manuellen Zusammenführen werden alle Legacy-IDs des Duplikats auf den gewählten Zielmitarbeiter umgeleitet und das
-  Duplikat anschließend atomar gelöscht.
+- Beim manuellen Zusammenführen bleibt der Mitarbeiter bestehen, von dessen Card die Aktion geöffnet wurde. Mehrere ausgewählte
+  Duplikate werden gemeinsam verarbeitet: Ihre Legacy-IDs werden auf den Zielmitarbeiter umgeleitet und die Duplikate
+  anschließend atomar gelöscht.
 - Ein Reset eines Datenbereichs entfernt die gespeicherten Unternehmer-, Firmen-, Filial- und Mitarbeiter-Zuordnungen nicht.
 - Untergeordnete Daten werden nur bei vorhandener Zielstruktur migriert.
 
@@ -147,10 +148,11 @@ Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/
 
 - Gleiche Namen oder Legacy-IDs in verschiedenen Filialen führen durch die verschachtelte Zuordnung nicht zu einem
   Überschreiben und bleiben für die spätere manuelle Prüfung nachvollziehbar.
-- Master können solche getrennten Einträge gezielt zusammenführen. Beim Zusammenführen bleiben die Stammdaten des
-  Zielmitarbeiters maßgeblich, `filialIds` und `rollen` werden jeweils vereinigt, alle Legacy-Zuordnungen des Duplikats werden
-  auf die Ziel-ID umgestellt und das Duplikat wird gelöscht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem
-  Zusammenführen und dem dabei ausgeführten Löschen geschützt.
+- Master können solche getrennten Einträge gezielt zusammenführen. Als auswählbare Duplikate werden nur Mitarbeiter derselben
+  Firma mit ausreichend ähnlichem normalisiertem Namen angeboten. Beim Zusammenführen bleiben die Stammdaten des
+  Zielmitarbeiters maßgeblich. `filialIds` und `rollen` aller ausgewählten Mitarbeiter werden jeweils vereinigt, alle zugehörigen
+  Legacy-Zuordnungen werden auf die Ziel-ID umgestellt und die Duplikate werden atomar gelöscht. Mitarbeiter mit verknüpftem
+  Benutzerkonto bleiben vor dem Zusammenführen und dem dabei ausgeführten Löschen geschützt.
 - `firstName`, `lastName`, `address`, `email`, `phone`, `birthday`, `role`, `active` und `deleted` werden in die vorhandene
   Personen-, Rollen-, Filial- und Statusstruktur überführt. `active` und `deleted` bestimmen gemeinsam den Zielwert `aktiv`;
   ein separates Löschfeld wird nicht gespeichert.
@@ -197,6 +199,6 @@ Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/
 
 ### Zusatzbedingungen
 
-- Beim manuellen Zusammenführen werden die benötigten `filialIds` vereinigt und alle Legacy-IDs auf den Zielmitarbeiter
-  umgeleitet. Das Duplikat wird anschließend physisch gelöscht.
+- Beim manuellen Zusammenführen werden die benötigten `filialIds` und `rollen` aller ausgewählten Duplikate vereinigt und alle
+  zugehörigen Legacy-IDs auf den Zielmitarbeiter umgeleitet. Die Duplikate werden anschließend atomar physisch gelöscht.
 - Wiederholte Mitarbeitermigrationen erhalten die Stammdaten zusammengeführter Zielmitarbeiter.

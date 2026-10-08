@@ -10,6 +10,7 @@ const MITARBEITER_ROLLEN: readonly TMitarbeiterRolle[] = [
   'administrator',
   'kassierer',
   'techniker',
+  'dienstplaner',
 ];
 const LEGACY_ROLLEN: Readonly<Record<string, TMitarbeiterRolle>> = {
   service: 'servicekraft',

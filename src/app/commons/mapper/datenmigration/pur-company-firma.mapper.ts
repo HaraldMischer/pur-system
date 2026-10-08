@@ -28,7 +28,10 @@ export function mapPurCompanyToFirma(
   purCompany: IPurCompanyEintrag,
   ersatzNummer?: number,
 ): TFirmaMappingErgebnis {
-  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purCompany(purCustomerId, purCompany.id);
+  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purCompany({
+    purCustomerId,
+    purCompanyId: purCompany.id,
+  });
   const daten = purCompany.daten;
   const probleme: IDatenmigrationsproblem[] = [];
   const firmenname = trimString(daten.companyName);

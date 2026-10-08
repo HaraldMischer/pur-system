@@ -67,6 +67,7 @@ export class MitarbeiterAnlegenDialog {
     { value: 'administrator', label: 'Administrator' },
     { value: 'kassierer', label: 'Kassierer' },
     { value: 'techniker', label: 'Techniker' },
+    { value: 'dienstplaner', label: 'Dienstplaner' },
   ];
   readonly submitError = signal<string | null>(null);
   readonly mitarbeiterForm = new FormGroup({

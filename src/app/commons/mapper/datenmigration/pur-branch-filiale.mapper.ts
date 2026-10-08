@@ -28,11 +28,11 @@ export function mapPurBranchToFiliale(
   purBranch: IPurBranchEintrag,
   ersatzNummer?: number,
 ): TFilialeMappingErgebnis {
-  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purBranch(
+  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purBranch({
     purCustomerId,
-    purBranch.purCompanyId,
-    purBranch.id,
-  );
+    purCompanyId: purBranch.purCompanyId,
+    purBranchId: purBranch.id,
+  });
   const daten = purBranch.daten;
   const probleme: IDatenmigrationsproblem[] = [];
   const branchName = trimString(daten.branchName);

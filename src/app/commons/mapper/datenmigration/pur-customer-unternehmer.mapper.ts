@@ -29,7 +29,9 @@ export function mapPurCustomerToUnternehmer(
   purCustomer: IPurCustomerEintrag,
   nummer: number,
 ): TUnternehmerMappingErgebnis {
-  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purCustomer(purCustomer.id);
+  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purCustomer({
+    purCustomerId: purCustomer.id,
+  });
   const daten = purCustomer.daten;
   const probleme: IDatenmigrationsproblem[] = [];
   const anzeigenameVorname = trimString(daten.firstName);

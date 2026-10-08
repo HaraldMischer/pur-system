@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 08.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -71,6 +71,45 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Ausgangszustand. Ohne fachliche Änderung bleiben Speicherbutton und Firestore-Aktualisierung gesperrt.
 - Die geschützte Route `/passwort` ermöglicht angemeldeten Benutzern eine Passwortänderung.
 
+## Dienst- und Schichtplanung
+
+- Die fachliche erste Ausbaustufe ist als filialbezogene Wochenplanung mit versionierten Bearbeitungsständen geplant. Die
+  Domainmodelle für Dienstplan, Version und Schicht liegen unter `src/app/commons/models/domain`; Service, Store, Datenzugriffe
+  und Bedienoberfläche sind noch nicht umgesetzt.
+- Eine Version besitzt den Status `entwurf`, `veroeffentlicht` oder `archiviert`. Veröffentlichte und archivierte Versionen
+  bleiben unveränderlich. Änderungen werden als neue Entwurfsversion auf Basis des veröffentlichten Stands vorbereitet.
+- Aktive Master dürfen in allen Filialen planen. Aktive Office-Konten bleiben auf ausdrücklich freigegebene Filialen und
+  Filialkonten auf ihre eigene Filiale begrenzt. In der Filial-App sollen Planungsaktionen im Frontend zusätzlich nur für einen
+  aktiven Firma-Mitarbeiter der eigenen Filiale mit `dienstplaner` angeboten werden. Die Mitarbeiter-App bleibt unabhängig von
+  dieser betrieblichen Rolle rein lesend und zeigt nur veröffentlichte Pläne aus den fachlichen `filialIds`.
+- `dienstplaner` ist lokal im Firma-Mitarbeiter-Modell, in Anlage und Bearbeitung, in der Card-Darstellung sowie in der
+  allgemeinen Rollenvalidierung der Firestore Rules ergänzt. Die konkreten Dienstplan-Rules aus Todo 20.3 werden Filialkonten
+  ausschließlich auf ihren Filialpfad begrenzen. Die zusätzliche Prüfung des im Filial-Frontend geführten Firma-Mitarbeiters und
+  seiner Rolle ist clientseitig, bei einem manipulierten Client umgehbar und noch nicht umgesetzt. Die aktuelle Rules-Änderung
+  ist nicht produktiv deployed.
+- Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Jeder Dienstplanzugriff
+  benötigt eine konkrete Filiale; der Sammelkontext `Alle Filialen` wird für die erste Ausbaustufe nicht unterstützt.
+- Für die Filial-App ist eine vollständige Startladung beschlossen: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
+  Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung geladen. Mitarbeiter verwenden weiterhin die
+  bestehende Stammdatenstrategie `cacheFirst`; der vollständige Dienstplanbestand verwendet `networkFirst`. Online werden die
+  Dienstplandaten in den persistenten IndexedDB-Cache übernommen, bei einem technischen Serverfehler wird auf den vorhandenen
+  Cache zurückgefallen. Schreibvorgänge bleiben online.
+- Master und Office laden mit `networkOnly` nur die konkret ausgewählte Filiale und Woche; historische Versionen werden erst bei
+  Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` nur die veröffentlichte Version der ausgewählten Woche für eine
+  fachlich erlaubte Filiale. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese Abfragewege zunächst nicht vorgesehen.
+- Dienstplan, Version und Schicht bleiben einzelne kleine Dokumente. Es werden keine über Jahre wachsenden Arrays gespeichert;
+  mit der Historie steigen nur Dokumentanzahl und Lesezugriffe der vollständigen Filialladung.
+- Veröffentlichung und Archivierung sollen mit UID und Zeitpunkt protokolliert werden. Eine Änderung nach Veröffentlichung
+  erzeugt eine neue Entwurfsversion, während der vorherige Stand für Mitarbeiter sichtbar bleibt.
+- Alle Dienstplanaktionen sollen im Angular-Frontend über den Firestore Client erfolgen; Cloud Functions und andere serverseitige
+  Fachaktionen sind für diesen Bereich ausgeschlossen. Jede Version erhält eine Revision, die bei jeder Schichtänderung und jedem
+  Statuswechsel in einer Firestore-Transaktion erhöht wird. Eine abweichende Revision verhindert veraltete Schreibzugriffe und
+  eine Veröffentlichung auf Basis eines zwischenzeitlich geänderten Entwurfs.
+- Die zeitliche Konfliktprüfung bleibt eine Frontend-Fachprüfung. Firestore Rules sollen Rollen, Filialgrenzen, Entwurfsstatus,
+  Benutzer-UID und Revisionsfortschritt absichern, können Überschneidungen mehrerer Schichtdokumente aber nicht berechnen.
+- Die vorhandene `schichtplan-page` ist weiterhin eine Platzhalterseite. Firestore-Pfade, Rules, Konfliktbehandlung und
+  atomare Veröffentlichung werden in den folgenden Todo-Schritten konkretisiert und umgesetzt.
+
 ## Firebase-Grundlage
 
 - Firebase und AngularFire sind installiert.
@@ -105,12 +144,13 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   neue Filial-ID. Gleiche Namen oder Legacy-IDs in unterschiedlichen Filialen bleiben zunächst getrennte, nachvollziehbare
   Mitarbeiter. Die Legacy-Felder `role` und `authorisation` werden gemeinsam auf die betrieblichen Rollen `filialkasse`,
   `servicekraft`, `administrator`, `kassierer` und `techniker` abgebildet und als eindeutiges Array `rollen` gespeichert.
-  Dubletten können durch Master gezielt zusammengeführt werden. Dabei werden `filialIds` und `rollen` vereinigt, alle
-  Legacy-IDs atomar auf den gewählten Zielmitarbeiter umgeleitet und das Duplikat physisch gelöscht. Eine eigenständige
-  Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten; die technische Löschfunktion wird für das Zusammenführen
-  verwendet. Wiederholte Mitarbeitermigrationen überschreiben die Stammdaten eines manuell zusammengeführten Zielmitarbeiters
-  nicht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Zusammenführen und dem dabei ausgeführten Löschen geschützt.
-  Der fachliche Status wird ausschließlich mit `aktiv` geführt; ein zusätzliches Löschfeld gibt es nicht.
+  Dubletten können durch Master gezielt zusammengeführt werden. Der von seiner Card aus gewählte Mitarbeiter bleibt als Ziel
+  bestehen; mehrere ähnliche Mitarbeiter können in einem Vorgang als Duplikate ausgewählt werden. Dabei werden `filialIds` und
+  `rollen` vereinigt, alle Legacy-IDs atomar auf den Zielmitarbeiter umgeleitet und die ausgewählten Duplikate physisch gelöscht.
+  Eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten; die technische Löschfunktion wird für das
+  Zusammenführen verwendet. Wiederholte Mitarbeitermigrationen überschreiben die Stammdaten eines manuell zusammengeführten
+  Zielmitarbeiters nicht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Zusammenführen und dem dabei ausgeführten
+  Löschen geschützt. Der fachliche Status wird ausschließlich mit `aktiv` geführt; ein zusätzliches Löschfeld gibt es nicht.
 - `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
   sondern greifen über den `FirestoreDbService` zu.
 - Der `AppSitzungsInitService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
@@ -164,9 +204,10 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Ergebnisse einer überholten Kundenauswahl. Neben der Kundenauswahl wählt ein fester Migrationsbereich-Selektor zwischen
   Unternehmern, Firmen, Filialen und Mitarbeitern und zeigt genau die zugehörige Karte. Beim Öffnen eines Bereichs werden
   aktueller Quellen- und Zielbestand aus Firestore gelesen. Nach der
-  Migration lädt der Store den Status und den tatsächlichen Zielbestand erneut. `Offen` ergibt sich aus der aktuellen Quelle
-  abzüglich der zuletzt erfolgreich migrierten Dokumente; nur im Ziel vorhandene Dokumente bleiben erhalten und werden in `Ziel`
-  mitgezählt.
+  Migration lädt der Store den Status und den tatsächlichen Zielbestand erneut. Nach einer Mitarbeitermigration verwirft er
+  zusätzlich die bereits geladenen Mitarbeiterkontexte, damit die Mitarbeiterseite beim nächsten Aufruf unmittelbar den neuen
+  Firestore-Bestand lädt. `Offen` ergibt sich aus der aktuellen Quelle abzüglich der zuletzt erfolgreich migrierten Dokumente;
+  nur im Ziel vorhandene Dokumente bleiben erhalten und werden in `Ziel` mitgezählt.
 - Aktive Master dürfen die Legacy-Kundendaten lesen sowie Migrationsstatus lesen, anlegen und aktualisieren; andere
   Pur-System-Rollen, Legacy-Konten und nicht angemeldete Zugriffe bleiben ausgeschlossen.
 - Offline-Schreibvorgänge, Pending-Sync und Batch-Schreibvorgänge aus der Altanwendung wurden bewusst noch nicht übernommen.
@@ -228,9 +269,10 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   frühere gemeinsame Seitencontainer mit Divider wurde entfernt.
 - Das Formular gliedert sich in Zugangsdaten, erlaubte Bereiche und Datenzugriff. Alle Gruppen verwenden `div`-Elemente mit
   sichtbaren Überschriften, ohne `role="group"`, `aria-label` oder `aria-labelledby`, statt `fieldset`/`legend`. Die
-  `h2`-Überschriften werden zentral über `pur-form__group-titel` in `forms.scss` gestaltet. Zugangsdaten enthalten Anzeigename,
-  Benutzerrolle, den automatisch gebildeten und nicht bearbeitbaren Anmeldenamen sowie das Passwort. Die technische
-  Firebase-Adresse wird bei der Anlage nicht angezeigt.
+  `h2`-Überschriften von Formularen und Formulargruppen werden zentral über `pur-form__titel` beziehungsweise
+  `pur-form__group-titel` in `_form.scss` gestaltet. Zugangsdaten enthalten Anzeigename, Benutzerrolle, den automatisch
+  gebildeten und nicht bearbeitbaren Anmeldenamen sowie das Passwort. Die technische Firebase-Adresse wird bei der Anlage nicht
+  angezeigt.
 - Der Master vergibt das Anfangspasswort ausschließlich selbst: ein Feld mit Ein-/Ausblendfunktion und dem Label „Passwort min. 8
   Zeichen“. Es gibt weder Passwortbestätigung bei der Anlage noch eine Variante zur erstmaligen Passwortvergabe durch den
   Benutzer.
@@ -289,29 +331,33 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Mitarbeiter. Geladene Einträge behalten ihre Unternehmer- und Firmen-ID als fachlichen Kontext.
 - Der `MitarbeiterStore` hält mehrere Firmen-, Einzelfilial- und Mehrfilialkontexte gleichzeitig. Jeder Kontext besitzt eigene
   Lade-, Abschluss- und Fehlerzustände; dadurch bleibt auch ein vollständig geladenes leeres Ergebnis eindeutig. Identische
-  laufende oder bereits geladene Kontexte werden nicht erneut geladen. Ein zentraler Sitzungsreset verwirft sämtliche
-  Mitarbeiterkontexte und schützt vor der Übernahme veralteter Ladeergebnisse.
+  laufende oder bereits geladene Kontexte werden nicht erneut geladen. Ein zentraler Reset verwirft sämtliche
+  Mitarbeiterkontexte und schützt bei einem Sitzungswechsel sowie nach einer Mitarbeitermigration vor veralteten Ladeergebnissen.
 - Die produktiven Firestore Rules erlauben Office- und Filialkonten die vereinbarten Lese-, Anlage- und Aktualisierungszugriffe
   innerhalb ihres Firmen- beziehungsweise Filialbereichs. Filialkonten dürfen Mitarbeiter ihrer Firma lesen, laden mit ihrer
   Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
   Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
-  `erlaubteBereiche`. Master können nicht verknüpfte Mitarbeiter zusammenführen; dabei wird das Duplikat über die technische
-  Löschfunktion physisch entfernt. Eine eigenständige Löschaktion bietet die Oberfläche nicht an. Verknüpfte Mitarbeiter sind
-  durch Rules vor dem Zusammenführen und Löschen geschützt. Der Aktivstatus beschreibt allein den Beschäftigungsstatus: Er
-  begrenzt die Lese- und Bearbeitungsrechte nicht, und Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich
-  deaktivieren und wieder aktivieren. Die am 04.10.2026 deployten Rules erlauben die vereinbarten Mitarbeiterzugriffe. Die danach
-  lokal ergänzten Regeln für Rollen-Arrays und das Zusammenführen sind getestet, aber noch nicht als produktiv deployed
-  dokumentiert.
+  `erlaubteBereiche`. Master können mehrere nicht verknüpfte Mitarbeiter atomar in einen Zielmitarbeiter zusammenführen; dabei
+  werden die Duplikate über die technische Löschfunktion physisch entfernt. Eine eigenständige Löschaktion bietet die Oberfläche
+  nicht an. Verknüpfte Mitarbeiter sind durch Rules vor dem Zusammenführen und Löschen geschützt. Der Aktivstatus beschreibt
+  allein den Beschäftigungsstatus und begrenzt die Lese- und Bearbeitungsrechte nicht. Office sowie Filiale können Mitarbeiter
+  in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Die am 04.10.2026 deployten Rules erlauben die vereinbarten
+  Mitarbeiterzugriffe. Die danach lokal ergänzten Regeln für Rollen-Arrays und das Zusammenführen sind getestet, aber noch nicht
+  als produktiv deployed dokumentiert.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
   `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
   passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
   Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden als kompakte Cards mit allen
   betrieblichen Rollen, Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben je
-  Kontext unterscheidbar.
+  Kontext unterscheidbar. Für Master öffnet die Aktion `Zusammenführen` den gewählten Card-Mitarbeiter als bestehen bleibendes
+  Ziel. Die Mehrfachauswahl enthält nur andere Mitarbeiter derselben Firma, deren normalisierte Namen anhand der
+  Levenshtein-Distanz ausreichend ähnlich sind. Sind Vor- und Nachname auf beiden Seiten vorhanden, müssen der Vorname mindestens
+  50 Prozent, der Nachname mindestens 60 Prozent und beide gemeinsam durchschnittlich 70 Prozent erreichen. Fehlt jeweils ein
+  vergleichbarer Namensbestandteil, gilt für den einzelnen Bestandteil ein strenger Grenzwert von 90 Prozent.
 - Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
   Bearbeitungsdialog. Beide Reactive Forms erfassen Vorname, Nachname, optionale Adress- und Kontaktdaten, mindestens eine der
-  betrieblichen Rollen `filialkasse`, `servicekraft`, `administrator`, `kassierer` oder `techniker` und mindestens eine
-  verpflichtende Filialzuordnung. Ein Mitarbeiter kann mehrere Rollen besitzen. Der Anzeigename des Firestore-Dokuments wird
+  betrieblichen Rollen `filialkasse`, `servicekraft`, `administrator`, `kassierer`, `techniker` oder `dienstplaner` und mindestens
+  eine verpflichtende Filialzuordnung. Ein Mitarbeiter kann mehrere Rollen besitzen. Der Anzeigename des Firestore-Dokuments wird
   automatisch aus Vor- und Nachname gebildet und bei Namensänderungen aktualisiert. Geburtstag, Telefon und Webseite sind
   derzeit in der Oberfläche ausgeblendet; bereits gespeicherte Werte bleiben beim Bearbeiten erhalten. Der
   Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer, Firma sowie Mitarbeiter-ID unveränderlich an. Bereits
@@ -379,8 +425,9 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 ## Bestehende Benutzer verwalten
 
 - Unter `systemverwaltung-page/benutzer-page/benutzer-verwaltung` ist die Bearbeitung vorhandener Benutzerprofile umgesetzt.
-- Das Benutzer-Select verwendet die UID als Wert und zeigt Anzeigename sowie Rollenbezeichnung. Der Bearbeiten-Button wird erst
-  nach einer gültigen Auswahl aktiviert.
+- Das Benutzer-Select verwendet die UID als Wert und gruppiert die Anzeigenamen nach Rolle in der Reihenfolge Filiale, Office,
+  Mitarbeiter und Master. Die kompakte Optgroup-Darstellung wird über die wiederverwendbaren Klassen `pur-select__panel` und
+  `pur-select__panel--grouped` gestaltet. Der Bearbeiten-Button wird erst nach einer gültigen Auswahl aktiviert.
 - Es werden keine produktiven Mockprofile verwendet. Die für Master zentral geladenen Benutzerprofile werden direkt aus dem
   Sitzungsbestand verwendet; Leer-, Lade- und Fehlerzustände bleiben unterscheidbar.
 - `IBenutzerProfilEintrag` bildet ein geladenes Profil mit seiner Dokument-ID als `uid` ab. `IBenutzerProfilAktualisierung`
@@ -636,16 +683,16 @@ Stand: 05.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 Am 08.10.2026 für den aktuellen Stand erfolgreich geprüft:
 
-- 702 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben und
-  konsistenter
-  Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
+- 709 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben,
+  konsistenter Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Datenstruktur-Anlage, zentraler Stammdateninitialisierung sowie Firmen-,
   Filial- und Benutzerprofil-Bearbeitung, fachlichem Mitarbeiter-Service und -Store, Mitarbeiterlistenroute, Rollenprüfung und
   Mitarbeiter-Cards, Anlage- und Bearbeitungsdialogen, mehreren gleichzeitig gehaltenen Mitarbeiterkontexten,
   benutzerabhängigen Stammdatenladeplänen für alle vier Rollen, Echtzeitbeobachtung des eigenen Profils, zentralem
   Sitzungsstart mit Initialisierungszustand, wartender Navigation, Fehlerseite, Wiederholung und Rücknavigation sowie globalem
   Banner-Service, Inaktivhinweis, sichtbarer Anwendungsversion, allen vier Firestore-Lesestrategien, buildabhängiger Cache-Art,
-  erzwungenem Server-Neuladen, Benutzertrennung sowie Unternehmer-, Firmen- und Filialmigration.
+  erzwungenem Server-Neuladen, Benutzertrennung, Unternehmer-, Firmen-, Filial- und Mitarbeitermigration sowie
+  Namensähnlichkeitsfilter und atomarer Mehrfach-Zusammenführung von Mitarbeiterduplikaten.
 - Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
 - Datenstruktur-Anlage und die Benutzerfunktionen wurden unter den Systemverwaltungsrouten auf Desktop und einem kleinen
   Viewport erfolgreich manuell geprüft.

@@ -1,21 +1,37 @@
 // pur-system/src/app/commons/constants/firebase.constants.ts
 
+import type {
+  IDienstplanPfad,
+  IDienstplanVersionPfad,
+  IFilialPfad,
+  ISchichtPfad,
+} from '../models/app/firestore-pfad.types';
+import type {
+  IPurBranchPfad,
+  IPurCompanyPfad,
+  IPurCustomerPfad,
+  IPurEmployeePfad,
+} from '../models/legacy/pur-firestore-pfad.types';
+
 export const FIRESTORE_COLLECTION_PATHS = {
-  benutzerprofile: 'benutzerprofil',
+  // ===== Legacy-Pfade =======================
   purCustomers: 'purCustomers',
+  purCompanies(pfad: IPurCustomerPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.purCustomer(pfad)}/company`;
+  },
+  purBranches(pfad: IPurCompanyPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.purCompany(pfad)}/branches`;
+  },
+  purEmployees(pfad: IPurBranchPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.purBranch(pfad)}/employee`;
+  },
+
+  // ===== Pur-System-Pfade ===================
+  benutzerprofile: 'benutzerprofil',
   systemMigrationen: 'systemMigrationen',
   unternehmer: 'unternehmer',
   migrationsDatenbereiche(purCustomerId: string): string {
     return `systemMigrationen/${purCustomerId}/datenbereiche`;
-  },
-  purCompanies(purCustomerId: string): string {
-    return `purCustomers/${purCustomerId}/company`;
-  },
-  purBranches(purCustomerId: string, purCompanyId: string): string {
-    return `purCustomers/${purCustomerId}/company/${purCompanyId}/branches`;
-  },
-  purEmployees(purCustomerId: string, purCompanyId: string, purBranchId: string): string {
-    return `${FIRESTORE_COLLECTION_PATHS.purBranches(purCustomerId, purCompanyId)}/${purBranchId}/employee`;
   },
   firmen(unternehmerId: string): string {
     return `unternehmer/${unternehmerId}/firma`;
@@ -26,28 +42,35 @@ export const FIRESTORE_COLLECTION_PATHS = {
   mitarbeiter(unternehmerId: string, firmaId: string): string {
     return `unternehmer/${unternehmerId}/firma/${firmaId}/mitarbeiter`;
   },
+  dienstplaene(pfad: IFilialPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/dienstplan`;
+  },
+  dienstplanVersionen(pfad: IDienstplanPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad)}/version`;
+  },
+  schichten(pfad: IDienstplanVersionPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad)}/schicht`;
+  },
 } as const;
 
 export const FIRESTORE_DOCUMENT_PATHS = {
+  // ===== Legacy-Pfade =======================
+  purCustomer(pfad: IPurCustomerPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purCustomers}/${pfad.purCustomerId}`;
+  },
+  purCompany(pfad: IPurCompanyPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purCompanies(pfad)}/${pfad.purCompanyId}`;
+  },
+  purBranch(pfad: IPurBranchPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purBranches(pfad)}/${pfad.purBranchId}`;
+  },
+  purEmployee(pfad: IPurEmployeePfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.purEmployees(pfad)}/${pfad.purEmployeeId}`;
+  },
+
+  // ===== Pur-System-Pfade ===================
   benutzerprofil(uid: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.benutzerprofile}/${uid}`;
-  },
-  purCustomer(purCustomerId: string): string {
-    return `${FIRESTORE_COLLECTION_PATHS.purCustomers}/${purCustomerId}`;
-  },
-  purCompany(purCustomerId: string, purCompanyId: string): string {
-    return `${FIRESTORE_COLLECTION_PATHS.purCompanies(purCustomerId)}/${purCompanyId}`;
-  },
-  purBranch(purCustomerId: string, purCompanyId: string, purBranchId: string): string {
-    return `${FIRESTORE_COLLECTION_PATHS.purBranches(purCustomerId, purCompanyId)}/${purBranchId}`;
-  },
-  purEmployee(
-    purCustomerId: string,
-    purCompanyId: string,
-    purBranchId: string,
-    purEmployeeId: string,
-  ): string {
-    return `${FIRESTORE_COLLECTION_PATHS.purEmployees(purCustomerId, purCompanyId, purBranchId)}/${purEmployeeId}`;
   },
   systemmigration(purCustomerId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.systemMigrationen}/${purCustomerId}`;
@@ -61,10 +84,19 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   firma(unternehmerId: string, firmaId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.firmen(unternehmerId)}/${firmaId}`;
   },
-  filiale(unternehmerId: string, firmaId: string, filialeId: string): string {
-    return `${FIRESTORE_COLLECTION_PATHS.filialen(unternehmerId, firmaId)}/${filialeId}`;
+  filiale(pfad: IFilialPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.filialen(pfad.unternehmerId, pfad.firmaId)}/${pfad.filialeId}`;
   },
   mitarbeiter(unternehmerId: string, firmaId: string, mitarbeiterId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId)}/${mitarbeiterId}`;
+  },
+  dienstplan(pfad: IDienstplanPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.dienstplaene(pfad)}/${pfad.dienstplanId}`;
+  },
+  dienstplanVersion(pfad: IDienstplanVersionPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.dienstplanVersionen(pfad)}/${pfad.versionId}`;
+  },
+  schicht(pfad: ISchichtPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.schichten(pfad)}/${pfad.schichtId}`;
   },
 } as const;

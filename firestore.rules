@@ -104,7 +104,8 @@ service cloud.firestore {
           'servicekraft',
           'administrator',
           'kassierer',
-          'techniker'
+          'techniker',
+          'dienstplaner'
         ])
         && request.resource.data.erstelltAm == request.time
         && request.resource.data.aktualisiertAm == request.time
@@ -132,7 +133,8 @@ service cloud.firestore {
           'servicekraft',
           'administrator',
           'kassierer',
-          'techniker'
+          'techniker',
+          'dienstplaner'
         ])
         && request.resource.data.aktualisiertAm == request.time
         && hatGueltigeMitarbeiterFilialenBeiBearbeitung(unternehmerId, firmaId)

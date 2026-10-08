@@ -68,7 +68,7 @@ export class FilialeService {
     strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
   ): Promise<IFilialeEintrag | null> {
     const dokument = await this.firestoreDbService.loadDocument<Record<string, unknown>>(
-      FIRESTORE_DOCUMENT_PATHS.filiale(unternehmerId, firmaId, filialeId),
+      FIRESTORE_DOCUMENT_PATHS.filiale({ unternehmerId, firmaId, filialeId }),
       strategie,
     );
 
@@ -127,7 +127,7 @@ export class FilialeService {
     aktualisierung: IFilialeAktualisierung,
   ): Promise<void> {
     await this.firestoreDbService.updateDocument(
-      FIRESTORE_DOCUMENT_PATHS.filiale(unternehmerId, firmaId, filialeId),
+      FIRESTORE_DOCUMENT_PATHS.filiale({ unternehmerId, firmaId, filialeId }),
       {
         ...aktualisierung,
         aktualisiertAm: this.firestoreDbService.createServerTimestamp(),

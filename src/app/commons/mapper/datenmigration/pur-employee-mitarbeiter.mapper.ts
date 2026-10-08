@@ -31,12 +31,12 @@ export function mapPurEmployeeToMitarbeiter(
   purEmployee: IPurEmployeeEintrag,
   filialId: string,
 ): TMitarbeiterMappingErgebnis {
-  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purEmployee(
+  const quellPfad = FIRESTORE_DOCUMENT_PATHS.purEmployee({
     purCustomerId,
-    purEmployee.purCompanyId,
-    purEmployee.purBranchId,
-    purEmployee.id,
-  );
+    purCompanyId: purEmployee.purCompanyId,
+    purBranchId: purEmployee.purBranchId,
+    purEmployeeId: purEmployee.id,
+  });
   const daten = purEmployee.daten;
   const probleme: IDatenmigrationsproblem[] = [];
   const vorname = trimString(daten.firstName);

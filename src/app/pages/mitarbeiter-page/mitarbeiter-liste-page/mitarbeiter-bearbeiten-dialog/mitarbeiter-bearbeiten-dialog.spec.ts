@@ -88,6 +88,10 @@ describe('MitarbeiterBearbeitenDialog', () => {
       filialIds: ['b-1'],
       aktiv: true,
     });
+    expect(fixture.componentInstance.rollen).toContainEqual({
+      value: 'dienstplaner',
+      label: 'Dienstplaner',
+    });
     expect(fixture.componentInstance.weitereFilialzuordnungen).toBe(1);
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('.pur-page-section__summary'),

@@ -64,6 +64,10 @@ describe('MitarbeiterAnlegenDialog', () => {
 
     expect(fixture.componentInstance.mitarbeiterForm.invalid).toBe(true);
     expect(fixture.componentInstance.mitarbeiterForm.controls.aktiv.value).toBe(true);
+    expect(fixture.componentInstance.rollen).toContainEqual({
+      value: 'dienstplaner',
+      label: 'Dienstplaner',
+    });
     expect(form?.classList).toContain('pur-form--grid');
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('.pur-page-section__summary'),

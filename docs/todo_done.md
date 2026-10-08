@@ -2325,10 +2325,20 @@ die spätere manuelle Bearbeitung erkennbar.
 - `src/app/services/domain/datenmigration.service.spec.ts`
 - `src/app/stores/domain/datenmigration.store.ts`
 - `src/app/stores/domain/datenmigration.store.spec.ts`
+- `src/app/stores/domain/mitarbeiter.store.ts`
+- `src/app/stores/domain/mitarbeiter.store.spec.ts`
+- `src/app/services/domain/mitarbeiter.service.ts`
+- `src/app/services/domain/mitarbeiter.service.spec.ts`
+- `src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page.ts`
+- `src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page.spec.ts`
+- `src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-zusammenfuehren-dialog/mitarbeiter-zusammenfuehren-dialog.html`
+- `src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-zusammenfuehren-dialog/mitarbeiter-zusammenfuehren-dialog.spec.ts`
+- `src/app/pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-zusammenfuehren-dialog/mitarbeiter-zusammenfuehren-dialog.ts`
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.ts`
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.html`
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.spec.ts`
 - `docs/matrix-datenmigration.md`
+- `docs/projekt-plan.md`
 - `docs/projekt-stand.md`
 
 Neu hinzuzufügen:
@@ -2336,6 +2346,8 @@ Neu hinzuzufügen:
 - `src/app/commons/mapper/datenmigration/pur-employee-mitarbeiter.mapper.ts`
 - `src/app/commons/mapper/datenmigration/pur-employee-mitarbeiter.mapper.spec.ts`
 - `src/app/commons/models/legacy/pur-employee.ts`
+- `src/app/commons/utils/mitarbeiter/mitarbeiter-namensaehnlichkeit.ts`
+- `src/app/commons/utils/mitarbeiter/mitarbeiter-namensaehnlichkeit.spec.ts`
 
 #### Schritt 1: Mitarbeitermigration
 
@@ -2354,14 +2366,19 @@ Neu hinzuzufügen:
 - [x] Die Karte in den Zeilen `Status | Quelle | Migriert` und `Fehler | Offen | Ziel` anzeigen.
 - [x] Quellen- und Zielbestand bei Auswahl des Bereichs gemeinsam laden und den Zielbestand nach der Migration aktualisieren.
 - [x] Status und Freigabe der Karte nach einer Migration oder einem Kundenwechsel aktualisieren.
+- [x] Nach erfolgreicher Mitarbeitermigration geladene Mitarbeiterkontexte zurücksetzen, damit die Mitarbeiterliste den neuen
+      Firestore-Bestand ohne Seitenneuladen übernimmt.
 
 #### Schritt 3: Rollen und Dublettenverwaltung
 
 - [x] Legacy-Rollen und -Berechtigungen gemeinsam auf die fünf betrieblichen Rollen abbilden und als eindeutiges Array speichern.
 - [x] Mitarbeiterformulare für die Mehrfachauswahl betrieblicher Rollen erweitern.
-- [x] Potenzielle Dubletten durch einen Master gezielt zusammenführen lassen.
-- [x] Beim Zusammenführen Filialzuordnungen und Rollen vereinigen sowie alle Legacy-IDs auf den Zielmitarbeiter umleiten.
-- [x] Das Duplikat nach erfolgreicher Umleitung physisch löschen und verknüpfte Mitarbeiter schützen.
+- [x] Potenzielle Dubletten durch einen Master gezielt zusammenführen lassen und den von seiner Card aus gewählten Mitarbeiter
+      als bestehen bleibendes Ziel verwenden.
+- [x] Die Auswahlliste anhand normalisierter Vor- und Nachnamen sowie der Levenshtein-Distanz auf plausible Kandidaten begrenzen.
+- [x] Mehrere Duplikate gemeinsam auswählen und ihre Filialzuordnungen und Rollen in einem Vorgang vereinigen.
+- [x] Alle Legacy-IDs der ausgewählten Duplikate auf den Zielmitarbeiter umleiten.
+- [x] Die Duplikate nach erfolgreicher Umleitung atomar physisch löschen und verknüpfte Mitarbeiter schützen.
 - [x] Auf eine eigenständige Löschaktion in der Mitarbeiteroberfläche verzichten.
 
 #### Tests und Abschluss
@@ -2370,6 +2387,8 @@ Neu hinzuzufügen:
       ergänzen.
 - [x] Tests für gleiche Legacy-IDs in unterschiedlichen Filialen ergänzen.
 - [x] Service-, Store-, Rules- und Dialogtests für Rollen-Arrays und das Zusammenführen ergänzen.
+- [x] Utility-Tests für Normalisierung, vollständige und unvollständige Namen sowie unähnliche Namensbestandteile ergänzen.
+- [x] Store- und Dialogtests für die Mehrfachauswahl und das gemeinsame Zusammenführen mehrerer Duplikate ergänzen.
 - [x] `docs/projekt-stand.md` nach der Umsetzung aktualisieren.
 - [x] `npm test` ohne Watch-Modus erfolgreich ausführen.
 - [x] `npm run build:master` erfolgreich ausführen.
@@ -2379,6 +2398,8 @@ Neu hinzuzufügen:
 - [x] Nur Mitarbeiter aus den Filialen des ausgewählten `purCustomer` werden migriert.
 - [x] Jeder Quellmitarbeiter liegt zunächst als eigener Firmenmitarbeiter mit seiner neuen Quellfilial-ID vor.
 - [x] Potenzielle Dubletten werden nicht automatisch zusammengeführt und bleiben über ihre Quellzuordnung nachvollziehbar.
+- [x] Ein Master kann mehrere plausible Duplikate auswählen und atomar in den von der Card vorgegebenen Zielmitarbeiter
+      zusammenführen.
 - [x] Der Status liegt unter `systemMigrationen/{purCustomerId}/datenbereiche/mitarbeiter_v1`.
 - [x] Wiederholungen aktualisieren dieselben Mitarbeiter-IDs und erzeugen keine zusätzlichen Mitarbeiter.
 - [x] Tests und Build laufen erfolgreich.

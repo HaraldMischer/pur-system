@@ -18,6 +18,7 @@ const ROLLEN_LABEL: Readonly<Record<TMitarbeiterRolle, string>> = {
   administrator: 'Administrator',
   kassierer: 'Kassierer',
   techniker: 'Techniker',
+  dienstplaner: 'Dienstplaner',
 };
 
 @Component({

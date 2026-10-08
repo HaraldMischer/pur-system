@@ -53,8 +53,10 @@ Die Collection-Matrix zeigt, welche Aktionen eine Benutzerrolle grundsätzlich a
   gezielt die Mitarbeiter der eigenen Filiale und darf nur diese anlegen oder bearbeiten.
 - Der Aktivstatus eines fachlichen Mitarbeiters schränkt diese Lese- und Bearbeitungsrechte nicht ein. `aktiv: false` beschreibt
   einen inaktiven Beschäftigungsstatus; berechtigte Rollen können den Mitarbeiter später wieder aktivieren.
-- Die betrieblichen Mitarbeiterrollen `filialkasse`, `servicekraft`, `administrator`, `kassierer` und `techniker` werden als
-  Array `rollen` gespeichert. Sie beschreiben Tätigkeiten und gewähren unabhängig von `TUserRole` keine App- oder Datenrechte.
+- Die betrieblichen Mitarbeiterrollen `filialkasse`, `servicekraft`, `administrator`, `kassierer`, `techniker` und
+  `dienstplaner` werden als Array `rollen` gespeichert. Sie beschreiben Tätigkeiten und gewähren unabhängig von `TUserRole`
+  keine eigenen Firestore-Datenrechte. `dienstplaner` steuert ausschließlich im Filial-Frontend, ob ein aktiver
+  Firma-Mitarbeiter der eigenen Filiale die dort für das Filialkonto erlaubten Planungsaktionen bedienen darf.
 - Nur Master dürfen Dubletten zusammenführen. Dabei wird das nicht mit einem Benutzerkonto verknüpfte Duplikat physisch
   gelöscht; eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten.
 - Mit einem Benutzerkonto verknüpfte Mitarbeiter dürfen weder gelöscht noch zusammengeführt werden.

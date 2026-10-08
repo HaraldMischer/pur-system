@@ -51,6 +51,19 @@ describe('MitarbeiterCard', () => {
     expect(card?.classList).toContain('pur-card--inaktiv');
   });
 
+  it('should render the employee planner role', () => {
+    const fixture = TestBed.createComponent(MitarbeiterCard);
+    fixture.componentRef.setInput('mitarbeiter', {
+      ...mitarbeiter,
+      rollen: ['servicekraft', 'dienstplaner'],
+    });
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Servicekraft · Dienstplaner',
+    );
+  });
+
   it('should emit the employee when edit is selected', () => {
     const fixture = TestBed.createComponent(MitarbeiterCard);
     const bearbeitenSpy = vi.fn();

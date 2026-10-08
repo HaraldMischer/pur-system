@@ -9,13 +9,13 @@ gewährt keine zusätzlichen Berechtigungen.
 
 ### Matrix
 
-| Auslieferungsvariante | Cache-Art              | Benutzerprofil | Stammdaten    | Wiederholung  |
-| --------------------- | ---------------------- | -------------- | ------------- | ------------- |
-| Pur Master            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` |
-| Pur Office            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` |
-| Pur Filiale           | `persistentLocalCache` | `networkFirst` | `cacheFirst`  | `networkOnly` |
-| Pur Mitarbeiter       | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` |
-| Entwicklung           | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` |
+| Auslieferungsvariante | Cache-Art              | Benutzerprofil | Stammdaten    | Dienstpläne   | Wiederholung  |
+| --------------------- | ---------------------- | -------------- | ------------- | ------------- | ------------- |
+| Pur Master            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` | `networkOnly` |
+| Pur Office            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` | `networkOnly` |
+| Pur Filiale           | `persistentLocalCache` | `networkFirst` | `cacheFirst`  | `networkFirst` | `networkOnly` |
+| Pur Mitarbeiter       | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` | `networkOnly` |
+| Entwicklung           | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` | `networkOnly` |
 
 ### Zusatzbedingungen
 
@@ -47,13 +47,21 @@ nichttechnische Serverfehler lösen bei `networkFirst` keinen Cache-Rückfall au
 | Installation                 | als PWA vorgesehen                        | als PWA vorgesehen                        | als PWA vorgesehen und geprüft            | als PWA vorgesehen und geprüft            |
 | Offline-App-Shell            | ja                                        | ja                                        | ja                                        | ja                                        |
 | Fachliche Daten online       | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten |
-| Dauerhafte Offline-Fachdaten | nein                                      | nein                                      | begrenzter Lesecache                      | nein                                      |
+| Dauerhafte Offline-Fachdaten | nein                                      | nein                                      | vollständiger Filial-Lesebestand         | nein                                      |
 | Offline-Änderungen           | vorerst nein                              | vorerst nein                              | vorerst nein                              | vorerst nein                              |
 
 ### Zusatzbedingungen
 
-Der persistente Firestore-Lesecache ist ausschließlich für Pur Filiale umgesetzt. Er umfasst das bestätigte Benutzerprofil und
-die durch den benutzerabhängigen Ladeplan angeforderten Stammdaten. Die anderen Varianten verwenden einen flüchtigen Cache.
+Der persistente Firestore-Lesecache ist ausschließlich für Pur Filiale umgesetzt. Er umfasst das bestätigte Benutzerprofil, die
+durch den benutzerabhängigen Ladeplan angeforderten Stammdaten sowie nach Umsetzung der Dienstplanung sämtliche Mitarbeiter,
+Dienstpläne, Versionen und Schichten der eigenen Filiale ohne zeitliche oder jährliche Begrenzung. Die anderen Varianten
+verwenden einen flüchtigen Cache.
+
+Pur Filiale lädt diesen vollständigen Filialbestand bei jedem Programmstart. Stammdaten verwenden weiterhin `cacheFirst`; der
+gesamte Dienstplanbestand wird bei einem Online-Start zuerst vom Server gelesen und aktualisiert den IndexedDB-basierten
+Firestore-Cache. Bei einem technischen Serverfehler wird auf die lokal vorhandenen Dienstplandaten zurückgefallen. Ein
+Offline-Start kann nur den Stand anzeigen, der bei früheren erfolgreichen Ladevorgängen tatsächlich in IndexedDB gespeichert
+wurde; der Cache bleibt deshalb eine lokale Kopie und keine verbindliche Datenquelle.
 
 ## 3. Bedeutung der Betriebsarten
 
@@ -69,6 +77,9 @@ die durch den benutzerabhängigen Ladeplan angeforderten Stammdaten. Die anderen
 ## 4. Grundentscheidungen
 
 - Pur-Filiale verwendet als einzige Variante einen persistenten Firestore-Lesecache.
+- Pur Filiale lädt bei jedem Programmstart den vollständigen lesbaren Datenbestand der eigenen Filiale. Für Dienstpläne gilt
+  dabei keine Jahresbegrenzung; Entwürfe, veröffentlichte und archivierte Versionen einschließlich aller Schichten werden
+  geladen.
 - Die Offline-App-Shell bleibt vom Firestore-Lesecache getrennt.
 - Offline-Änderungen und eine spätere Synchronisation sind nicht vorgesehen.
 - Benutzerrolle und Zugriffe bestimmen den fachlichen Datenraum unabhängig von der Auslieferungsvariante.
