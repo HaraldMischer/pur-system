@@ -1,0 +1,66 @@
+<!-- pur-system/src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.html -->
+
+<section class="pur-page pur-page--limited">
+  <section class="pur-page-section">
+    <header class="pur-page__header">
+      <h2 class="pur-page__title">Schichtvorlagen</h2>
+      @if (filialPfad()) {
+        <button
+          matButton="filled"
+          type="button"
+          [disabled]="schichtvorlageStore.inProgress()"
+          (click)="openSchichtvorlageDialog()"
+        >
+          <mat-icon>add</mat-icon>
+          Vorlage anlegen
+        </button>
+      }
+    </header>
+    @if (!filialPfad()) {
+      <p class="pur-page-section__message" role="status">Wähle eine konkrete Filiale aus.</p>
+    } @else if (schichtvorlageStore.download()) {
+      <p class="pur-page-section__message" role="status">Schichtvorlagen werden geladen …</p>
+    } @else if (schichtvorlageStore.error(); as fehlermeldung) {
+      <div class="schichtvorlagen-page__status" role="alert">
+        <p>{{ fehlermeldung }}</p>
+        <button matButton type="button" (click)="retryLoad()">Erneut laden</button>
+      </div>
+    } @else if (
+      schichtvorlageStore.isLoaded() && schichtvorlageStore.schichtvorlagen().length === 0
+    ) {
+      <p class="pur-page-section__message" role="status">
+        Für diese Filiale sind noch keine Schichtvorlagen angelegt.
+      </p>
+    } @else {
+      <div class="pur-page__card-grid">
+        @for (vorlage of schichtvorlageStore.schichtvorlagen(); track vorlage.id) {
+          <mat-card class="pur-card" [class.pur-card--inaktiv]="!vorlage.aktiv">
+            <mat-card-header>
+              <mat-card-title>{{ vorlage.bezeichnung }}</mat-card-title>
+              <mat-card-subtitle>{{ vorlage.aktiv ? 'Aktiv' : 'Inaktiv' }}</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <p>
+                {{ vorlage.beginnLokalzeit }}–{{ vorlage.endeLokalzeit }} Uhr
+                @if (vorlage.endetAmFolgetag) {
+                  <span>(Folgetag)</span>
+                }
+              </p>
+              <p>Standardpause: {{ vorlage.standardpauseMinuten ?? 0 }} Minuten</p>
+            </mat-card-content>
+            <mat-card-actions align="end">
+              <button
+                matButton
+                type="button"
+                [disabled]="schichtvorlageStore.inProgress()"
+                (click)="openSchichtvorlageDialog(vorlage)"
+              >
+                Bearbeiten
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        }
+      </div>
+    }
+  </section>
+</section>

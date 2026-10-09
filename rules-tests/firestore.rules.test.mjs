@@ -11,6 +11,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   collection,
+  deleteField,
   deleteDoc,
   doc,
   documentId,
@@ -21,6 +22,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 
 let testEnvironment;
@@ -110,6 +112,14 @@ const andererMitarbeiterPath = `${firmaPath}/mitarbeiter/m-2`;
 const nichtZugeordneteFirmaPath = `${unternehmerPath}/firma/f-2`;
 const nichtZugeordneterMitarbeiterPath = `${nichtZugeordneteFirmaPath}/mitarbeiter/m-3`;
 const nichtZugeordneteFilialePath = `${firmaPath}/filiale/b-2`;
+const schichtvorlagePath = `${filialePath}/schichtvorlage/fruehschicht`;
+const fremdeSchichtvorlagePath = `${nichtZugeordneteFilialePath}/schichtvorlage/fruehschicht`;
+const dienstplanPath = `${filialePath}/dienstplan/2026-10`;
+const veroeffentlichteVersionPath = `${dienstplanPath}/version/v1`;
+const entwurfVersionPath = `${dienstplanPath}/version/v2`;
+const archivierteVersionPath = `${dienstplanPath}/version/v0`;
+const veroeffentlichteSchichtPath = `${veroeffentlichteVersionPath}/schicht/s1`;
+const entwurfSchichtPath = `${entwurfVersionPath}/schicht/s2`;
 const legacyBranchPath = 'purCustomers/u-1/company/f-1/branches/b-1';
 
 async function seedProfile(userRole, overrides = {}) {
@@ -146,6 +156,7 @@ async function seedProfile(userRole, overrides = {}) {
       nichtZugeordneterMitarbeiterPath,
     ]) {
       await setDoc(doc(db, path), {
+        anzeigename: 'Mia Muster',
         person: {
           vorname: 'Mia',
           nachname: 'Muster',
@@ -155,6 +166,9 @@ async function seedProfile(userRole, overrides = {}) {
         rollen: ['servicekraft'],
         filialIds: ['b-1'],
         aktiv: true,
+        ...(path === mitarbeiterPath && userRole === 'mitarbeiter'
+          ? { benutzerUid: 'scoped' }
+          : {}),
       });
     }
     await setDoc(doc(db, 'benutzerprofil/other'), {
@@ -168,11 +182,512 @@ async function seedProfile(userRole, overrides = {}) {
   return testEnvironment.authenticatedContext('scoped').firestore();
 }
 
+async function seedDienstplan() {
+  const zeitpunkt = new Date('2026-10-01T08:00:00.000Z');
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, dienstplanPath), {
+      zeitraumStart: '2026-10-01',
+      zeitraumEnde: '2026-10-31',
+      zeitzone: 'Europe/Berlin',
+      entwurfVersionId: 'v2',
+      veroeffentlichteVersionId: 'v1',
+      naechsteVersionsnummer: 3,
+      erstelltAm: zeitpunkt,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+    });
+    await setDoc(doc(db, archivierteVersionPath), {
+      nummer: 0,
+      revision: 2,
+      status: 'archiviert',
+      erstelltAm: zeitpunkt,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+      veroeffentlichtAm: zeitpunkt,
+      veroeffentlichtVonUid: 'scoped',
+      archiviertAm: zeitpunkt,
+      archiviertVonUid: 'scoped',
+    });
+    await setDoc(doc(db, veroeffentlichteVersionPath), {
+      nummer: 1,
+      revision: 0,
+      status: 'veroeffentlicht',
+      erstelltAm: zeitpunkt,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+      veroeffentlichtAm: zeitpunkt,
+      veroeffentlichtVonUid: 'scoped',
+    });
+    await setDoc(doc(db, entwurfVersionPath), {
+      nummer: 2,
+      revision: 0,
+      status: 'entwurf',
+      erstelltAm: zeitpunkt,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+    });
+    await setDoc(doc(db, schichtvorlagePath), {
+      bezeichnung: 'Frühschicht',
+      beginnLokalzeit: '08:00',
+      endeLokalzeit: '16:30',
+      endetAmFolgetag: false,
+      standardpauseMinuten: 30,
+      aktiv: true,
+      erstelltAm: zeitpunkt,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+    });
+    for (const path of [veroeffentlichteSchichtPath, entwurfSchichtPath]) {
+      await setDoc(doc(db, path), {
+        mitarbeiterId: 'm-1',
+        mitarbeiterAnzeigename: 'Mia Muster',
+        schichtvorlageId: 'fruehschicht',
+        schichtvorlageBezeichnung: 'Frühschicht',
+        beginn: new Date('2026-10-05T08:00:00.000Z'),
+        ende: new Date('2026-10-05T16:00:00.000Z'),
+        pauseMinuten: 30,
+        erstelltAm: zeitpunkt,
+        erstelltVonUid: 'scoped',
+        aktualisiertAm: zeitpunkt,
+        aktualisiertVonUid: 'scoped',
+      });
+    }
+  });
+}
+
+function setInitialenDienstplan(batch, db, basisPfad, monat) {
+  const [jahr, monatsnummer] = monat.split('-').map(Number);
+  const letzterTag = new Date(Date.UTC(jahr, monatsnummer, 0)).getUTCDate();
+  const planRef = doc(db, basisPfad);
+  const versionRef = doc(db, `${basisPfad}/version/v1`);
+  batch.set(planRef, {
+    zeitraumStart: `${monat}-01`,
+    zeitraumEnde: `${monat}-${letzterTag}`,
+    zeitzone: 'Europe/Berlin',
+    entwurfVersionId: 'v1',
+    naechsteVersionsnummer: 2,
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.set(versionRef, {
+    nummer: 1,
+    revision: 0,
+    status: 'entwurf',
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+}
+
+function schichtvorlageDaten(overrides = {}) {
+  return {
+    bezeichnung: 'Frühschicht',
+    beginnLokalzeit: '08:00',
+    endeLokalzeit: '16:30',
+    endetAmFolgetag: false,
+    standardpauseMinuten: 30,
+    aktiv: true,
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+    ...overrides,
+  };
+}
+
+for (const role of ['master', 'office', 'filiale']) {
+  test(`${role} manages shift templates in an allowed branch`, async () => {
+    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
+    const vorlage = doc(db, schichtvorlagePath);
+
+    await assertSucceeds(setDoc(vorlage, schichtvorlageDaten()));
+    await assertSucceeds(getDoc(vorlage));
+    await assertSucceeds(
+      updateDoc(vorlage, {
+        bezeichnung: 'Frühschicht Werktag',
+        aktiv: false,
+        aktualisiertAm: serverTimestamp(),
+        aktualisiertVonUid: 'scoped',
+      }),
+    );
+    await assertFails(deleteDoc(vorlage));
+  });
+}
+
+test('office cannot access shift templates in a foreign branch', async () => {
+  const db = await seedProfile('office');
+
+  await assertFails(getDoc(doc(db, fremdeSchichtvorlagePath)));
+  await assertFails(setDoc(doc(db, fremdeSchichtvorlagePath), schichtvorlageDaten()));
+});
+
+test('employee accounts cannot read or write shift templates', async () => {
+  const db = await seedProfile('mitarbeiter', {
+    erlaubteBereiche: ['dashboard', 'schichtplan'],
+    zugriffe: { 'u-1': { 'f-1': [] } },
+    firmaMitarbeiterId: 'm-1',
+  });
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), schichtvorlagePath), {
+      ...schichtvorlageDaten(),
+      erstelltAm: new Date('2026-10-01T08:00:00.000Z'),
+      aktualisiertAm: new Date('2026-10-01T08:00:00.000Z'),
+    });
+  });
+
+  await assertFails(getDoc(doc(db, schichtvorlagePath)));
+  await assertFails(
+    setDoc(doc(db, `${filialePath}/schichtvorlage/spaetschicht`), schichtvorlageDaten()),
+  );
+});
+
+test('shift templates reject invalid fields and protected metadata changes', async () => {
+  const db = await seedProfile('office');
+  const vorlage = doc(db, schichtvorlagePath);
+
+  await assertFails(setDoc(vorlage, schichtvorlageDaten({ beginnLokalzeit: '8:00' })));
+  await assertFails(setDoc(vorlage, schichtvorlageDaten({ standardpauseMinuten: 1440 })));
+  await assertSucceeds(setDoc(vorlage, schichtvorlageDaten()));
+  await assertFails(
+    updateDoc(vorlage, {
+      erstelltVonUid: 'other',
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+});
+
+for (const role of ['master', 'office', 'filiale']) {
+  test(`${role} reads every service-plan status in an allowed branch`, async () => {
+    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
+    await seedDienstplan();
+
+    for (const path of [
+      dienstplanPath,
+      archivierteVersionPath,
+      veroeffentlichteVersionPath,
+      entwurfVersionPath,
+      veroeffentlichteSchichtPath,
+      entwurfSchichtPath,
+    ]) {
+      await assertSucceeds(getDoc(doc(db, path)));
+    }
+  });
+
+  test(`${role} creates an initial monthly service plan atomically`, async () => {
+    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
+    const batch = writeBatch(db);
+    setInitialenDienstplan(batch, db, `${filialePath}/dienstplan/2026-11`, '2026-11');
+
+    await assertSucceeds(batch.commit());
+  });
+}
+
+test('office cannot create service plans for malformed months or foreign branches', async () => {
+  const db = await seedProfile('office');
+  let batch = writeBatch(db);
+  setInitialenDienstplan(batch, db, `${filialePath}/dienstplan/2026-11-01`, '2026-11-01');
+  await assertFails(batch.commit());
+
+  batch = writeBatch(db);
+  setInitialenDienstplan(batch, db, `${nichtZugeordneteFilialePath}/dienstplan/2026-11`, '2026-11');
+  await assertFails(batch.commit());
+});
+
+test('employee accounts read only the current published service plan state', async () => {
+  const db = await seedProfile('mitarbeiter', {
+    erlaubteBereiche: ['dashboard', 'schichtplan'],
+    zugriffe: { 'u-1': { 'f-1': [] } },
+    firmaMitarbeiterId: 'm-1',
+  });
+  await seedDienstplan();
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `${filialePath}/dienstplan/2026-11`), {
+      zeitraumStart: '2026-11-01',
+      zeitraumEnde: '2026-11-30',
+      zeitzone: 'Europe/Berlin',
+      entwurfVersionId: 'v1',
+      naechsteVersionsnummer: 2,
+    });
+  });
+
+  await assertSucceeds(getDoc(doc(db, dienstplanPath)));
+  await assertSucceeds(getDoc(doc(db, veroeffentlichteVersionPath)));
+  await assertSucceeds(getDoc(doc(db, veroeffentlichteSchichtPath)));
+  await assertFails(getDoc(doc(db, entwurfVersionPath)));
+  await assertFails(getDoc(doc(db, entwurfSchichtPath)));
+  await assertFails(getDoc(doc(db, archivierteVersionPath)));
+  await assertFails(getDoc(doc(db, `${filialePath}/dienstplan/2026-11`)));
+  await assertFails(getDoc(doc(db, `${nichtZugeordneteFilialePath}/dienstplan/2026-10`)));
+  await assertFails(
+    setDoc(doc(db, dienstplanPath), { aktualisiertVonUid: 'scoped' }, { merge: true }),
+  );
+});
+
+test('employee service-plan access requires an active linked employee in the branch', async () => {
+  const db = await seedProfile('mitarbeiter', {
+    erlaubteBereiche: ['dashboard', 'schichtplan'],
+    zugriffe: { 'u-1': { 'f-1': [] } },
+    firmaMitarbeiterId: 'm-1',
+  });
+  await seedDienstplan();
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await updateDoc(doc(context.firestore(), mitarbeiterPath), { aktiv: false });
+  });
+
+  await assertFails(getDoc(doc(db, dienstplanPath)));
+  await assertFails(getDoc(doc(db, veroeffentlichteVersionPath)));
+});
+
+test('planner changes a draft shift only with the matching version revision', async () => {
+  const db = await seedProfile('office');
+  await seedDienstplan();
+  const neueSchicht = doc(db, `${entwurfVersionPath}/schicht/neu`);
+
+  await assertFails(
+    setDoc(neueSchicht, {
+      mitarbeiterId: 'm-1',
+      mitarbeiterAnzeigename: 'Mia Muster',
+      schichtvorlageId: 'fruehschicht',
+      schichtvorlageBezeichnung: 'Frühschicht',
+      beginn: new Date('2026-10-06T08:00:00.000Z'),
+      ende: new Date('2026-10-06T16:00:00.000Z'),
+      pauseMinuten: 30,
+      erstelltAm: serverTimestamp(),
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+
+  const batch = writeBatch(db);
+  batch.update(doc(db, entwurfVersionPath), {
+    revision: 1,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.set(neueSchicht, {
+    mitarbeiterId: 'm-1',
+    mitarbeiterAnzeigename: 'Mia Muster',
+    schichtvorlageId: 'fruehschicht',
+    schichtvorlageBezeichnung: 'Frühschicht',
+    beginn: new Date('2026-10-06T08:00:00.000Z'),
+    ende: new Date('2026-10-06T16:00:00.000Z'),
+    pauseMinuten: 30,
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  await assertSucceeds(batch.commit());
+
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await updateDoc(doc(context.firestore(), andererMitarbeiterPath), {
+      anzeigename: 'Fremde Person',
+      filialIds: ['b-2'],
+    });
+  });
+  const ungueltigerBatch = writeBatch(db);
+  ungueltigerBatch.update(doc(db, entwurfVersionPath), {
+    revision: 2,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  ungueltigerBatch.set(doc(db, `${entwurfVersionPath}/schicht/ungueltig`), {
+    mitarbeiterId: 'm-2',
+    mitarbeiterAnzeigename: 'Fremde Person',
+    schichtvorlageId: 'fruehschicht',
+    schichtvorlageBezeichnung: 'Frühschicht',
+    beginn: new Date('2026-10-07T08:00:00.000Z'),
+    ende: new Date('2026-10-07T16:00:00.000Z'),
+    pauseMinuten: 30,
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  await assertFails(ungueltigerBatch.commit());
+});
+
+test('planner keeps a stored template snapshot but cannot select an inactive template anew', async () => {
+  const db = await seedProfile('office');
+  await seedDienstplan();
+  await updateDoc(doc(db, schichtvorlagePath), {
+    bezeichnung: 'Geänderte Frühschicht',
+    aktiv: false,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+
+  let batch = writeBatch(db);
+  batch.update(doc(db, entwurfVersionPath), {
+    revision: 1,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.update(doc(db, entwurfSchichtPath), {
+    pauseMinuten: 45,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  await assertSucceeds(batch.commit());
+
+  batch = writeBatch(db);
+  batch.update(doc(db, entwurfVersionPath), {
+    revision: 2,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.set(doc(db, `${entwurfVersionPath}/schicht/neu-inaktiv`), {
+    mitarbeiterId: 'm-1',
+    mitarbeiterAnzeigename: 'Mia Muster',
+    schichtvorlageId: 'fruehschicht',
+    schichtvorlageBezeichnung: 'Frühschicht',
+    beginn: new Date('2026-10-08T08:00:00.000Z'),
+    ende: new Date('2026-10-08T16:00:00.000Z'),
+    pauseMinuten: 30,
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  await assertFails(batch.commit());
+});
+
+test('draft pointers and version numbers change only with the matching version write', async () => {
+  const db = await seedProfile('office');
+  await seedDienstplan();
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    const adminDb = context.firestore();
+    await updateDoc(doc(adminDb, dienstplanPath), { entwurfVersionId: deleteField() });
+    await deleteDoc(doc(adminDb, entwurfSchichtPath));
+    await deleteDoc(doc(adminDb, entwurfVersionPath));
+  });
+
+  await assertFails(
+    updateDoc(doc(db, dienstplanPath), {
+      naechsteVersionsnummer: 4,
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+
+  let batch = writeBatch(db);
+  batch.update(doc(db, dienstplanPath), {
+    entwurfVersionId: 'v3',
+    naechsteVersionsnummer: 4,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.set(doc(db, `${dienstplanPath}/version/v3`), {
+    nummer: 3,
+    revision: 0,
+    status: 'entwurf',
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  await assertSucceeds(batch.commit());
+
+  await assertFails(
+    updateDoc(doc(db, dienstplanPath), {
+      entwurfVersionId: deleteField(),
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+
+  batch = writeBatch(db);
+  batch.update(doc(db, dienstplanPath), {
+    entwurfVersionId: deleteField(),
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.delete(doc(db, `${dienstplanPath}/version/v3`));
+  await assertSucceeds(batch.commit());
+});
+
+test('published shifts and archived versions remain immutable', async () => {
+  const db = await seedProfile('master', { zugriffe: {} });
+  await seedDienstplan();
+
+  await assertFails(
+    updateDoc(doc(db, veroeffentlichteSchichtPath), {
+      pauseMinuten: 45,
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, archivierteVersionPath), {
+      revision: 3,
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+  await assertFails(deleteDoc(doc(db, veroeffentlichteVersionPath)));
+});
+
+test('publishing archives the previous version in the same atomic write', async () => {
+  const db = await seedProfile('master', { zugriffe: {} });
+  await seedDienstplan();
+  let batch = writeBatch(db);
+  batch.update(doc(db, dienstplanPath), {
+    entwurfVersionId: deleteField(),
+    veroeffentlichteVersionId: 'v2',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.update(doc(db, entwurfVersionPath), {
+    revision: 1,
+    status: 'veroeffentlicht',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+    veroeffentlichtAm: serverTimestamp(),
+    veroeffentlichtVonUid: 'scoped',
+  });
+  await assertFails(batch.commit());
+
+  batch = writeBatch(db);
+  batch.update(doc(db, dienstplanPath), {
+    entwurfVersionId: deleteField(),
+    veroeffentlichteVersionId: 'v2',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.update(doc(db, entwurfVersionPath), {
+    revision: 1,
+    status: 'veroeffentlicht',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+    veroeffentlichtAm: serverTimestamp(),
+    veroeffentlichtVonUid: 'scoped',
+  });
+  batch.update(doc(db, veroeffentlichteVersionPath), {
+    revision: 1,
+    status: 'archiviert',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+    archiviertAm: serverTimestamp(),
+    archiviertVonUid: 'scoped',
+  });
+  await assertSucceeds(batch.commit());
+});
+
 test('active master reads permitted collections and legacy customers without legacy write access', async () => {
   const db = await seedProfile('master', { zugriffe: [] });
   for (const path of [
     filialePath,
-    `${filialePath}/mitarbeiter/m-1`,
     'benutzerprofil/other',
     'benutzerprofil/other/private/doc',
     legacyBranchPath,
@@ -185,6 +700,7 @@ test('active master reads permitted collections and legacy customers without leg
   for (const path of ['purUser/old', 'other/doc']) {
     await assertFails(getDoc(doc(db, path)));
   }
+  await assertFails(getDoc(doc(db, `${filialePath}/mitarbeiter/m-1`)));
   await assertFails(getDocs(collection(db, 'purUser')));
   await assertFails(setDoc(doc(db, legacyBranchPath), { name: 'Geändert' }, { merge: true }));
   await assertFails(deleteDoc(doc(db, legacyBranchPath)));
@@ -266,17 +782,13 @@ test('legacy and unauthenticated accounts cannot access migration status', async
 });
 
 for (const role of ['office', 'filiale']) {
-  test(`${role} reads only assigned hierarchy, including branch descendants`, async () => {
+  test(`${role} reads only assigned hierarchy and rejects unspecified branch descendants`, async () => {
     const db = await seedProfile(role);
-    for (const path of [
-      unternehmerPath,
-      firmaPath,
-      filialePath,
-      `${filialePath}/mitarbeiter/m-1`,
-    ]) {
+    for (const path of [unternehmerPath, firmaPath, filialePath]) {
       await assertSucceeds(getDoc(doc(db, path)));
     }
-    await assertSucceeds(getDocs(collection(db, `${filialePath}/mitarbeiter`)));
+    await assertFails(getDoc(doc(db, `${filialePath}/mitarbeiter/m-1`)));
+    await assertFails(getDocs(collection(db, `${filialePath}/mitarbeiter`)));
     await assertSucceeds(getDoc(doc(db, 'benutzerprofil/scoped')));
     for (const path of [
       `${firmaPath}/filiale/b-2`,
@@ -601,7 +1113,7 @@ test('active master can write business data but cannot update profiles directly'
     }),
   );
   await assertSucceeds(setDoc(doc(db, filialePath), { name: 'updated' }, { merge: true }));
-  await assertSucceeds(setDoc(doc(db, `${filialePath}/mitarbeiter/new`), { name: 'new' }));
+  await assertFails(setDoc(doc(db, `${filialePath}/mitarbeiter/new`), { name: 'new' }));
   await assertFails(
     setDoc(doc(db, 'benutzerprofil/other'), { anzeigename: 'updated' }, { merge: true }),
   );

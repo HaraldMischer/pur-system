@@ -5,11 +5,11 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
+import { FilialeBearbeitenDialog } from '../../components/verwaltung/filiale-bearbeiten-dialog/filiale-bearbeiten-dialog';
+import { FirmaBearbeitenDialog } from '../../components/verwaltung/firma-bearbeiten-dialog/firma-bearbeiten-dialog';
 import { IFirmaEintrag } from '../../commons/models/domain/firma';
 import { IFilialeEintrag } from '../../commons/models/domain/filiale';
 import { VerwaltungStore } from '../../stores/domain/verwaltung.store';
-import { FilialeBearbeitenDialog } from './filiale-bearbeiten-dialog/filiale-bearbeiten-dialog';
-import { FirmaBearbeitenDialog } from './firma-bearbeiten-dialog/firma-bearbeiten-dialog';
 import { VerwaltungPage } from './verwaltung-page';
 
 describe('VerwaltungPage', () => {

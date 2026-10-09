@@ -19,6 +19,7 @@ describe('Firestore-Environment-Konfiguration', () => {
     expect(filialeEnvironment.firestoreLesestrategien).toEqual({
       benutzerprofil: 'networkFirst',
       stammdaten: 'cacheFirst',
+      dienstplaene: 'networkFirst',
     });
 
     for (const environment of [
@@ -30,6 +31,7 @@ describe('Firestore-Environment-Konfiguration', () => {
       expect(environment.firestoreLesestrategien).toEqual({
         benutzerprofil: 'networkOnly',
         stammdaten: 'networkOnly',
+        dienstplaene: 'networkOnly',
       });
     }
   });

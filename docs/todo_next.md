@@ -4,7 +4,7 @@
 
 ## 20. Dienst- und Schichtplanung
 
-Der Schichtplan wird schrittweise als filialbezogene Wochenplanung aufgebaut. Die erste Ausbaustufe konzentriert sich auf eine
+Der Schichtplan wird schrittweise als filialbezogene Monatsplanung aufgebaut. Die erste Ausbaustufe konzentriert sich auf eine
 manuelle Planung mit klarer Entwurfs- und Veröffentlichungslogik. Automatische Planung, Urlaubsverwaltung, Zeiterfassung,
 Schichttausch und Benachrichtigungen bleiben zunächst außerhalb des vereinbarten Umfangs.
 
@@ -27,9 +27,9 @@ Veröffentlichung abbilden.
 #### Schritt 1: Planungsgegenstand und Zeitraum festlegen
 
 - [x] `Dienstplan` als Plan einer Filiale für einen eindeutig bestimmten Zeitraum fachlich definieren.
-- [x] Festlegen, ob die erste Ausbaustufe ausschließlich vollständige Kalenderwochen oder frei wählbare Zeiträume
+- [x] Festlegen, ob die erste Ausbaustufe ausschließlich vollständige Kalendermonate oder frei wählbare Zeiträume
       unterstützt.
-- [x] Zeitzone, Wochenbeginn und Darstellung von Schichten über Mitternacht verbindlich festlegen.
+- [x] Zeitzone, Monatsgrenzen und Darstellung von Schichten über Mitternacht verbindlich festlegen.
 - [x] Festlegen, ob pro Filiale und Zeitraum genau ein Dienstplan oder mehrere versionierte Pläne existieren dürfen.
 
 #### Schritt 2: Schicht und Mitarbeiterzuordnung definieren
@@ -128,6 +128,8 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 - src/app/commons/models/domain/dienstplan.ts
 - src/app/commons/models/domain/schicht.ts
 - src/app/commons/constants/firebase.constants.ts
+- src/app/commons/constants/app-kontext-selector.constants.ts
+- src/app/commons/constants/app-kontext-selector.constants.spec.ts
 - firestore.rules
 - rules-tests/firestore.rules.test.mjs
 - docs/matrix-cache-strategien.md
@@ -145,8 +147,8 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 - [x] Pur Filiale auf die vollständige Startladung aller Mitarbeiter mit der bestehenden Stammdatenstrategie `cacheFirst` sowie
       aller Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung mit `networkFirst` und persistentem
       IndexedDB-Cache festlegen.
-- [x] Master und Office auf gezieltes Laden einer ausgewählten Filiale und Woche sowie Mitarbeiter auf die veröffentlichte
-      Version einer ausgewählten Woche mit `networkOnly` festlegen.
+- [x] Master und Office auf gezieltes Laden einer ausgewählten Filiale und eines Monats sowie Mitarbeiter auf die veröffentlichte
+      Version eines ausgewählten Monats mit `networkOnly` festlegen.
 - [x] Benötigte Firestore-Indizes und erwartete Dokumentgrößen prüfen.
 - [x] Festhalten, dass die erste Ausbaustufe keine zusätzlichen zusammengesetzten Indizes benötigt und die getrennten Dokumente
       nicht mit der Anzahl der Jahre, Versionen oder Schichten anwachsen.
@@ -166,13 +168,12 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 
 #### Schritt 3: Firestore Rules planen
 
-- [ ] Lese- und Schreibrechte aus Auth-Rolle, Bereichsfreigabe und vollständigem Filialpfad ableiten.
-- [ ] Verhindern, dass Clients Filialzuordnung, Veröffentlichungsmetadaten oder fremde Mitarbeiterreferenzen manipulieren.
-- [ ] Zustandswechsel und rollenabhängige Schreibaktionen soweit möglich serverseitig validieren.
-- [ ] Mitarbeiterzugänge unabhängig von ihren betrieblichen Rollen auf die filialweite veröffentlichte Ansicht begrenzen.
-- [ ] Filialkonten durch Firestore Rules auf Dienstpläne ihres eigenen Filialpfads begrenzen.
-- [ ] Planungsaktionen in der Filial-App nur für einen aktiven, der eigenen Filiale zugeordneten Firma-Mitarbeiter mit
-      `dienstplaner` anbieten.
+- [x] Die rekursive Filialregel so begrenzen, dass sie keine der drei konkreten Dienstplanregeln umgehen kann.
+- [x] Gemeinsame Hilfsfunktionen für aktives Profil, Auth-Rolle und vollständigen Filialpfad verwenden.
+- [x] Je eine Regel für Dienstplan, Version und Schicht anlegen.
+- [x] Planer auf erlaubte Filialen und Entwürfe begrenzen sowie Schema, UID, Zeitstempel, Revision, Zustandswechsel und
+      Mitarbeiterreferenz prüfen.
+- [x] Mitarbeiterzugänge auf die aktuelle veröffentlichte Version zugeordneter Filialen begrenzen und Schreibzugriffe sperren.
 - [x] Dokumentieren, dass Firestore Rules den im Filial-Frontend geführten Mitarbeiter nicht als Auth-Identität erkennen und die
       zusätzliche Prüfung auf `dienstplaner` daher bei einem manipulierten Client umgangen werden kann.
 - [x] Dokumentieren, dass zeitliche Konflikte ohne serverseitige Fachlogik nur im Frontend geprüft und nicht vollständig gegen
@@ -180,90 +181,170 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 
 #### Tests und Abschluss
 
-- [ ] Modelltests für Zeitberechnung, Zustände und Normalisierung vorbereiten.
-- [ ] Firestore-Emulator-Testfälle für jede Rolle, fremde Filialen und unerlaubte Zustandswechsel festlegen.
-- [ ] Das Datenmodell anhand eines Dienstplans mit mehreren Tagen, Mitarbeitern und Schichten probeweise durchspielen.
-- [ ] Datenmodell, Pfade, Indizes und Sicherheitsentscheidungen in der Projektdokumentation festhalten.
+- [x] Modelltests für Zeitberechnung, Zustände und Normalisierung vorbereiten.
+- [x] Firestore-Emulator-Testfälle für jede Rolle, fremde Filialen und unerlaubte Zustandswechsel festlegen.
+- [x] Das Datenmodell anhand eines Dienstplans mit mehreren Tagen, Mitarbeitern und Schichten probeweise durchspielen.
+- [x] Datenmodell, Pfade, Indizes und Sicherheitsentscheidungen in der Projektdokumentation festhalten.
 
 #### Erledigt, wenn
 
-- [ ] Domainmodell, Firestore-Pfade, Abfragen und benötigte Indizes sind eindeutig festgelegt.
-- [ ] Konsistenz- und Konfliktstrategie unterstützen den beschlossenen Veröffentlichungsablauf.
-- [ ] Rollen- und Filialgrenzen können durch automatisierte Firestore-Emulator-Tests nachgewiesen werden.
+- [x] Domainmodell, Firestore-Pfade, Abfragen und benötigte Indizes sind eindeutig festgelegt.
+- [x] Konsistenz- und Konfliktstrategie unterstützen den beschlossenen Veröffentlichungsablauf.
+- [x] Rollen- und Filialgrenzen können durch automatisierte Firestore-Emulator-Tests nachgewiesen werden.
 
 ### 20.4 Dienstplan-Grundfunktion umsetzen
 
 #### Ziel
 
-Die vorhandene Platzhalterseite wird zu einer bedienbaren filialbezogenen Wochenplanung. Berechtigte Benutzer können einen
-Entwurf anlegen, Schichten verwalten und Mitarbeiter manuell zuordnen.
+Die vorhandene Platzhalterseite wird zu einer bedienbaren filialbezogenen Monatsplanung. Berechtigte Benutzer können einen
+Entwurf anlegen, filialbezogene Schichtvorlagen verwalten und Mitarbeiter mithilfe dieser Vorlagen manuell zuordnen.
 
 #### Betroffene Dateien
 
 Änderungen:
 
-- src/app/pages/schichtplan-page/schichtplan-page.ts
-- src/app/pages/schichtplan-page/schichtplan-page.html
-- src/app/pages/schichtplan-page/schichtplan-page.scss
-- src/app/pages/schichtplan-page/schichtplan-page.spec.ts
+- src/app/app.routes.ts
+- src/app/app.routes.spec.ts
+- src/app/commons/constants/navigation.constants.ts
+- src/app/commons/constants/navigation.constants.spec.ts
 - src/app/commons/constants/firebase.constants.ts
+- src/app/commons/models/app/firestore-lesestrategie.types.ts
+- src/app/commons/models/domain/dienstplan.ts
+- src/app/commons/models/domain/schicht.ts
+- src/app/commons/tokens/firebase.tokens.ts
+- firestore.rules
+- rules-tests/firestore.rules.test.mjs
+- src/app/services/core/app-daten-init.service.ts
+- src/app/services/core/app-daten-init.service.spec.ts
+- src/app/services/firebase/firestore-db.service.ts
+- src/app/services/firebase/firestore-db.service.spec.ts
+- src/environments/environment.ts
+- src/environments/environment.master-prod.ts
+- src/environments/environment.office-prod.ts
+- src/environments/environment.filiale-prod.ts
+- src/environments/environment.mitarbeiter-prod.ts
+- src/environments/environment.spec.ts
 - docs/projekt-stand.md
+- docs/matrix-berechtigungen.md
 - docs/todo_next.md
 
 Neu hinzuzufügen:
 
-- src/app/components/schichtplan/schichtplan-woche/schichtplan-woche.ts
-- src/app/components/schichtplan/schichtplan-woche/schichtplan-woche.html
-- src/app/components/schichtplan/schichtplan-woche/schichtplan-woche.scss
-- src/app/components/schichtplan/schichtplan-woche/schichtplan-woche.spec.ts
-- src/app/pages/schichtplan-page/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.ts
-- src/app/pages/schichtplan-page/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.html
-- src/app/pages/schichtplan-page/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.scss
-- src/app/pages/schichtplan-page/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.spec.ts
+- docs/components/schichtplan.md
+- docs/services/dienstplan-service.md
+- docs/services/schichtvorlage-service.md
+- docs/stores/dienstplan-store.md
+- docs/stores/schichtvorlage-store.md
+- src/app/commons/models/domain/schichtvorlage.ts
+- src/app/commons/utils/dienstplan/dienstplan-zeitraum.ts
+- src/app/commons/utils/dienstplan/dienstplan-zeitraum.spec.ts
+- src/app/commons/utils/dienstplan/schicht-zeit.ts
+- src/app/commons/utils/dienstplan/schicht-zeit.spec.ts
+- src/app/commons/utils/dienstplan/schicht-lokalzeit.ts
+- src/app/commons/utils/dienstplan/schicht-lokalzeit.spec.ts
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.scss
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
+- src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.ts
+- src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.html
+- src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.scss
+- src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.spec.ts
+- src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog/schichtvorlage-bearbeiten-dialog.ts
+- src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog/schichtvorlage-bearbeiten-dialog.html
+- src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog/schichtvorlage-bearbeiten-dialog.scss
+- src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog/schichtvorlage-bearbeiten-dialog.spec.ts
+- src/app/guards/dienstplan-planung.guard.ts
+- src/app/guards/dienstplan-planung.guard.spec.ts
+- src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.ts
+- src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.html
+- src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.scss
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.scss
+- src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.ts
+- src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.html
+- src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.scss
+- src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.spec.ts
 - src/app/services/domain/dienstplan.service.ts
 - src/app/services/domain/dienstplan.service.spec.ts
+- src/app/services/domain/schichtvorlage.service.ts
+- src/app/services/domain/schichtvorlage.service.spec.ts
 - src/app/stores/domain/dienstplan.store.ts
 - src/app/stores/domain/dienstplan.store.spec.ts
+- src/app/stores/domain/schichtvorlage.store.ts
+- src/app/stores/domain/schichtvorlage.store.spec.ts
 
 #### Schritt 1: Dienstpläne laden und Kontext anbinden
 
-- [ ] Den Dienstplan-Service für filial- und zeitraumbezogene Lese- und Schreibzugriffe umsetzen.
-- [ ] Den Dienstplan-Store mit `download`, `isLoaded`, `inProgress`, ausgewähltem Zeitraum und aktuellem Dienstplan aufbauen.
-- [ ] Die Seite an den erlaubten Unternehmer-, Firmen- und Filialkontext der Sitzung anbinden.
-- [ ] Für fehlenden oder uneindeutigen Filialkontext einen verständlichen leeren beziehungsweise gesperrten Zustand anzeigen.
-- [ ] Zeitraumwechsel laden, ohne ungespeicherte Änderungen stillschweigend zu verwerfen.
+- [x] Den Dienstplan-Service für filial- und zeitraumbezogene Lese- und Schreibzugriffe umsetzen.
+- [x] Den Dienstplan-Store mit `download`, `isLoaded`, `inProgress`, ausgewähltem Zeitraum und aktuellem Dienstplan aufbauen.
+- [x] In Pur Filiale den vollständigen Dienstplanbestand der eigenen Filiale mit `networkFirst` beim Sitzungsstart laden.
+- [x] `schichtplan` als komponentenlose Elternroute mit getrennten Pages für Ansicht, Planung und Schichtvorlagen aufbauen.
+- [x] Planung und Einstellungen durch einen eigenen Guard zunächst auf aktive Master- und Office-Konten begrenzen.
+- [x] Die Seite an den erlaubten Unternehmer-, Firmen- und Filialkontext der Sitzung anbinden.
+- [x] Für fehlenden oder uneindeutigen Filialkontext einen verständlichen leeren beziehungsweise gesperrten Zustand anzeigen.
+- [x] Zeitraumwechsel laden, ohne ungespeicherte Änderungen stillschweigend zu verwerfen.
 
-#### Schritt 2: Wochenübersicht umsetzen
+#### Schritt 2: Monatsübersicht umsetzen
 
-- [ ] Zeitraumsteuerung für vorherige, aktuelle und nächste Woche ergänzen.
-- [ ] Tage, Schichten und Mitarbeiter in einer auf Desktop und kleinen Viewports bedienbaren Wochenansicht darstellen.
-- [ ] Ladezustand, leeren Dienstplan, Ladefehler und erneutes Laden sichtbar behandeln.
-- [ ] Schichtbeginn, Schichtende, Pause und berechnete Arbeitszeit verständlich anzeigen.
-- [ ] Den aktuellen Entwurfs- oder Veröffentlichungszustand eindeutig darstellen.
+- [x] Zeitraumsteuerung für vorherigen, aktuellen und nächsten Monat ergänzen.
+- [x] Tage, Schichten und Mitarbeiter in einer auf Desktop und kleinen Viewports bedienbaren Monatsansicht darstellen.
+- [x] Ladezustand, leeren Dienstplan, Ladefehler und erneutes Laden sichtbar behandeln.
+- [x] Schichtbeginn, Schichtende, Pause und berechnete Arbeitszeit verständlich anzeigen.
+- [x] Den aktuellen Entwurfs- oder Veröffentlichungszustand eindeutig darstellen.
 
 #### Schritt 3: Schichten manuell verwalten
 
-- [ ] Material-Dialog zum Anlegen und Bearbeiten einer Schicht umsetzen.
-- [ ] Nur Mitarbeiter anbieten, die gemäß Fachmodell für die gewählte Filiale eingeplant werden dürfen.
-- [ ] Pflichtfelder, Zeitwerte, Pause und Mitarbeiterzuordnung mit Reactive Forms validieren.
-- [ ] Laufende Schreibvorgänge gegen Mehrfachausführung schützen und das gesamte Formular währenddessen deaktivieren.
-- [ ] Schichten gemäß Rollen- und Zustandsregeln anlegen, bearbeiten und löschen.
-- [ ] Erfolgreiche Änderungen ohne unnötiges vollständiges Neuladen in den Store übernehmen.
+- [x] Material-Dialog zum Anlegen und Bearbeiten einer Schicht umsetzen.
+- [x] Nur Mitarbeiter anbieten, die gemäß Fachmodell für die gewählte Filiale eingeplant werden dürfen.
+- [x] Pflichtfelder, Zeitwerte, Pause und Mitarbeiterzuordnung mit Reactive Forms validieren.
+- [x] Laufende Schreibvorgänge gegen Mehrfachausführung schützen und das gesamte Formular währenddessen deaktivieren.
+- [x] Planungsaktionen in der Filial-App nur für einen aktiven, der eigenen Filiale zugeordneten Firma-Mitarbeiter mit
+      `dienstplaner` anbieten.
+- [x] Schichten gemäß Rollen- und Zustandsregeln anlegen, bearbeiten und löschen.
+- [x] Erfolgreiche Änderungen ohne unnötiges vollständiges Neuladen in den Store übernehmen.
+
+#### Schritt 4: Filialbezogene Schichtvorlagen umsetzen
+
+- [x] Schichtvorlagen mit Bezeichnung, lokaler Beginn- und Endzeit, Folgetag, optionaler Standardpause und Aktivstatus unter dem
+      vollständigen Filialpfad modellieren.
+- [x] Lesen und Verwalten der Vorlagen auf berechtigte Planer der konkreten Filiale begrenzen und Mitarbeiterzugänge durch
+      Firestore Rules ausschließen.
+- [x] Eine kompakte Verwaltung zum Anlegen, Bearbeiten und Deaktivieren filialbezogener Schichtvorlagen bereitstellen.
+- [x] Im Schichtdialog eine aktive Vorlage der ausgewählten Filiale statt frei eingegebener regulärer Schichtzeiten auswählen.
+- [x] Vorlagen-ID, Bezeichnung, Beginn, Ende und Pause als Momentaufnahme in die konkrete Schicht übernehmen, damit spätere
+      Vorlagenänderungen vorhandene Dienstplanstände nicht verändern.
+- [x] Beginn und Ende aus Datum, Vorlagenzeiten, Folgetagsangabe und `Europe/Berlin` zuverlässig in absolute Zeitpunkte umwandeln.
 
 #### Tests und Abschluss
 
-- [ ] Service-Tests für Laden, Anlegen, Bearbeiten, Löschen und Fehlerweitergabe ergänzen.
-- [ ] Store-Tests für Zustandsübergänge, Kontextwechsel, Schreibvorgänge und ungespeicherte Änderungen ergänzen.
-- [ ] Component-Tests für Wochenwechsel, leere Zustände, Formularvalidierung und rollenabhängige Aktionen ergänzen.
+- [x] Service-Tests für Laden, Anlegen, Bearbeiten, Löschen und Fehlerweitergabe ergänzen.
+- [x] Store-Tests für Zustandsübergänge, Kontextwechsel, Schreibvorgänge und ungespeicherte Änderungen ergänzen.
+- [x] Component-Tests für Monatswechsel, leere Zustände, Formularvalidierung und rollenabhängige Aktionen ergänzen.
+- [x] Service-, Store-, Rules- und Component-Tests für Vorlagenverwaltung, Filialgrenzen, Vorlagenauswahl und unveränderliche
+      Schichtmomentaufnahmen ergänzen.
 - [ ] Tastaturbedienung, Dialogfokus und Darstellung auf Desktop sowie kleinem Viewport manuell prüfen.
-- [ ] `npm test` und `npm run build` erfolgreich ausführen.
+- [x] Verantwortlichkeiten und tatsächliche APIs von Dienstplan- und Schichtvorlagen-Service unter `docs/services`
+      dokumentieren.
+- [x] Zustand, Ableitungen und tatsächliche APIs von Dienstplan- und Schichtvorlagen-Store unter `docs/stores` dokumentieren.
+- [x] Aufbau und Verantwortlichkeiten der Schichtplan-Komponenten unter `docs/components` dokumentieren.
+- [x] `npm test` und die vorhandenen Builds für alle vier Auslieferungsvarianten erfolgreich ausführen.
+      `npm test`, `npm run test:rules` und `npm run build:office` sind erfolgreich. Die Varianten-Builds für Master, Filiale und
+      Mitarbeiter brechen im lokal verwendeten `esbuild` 0.28.1 mit einem Deadlock ab.
 
 #### Erledigt, wenn
 
-- [ ] Berechtigte Benutzer können einen Dienstplanentwurf für eine erlaubte Filiale und Woche öffnen.
-- [ ] Schichten können mit gültigen Zeiten und Mitarbeiterzuordnung angelegt, bearbeitet und gelöscht werden.
-- [ ] Nicht berechtigte Rollen, fremde Filialen und unzulässige Zustände erlauben keine Änderung.
-- [ ] Wochenansicht, Fehlerzustände und Formulare sind auf Desktop und kleinen Viewports bedienbar.
+- [x] Berechtigte Benutzer können einen Dienstplanentwurf für eine erlaubte Filiale und einen Monat öffnen.
+- [x] Schichtvorlagen können je Filiale verwaltet und beim Einplanen ausgewählt werden.
+- [x] Schichten können mit einer aktiven Vorlage und gültiger Mitarbeiterzuordnung angelegt, bearbeitet und gelöscht werden.
+- [x] Änderungen an einer Schichtvorlage verändern keine bereits gespeicherten Schichten.
+- [x] Nicht berechtigte Rollen, fremde Filialen und unzulässige Zustände erlauben keine Änderung.
+- [ ] Monatsansicht, Fehlerzustände und Formulare sind auf Desktop und kleinen Viewports bedienbar.
 
 ### 20.5 Konfliktprüfung und Veröffentlichung umsetzen
 
@@ -277,12 +358,14 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 
 Änderungen:
 
-- src/app/pages/schichtplan-page/schichtplan-page.ts
-- src/app/pages/schichtplan-page/schichtplan-page.html
-- src/app/pages/schichtplan-page/schichtplan-page.spec.ts
-- src/app/components/schichtplan/schichtplan-woche/schichtplan-woche.ts
-- src/app/components/schichtplan/schichtplan-woche/schichtplan-woche.html
-- src/app/components/schichtplan/schichtplan-woche/schichtplan-woche.spec.ts
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
+- src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
 - src/app/services/domain/dienstplan.service.ts
 - src/app/services/domain/dienstplan.service.spec.ts
 - src/app/stores/domain/dienstplan.store.ts
@@ -335,7 +418,7 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 
 #### Ziel
 
-Nach erfolgreichem Einsatz der manuellen Wochenplanung werden Erweiterungen anhand konkreter betrieblicher Anforderungen
+Nach erfolgreichem Einsatz der manuellen Monatsplanung werden Erweiterungen anhand konkreter betrieblicher Anforderungen
 priorisiert und jeweils als eigenes Umsetzungstodo geplant. Die erste Ausbaustufe wird nicht vorsorglich mit ungenutzter
 Komplexität belastet.
 
@@ -361,7 +444,7 @@ Komplexität belastet.
 - [ ] Bedarf für Schichttausch, Freigabewünsche und Mitarbeiterbestätigungen bewerten; Wünsche als getrennte Anträge planen, die
       einen Dienstplan nicht unmittelbar verändern.
 - [ ] Bedarf für Änderungsbenachrichtigungen und Push-Nachrichten bewerten.
-- [ ] Bedarf für Vorlagen, Schichtkopien, automatische Planung oder Optimierung bewerten.
+- [ ] Bedarf für Schichtkopien, automatische Planung oder Optimierung bewerten.
 - [ ] Bedarf für Zeiterfassung, Exporte und Anbindungen an Lohnabrechnung getrennt bewerten.
 
 #### Schritt 3: Abgegrenzte Folgetodos anlegen

@@ -1,0 +1,111 @@
+<!-- pur-system/src/app/components/systemverwaltung/benutzer/datenzugriff-selector/datenzugriff-selector.html -->
+
+<div class="pur-form pur-form--grid">
+  <!-- Unternehmer -->
+  <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+    <mat-label>Unternehmer</mat-label>
+    <mat-select
+      [multiple]="unternehmerMehrfach()"
+      [value]="
+        unternehmerMehrfach()
+          ? unternehmerIds()
+          : unternehmerIds().length
+            ? unternehmerIds()[0]
+            : null
+      "
+      [disabled]="disabled() || unternehmer().length === 0"
+      (selectionChange)="selectUnternehmer($event.value)"
+    >
+      @if (ausgewaehlteUnternehmer().length > 1) {
+        <mat-select-trigger
+          >{{ ausgewaehlteUnternehmer().length }} Unternehmer ausgewählt</mat-select-trigger
+        >
+      }
+      @for (eintrag of unternehmer(); track eintrag.id) {
+        <mat-option [value]="eintrag.id">{{ eintrag.anzeigename }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <!-- Firmen -->
+  <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+    <mat-label>Firmen</mat-label>
+    <mat-select
+      [multiple]="firmenMehrfach()"
+      [value]="firmenMehrfach() ? firmaIds() : firmaIds().length ? firmaIds()[0] : null"
+      [disabled]="disabled() || firmenLaden() || firmen().length === 0"
+      (selectionChange)="selectFirmen($event.value)"
+    >
+      @if (ausgewaehlteFirmen().length > 1) {
+        <mat-select-trigger>{{ ausgewaehlteFirmen().length }} Firmen ausgewählt</mat-select-trigger>
+      }
+      @if (unternehmerMehrfach() && ausgewaehlteUnternehmer().length > 1) {
+        @for (gruppe of firmengruppen(); track gruppe.id) {
+          <mat-optgroup [label]="gruppe.anzeigename">
+            @for (firma of gruppe.firmen; track firma.id) {
+              <mat-option [value]="firma.id">{{ firma.anzeigename }}</mat-option>
+            } @empty {
+              <mat-option disabled>Keine Firmen vorhanden.</mat-option>
+            }
+          </mat-optgroup>
+        }
+      } @else {
+        @for (firma of firmen(); track firma.id) {
+          <mat-option [value]="firma.id">{{ firma.anzeigename }}</mat-option>
+        }
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (filialenSichtbar()) {
+    <!-- Filialen -->
+    <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+      <mat-label>Filialen</mat-label>
+      <mat-select
+        [multiple]="filialenMehrfach()"
+        [value]="
+          filialenMehrfach()
+            ? filialSchluessel()
+            : filialSchluessel().length
+              ? filialSchluessel()[0]
+              : null
+        "
+        [disabled]="disabled() || filialenLaden() || !hatFilialen()"
+        (selectionChange)="selectFilialen($event.value)"
+      >
+        @if (filialAnzahl() > 1) {
+          <mat-select-trigger>{{ filialAnzahl() }} Filialen ausgewählt</mat-select-trigger>
+        }
+        @if (firmenMehrfach() && ausgewaehlteFirmen().length > 1) {
+          @for (firma of ausgewaehlteFirmen(); track firma.id) {
+            <mat-optgroup
+              [label]="
+                ausgewaehlteUnternehmer().length > 1
+                  ? firma.unternehmerAnzeigename + ' / ' + firma.anzeigename
+                  : firma.anzeigename
+              "
+            >
+              @for (filiale of firma.filialen; track filiale.id) {
+                <mat-option [value]="getFilialSchluessel(firma.id, filiale.id)">{{
+                  filiale.anzeigename
+                }}</mat-option>
+              } @empty {
+                <mat-option disabled>Keine Filialen vorhanden.</mat-option>
+              }
+            </mat-optgroup>
+          }
+        } @else {
+          @for (firma of ausgewaehlteFirmen(); track firma.id) {
+            @for (filiale of firma.filialen; track filiale.id) {
+              <mat-option [value]="getFilialSchluessel(firma.id, filiale.id)">{{
+                filiale.anzeigename
+              }}</mat-option>
+            }
+          }
+        }
+      </mat-select>
+    </mat-form-field>
+  } @else {
+    <ng-content select="[datenzugriffZusatzfeld]" />
+  }
+</div>

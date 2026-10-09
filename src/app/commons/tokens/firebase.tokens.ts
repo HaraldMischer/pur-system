@@ -22,6 +22,7 @@ import {
   getDocsFromServer,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   where,
@@ -167,6 +168,14 @@ export const FIRESTORE_WRITE_BATCH = new InjectionToken<typeof writeBatch>(
   {
     providedIn: 'root',
     factory: () => writeBatch,
+  },
+);
+
+export const FIRESTORE_RUN_TRANSACTION = new InjectionToken<typeof runTransaction>(
+  'FIRESTORE_RUN_TRANSACTION',
+  {
+    providedIn: 'root',
+    factory: () => runTransaction,
   },
 );
 

@@ -5,6 +5,7 @@ import type {
   IDienstplanVersionPfad,
   IFilialPfad,
   ISchichtPfad,
+  ISchichtvorlagePfad,
 } from '../models/app/firestore-pfad.types';
 import type {
   IPurBranchPfad,
@@ -41,6 +42,9 @@ export const FIRESTORE_COLLECTION_PATHS = {
   },
   mitarbeiter(unternehmerId: string, firmaId: string): string {
     return `unternehmer/${unternehmerId}/firma/${firmaId}/mitarbeiter`;
+  },
+  schichtvorlagen(pfad: IFilialPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/schichtvorlage`;
   },
   dienstplaene(pfad: IFilialPfad): string {
     return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/dienstplan`;
@@ -89,6 +93,9 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   },
   mitarbeiter(unternehmerId: string, firmaId: string, mitarbeiterId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId)}/${mitarbeiterId}`;
+  },
+  schichtvorlage(pfad: ISchichtvorlagePfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.schichtvorlagen(pfad)}/${pfad.schichtvorlageId}`;
   },
   dienstplan(pfad: IDienstplanPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.dienstplaene(pfad)}/${pfad.dienstplanId}`;

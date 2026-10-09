@@ -464,18 +464,24 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
 
 1. **Dashboard (`/dashboard`):** Noch zu bestimmende Daten der einzelnen Filialen.
 
-2. **Schichtplan (`/schichtplan`):** Schichtpläne der Filialen.
+2. **Schichtplan (`/schichtplan`):** Komponentenloser Elternbereich für die getrennten Pages „Dienstplan ansehen“
+   (`/schichtplan/ansicht`), „Dienstplan planen“ (`/schichtplan/planung`) und „Schichtvorlagen“
+   (`/schichtplan/einstellungen`). Mitarbeiter und Filialkonten verwenden zunächst nur die Ansicht. Planung und Einstellungen
+   stehen Master und Office zur Verfügung; Filialkonten erhalten sie erst mit dem betrieblichen `dienstplaner`-Sitzungszustand.
 
-3. **Mitarbeiter (`/mitarbeiter`):** Stammdaten der Mitarbeiter. `mitarbeiter-page` bildet einen komponentenlosen Elternbereich
-   für die gerouteten Unterseiten. Anlage und Bearbeitung erfolgen in Dialogen innerhalb der Mitarbeiterliste:
+3. **Mitarbeiter (`/mitarbeiter`):** Stammdaten der Mitarbeiter. `mitarbeiter` ist eine komponentenlose Elternroute für die
+   gerouteten Unterseiten. Die routbaren Pages und ihre nicht routbaren Components sind getrennt abgelegt:
 
    ```text
-   src/app/pages/mitarbeiter-page/
+   src/app/pages/mitarbeiter/
    ├── mitarbeiter-liste-page/
-   │   ├── mitarbeiter-card/
-   │   ├── mitarbeiter-anlegen-dialog/
-   │   └── mitarbeiter-bearbeiten-dialog/
    └── mitarbeiter-login-page/
+
+   src/app/components/mitarbeiter/
+   ├── mitarbeiter-card/
+   ├── mitarbeiter-anlegen-dialog/
+   ├── mitarbeiter-bearbeiten-dialog/
+   └── mitarbeiter-zusammenfuehren-dialog/
    ```
 
    `/mitarbeiter` leitet auf `/mitarbeiter/liste` weiter. Die Mitarbeiterliste zeigt eine Card zum Hinzufügen sowie eine
@@ -500,10 +506,10 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
 
 ## Dienst- und Schichtplanung
 
-Ein Dienstplan gehört genau zu einer Filiale und umfasst in der ersten Ausbaustufe eine vollständige Kalenderwoche von Montag
-bis Sonntag. Der Wochenzeitraum wird mit lokalen Datumswerten und der Zeitzone `Europe/Berlin` beschrieben. Das Startdatum der
-Woche dient als fachlich eindeutige Dienstplan-ID innerhalb der Filiale. Pro Filiale und Kalenderwoche existiert genau ein
-Dienstplan.
+Ein Dienstplan gehört genau zu einer Filiale und umfasst in der ersten Ausbaustufe einen vollständigen Kalendermonat. Der
+Monatszeitraum beginnt am ersten und endet am letzten Kalendertag und wird mit lokalen Datumswerten sowie der Zeitzone
+`Europe/Berlin` beschrieben. Der Kalendermonat im Format `YYYY-MM` dient als fachlich eindeutige Dienstplan-ID innerhalb der
+Filiale. Pro Filiale und Kalendermonat existiert genau ein Dienstplan.
 
 Der Dienstplan enthält versionierte Bearbeitungsstände. Jede Version besitzt eine fortlaufende Nummer und genau einen der
 technischen Statuswerte `entwurf`, `veroeffentlicht` oder `archiviert`. Pro Dienstplan darf es höchstens eine Entwurfsversion
@@ -515,17 +521,32 @@ mehr verändert.
 Die vorgesehene Firestore-Struktur liegt vollständig unter der betroffenen Filiale:
 
 ```text
-unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialeId}/dienstplan/{wochenstart}
+unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/schichtvorlage/{schichtvorlageId}
+unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/dienstplan/{monat}
   /version/{versionId}
     /schicht/{schichtId}
 ```
 
+Jede Filiale besitzt eigene vorkonfigurierte Schichtvorlagen. Eine Vorlage enthält mindestens eine Bezeichnung, eine lokale
+Beginn- und Endzeit sowie die Angabe, ob sie am Folgetag endet. Eine Standardpause kann ebenfalls in der Vorlage hinterlegt
+werden. Nicht mehr verwendete Vorlagen werden deaktiviert und nicht physisch gelöscht.
+
+Beim Anlegen einer Schicht wählt der Planer eine aktive Vorlage der konkreten Filiale. Eine freie Eingabe der regulären
+Schichtzeiten ist im grundlegenden Planungsablauf nicht vorgesehen. Die konkrete Schicht speichert die Vorlagen-ID sowie
+Bezeichnung, Beginn, Ende und Pause als Momentaufnahme. Beginn und Ende werden dabei weiterhin als absolute Zeitpunkte für das
+gewählte Datum gespeichert. Spätere Änderungen oder die Deaktivierung einer Vorlage verändern dadurch weder bestehende
+Entwürfe noch veröffentlichte oder archivierte Dienstpläne.
+
+Schichtvorlagen dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. In der Filial-App gilt
+zusätzlich die clientseitige Bedienbegrenzung auf einen aktiven Firma-Mitarbeiter mit `dienstplaner`. Mitarbeiterzugänge lesen
+keine Schichtvorlagen, da die veröffentlichte Schicht alle für ihre Darstellung erforderlichen Momentaufnahmen enthält.
+
 ### Abfrage- und Cache-Strategie
 
 Jeder Dienstplanzugriff verwendet einen konkreten vollständigen Filialpfad. Collection-Group-Abfragen über mehrere Filialen
-oder eine gemeinsame jahresbezogene Dienstplan-Collection sind in der ersten Ausbaustufe nicht vorgesehen. Das Montagsdatum im
-Format `YYYY-MM-DD` bleibt die Dokument-ID eines Wochenplans; eine einzelne bekannte Woche kann dadurch ohne Zeitraumssuche
-direkt adressiert werden.
+oder eine gemeinsame jahresbezogene Dienstplan-Collection sind in der ersten Ausbaustufe nicht vorgesehen. Der Kalendermonat im
+Format `YYYY-MM` bleibt die Dokument-ID eines Monatsplans; ein einzelner bekannter Monat kann dadurch ohne Zeitraumssuche direkt
+adressiert werden.
 
 Pur Filiale lädt bei jedem Programmstart den vollständigen lesbaren Bestand der eigenen Filiale. Dazu werden über die bestehende
 Stammdatenstrategie `cacheFirst` alle Firma-Mitarbeiter mit der eigenen Filial-ID und mit `networkFirst` alle Dokumente der
@@ -540,13 +561,13 @@ Serverfehler wird auf die bereits lokal vorhandenen Dokumente zurückgefallen. N
 aus dem Cache entfernte Daten stehen offline nicht zur Verfügung; Firestore bleibt die verbindliche Datenquelle. Schreibvorgänge
 werden nicht aus IndexedDB nachsynchronisiert, sondern benötigen weiterhin eine aktive Serververbindung.
 
-Pur Master und Pur Office laden Dienstpläne mit `networkOnly`. Nach Auswahl einer konkreten Filiale und Kalenderwoche lesen sie
-das bekannte Dienstplandokument direkt, anschließend die über `entwurfVersionId` beziehungsweise `veroeffentlichteVersionId`
-referenzierte Version und deren Schichten. Archivierte Versionen werden nur beim Öffnen der Historie nachgeladen. Der Kontext
-`Alle Filialen` löst keine Dienstplanabfrage aus.
+Pur Master und Pur Office laden Dienstpläne mit `networkOnly`. Nach Auswahl einer konkreten Filiale und eines Kalendermonats
+lesen sie das bekannte Dienstplandokument direkt, anschließend die über `entwurfVersionId` beziehungsweise
+`veroeffentlichteVersionId` referenzierte Version und deren Schichten. Archivierte Versionen werden nur beim Öffnen der Historie
+nachgeladen. Der Kontext `Alle Filialen` löst keine Dienstplanabfrage aus.
 
-Pur Mitarbeiter verwendet ebenfalls `networkOnly`. Für jede fachlich erlaubte Filiale wird nur der Dienstplan der ausgewählten
-Woche direkt geladen. Über `veroeffentlichteVersionId` werden ausschließlich die veröffentlichte Version und deren Schichten
+Pur Mitarbeiter verwendet ebenfalls `networkOnly`. Für jede fachlich erlaubte Filiale wird nur der Dienstplan des ausgewählten
+Monats direkt geladen. Über `veroeffentlichteVersionId` werden ausschließlich die veröffentlichte Version und deren Schichten
 gelesen. Entwürfe und archivierte Versionen werden weder abgefragt noch durch die Firestore Rules freigegeben.
 
 Die Startabfragen von Pur Filiale sind unbeschränkte Collection-Abfragen innerhalb eines bereits bekannten Filialpfads; die
@@ -554,7 +575,7 @@ anderen Varianten verwenden überwiegend direkte Dokumentzugriffe. Versionen und
 Zeit sortiert. Dafür sind in der ersten Ausbaustufe keine zusätzlichen zusammengesetzten Firestore-Indizes vorgesehen. Die
 bestehende Mitarbeiterabfrage mit `array-contains` auf `filialIds` verwendet die vorhandene automatische Feldindizierung.
 
-Dienstplan, Version und Schicht bleiben getrennte kleine Dokumente. Weder sämtliche Wochen noch sämtliche Schichten werden als
+Dienstplan, Version und Schicht bleiben getrennte kleine Dokumente. Weder sämtliche Monate noch sämtliche Schichten werden als
 wachsende Arrays in einem einzelnen Dokument gespeichert. Die Dokumentgröße wächst deshalb nicht mit der Anzahl der Jahre,
 Versionen oder Schichten; lediglich die Anzahl der Dokumente und die Zahl der beim Filialstart ausgeführten Lesezugriffe nimmt
 mit der Historie zu. Eine spätere Aufbewahrungs- oder Löschregel wird erst bei einem konkreten betrieblichen Bedarf geplant.
@@ -566,10 +587,12 @@ Schichten an einem Tag besitzen. Der zum Planungszeitpunkt verwendete Anzeigenam
 Momentaufnahme an der Schicht gespeichert. Dadurch bleiben veröffentlichte und archivierte Stände auch nach einer späteren
 Umbenennung, Deaktivierung oder geänderten Filialzuordnung verständlich.
 
-Eine Schicht speichert Beginn und Ende als absolute Zeitpunkte sowie ihre Pause in ganzen Minuten. Dadurch können auch Schichten
-über Mitternacht eindeutig abgebildet werden. Die anrechenbare Arbeitszeit wird aus Ende minus Beginn minus Pause berechnet und
-nicht redundant gespeichert. Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen Schichtdauer sind
-ungültig. Überlappende Schichten desselben Mitarbeiters sind ein blockierender Konflikt.
+Eine Schicht speichert ihre Schichtvorlagen-ID und die Bezeichnung der gewählten Vorlage als Momentaufnahme. Beginn und Ende
+werden aus dem gewählten Datum und den Zeitwerten der Vorlage als absolute Zeitpunkte gespeichert; die Pause wird in ganzen
+Minuten übernommen. Dadurch können auch Schichten über Mitternacht eindeutig abgebildet werden. Die anrechenbare Arbeitszeit
+wird aus Ende minus Beginn minus Pause berechnet und nicht redundant gespeichert. Ende vor oder gleich Beginn, negative Pausen
+und Pausen ab der vollständigen Schichtdauer sind ungültig. Überlappende Schichten desselben Mitarbeiters sind ein blockierender
+Konflikt.
 
 Ein Entwurf darf gespeichert werden, solange seine einzelnen Schichten strukturell gültig sind. Überlappungen dürfen während
 der Bearbeitung vorübergehend bestehen, verhindern aber die Veröffentlichung. Weitergehende Hinweise zu langen Arbeitszeiten,
@@ -582,17 +605,12 @@ Die Navigation und die Route zum Schichtplan erfordern für jede Rolle den App-B
 gewährt keine Datenrechte. Die tatsächlichen Rechte ergeben sich unabhängig davon aus aktivem Benutzerprofil, Auth-Rolle und
 vollständiger Filialzuordnung.
 
-| Auth-Rolle    | Erlaubter Filialkontext                   | Lesbare Stände                       | Planen und veröffentlichen                         |
-| ------------- | ----------------------------------------- | ------------------------------------ | -------------------------------------------------- |
-| `master`      | alle Filialen                             | Entwurf, veröffentlicht und archiviert | ja                                               |
-| `office`      | ausdrücklich freigegebene Filialen        | Entwurf, veröffentlicht und archiviert | ja                                               |
-| `filiale`     | eigene Filiale                            | Entwurf, veröffentlicht und archiviert | ja, im Frontend nur mit `dienstplaner`            |
-| `mitarbeiter` | `filialIds` des aktiven Firma-Mitarbeiters | nur veröffentlicht                   | nein                                               |
+Die verbindlichen Collection-Rechte und Bedingungen stehen in der
+[Berechtigungsmatrix](./matrix-berechtigungen.md). Kurz zusammengefasst:
 
-Master, Office und Filiale dürfen im jeweils erlaubten Filialkontext Dienstpläne und Entwurfsversionen anlegen sowie
-Entwurfsschichten anlegen, bearbeiten und löschen. Eine vollständige Entwurfsversion darf gelöscht werden, solange sie nie
-veröffentlicht wurde. Veröffentlichte und archivierte Versionen werden weder verändert noch gelöscht. Der Dienstplan selbst
-wird in der ersten Ausbaustufe nicht gelöscht.
+- `master` plant in allen Filialen, `office` nur in freigegebenen Filialen und `filiale` nur in der eigenen Filiale.
+- Diese drei Rollen lesen alle Versionsstände, bearbeiten aber nur Entwürfe. Dienstplandokumente werden nicht gelöscht.
+- `mitarbeiter` liest in zugeordneten Filialen nur die aktuelle veröffentlichte Version mit allen Schichten und schreibt nicht.
 
 In der Filial-App werden diese Planungsaktionen zusätzlich im Frontend auf einen aktiven Firma-Mitarbeiter der eigenen Filiale
 mit der betrieblichen Rolle `dienstplaner` begrenzt. Die Rolle erweitert nicht die Firestore-Rechte des Mitarbeiterzugangs. Die
@@ -600,19 +618,13 @@ Firestore Rules erkennen bei einem Filialkonto ausschließlich die Auth-Rolle `f
 im Frontend geführten Firma-Mitarbeiter und dessen Rolle nicht vertrauenswürdig prüfen. Die zusätzliche Rollenprüfung ist daher
 bei einem manipulierten Client umgehbar und keine serverseitig abgesicherte Berechtigungsgrenze.
 
-Mitarbeiter dürfen für jede Filiale aus den `filialIds` ihres verknüpften fachlichen Mitarbeiterdatensatzes den vollständigen
-veröffentlichten Dienstplan einschließlich der Schichten aller eingeplanten Mitarbeiter lesen. Das gilt in der Mitarbeiter-App
-auch für Mitarbeiter mit `dienstplaner`; Entwurfs- und Archivversionen sowie Schreibzugriffe bleiben dort gesperrt. Die
-Mitarbeiter-ID und der gespeicherte Anzeigename gehören damit zu den für alle berechtigten Mitarbeiter der Filiale sichtbaren
-veröffentlichten Dienstplandaten.
-
 Jeder Lese- und Schreibzugriff bezieht sich auf eine konkrete Filiale. Der Sammelkontext `Alle Filialen` erlaubt weder das Laden
 noch das Bearbeiten eines einzelnen Dienstplans. Benutzer mit Zugriff auf mehrere Filialen wählen vor dem Dienstplanzugriff eine
 konkrete Filiale. Eine filialübergreifende Dienstplanübersicht ist nicht Teil der ersten Ausbaustufe.
 
 ### Planungs- und Veröffentlichungsablauf
 
-Existiert für eine Woche noch kein Dienstplan, legt ein berechtigter Planer den Dienstplan mit Version 1 im Status `entwurf` an.
+Existiert für einen Monat noch kein Dienstplan, legt ein berechtigter Planer den Dienstplan mit Version 1 im Status `entwurf` an.
 Solange die Version ein Entwurf ist, dürfen berechtigte Planer ihre Schichten gemeinsam bearbeiten. Das Löschen einzelner
 Schichten und der vollständigen, nie veröffentlichten Entwurfsversion ist erlaubt.
 
@@ -634,6 +646,29 @@ sind. Wird ein bereits in einem Entwurf verwendeter Mitarbeiter deaktiviert oder
 zur Nachbearbeitung sichtbar, blockiert aber die Veröffentlichung. Veröffentlichte und archivierte Schichten bleiben unverändert
 und über ihren gespeicherten Anzeigenamen verständlich. Eine physische Löschung oder spätere Stammdatenänderung entfernt keine
 historische Schicht.
+
+### Vorbereitete Modelltests und Probeablauf
+
+Die Modelltests werden mit den fachlichen Hilfsfunktionen der Grundfunktion umgesetzt. Sie decken folgende Fälle ab:
+
+- Ein Monatsbezeichner im Format `YYYY-MM` wird auf den ersten und letzten Kalendertag normalisiert. Dabei werden Monate mit 28,
+  29, 30 und 31 Tagen sowie ungültige Monatsbezeichner geprüft.
+- Die Arbeitszeit ergibt sich aus Ende minus Beginn minus Pause. Schichten am selben Tag und über Mitternacht werden geprüft;
+  Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen Schichtdauer sind ungültig.
+- Eine Frühschicht von 08:00 bis 16:30 Uhr bleibt am gewählten Kalendertag. Eine Spätschicht von 16:30 bis 01:00 Uhr endet am
+  Folgetag. Änderungen an ihren Vorlagen verändern die bereits gespeicherten Schichtmomentaufnahmen nicht.
+- Neue Versionen beginnen als `entwurf` mit Revision 0. Zulässig sind nur die Übergänge von `entwurf` zu `veroeffentlicht` und
+  bei einer Ersatzveröffentlichung von `veroeffentlicht` zu `archiviert`; historische Stände bleiben unveränderlich.
+- Normalisierte Dienstplan-, Versions- und Schichtdaten behalten ihre IDs, Referenzen und Metadaten, speichern aber keine
+  berechnete Arbeitszeit redundant.
+
+Als Probeablauf dient der Monatsplan `2026-10` einer Filiale mit den Vorlagen `Frühschicht` von 08:00 bis 16:30 Uhr und
+`Spätschicht` von 16:30 bis 01:00 Uhr des Folgetags. Mitarbeiter A erhält am 5. Oktober eine Frühschicht und am 6. Oktober eine
+Spätschicht. Mitarbeiter B erhält am 5. Oktober eine Spätschicht. Der Plan wird zusammen mit Version 1 als Entwurf mit Revision
+0 angelegt. Jede der drei Schichttransaktionen erhöht die Revision um eins, sodass die geprüfte Version vor der Veröffentlichung
+Revision 3 besitzt. Die Veröffentlichung erhöht sie auf Revision 4, entfernt den Entwurfsverweis und setzt Version 1 als
+veröffentlichte Version. Mitarbeiterzugänge lesen danach nur diesen Stand. Eine spätere Änderung beginnt mit Version 2 als
+neuem Entwurf; bei deren Veröffentlichung wird Version 1 im selben atomaren Schreibvorgang archiviert.
 
 ### Frontend-Transaktionen und parallele Bearbeitung
 

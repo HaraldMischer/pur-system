@@ -1,0 +1,67 @@
+// pur-system/src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
+
+.schichtplan-monat {
+  display: grid;
+  gap: 16px;
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__status {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+    font: var(--mat-sys-label-large);
+  }
+
+  &__tage {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+
+  &__tag {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 12px;
+    background: var(--mat-sys-surface-container-lowest);
+
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h3 {
+      font: var(--mat-sys-title-medium);
+      text-transform: capitalize;
+    }
+
+    p {
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  &__schicht {
+    display: grid;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--mat-sys-surface-container);
+    overflow-wrap: anywhere;
+
+    span {
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-medium);
+    }
+  }
+}

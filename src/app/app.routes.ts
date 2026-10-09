@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './guards/auth.guard';
 import { bereichGuard } from './guards/bereich.guard';
+import { dienstplanPlanungGuard } from './guards/dienstplan-planung.guard';
 import { initialisierungGuard } from './guards/initialisierung.guard';
 import { masterGuard } from './guards/master.guard';
 import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
@@ -38,11 +39,41 @@ export const routes: Routes = [
   },
   {
     path: 'schichtplan',
-    title: 'Schichtplan',
     canActivate: [authGuard, initialisierungGuard, bereichGuard],
     data: { bereich: 'schichtplan' },
-    loadComponent: () =>
-      import('./pages/schichtplan-page/schichtplan-page').then((m) => m.SchichtplanPage),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'ansicht',
+      },
+      {
+        path: 'ansicht',
+        title: 'Dienstplan ansehen',
+        loadComponent: () =>
+          import('./pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page').then(
+            (m) => m.DienstplanAnsichtPage,
+          ),
+      },
+      {
+        path: 'planung',
+        title: 'Dienstplan planen',
+        canActivate: [dienstplanPlanungGuard],
+        loadComponent: () =>
+          import('./pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page').then(
+            (m) => m.DienstplanPlanungPage,
+          ),
+      },
+      {
+        path: 'einstellungen',
+        title: 'Schichtvorlagen',
+        canActivate: [dienstplanPlanungGuard],
+        loadComponent: () =>
+          import('./pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page').then(
+            (m) => m.SchichtvorlagenPage,
+          ),
+      },
+    ],
   },
   {
     path: 'mitarbeiter',
@@ -59,7 +90,7 @@ export const routes: Routes = [
         title: 'Mitarbeiter',
         canActivate: [mitarbeiterVerwaltungGuard],
         loadComponent: () =>
-          import('./pages/mitarbeiter-page/mitarbeiter-liste-page/mitarbeiter-liste-page').then(
+          import('./pages/mitarbeiter/mitarbeiter-liste-page/mitarbeiter-liste-page').then(
             (m) => m.MitarbeiterListePage,
           ),
       },
@@ -95,7 +126,7 @@ export const routes: Routes = [
         path: 'datenstruktur',
         title: 'Datenstruktur anlegen',
         loadComponent: () =>
-          import('./pages/systemverwaltung-page/datenstruktur-page/datenstruktur-page').then(
+          import('./pages/systemverwaltung/datenstruktur-page/datenstruktur-page').then(
             (m) => m.DatenstrukturPage,
           ),
       },
@@ -111,17 +142,17 @@ export const routes: Routes = [
             path: 'anlegen',
             title: 'Benutzer anlegen',
             loadComponent: () =>
-              import(
-                './pages/systemverwaltung-page/benutzer-page/benutzer-anlegen-page/benutzer-anlegen-page'
-              ).then((m) => m.BenutzerAnlegenPage),
+              import('./pages/systemverwaltung/benutzer-anlegen-page/benutzer-anlegen-page').then(
+                (m) => m.BenutzerAnlegenPage,
+              ),
           },
           {
             path: 'verwalten',
             title: 'Benutzer verwalten',
             loadComponent: () =>
-              import(
-                './pages/systemverwaltung-page/benutzer-page/benutzer-verwalten-page/benutzer-verwalten-page'
-              ).then((m) => m.BenutzerVerwaltenPage),
+              import('./pages/systemverwaltung/benutzer-verwalten-page/benutzer-verwalten-page').then(
+                (m) => m.BenutzerVerwaltenPage,
+              ),
           },
         ],
       },
@@ -129,7 +160,7 @@ export const routes: Routes = [
         path: 'datenmigration',
         title: 'Datenmigration',
         loadComponent: () =>
-          import('./pages/systemverwaltung-page/datenmigration-page/datenmigration-page').then(
+          import('./pages/systemverwaltung/datenmigration-page/datenmigration-page').then(
             (m) => m.DatenmigrationPage,
           ),
       },

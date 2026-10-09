@@ -12,30 +12,35 @@ stehen im [Projektplan](./projekt-plan.md). Der aktuelle Implementierungs-, Test
 
 Die Collection-Matrix zeigt, welche Aktionen eine Benutzerrolle grundsätzlich auf einer Firestore-Collection ausführen darf.
 
-| Wert      | Bedeutung                                    |
-| --------- | -------------------------------------------- |
-| `R`       | Dokumente lesen                              |
-| `C`       | Dokumente anlegen                            |
-| `U`       | Dokumente bearbeiten                         |
-| `D`       | Dokumente löschen                            |
-| `eigen`   | ausschließlich der eigene Datensatz          |
-| `Firma`   | ausschließlich innerhalb der eigenen Firma   |
-| `Filiale` | ausschließlich innerhalb der eigenen Filiale |
-| `–`       | kein Zugriff                                 |
+| Wert | Bedeutung            |
+| ---- | -------------------- |
+| `R`  | Dokumente lesen      |
+| `C`  | Dokumente anlegen    |
+| `U`  | Dokumente bearbeiten |
+| `D`  | Dokumente löschen    |
+| `–`  | kein Zugriff         |
 
 ### Matrix
 
-| Collection                                                                     | `master` | `office`  | `filiale`                | `mitarbeiter` | Legacy-Konto |
-| ------------------------------------------------------------------------------ | -------- | --------- | ------------------------ | ------------- | ------------ |
-| `benutzerprofil/{uid}`                                                         | R/C/U    | R `eigen` | R `eigen`                | R `eigen`     | –            |
-| `benutzerprofil/{uid}/{subcollection}/{document=**}`                           | R/C/U/D  | –         | –                        | –             | –            |
-| `unternehmer/{unternehmerId}`                                                  | R/C/U/D  | R         | R                        | R             | –            |
-| `unternehmer/{unternehmerId}/firma/{firmaId}`                                  | R/C/U/D  | R/U       | R                        | R             | –            |
-| `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}`               | R/C/U/D  | R/U       | R                        | R `Firma`     | –            |
-| `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/{document=**}` | R/C/U    | R         | R                        | –             | –            |
-| `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`      | R/C/U/D  | R/C/U     | R `Firma`, C/U `Filiale` | R `Firma`     | –            |
-| `purCustomers/{document=**}`                                                   | R        | –         | –                        | –             | R/C/U/D      |
-| `purUser/{document=**}`                                                        | –        | –         | –                        | –             | R/C/U/D      |
+Die Pfadkürzel bauen aufeinander auf:
+
+- `{firmaPfad}` = `unternehmer/{unternehmerId}/firma/{firmaId}`
+- `{filialPfad}` = `{firmaPfad}/filiale/{filialId}`
+- `{mitarbeiterPfad}` = `{firmaPfad}/mitarbeiter/{mitarbeiterId}`
+
+| Collection                                                                | `master` | `office` | `filiale` | `mitarbeiter` | Legacy-Konto |
+| ------------------------------------------------------------------------- | -------- | -------- | --------- | ------------- | ------------ |
+| `benutzerprofil/{uid}`                                                    | R/C/U    | R        | R         | R             | –            |
+| `benutzerprofil/{uid}/{subcollection}/{document=**}`                      | R/C/U/D  | –        | –         | –             | –            |
+| `unternehmer/{unternehmerId}`                                             | R/C/U/D  | R        | R         | R             | –            |
+| `{firmaPfad}`                                                             | R/C/U/D  | R/U      | R         | R             | –            |
+| `{mitarbeiterPfad}`                                                       | R/C/U/D  | R/C/U    | R/C/U     | R             | –            |
+| `{filialPfad}`                                                            | R/C/U/D  | R/U      | R         | R             | –            |
+| `{filialPfad}/dienstplan/{monat}`                                         | R/C/U    | R/C/U    | R/C/U     | R             | –            |
+| `{filialPfad}/dienstplan/{monat}/version/{versionId}`                     | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
+| `{filialPfad}/dienstplan/{monat}/version/{versionId}/schicht/{schichtId}` | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
+| `purCustomers/{document=**}`                                              | R        | –        | –         | –             | R/C/U/D      |
+| `purUser/{document=**}`                                                   | –        | –        | –         | –             | R/C/U/D      |
 
 ### Zusatzbedingungen
 
@@ -61,8 +66,15 @@ Die Collection-Matrix zeigt, welche Aktionen eine Benutzerrolle grundsätzlich a
   gelöscht; eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten.
 - Mit einem Benutzerkonto verknüpfte Mitarbeiter dürfen weder gelöscht noch zusammengeführt werden.
 - `filiale` ist genau einem Unternehmer, einer Firma und einer Filiale zugeordnet.
+- Die frühere rekursive Filialregel ist entfernt. Filial-Untercollections benötigen konkrete Rules; Dienstplan, Version und
+  Schicht sind einzeln geregelt und verwenden gemeinsame Hilfsfunktionen.
+- Dienstplandokumente werden nicht gelöscht. Master, Office und Filiale lesen innerhalb ihres erlaubten Filialkontexts alle
+  Versionsstände. Neue Versionen werden nur als Entwurf angelegt; nie veröffentlichte Entwürfe und deren Schichten dürfen
+  bearbeitet und gelöscht werden. Veröffentlichte Versionen dürfen nur bei einer neuen Veröffentlichung atomar archiviert
+  werden; archivierte Versionen sowie veröffentlichte und archivierte Schichten bleiben unveränderlich.
 - `mitarbeiter` liest den zugeordneten Unternehmer sowie die direkte Firmenstruktur mit Firma, Filialen und fachlichen
-  Mitarbeitern. Filial-Untercollections und Schreibzugriffe bleiben gesperrt. Der Client lädt beim Sitzungsstart nur die über den
+  Mitarbeitern. Von Dienstplänen zugeordneter Filialen liest er nur die aktuelle veröffentlichte Version und deren Schichten;
+  andere Filial-Untercollections und alle Schreibzugriffe bleiben gesperrt. Der Client lädt beim Sitzungsstart nur die über den
   eigenen Mitarbeiterdatensatz zugeordneten Filialen und deren Mitarbeiter.
 - `master` verwaltet fachliche Mitarbeiter aller Firmen.
 - `master` liest `purCustomers` und dessen Untercollections ausschließlich für die Datenmigration; Schreibzugriffe bleiben

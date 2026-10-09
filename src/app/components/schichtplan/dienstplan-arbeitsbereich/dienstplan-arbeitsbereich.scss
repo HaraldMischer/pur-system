@@ -1,0 +1,11 @@
+// pur-system/src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.scss
+
+.dienstplan-arbeitsbereich {
+  &__navigation {
+    strong {
+      min-width: 150px;
+      text-align: center;
+      text-transform: capitalize;
+    }
+  }
+}

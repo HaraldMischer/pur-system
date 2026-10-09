@@ -1,0 +1,43 @@
+<!-- pur-system/src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html -->
+
+<section class="schichtplan-monat">
+  <header class="schichtplan-monat__header">
+    <span class="schichtplan-monat__status">
+      {{ statusBezeichnung() }}
+    </span>
+    <span>{{ aktiveVersion()?.revision ?? 0 }}. Revision</span>
+    @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
+      <button
+        matButton="outlined"
+        type="button"
+        (click)="schichtAnlegen.emit(dienstplan().zeitraumStart)"
+      >
+        <mat-icon aria-hidden="true">add</mat-icon>Schicht anlegen
+      </button>
+    }
+  </header>
+
+  <div class="schichtplan-monat__tage">
+    @for (tag of tage(); track tag.datum) {
+      <article class="schichtplan-monat__tag">
+        <h3>{{ tag.bezeichnung }}</h3>
+        @for (schicht of tag.schichten; track schicht.id) {
+          <div class="schichtplan-monat__schicht">
+            <strong>{{ schicht.mitarbeiterAnzeigename }}</strong>
+            <span>{{ schicht.schichtvorlageBezeichnung }}</span>
+            <span>{{ formatSchichtzeit(schicht) }}</span>
+            <span>Pause: {{ schicht.pauseMinuten }} Min.</span>
+            <span>Arbeitszeit: {{ formatArbeitszeit(schicht) }}</span>
+            @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
+              <button matButton type="button" (click)="schichtBearbeiten.emit(schicht)">
+                Bearbeiten
+              </button>
+            }
+          </div>
+        } @empty {
+          <p>Keine Schichten</p>
+        }
+      </article>
+    }
+  </div>
+</section>

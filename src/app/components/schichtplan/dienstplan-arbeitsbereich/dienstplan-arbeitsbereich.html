@@ -1,0 +1,61 @@
+<!-- pur-system/src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html -->
+
+<section class="pur-page _pur-page--limited dienstplan-arbeitsbereich">
+  <section class="pur-page-section">
+    <header class="pur-page-section__header">
+      <h2 class="pur-page-section__title">Monatsplan</h2>
+      <div class="pur-page-section__header-actions dienstplan-arbeitsbereich__navigation">
+        <button matIconButton type="button" aria-label="Vorheriger Monat" (click)="changeMonat(-1)">
+          <mat-icon aria-hidden="true">chevron_left</mat-icon>
+        </button>
+        <strong>{{ monatsbezeichnung() }}</strong>
+        <button matIconButton type="button" aria-label="Nächster Monat" (click)="changeMonat(1)">
+          <mat-icon aria-hidden="true">chevron_right</mat-icon>
+        </button>
+        <button matButton="outlined" type="button" (click)="selectAktuellerMonat()">
+          Aktueller Monat
+        </button>
+      </div>
+    </header>
+
+    @if (!filialPfad()) {
+      <p class="pur-page-section__message" role="status">
+        Wähle eine konkrete Filiale, um ihren Dienstplan anzuzeigen.
+      </p>
+    } @else if (download() && !isLoaded()) {
+      <p class="pur-page-section__message" role="status">Dienstplan wird geladen.</p>
+    } @else if (ladeFehler(); as error) {
+      <div class="pur-page-section__error-state">
+        <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+          {{ error }}
+        </p>
+        <button matButton="tonal" type="button" (click)="retryLoad()">Erneut laden</button>
+      </div>
+    } @else if (isLoaded()) {
+      @if (dienstplanStore.selectedDienstplan(); as dienstplan) {
+        <app-schichtplan-monat
+          [dienstplan]="dienstplan"
+          [versionen]="dienstplanStore.selectedVersionen()"
+          [schichten]="dienstplanStore.selectedSchichten()"
+          [darfSchreiben]="darfSchreiben()"
+          (schichtAnlegen)="openSchichtDialog($event)"
+          (schichtBearbeiten)="openSchichtDialog(dienstplan.zeitraumStart, $event)"
+        />
+      } @else {
+        <div class="pur-page-section__empty-state" role="status">
+          <p>Für diesen Monat ist noch kein Dienstplan vorhanden.</p>
+          @if (darfSchreiben()) {
+            <button
+              matButton="filled"
+              type="button"
+              [disabled]="dienstplanStore.inProgress()"
+              (click)="createDienstplan()"
+            >
+              Dienstplan anlegen
+            </button>
+          }
+        </div>
+      }
+    }
+  </section>
+</section>

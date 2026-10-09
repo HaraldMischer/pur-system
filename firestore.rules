@@ -18,6 +18,22 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/benutzerprofil/$(request.auth.uid)).data;
     }
 
+    function mitarbeiterDokumentPfad(unternehmerId, firmaId, mitarbeiterId) {
+      return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/mitarbeiter/$(mitarbeiterId);
+    }
+
+    function schichtvorlageDokumentPfad(unternehmerId, firmaId, filialId, schichtvorlageId) {
+      return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/filiale/$(filialId)/schichtvorlage/$(schichtvorlageId);
+    }
+
+    function dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat) {
+      return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/filiale/$(filialId)/dienstplan/$(monat);
+    }
+
+    function dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, versionId) {
+      return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/filiale/$(filialId)/dienstplan/$(monat)/version/$(versionId);
+    }
+
     function isMaster() {
       return hasProfil() && profil().aktiv == true && profil().userRole == 'master';
     }
@@ -161,6 +177,298 @@ service cloud.firestore {
         && profil().zugriffe[unternehmerId].size() > 0;
     }
 
+    function darfDienstplanPlanen(unternehmerId, firmaId, filialId) {
+      return isMaster() || darfFilialeLesen(unternehmerId, firmaId, filialId);
+    }
+
+    function darfMitarbeiterDienstplanLesen(unternehmerId, firmaId, filialId) {
+      let mitarbeiterId = profil().get('firmaMitarbeiterId', 'nicht-zugeordnet');
+      let mitarbeiter = get(mitarbeiterDokumentPfad(unternehmerId, firmaId, mitarbeiterId)).data;
+      return darfMitarbeiterFirmaLesen(unternehmerId, firmaId)
+        && mitarbeiter.aktiv == true
+        && mitarbeiter.benutzerUid == request.auth.uid
+        && mitarbeiter.filialIds is list
+        && filialId in mitarbeiter.filialIds;
+    }
+
+    function istGueltigerMonat(monat) {
+      return monat.matches('^[0-9]{4}-(0[1-9]|1[0-2])$');
+    }
+
+    function hatGueltigenMonatszeitraum(monat, daten) {
+      return daten.zeitraumStart == monat + '-01'
+        && (
+          (
+            monat.matches('^[0-9]{4}-(01|03|05|07|08|10|12)$')
+            && daten.zeitraumEnde == monat + '-31'
+          )
+          || (
+            monat.matches('^[0-9]{4}-(04|06|09|11)$')
+            && daten.zeitraumEnde == monat + '-30'
+          )
+          || (monat.matches('^[0-9]{4}-02$') && daten.zeitraumEnde.matches('^' + monat + '-(28|29)$'))
+        );
+    }
+
+    function hatGueltigeDienstplanFelder(daten) {
+      return daten.keys().hasAll([
+          'zeitraumStart',
+          'zeitraumEnde',
+          'zeitzone',
+          'naechsteVersionsnummer',
+          'erstelltAm',
+          'erstelltVonUid',
+          'aktualisiertAm',
+          'aktualisiertVonUid'
+        ])
+        && daten.keys().hasOnly([
+          'zeitraumStart',
+          'zeitraumEnde',
+          'zeitzone',
+          'entwurfVersionId',
+          'veroeffentlichteVersionId',
+          'naechsteVersionsnummer',
+          'erstelltAm',
+          'erstelltVonUid',
+          'aktualisiertAm',
+          'aktualisiertVonUid'
+        ])
+        && daten.zeitraumStart is string
+        && daten.zeitraumEnde is string
+        && daten.zeitzone == 'Europe/Berlin'
+        && daten.naechsteVersionsnummer is int
+        && daten.naechsteVersionsnummer > 0;
+    }
+
+    function hatGueltigeVersionsFelder(daten) {
+      return daten.keys().hasAll([
+          'nummer',
+          'revision',
+          'status',
+          'erstelltAm',
+          'erstelltVonUid',
+          'aktualisiertAm',
+          'aktualisiertVonUid'
+        ])
+        && daten.keys().hasOnly([
+          'nummer',
+          'revision',
+          'status',
+          'erstelltAm',
+          'erstelltVonUid',
+          'aktualisiertAm',
+          'aktualisiertVonUid',
+          'veroeffentlichtAm',
+          'veroeffentlichtVonUid',
+          'archiviertAm',
+          'archiviertVonUid'
+        ])
+        && daten.nummer is int
+        && daten.nummer > 0
+        && daten.revision is int
+        && daten.revision >= 0
+        && daten.status in ['entwurf', 'veroeffentlicht', 'archiviert'];
+    }
+
+    function hatGueltigeSchichtFelder(daten) {
+      return daten.keys().hasAll([
+          'mitarbeiterId',
+          'mitarbeiterAnzeigename',
+          'schichtvorlageId',
+          'schichtvorlageBezeichnung',
+          'beginn',
+          'ende',
+          'pauseMinuten',
+          'erstelltAm',
+          'erstelltVonUid',
+          'aktualisiertAm',
+          'aktualisiertVonUid'
+        ])
+        && daten.keys().hasOnly([
+          'mitarbeiterId',
+          'mitarbeiterAnzeigename',
+          'schichtvorlageId',
+          'schichtvorlageBezeichnung',
+          'beginn',
+          'ende',
+          'pauseMinuten',
+          'erstelltAm',
+          'erstelltVonUid',
+          'aktualisiertAm',
+          'aktualisiertVonUid'
+        ])
+        && daten.mitarbeiterId is string
+        && daten.mitarbeiterAnzeigename is string
+        && daten.schichtvorlageId is string
+        && daten.schichtvorlageId.size() > 0
+        && daten.schichtvorlageBezeichnung is string
+        && daten.schichtvorlageBezeichnung.size() > 0
+        && daten.schichtvorlageBezeichnung.size() <= 80
+        && daten.beginn is timestamp
+        && daten.ende is timestamp
+        && daten.beginn < daten.ende
+        && daten.pauseMinuten is int
+        && daten.pauseMinuten >= 0;
+    }
+
+    function hatGueltigeSchichtvorlagenFelder(daten) {
+      return daten.keys().hasAll([
+          'bezeichnung',
+          'beginnLokalzeit',
+          'endeLokalzeit',
+          'endetAmFolgetag',
+          'aktiv',
+          'erstelltAm',
+          'erstelltVonUid',
+          'aktualisiertAm',
+          'aktualisiertVonUid'
+        ])
+        && daten.keys().hasOnly([
+          'bezeichnung',
+          'beginnLokalzeit',
+          'endeLokalzeit',
+          'endetAmFolgetag',
+          'standardpauseMinuten',
+          'aktiv',
+          'erstelltAm',
+          'erstelltVonUid',
+          'aktualisiertAm',
+          'aktualisiertVonUid'
+        ])
+        && daten.bezeichnung is string
+        && daten.bezeichnung.size() > 0
+        && daten.bezeichnung.size() <= 80
+        && daten.beginnLokalzeit is string
+        && daten.beginnLokalzeit.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && daten.endeLokalzeit is string
+        && daten.endeLokalzeit.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && daten.endetAmFolgetag is bool
+        && daten.aktiv is bool
+        && (
+          !('standardpauseMinuten' in daten)
+          || (
+            daten.standardpauseMinuten is int
+            && daten.standardpauseMinuten >= 0
+            && daten.standardpauseMinuten < 1440
+          )
+        );
+    }
+
+    function hatGueltigeSchichtMitarbeiterreferenz(unternehmerId, firmaId, filialId) {
+      let mitarbeiter = get(
+        mitarbeiterDokumentPfad(unternehmerId, firmaId, request.resource.data.mitarbeiterId)
+      ).data;
+      return mitarbeiter.aktiv == true
+        && mitarbeiter.filialIds is list
+        && filialId in mitarbeiter.filialIds
+        && request.resource.data.mitarbeiterAnzeigename == mitarbeiter.anzeigename;
+    }
+
+    function hatAktiveSchichtvorlagenreferenz(unternehmerId, firmaId, filialId) {
+      let vorlage = get(
+        schichtvorlageDokumentPfad(
+          unternehmerId,
+          firmaId,
+          filialId,
+          request.resource.data.schichtvorlageId
+        )
+      ).data;
+      return vorlage.aktiv == true
+        && request.resource.data.schichtvorlageBezeichnung == vorlage.bezeichnung;
+    }
+
+    function behaeltSchichtvorlagenMomentaufnahme() {
+      return request.resource.data.schichtvorlageId == resource.data.schichtvorlageId
+        && request.resource.data.schichtvorlageBezeichnung
+          == resource.data.schichtvorlageBezeichnung;
+    }
+
+    function istAktuelleVeroeffentlichteVersion(unternehmerId, firmaId, filialId, monat, versionId) {
+      let dienstplan = get(dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)).data;
+      return resource.data.status == 'veroeffentlicht'
+        && dienstplan.veroeffentlichteVersionId == versionId;
+    }
+
+    function hatVeroeffentlichteVersion(unternehmerId, firmaId, filialId, monat) {
+      let versionId = resource.data.get('veroeffentlichteVersionId', null);
+      return versionId is string
+        && get(dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, versionId)).data.status
+          == 'veroeffentlicht';
+    }
+
+    function gehoertZuAktuellerVeroeffentlichterVersion(
+      unternehmerId,
+      firmaId,
+      filialId,
+      monat,
+      versionId
+    ) {
+      let dienstplan = get(dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)).data;
+      let version = get(
+        dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, versionId)
+      ).data;
+      return version.status == 'veroeffentlicht'
+        && dienstplan.veroeffentlichteVersionId == versionId;
+    }
+
+    function wirdEntwurfRevisionErhoeht(unternehmerId, firmaId, filialId, monat, versionId) {
+      let pfad = dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, versionId);
+      return get(pfad).data.status == 'entwurf'
+        && getAfter(pfad).data.status == 'entwurf'
+        && getAfter(pfad).data.revision == get(pfad).data.revision + 1
+        && getAfter(pfad).data.aktualisiertAm == request.time
+        && getAfter(pfad).data.aktualisiertVonUid == request.auth.uid;
+    }
+
+    function hatGueltigenDienstplanWechsel(unternehmerId, firmaId, filialId, monat) {
+      let bisherigerEntwurf = resource.data.get('entwurfVersionId', null);
+      let neuerEntwurf = request.resource.data.get('entwurfVersionId', null);
+      let bisherigeVeroeffentlichung = resource.data.get('veroeffentlichteVersionId', null);
+      let neueVeroeffentlichung = request.resource.data.get('veroeffentlichteVersionId', null);
+      let bisherigeNummer = resource.data.naechsteVersionsnummer;
+      let neueNummer = request.resource.data.naechsteVersionsnummer;
+      return (
+          (neuerEntwurf == bisherigerEntwurf && neueNummer == bisherigeNummer)
+          || (
+            bisherigerEntwurf == null
+            && neuerEntwurf is string
+            && neueNummer == bisherigeNummer + 1
+            && getAfter(
+              dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, neuerEntwurf)
+            ).data.nummer == bisherigeNummer
+          )
+          || (
+            bisherigerEntwurf is string
+            && neuerEntwurf == null
+            && neueNummer == bisherigeNummer
+            && (
+              neueVeroeffentlichung == bisherigerEntwurf
+              || !existsAfter(
+                dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, bisherigerEntwurf)
+              )
+            )
+          )
+        )
+        && (
+          neueVeroeffentlichung == bisherigeVeroeffentlichung
+          || (
+            neueVeroeffentlichung == bisherigerEntwurf
+            && (
+              bisherigeVeroeffentlichung == null
+              || getAfter(
+                dienstplanVersionPfad(
+                  unternehmerId,
+                  firmaId,
+                  filialId,
+                  monat,
+                  bisherigeVeroeffentlichung
+                )
+              ).data.status == 'archiviert'
+            )
+          )
+        );
+    }
+
     // ===============================================================================
     // 1. Fachliche Daten der Unternehmensstruktur
     // ===============================================================================
@@ -181,11 +489,236 @@ service cloud.firestore {
           allow read: if darfFilialeLesen(unternehmerId, firmaId, filialId);
           allow read: if darfMitarbeiterFirmaLesen(unternehmerId, firmaId);
           allow update: if isOffice() && darfFilialeLesen(unternehmerId, firmaId, filialId);
-        }
 
-        match /filiale/{filialId}/{document=**} {
-          allow read, create, update: if isMaster();
-          allow read: if darfFilialeLesen(unternehmerId, firmaId, filialId);
+          match /schichtvorlage/{schichtvorlageId} {
+            allow read: if darfDienstplanPlanen(unternehmerId, firmaId, filialId);
+            allow create: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+              && hatGueltigeSchichtvorlagenFelder(request.resource.data)
+              && request.resource.data.erstelltAm == request.time
+              && request.resource.data.erstelltVonUid == request.auth.uid
+              && request.resource.data.aktualisiertAm == request.time
+              && request.resource.data.aktualisiertVonUid == request.auth.uid;
+            allow update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+              && hatGueltigeSchichtvorlagenFelder(request.resource.data)
+              && request.resource.data.erstelltAm == resource.data.erstelltAm
+              && request.resource.data.erstelltVonUid == resource.data.erstelltVonUid
+              && request.resource.data.aktualisiertAm == request.time
+              && request.resource.data.aktualisiertVonUid == request.auth.uid;
+          }
+
+          match /dienstplan/{monat} {
+            allow read: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+              || (
+                darfMitarbeiterDienstplanLesen(unternehmerId, firmaId, filialId)
+                && hatVeroeffentlichteVersion(unternehmerId, firmaId, filialId, monat)
+              );
+            allow create: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+              && istGueltigerMonat(monat)
+              && hatGueltigeDienstplanFelder(request.resource.data)
+              && hatGueltigenMonatszeitraum(monat, request.resource.data)
+              && request.resource.data.entwurfVersionId is string
+              && !('veroeffentlichteVersionId' in request.resource.data)
+              && request.resource.data.erstelltAm == request.time
+              && request.resource.data.erstelltVonUid == request.auth.uid
+              && request.resource.data.aktualisiertAm == request.time
+              && request.resource.data.aktualisiertVonUid == request.auth.uid
+              && existsAfter(
+                dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, request.resource.data.entwurfVersionId)
+              )
+              && getAfter(
+                dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, request.resource.data.entwurfVersionId)
+              ).data.status == 'entwurf'
+              && request.resource.data.naechsteVersionsnummer == getAfter(
+                dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, request.resource.data.entwurfVersionId)
+              ).data.nummer + 1;
+            allow update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+              && hatGueltigeDienstplanFelder(request.resource.data)
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'entwurfVersionId',
+                'veroeffentlichteVersionId',
+                'naechsteVersionsnummer',
+                'aktualisiertAm',
+                'aktualisiertVonUid'
+              ])
+              && request.resource.data.aktualisiertAm == request.time
+              && request.resource.data.aktualisiertVonUid == request.auth.uid
+              && (
+                request.resource.data.get('entwurfVersionId', null) == null
+                || (
+                  request.resource.data.entwurfVersionId is string
+                  && existsAfter(
+                    dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, request.resource.data.entwurfVersionId)
+                  )
+                  && getAfter(
+                    dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, request.resource.data.entwurfVersionId)
+                  ).data.status == 'entwurf'
+                )
+              )
+              && (
+                request.resource.data.get('veroeffentlichteVersionId', null) == null
+                || (
+                  request.resource.data.veroeffentlichteVersionId is string
+                  && getAfter(
+                    dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, request.resource.data.veroeffentlichteVersionId)
+                  ).data.status == 'veroeffentlicht'
+                )
+              )
+              && (
+                resource.data.get('veroeffentlichteVersionId', null) == null
+                || request.resource.data.get('veroeffentlichteVersionId', null) != null
+              )
+              && hatGueltigenDienstplanWechsel(
+                unternehmerId,
+                firmaId,
+                filialId,
+                monat
+              );
+
+            match /version/{versionId} {
+              allow read: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                || (
+                  darfMitarbeiterDienstplanLesen(unternehmerId, firmaId, filialId)
+                  && istAktuelleVeroeffentlichteVersion(
+                    unternehmerId,
+                    firmaId,
+                    filialId,
+                    monat,
+                    versionId
+                  )
+                );
+              allow create: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                && istGueltigerMonat(monat)
+                && hatGueltigeVersionsFelder(request.resource.data)
+                && request.resource.data.status == 'entwurf'
+                && request.resource.data.revision == 0
+                && !('veroeffentlichtAm' in request.resource.data)
+                && !('veroeffentlichtVonUid' in request.resource.data)
+                && !('archiviertAm' in request.resource.data)
+                && !('archiviertVonUid' in request.resource.data)
+                && request.resource.data.erstelltAm == request.time
+                && request.resource.data.erstelltVonUid == request.auth.uid
+                && request.resource.data.aktualisiertAm == request.time
+                && request.resource.data.aktualisiertVonUid == request.auth.uid
+                && getAfter(
+                  dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                ).data.entwurfVersionId == versionId
+                && getAfter(
+                  dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                ).data.naechsteVersionsnummer == request.resource.data.nummer + 1;
+              allow update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                && hatGueltigeVersionsFelder(request.resource.data)
+                && request.resource.data.nummer == resource.data.nummer
+                && request.resource.data.erstelltAm == resource.data.erstelltAm
+                && request.resource.data.erstelltVonUid == resource.data.erstelltVonUid
+                && request.resource.data.revision == resource.data.revision + 1
+                && request.resource.data.aktualisiertAm == request.time
+                && request.resource.data.aktualisiertVonUid == request.auth.uid
+                && (
+                  (
+                    resource.data.status == 'entwurf'
+                    && request.resource.data.status == 'entwurf'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'revision',
+                      'aktualisiertAm',
+                      'aktualisiertVonUid'
+                    ])
+                  )
+                  || (
+                    resource.data.status == 'entwurf'
+                    && request.resource.data.status == 'veroeffentlicht'
+                    && request.resource.data.veroeffentlichtAm == request.time
+                    && request.resource.data.veroeffentlichtVonUid == request.auth.uid
+                    && !('archiviertAm' in request.resource.data)
+                    && !('archiviertVonUid' in request.resource.data)
+                    && getAfter(
+                      dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                    ).data.get('entwurfVersionId', null) == null
+                    && getAfter(
+                      dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                    ).data.veroeffentlichteVersionId == versionId
+                  )
+                  || (
+                    resource.data.status == 'veroeffentlicht'
+                    && request.resource.data.status == 'archiviert'
+                    && request.resource.data.veroeffentlichtAm == resource.data.veroeffentlichtAm
+                    && request.resource.data.veroeffentlichtVonUid == resource.data.veroeffentlichtVonUid
+                    && request.resource.data.archiviertAm == request.time
+                    && request.resource.data.archiviertVonUid == request.auth.uid
+                    && getAfter(
+                      dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                    ).data.veroeffentlichteVersionId != versionId
+                  )
+                );
+              allow delete: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                && resource.data.status == 'entwurf'
+                && getAfter(
+                  dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                ).data.get('entwurfVersionId', null) != versionId;
+
+              match /schicht/{schichtId} {
+                allow read: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                  || (
+                    darfMitarbeiterDienstplanLesen(unternehmerId, firmaId, filialId)
+                    && gehoertZuAktuellerVeroeffentlichterVersion(
+                      unternehmerId,
+                      firmaId,
+                      filialId,
+                      monat,
+                      versionId
+                    )
+                  );
+                allow create: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                  && hatGueltigeSchichtFelder(request.resource.data)
+                  && hatGueltigeSchichtMitarbeiterreferenz(unternehmerId, firmaId, filialId)
+                  && hatAktiveSchichtvorlagenreferenz(unternehmerId, firmaId, filialId)
+                  && request.resource.data.erstelltAm == request.time
+                  && request.resource.data.erstelltVonUid == request.auth.uid
+                  && request.resource.data.aktualisiertAm == request.time
+                  && request.resource.data.aktualisiertVonUid == request.auth.uid
+                  && wirdEntwurfRevisionErhoeht(
+                    unternehmerId,
+                    firmaId,
+                    filialId,
+                    monat,
+                    versionId
+                  );
+                allow update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                  && hatGueltigeSchichtFelder(request.resource.data)
+                  && hatGueltigeSchichtMitarbeiterreferenz(unternehmerId, firmaId, filialId)
+                  && (
+                    behaeltSchichtvorlagenMomentaufnahme()
+                    || hatAktiveSchichtvorlagenreferenz(unternehmerId, firmaId, filialId)
+                  )
+                  && request.resource.data.erstelltAm == resource.data.erstelltAm
+                  && request.resource.data.erstelltVonUid == resource.data.erstelltVonUid
+                  && request.resource.data.aktualisiertAm == request.time
+                  && request.resource.data.aktualisiertVonUid == request.auth.uid
+                  && wirdEntwurfRevisionErhoeht(
+                    unternehmerId,
+                    firmaId,
+                    filialId,
+                    monat,
+                    versionId
+                  );
+                allow delete: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                  && get(
+                    dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, versionId)
+                  ).data.status == 'entwurf'
+                  && (
+                    !existsAfter(
+                      dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, versionId)
+                    )
+                    || wirdEntwurfRevisionErhoeht(
+                      unternehmerId,
+                      firmaId,
+                      filialId,
+                      monat,
+                      versionId
+                    )
+                  );
+              }
+            }
+          }
         }
 
         match /mitarbeiter/{mitarbeiterId} {

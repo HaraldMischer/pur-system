@@ -6,6 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { IBenutzerProfilDokument } from '../../commons/models/domain/benutzer';
 import { IUnternehmerEintrag } from '../../commons/models/domain/unternehmer';
 import { StammdatenStore } from '../../stores/app/stammdaten.store';
+import { DienstplanStore } from '../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../stores/domain/mitarbeiter.store';
 import { MitarbeiterService } from '../domain/mitarbeiter.service';
 import { DebugLogService } from './debug-log.service';
@@ -27,6 +28,10 @@ describe('AppDatenInitService', () => {
     loadMitarbeiter: ReturnType<typeof vi.fn>;
     loadMitarbeiterNachFilialen: ReturnType<typeof vi.fn>;
     resetMitarbeiter: ReturnType<typeof vi.fn>;
+  };
+  let dienstplanStoreMock: {
+    loadDienstplanBestand: ReturnType<typeof vi.fn>;
+    resetDienstplaene: ReturnType<typeof vi.fn>;
   };
   let mitarbeiterServiceMock: {
     loadMitarbeiterEintrag: ReturnType<typeof vi.fn>;
@@ -75,6 +80,10 @@ describe('AppDatenInitService', () => {
       loadMitarbeiterNachFilialen: vi.fn().mockResolvedValue(undefined),
       resetMitarbeiter: vi.fn(),
     };
+    dienstplanStoreMock = {
+      loadDienstplanBestand: vi.fn().mockResolvedValue(undefined),
+      resetDienstplaene: vi.fn(),
+    };
     mitarbeiterServiceMock = {
       loadMitarbeiterEintrag: vi.fn().mockResolvedValue({
         id: 'mitarbeiter-dokument-1',
@@ -105,6 +114,7 @@ describe('AppDatenInitService', () => {
       providers: [
         AppDatenInitService,
         { provide: StammdatenStore, useValue: stammdatenStoreMock },
+        { provide: DienstplanStore, useValue: dienstplanStoreMock },
         { provide: MitarbeiterStore, useValue: mitarbeiterStoreMock },
         { provide: MitarbeiterService, useValue: mitarbeiterServiceMock },
         { provide: DebugLogService, useValue: debugLogServiceMock },
@@ -147,10 +157,7 @@ describe('AppDatenInitService', () => {
       undefined,
       'networkOnly',
     );
-    expect(debugLogServiceMock.logDatenflussTitel.mock.calls).toEqual([
-      ['2. STAMMDATEN '],
-      ['STAMMDATEN VOLLSTÄNDIG GELADEN '],
-    ]);
+    expect(debugLogServiceMock.logDatenflussTitel.mock.calls).toEqual([['2. UNTERNEHMENSDATEN ']]);
     expect(debugLogServiceMock.logDatenGeladen.mock.calls).toEqual([
       ['Benutzerprofile', 1],
       ['Unternehmer', 1],
@@ -222,8 +229,15 @@ describe('AppDatenInitService', () => {
       'b-1',
       'networkOnly',
     );
+    expect(dienstplanStoreMock.loadDienstplanBestand).toHaveBeenCalledWith(
+      { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' },
+      'networkOnly',
+    );
     expect(stammdatenStoreMock.loadStammdaten.mock.invocationCallOrder[0]).toBeLessThan(
       mitarbeiterStoreMock.loadMitarbeiter.mock.invocationCallOrder[0],
+    );
+    expect(mitarbeiterStoreMock.loadMitarbeiter.mock.invocationCallOrder[0]).toBeLessThan(
+      dienstplanStoreMock.loadDienstplanBestand.mock.invocationCallOrder[0],
     );
   });
 
@@ -314,6 +328,7 @@ describe('AppDatenInitService', () => {
     expect(stammdatenStoreMock.loadFilialenNachIds).not.toHaveBeenCalled();
     expect(mitarbeiterStoreMock.loadMitarbeiter).not.toHaveBeenCalled();
     expect(mitarbeiterStoreMock.loadMitarbeiterNachFilialen).not.toHaveBeenCalled();
+    expect(dienstplanStoreMock.loadDienstplanBestand).not.toHaveBeenCalled();
   });
 
   it('should pass an explicitly selected strategy to every required store', async () => {
@@ -334,6 +349,7 @@ describe('AppDatenInitService', () => {
       undefined,
       'cacheOnly',
     );
+    expect(dienstplanStoreMock.loadDienstplanBestand).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -378,6 +394,7 @@ describe('AppDatenInitService', () => {
 
     expect(stammdatenStoreMock.reset).toHaveBeenCalledOnce();
     expect(mitarbeiterStoreMock.resetMitarbeiter).toHaveBeenCalledOnce();
+    expect(dienstplanStoreMock.resetDienstplaene).toHaveBeenCalledOnce();
   });
 
   function createProfil(

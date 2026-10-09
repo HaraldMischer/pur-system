@@ -6,4 +6,5 @@ export type TFirestoreLesestrategie = 'cacheFirst' | 'networkOnly' | 'networkFir
 export type TFirestoreLesestrategien = {
   readonly benutzerprofil: TFirestoreLesestrategie;
   readonly stammdaten: TFirestoreLesestrategie;
+  readonly dienstplaene: TFirestoreLesestrategie;
 };

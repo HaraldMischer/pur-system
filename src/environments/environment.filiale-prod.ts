@@ -5,7 +5,7 @@ import {
   TFirestoreLesestrategien,
 } from '../app/commons/models/app/firestore-lesestrategie.types';
 import { firebaseConfig } from './firebase-config';
-import {TUserRole} from '../app/commons/models/domain/benutzer';
+import { TUserRole } from '../app/commons/models/domain/benutzer';
 
 export const environment = {
   production: true,
@@ -16,6 +16,7 @@ export const environment = {
   firestoreLesestrategien: {
     benutzerprofil: 'networkFirst',
     stammdaten: 'cacheFirst',
+    dienstplaene: 'networkFirst',
   } as TFirestoreLesestrategien,
   firebase: firebaseConfig,
 };

@@ -1,0 +1,24 @@
+// pur-system/src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.scss
+
+:host {
+  --pur-card-grid-min-width: 280px;
+}
+
+.schichtvorlagen-page__status {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+
+  p {
+    margin: 0;
+  }
+}
+
+mat-card-content {
+  display: grid;
+  gap: 8px;
+
+  p {
+    margin: 0;
+  }
+}

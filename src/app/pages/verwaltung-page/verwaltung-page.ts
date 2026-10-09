@@ -7,9 +7,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
+import { FilialeBearbeitenDialog } from '../../components/verwaltung/filiale-bearbeiten-dialog/filiale-bearbeiten-dialog';
+import { FirmaBearbeitenDialog } from '../../components/verwaltung/firma-bearbeiten-dialog/firma-bearbeiten-dialog';
 import { VerwaltungStore } from '../../stores/domain/verwaltung.store';
-import { FilialeBearbeitenDialog } from './filiale-bearbeiten-dialog/filiale-bearbeiten-dialog';
-import { FirmaBearbeitenDialog } from './firma-bearbeiten-dialog/firma-bearbeiten-dialog';
 
 @Component({
   selector: 'app-verwaltung-page',

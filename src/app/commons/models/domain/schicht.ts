@@ -7,6 +7,8 @@ import { Timestamp } from 'firebase/firestore';
 export interface ISchichtAnlage {
   mitarbeiterId: string;
   mitarbeiterAnzeigename: string;
+  schichtvorlageId: string;
+  schichtvorlageBezeichnung: string;
   beginn: Timestamp;
   ende: Timestamp;
   pauseMinuten: number;
@@ -15,15 +17,25 @@ export interface ISchichtAnlage {
 export interface ISchichtAktualisierung {
   mitarbeiterId: string;
   mitarbeiterAnzeigename: string;
+  schichtvorlageId: string;
+  schichtvorlageBezeichnung: string;
   beginn: Timestamp;
   ende: Timestamp;
   pauseMinuten: number;
 }
 
-export interface ISchichtEintrag extends ISchichtAnlage {
+export interface ISchichtEintrag extends ISchichtDokument {
   id: string;
   dienstplanId: string;
   versionId: string;
+  unternehmerId: string;
+  firmaId: string;
+  filialeId: string;
+}
+
+export interface ISchichtSchreibergebnis {
+  schicht: ISchichtEintrag;
+  versionRevision: number;
 }
 
 // ===== Firestore-Dokumente ==================

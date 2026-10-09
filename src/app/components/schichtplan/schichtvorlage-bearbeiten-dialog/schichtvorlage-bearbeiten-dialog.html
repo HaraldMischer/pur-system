@@ -1,0 +1,64 @@
+<!-- pur-system/src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog/schichtvorlage-bearbeiten-dialog.html -->
+
+<h2 mat-dialog-title>
+  {{ istBearbeitung ? 'Schichtvorlage bearbeiten' : 'Schichtvorlage anlegen' }}
+</h2>
+<mat-dialog-content>
+  <form
+    id="schichtvorlage-form"
+    class="pur-form pur-form--grid"
+    [formGroup]="schichtvorlageForm"
+    (ngSubmit)="saveSchichtvorlage()"
+  >
+    <mat-form-field appearance="outline" class="pur-form__item">
+      <mat-label>Bezeichnung</mat-label>
+      <input matInput formControlName="bezeichnung" maxlength="80" />
+      @if (schichtvorlageForm.controls.bezeichnung.hasError('maxlength')) {
+        <mat-error>Die Bezeichnung darf höchstens 80 Zeichen lang sein.</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Beginn</mat-label>
+      <input matInput type="time" formControlName="beginnLokalzeit" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Ende</mat-label>
+      <input matInput type="time" formControlName="endeLokalzeit" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Standardpause in Minuten</mat-label>
+      <input matInput type="number" min="0" max="1439" formControlName="standardpauseMinuten" />
+    </mat-form-field>
+    <mat-checkbox formControlName="endetAmFolgetag">Ende am Folgetag</mat-checkbox>
+    @if (istBearbeitung) {
+      <mat-checkbox formControlName="aktiv">Aktiv</mat-checkbox>
+    }
+    @if (schichtvorlageForm.hasError('ungueltigeZeitfolge')) {
+      <p class="pur-form__item pur-form__item--error" role="alert">
+        Das Ende muss nach dem Beginn liegen oder als Folgetag gekennzeichnet sein.
+      </p>
+    }
+    @if (submitError() || schichtvorlageStore.error(); as fehlermeldung) {
+      <p class="pur-form__item pur-form__item--error" role="alert">
+        {{ submitError() ?? fehlermeldung }}
+      </p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" [disabled]="schichtvorlageStore.inProgress()" mat-dialog-close>
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="schichtvorlage-form"
+    [disabled]="
+      schichtvorlageForm.invalid ||
+      schichtvorlageStore.inProgress() ||
+      (istBearbeitung && !hatAenderungen())
+    "
+  >
+    Speichern
+  </button>
+</mat-dialog-actions>

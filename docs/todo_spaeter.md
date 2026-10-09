@@ -91,10 +91,10 @@ noch in Firestore gespeichert werden.
 Neu hinzuzufügen:
 
 - src/app/commons/models/domain/mitarbeiter-login.ts
-- src/app/pages/mitarbeiter-page/mitarbeiter-login-page/mitarbeiter-login-page.ts
-- src/app/pages/mitarbeiter-page/mitarbeiter-login-page/mitarbeiter-login-page.html
-- src/app/pages/mitarbeiter-page/mitarbeiter-login-page/mitarbeiter-login-page.scss
-- src/app/pages/mitarbeiter-page/mitarbeiter-login-page/mitarbeiter-login-page.spec.ts
+- src/app/pages/mitarbeiter/mitarbeiter-login-page/mitarbeiter-login-page.ts
+- src/app/pages/mitarbeiter/mitarbeiter-login-page/mitarbeiter-login-page.html
+- src/app/pages/mitarbeiter/mitarbeiter-login-page/mitarbeiter-login-page.scss
+- src/app/pages/mitarbeiter/mitarbeiter-login-page/mitarbeiter-login-page.spec.ts
 - src/app/services/domain/mitarbeiter-login.service.ts
 - src/app/services/domain/mitarbeiter-login.service.spec.ts
 - src/app/stores/domain/mitarbeiter-login.store.ts

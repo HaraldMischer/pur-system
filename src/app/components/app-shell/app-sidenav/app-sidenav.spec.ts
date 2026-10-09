@@ -79,7 +79,15 @@ describe('AppSidenav', () => {
       providers: [
         provideRouter([
           { path: 'dashboard', component: AppSidenavHost, data: { bereich: 'dashboard' } },
-          { path: 'schichtplan', component: AppSidenavHost, data: { bereich: 'schichtplan' } },
+          {
+            path: 'schichtplan',
+            data: { bereich: 'schichtplan' },
+            children: [
+              { path: 'ansicht', component: AppSidenavHost },
+              { path: 'planung', component: AppSidenavHost },
+              { path: 'einstellungen', component: AppSidenavHost },
+            ],
+          },
           { path: 'mitarbeiter', component: AppSidenavHost, data: { bereich: 'mitarbeiter' } },
           { path: 'verwaltung', component: AppSidenavHost, data: { bereich: 'verwaltung' } },
           {

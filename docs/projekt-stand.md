@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 08.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -48,10 +48,11 @@ Stand: 08.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 ## Seiten und Routen
 
 - `dashboard-page` wurde unter `src/app/pages/dashboard-page` angelegt.
-- `schichtplan-page` wurde unter `src/app/pages/schichtplan-page` angelegt.
-- `mitarbeiter-page` ist der Feature-Ordner für die fachliche Mitarbeiterverwaltung. Die bisherige Platzhalterseite wurde
-  entfernt.
-- Routen für `/dashboard` und `/schichtplan` werden per `loadComponent` geladen.
+- `schichtplan` ist ein komponentenloser Seitenbereich unter `src/app/pages/schichtplan` mit getrennten Pages für Ansicht,
+  Planung und Schichtvorlagen.
+- `mitarbeiter` ist ein komponentenloser Routenbereich. Unter `src/app/pages/mitarbeiter` liegen ausschließlich seine routbaren
+  Pages; Cards und Dialoge liegen unter `src/app/components/mitarbeiter`.
+- Die Route `/dashboard` und die drei untergeordneten Schichtplan-Pages werden per `loadComponent` geladen.
 - `/mitarbeiter` ist ein komponentenloser, nach Bereichsfreigabe geschützter Elternpfad und leitet auf
   `/mitarbeiter/liste` weiter. Die Listenroute ist für aktive Office- und Filialkonten mit vollständigem Datenzugriff sowie für
   aktive Master mit optional zugewiesenem App-Bereich erreichbar. Die Master-Freigabe erweitert nicht die Collection-Rechte.
@@ -73,9 +74,9 @@ Stand: 08.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Dienst- und Schichtplanung
 
-- Die fachliche erste Ausbaustufe ist als filialbezogene Wochenplanung mit versionierten Bearbeitungsständen geplant. Die
-  Domainmodelle für Dienstplan, Version und Schicht liegen unter `src/app/commons/models/domain`; Service, Store, Datenzugriffe
-  und Bedienoberfläche sind noch nicht umgesetzt.
+- Die fachliche erste Ausbaustufe ist als filialbezogene Monatsplanung mit versionierten Bearbeitungsständen geplant.
+  Domainmodelle, Dienstplan- und Schichtvorlagen-Service, die zugehörigen Stores sowie die benötigten Firestore-Datenzugriffe
+  sind umgesetzt. Die Dienstplan-Grundoberfläche und die Verwaltung filialbezogener Schichtvorlagen sind ebenfalls umgesetzt.
 - Eine Version besitzt den Status `entwurf`, `veroeffentlicht` oder `archiviert`. Veröffentlichte und archivierte Versionen
   bleiben unveränderlich. Änderungen werden als neue Entwurfsversion auf Basis des veröffentlichten Stands vorbereitet.
 - Aktive Master dürfen in allen Filialen planen. Aktive Office-Konten bleiben auf ausdrücklich freigegebene Filialen und
@@ -83,32 +84,61 @@ Stand: 08.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   aktiven Firma-Mitarbeiter der eigenen Filiale mit `dienstplaner` angeboten werden. Die Mitarbeiter-App bleibt unabhängig von
   dieser betrieblichen Rolle rein lesend und zeigt nur veröffentlichte Pläne aus den fachlichen `filialIds`.
 - `dienstplaner` ist lokal im Firma-Mitarbeiter-Modell, in Anlage und Bearbeitung, in der Card-Darstellung sowie in der
-  allgemeinen Rollenvalidierung der Firestore Rules ergänzt. Die konkreten Dienstplan-Rules aus Todo 20.3 werden Filialkonten
-  ausschließlich auf ihren Filialpfad begrenzen. Die zusätzliche Prüfung des im Filial-Frontend geführten Firma-Mitarbeiters und
-  seiner Rolle ist clientseitig, bei einem manipulierten Client umgehbar und noch nicht umgesetzt. Die aktuelle Rules-Änderung
-  ist nicht produktiv deployed.
+  allgemeinen Rollenvalidierung der Firestore Rules ergänzt. Konkrete Rules für Dienstplan, Version und Schicht begrenzen
+  Filialkonten auf ihren Filialpfad, Mitarbeiterzugänge auf den aktuellen veröffentlichten Stand und Planungszugriffe auf
+  erlaubte Filialen, gültige Entwürfe und kontrollierte Zustandswechsel. Die frühere rekursive Filialregel ist entfernt. Die
+  zusätzliche Prüfung des im Filial-Frontend geführten Firma-Mitarbeiters und seiner Rolle ist clientseitig, bei einem
+  manipulierten Client umgehbar und noch nicht umgesetzt. Die Rules-Änderung ist lokal durch Emulator-Tests abgesichert, aber
+  nicht produktiv deployed.
 - Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Jeder Dienstplanzugriff
   benötigt eine konkrete Filiale; der Sammelkontext `Alle Filialen` wird für die erste Ausbaustufe nicht unterstützt.
-- Für die Filial-App ist eine vollständige Startladung beschlossen: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
+- Für die Filial-App ist die vollständige Startladung umgesetzt: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
   Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung geladen. Mitarbeiter verwenden weiterhin die
   bestehende Stammdatenstrategie `cacheFirst`; der vollständige Dienstplanbestand verwendet `networkFirst`. Online werden die
   Dienstplandaten in den persistenten IndexedDB-Cache übernommen, bei einem technischen Serverfehler wird auf den vorhandenen
   Cache zurückgefallen. Schreibvorgänge bleiben online.
-- Master und Office laden mit `networkOnly` nur die konkret ausgewählte Filiale und Woche; historische Versionen werden erst bei
-  Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` nur die veröffentlichte Version der ausgewählten Woche für eine
-  fachlich erlaubte Filiale. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese Abfragewege zunächst nicht vorgesehen.
+- Master und Office laden mit `networkOnly` nur die konkret ausgewählte Filiale und den ausgewählten Monat; historische
+  Versionen werden erst bei Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` nur die veröffentlichte Version des
+  ausgewählten Monats für eine fachlich erlaubte Filiale. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese
+  Abfragewege zunächst nicht vorgesehen.
 - Dienstplan, Version und Schicht bleiben einzelne kleine Dokumente. Es werden keine über Jahre wachsenden Arrays gespeichert;
   mit der Historie steigen nur Dokumentanzahl und Lesezugriffe der vollständigen Filialladung.
 - Veröffentlichung und Archivierung sollen mit UID und Zeitpunkt protokolliert werden. Eine Änderung nach Veröffentlichung
   erzeugt eine neue Entwurfsversion, während der vorherige Stand für Mitarbeiter sichtbar bleibt.
-- Alle Dienstplanaktionen sollen im Angular-Frontend über den Firestore Client erfolgen; Cloud Functions und andere serverseitige
-  Fachaktionen sind für diesen Bereich ausgeschlossen. Jede Version erhält eine Revision, die bei jeder Schichtänderung und jedem
-  Statuswechsel in einer Firestore-Transaktion erhöht wird. Eine abweichende Revision verhindert veraltete Schreibzugriffe und
-  eine Veröffentlichung auf Basis eines zwischenzeitlich geänderten Entwurfs.
+- Dienstplanaktionen erfolgen im Angular-Frontend über den Firestore Client; Cloud Functions und andere serverseitige
+  Fachaktionen sind für diesen Bereich ausgeschlossen. Das Anlegen eines Monatsplans mit erster Entwurfsversion erfolgt atomar.
+  Anlegen, Bearbeiten und Löschen einer Schicht erhöhen die Versionsrevision in einer Firestore-Transaktion. Eine abweichende
+  Revision verhindert veraltete Schreibzugriffe. Die Transaktion für Veröffentlichung und Archivierung folgt in Todo 20.5.
 - Die zeitliche Konfliktprüfung bleibt eine Frontend-Fachprüfung. Firestore Rules sollen Rollen, Filialgrenzen, Entwurfsstatus,
   Benutzer-UID und Revisionsfortschritt absichern, können Überschneidungen mehrerer Schichtdokumente aber nicht berechnen.
-- Die vorhandene `schichtplan-page` ist weiterhin eine Platzhalterseite. Firestore-Pfade, Rules, Konfliktbehandlung und
-  atomare Veröffentlichung werden in den folgenden Todo-Schritten konkretisiert und umgesetzt.
+- Die technische Planung aus Todo 20.3 ist abgeschlossen. Domainmodell, deutsche Firestore-Pfade, Abfrage- und Cache-Strategien,
+  Transaktionsablauf und Sicherheitsgrenzen sind festgelegt. Modelltestfälle für Monatsgrenzen, Zeitberechnung, Normalisierung
+  und Zustandswechsel sowie ein Monatsplan mit mehreren Tagen, Mitarbeitern und Schichten sind als Grundlage für 20.4 und 20.5
+  dokumentiert.
+- Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtvorlagen. Ansicht und Planung
+  verwenden einen gemeinsamen Dienstplan-Arbeitsbereich mit Monatsnavigation, tageweiser Darstellung sowie Lade-, Leer- und
+  Fehlerzuständen. Master, Office und Mitarbeiter können eine konkrete Filiale auswählen; Filialkonten verwenden unmittelbar
+  ihre einzige Profilzuordnung. Konfliktprüfung und atomare Veröffentlichung folgen in Todo 20.5.
+- Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
+  bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, lokale
+  Uhrzeiten, Folgetag und Pause werden vor dem Schreiben validiert und in `Europe/Berlin` in Firestore-Zeitstempel umgewandelt.
+  Während eines Schreibvorgangs ist das vollständige Formular deaktiviert. Filialkonten bleiben bis zur Umsetzung des
+  betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser Sitzungszustand einen aktiven Firma-Mitarbeiter mit
+  `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
+- Master und berechtigte Office-Konten können je ausgewählter Filiale Schichtvorlagen mit Bezeichnung, lokaler Beginn- und
+  Endzeit, Folgetagsangabe, Standardpause und Aktivstatus anlegen und bearbeiten. Inaktive Vorlagen bleiben sichtbar und können
+  wieder aktiviert werden. Beim Einplanen wird eine aktive Vorlage ausgewählt; Beginn und Ende werden aus Datum, lokalen
+  Vorlagenzeiten, Folgetagsangabe und `Europe/Berlin` berechnet. Vorlagen-ID und Bezeichnung sowie die berechneten Zeitpunkte und
+  die konkrete Pause werden als Momentaufnahme in der Schicht gespeichert. Spätere Vorlagenänderungen verändern vorhandene
+  Schichten nicht.
+- Firestore Rules verlangen bei einer neuen oder auf eine andere Vorlage umgestellten Schicht eine aktive filialbezogene Vorlage
+  mit passender Bezeichnung. Beim Bearbeiten darf eine bereits gespeicherte Vorlagen-Momentaufnahme unverändert erhalten bleiben,
+  auch wenn die ursprüngliche Vorlage inzwischen geändert oder deaktiviert wurde.
+- Die Dienstplan- und Schichtvorlagen-Services, ihre Stores sowie der Aufbau der Schichtplan-Komponenten sind unter
+  `docs/services`, `docs/stores` und `docs/components` dokumentiert. Angular- und Rules-Tests sowie der Office-Build sind
+  erfolgreich. Die drei weiteren Varianten-Builds werden derzeit durch einen lokalen Deadlock in `esbuild` 0.28.1 abgebrochen.
+- Erfolgreiche Monats- und Gesamtladungen protokollieren im lokalen Entwicklungslog unter `3. FILIALDATEN` die Anzahl geladener
+  Dienstpläne, Versionen und Schichten mit dem Anzeigenamen der betreffenden Filiale.
 
 ## Firebase-Grundlage
 
@@ -424,7 +454,8 @@ Stand: 08.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Bestehende Benutzer verwalten
 
-- Unter `systemverwaltung-page/benutzer-page/benutzer-verwaltung` ist die Bearbeitung vorhandener Benutzerprofile umgesetzt.
+- Die routbaren Systemverwaltungsseiten liegen unter `src/app/pages/systemverwaltung`. Die eingebettete Benutzerverwaltung und
+  ihre Dialoge liegen unter `src/app/components/systemverwaltung/benutzer`.
 - Das Benutzer-Select verwendet die UID als Wert und gruppiert die Anzeigenamen nach Rolle in der Reihenfolge Filiale, Office,
   Mitarbeiter und Master. Die kompakte Optgroup-Darstellung wird über die wiederverwendbaren Klassen `pur-select__panel` und
   `pur-select__panel--grouped` gestaltet. Der Bearbeiten-Button wird erst nach einer gültigen Auswahl aktiviert.
@@ -510,8 +541,8 @@ Stand: 08.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Datenzugriff-Auswahl mit Firebase
 
-- Die ausschließlich von Benutzeranlage und Benutzerbearbeitung verwendete Component liegt lokal unter
-  `src/app/pages/systemverwaltung-page/benutzer-page/datenzugriff-selector`; ihre Auswahlmodelle liegen in
+- Die ausschließlich von Benutzeranlage und Benutzerbearbeitung verwendete Component liegt unter
+  `src/app/components/systemverwaltung/benutzer/datenzugriff-selector`; ihre Auswahlmodelle liegen in
   `src/app/commons/models/domain/datenzugriff.ts`.
 - Der `AppKontextSelector` liegt unter `src/app/components/data-selectors/app-kontext-selector`, verbindet den globalen
   `AppKontextStore` mit der Sidebar und setzt sich aus internen Unternehmer-, Firmen- und Filial-Selektoren zusammen. Die drei

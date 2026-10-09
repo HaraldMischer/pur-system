@@ -39,6 +39,37 @@ describe('NAVIGATION_NACH_ROLLE', () => {
     expect(getNavigationIds('mitarbeiter')).not.toContain('mitarbeiter');
   });
 
+  it('should split the shift plan navigation according to the role', () => {
+    for (const userRole of ['master', 'office'] as const) {
+      const schichtplan = NAVIGATION_NACH_ROLLE[userRole].eintraege.find(
+        (eintrag) => eintrag.id === 'schichtplan',
+      );
+
+      expect(schichtplan?.typ).toBe('gruppe');
+      if (schichtplan?.typ !== 'gruppe') continue;
+      expect(schichtplan.kinder.map((eintrag) => eintrag.id)).toEqual([
+        'dienstplanansicht',
+        'dienstplanplanung',
+        'schichtvorlagen',
+      ]);
+    }
+
+    const filialSchichtplan = NAVIGATION_NACH_ROLLE.filiale.eintraege.find(
+      (eintrag) => eintrag.id === 'schichtplan',
+    );
+    expect(filialSchichtplan?.typ).toBe('gruppe');
+    if (filialSchichtplan?.typ === 'gruppe') {
+      expect(filialSchichtplan.kinder.map((eintrag) => eintrag.id)).toEqual(['dienstplanansicht']);
+    }
+
+    expect(getNavigationLinks(NAVIGATION_NACH_ROLLE.mitarbeiter.eintraege)).toContainEqual(
+      expect.objectContaining({
+        id: 'dienstplanansicht',
+        route: '/schichtplan/ansicht',
+      }),
+    );
+  });
+
   it('should provide verwaltung only for master and office', () => {
     expect(getNavigationIds('master')).toContain('verwaltung');
     expect(getNavigationIds('office')).toContain('verwaltung');

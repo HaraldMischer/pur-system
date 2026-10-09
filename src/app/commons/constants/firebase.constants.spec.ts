@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { ISchichtPfad } from '../models/app/firestore-pfad.types';
+import type { ISchichtPfad, ISchichtvorlagePfad } from '../models/app/firestore-pfad.types';
 import type { IPurEmployeePfad } from '../models/legacy/pur-firestore-pfad.types';
 import { FIRESTORE_COLLECTION_PATHS, FIRESTORE_DOCUMENT_PATHS } from './firebase.constants';
 
@@ -48,7 +48,7 @@ describe('Firebase-Konstanten', () => {
       unternehmerId: 'unternehmer-1',
       firmaId: 'firma-1',
       filialeId: 'filiale-1',
-      dienstplanId: '2026-10-05',
+      dienstplanId: '2026-10',
       versionId: 'version-1',
       schichtId: 'schicht-1',
     };
@@ -57,19 +57,35 @@ describe('Firebase-Konstanten', () => {
       'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan',
     );
     expect(FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10-05',
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10',
     );
     expect(FIRESTORE_COLLECTION_PATHS.dienstplanVersionen(pfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10-05/version',
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/version',
     );
     expect(FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10-05/version/version-1',
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/version/version-1',
     );
     expect(FIRESTORE_COLLECTION_PATHS.schichten(pfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10-05/version/version-1/schicht',
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/version/version-1/schicht',
     );
     expect(FIRESTORE_DOCUMENT_PATHS.schicht(pfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10-05/version/version-1/schicht/schicht-1',
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/version/version-1/schicht/schicht-1',
+    );
+  });
+
+  it('bildet die Schichtvorlagenpfade innerhalb einer Filiale', () => {
+    const pfad: ISchichtvorlagePfad = {
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialeId: 'filiale-1',
+      schichtvorlageId: 'fruehschicht',
+    };
+
+    expect(FIRESTORE_COLLECTION_PATHS.schichtvorlagen(pfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtvorlage',
+    );
+    expect(FIRESTORE_DOCUMENT_PATHS.schichtvorlage(pfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtvorlage/fruehschicht',
     );
   });
 });

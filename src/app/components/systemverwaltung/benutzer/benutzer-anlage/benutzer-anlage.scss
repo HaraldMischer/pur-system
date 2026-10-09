@@ -1,0 +1,14 @@
+// pur-system/src/app/components/systemverwaltung/benutzer/benutzer-anlage/benutzer-anlage.scss
+
+.benutzer-anlage__zugangsdaten {
+  container-type: inline-size;
+  container-name: zugangsdaten;
+
+  > .pur-form--grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    @container zugangsdaten (max-width: 600px) {
+      grid-template-columns: 1fr;
+    }
+  }
+}

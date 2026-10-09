@@ -2,6 +2,7 @@
 
 import { authGuard } from './guards/auth.guard';
 import { bereichGuard } from './guards/bereich.guard';
+import { dienstplanPlanungGuard } from './guards/dienstplan-planung.guard';
 import { initialisierungGuard } from './guards/initialisierung.guard';
 import { masterGuard } from './guards/master.guard';
 import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
@@ -14,7 +15,6 @@ describe('app routes', () => {
       ['login', 'Anmelden'],
       ['initialisierungsfehler', 'Initialisierungsfehler'],
       ['dashboard', 'Dashboard'],
-      ['schichtplan', 'Schichtplan'],
       ['passwort', 'Passwort ändern'],
       ['verwaltung', 'Verwaltung'],
     ]);
@@ -22,6 +22,29 @@ describe('app routes', () => {
     expectedTitles.forEach((title, path) => {
       expect(routes.find((route) => route.path === path)?.title).toBe(title);
     });
+  });
+
+  it('should provide a protected componentless shift plan area with three pages', () => {
+    const schichtplanRoute = routes.find((route) => route.path === 'schichtplan');
+    const redirectRoute = schichtplanRoute?.children?.find((route) => route.path === '');
+    const ansichtRoute = schichtplanRoute?.children?.find((route) => route.path === 'ansicht');
+    const planungRoute = schichtplanRoute?.children?.find((route) => route.path === 'planung');
+    const einstellungenRoute = schichtplanRoute?.children?.find(
+      (route) => route.path === 'einstellungen',
+    );
+
+    expect(schichtplanRoute?.canActivate).toEqual([authGuard, initialisierungGuard, bereichGuard]);
+    expect(schichtplanRoute?.data?.['bereich']).toBe('schichtplan');
+    expect(schichtplanRoute?.loadComponent).toBeUndefined();
+    expect(redirectRoute).toEqual({ path: '', pathMatch: 'full', redirectTo: 'ansicht' });
+    expect(ansichtRoute?.title).toBe('Dienstplan ansehen');
+    expect(ansichtRoute?.loadComponent).toBeDefined();
+    expect(planungRoute?.title).toBe('Dienstplan planen');
+    expect(planungRoute?.canActivate).toEqual([dienstplanPlanungGuard]);
+    expect(planungRoute?.loadComponent).toBeDefined();
+    expect(einstellungenRoute?.title).toBe('Schichtvorlagen');
+    expect(einstellungenRoute?.canActivate).toEqual([dienstplanPlanungGuard]);
+    expect(einstellungenRoute?.loadComponent).toBeDefined();
   });
 
   it('should provide a protected componentless employee parent and list route', () => {
@@ -100,9 +123,7 @@ describe('app routes', () => {
       (route) => route.path === 'benutzer',
     );
     const benutzerRedirect = benutzerRoute?.children?.find((route) => route.path === '');
-    const benutzerAnlegenRoute = benutzerRoute?.children?.find(
-      (route) => route.path === 'anlegen',
-    );
+    const benutzerAnlegenRoute = benutzerRoute?.children?.find((route) => route.path === 'anlegen');
     const benutzerVerwaltenRoute = benutzerRoute?.children?.find(
       (route) => route.path === 'verwalten',
     );

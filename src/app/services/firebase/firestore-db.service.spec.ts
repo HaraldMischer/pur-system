@@ -14,6 +14,7 @@ import {
   FIRESTORE_GET_DOCS_FROM_SERVER,
   FIRESTORE_ON_SNAPSHOT,
   FIRESTORE_QUERY,
+  FIRESTORE_RUN_TRANSACTION,
   FIRESTORE_SERVER_TIMESTAMP,
   FIRESTORE_SET_DOC,
   FIRESTORE_WRITE_BATCH,
@@ -44,6 +45,18 @@ describe('FirestoreDbService', () => {
     delete: batchDeleteMock,
     commit: batchCommitMock,
   });
+  const transactionGetMock = vi.fn();
+  const transactionSetMock = vi.fn();
+  const transactionDeleteMock = vi.fn();
+  const runTransactionMock = vi.fn(
+    async (_firestore: Firestore, aktion: (transaction: unknown) => Promise<unknown>) => {
+      return aktion({
+        get: transactionGetMock,
+        set: transactionSetMock,
+        delete: transactionDeleteMock,
+      });
+    },
+  );
   const unsubscribeMock = vi.fn();
   const serverTimestampMock = vi.fn().mockReturnValue('server-zeitstempel');
   const whereMock = vi.fn().mockReturnValue('where-constraint');
@@ -79,6 +92,11 @@ describe('FirestoreDbService', () => {
     );
     setDocMock.mockResolvedValue(undefined);
     batchCommitMock.mockResolvedValue(undefined);
+    transactionGetMock.mockResolvedValue({
+      id: 'version-1',
+      exists: () => true,
+      data: () => ({ revision: 2 }),
+    });
 
     TestBed.configureTestingModule({
       providers: [
@@ -94,6 +112,7 @@ describe('FirestoreDbService', () => {
         { provide: FIRESTORE_GET_DOCS_FROM_SERVER, useValue: getDocsFromServerMock },
         { provide: FIRESTORE_ON_SNAPSHOT, useValue: onSnapshotMock },
         { provide: FIRESTORE_QUERY, useValue: queryMock },
+        { provide: FIRESTORE_RUN_TRANSACTION, useValue: runTransactionMock },
         { provide: FIRESTORE_SERVER_TIMESTAMP, useValue: serverTimestampMock },
         { provide: FIRESTORE_SET_DOC, useValue: setDocMock },
         { provide: FIRESTORE_WRITE_BATCH, useValue: writeBatchMock },
@@ -136,6 +155,35 @@ describe('FirestoreDbService', () => {
       { mergeFields: ['mitarbeiterIds', 'aktualisiertAm'] },
     );
     expect(batchCommitMock).toHaveBeenCalledOnce();
+  });
+
+  it('should update dependent documents in a transaction', async () => {
+    docMock.mockImplementation((_firestore, path: string) => `ref:${path}`);
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(
+      service.executeDocumentTransaction<{ revision: number }, number>(
+        'version/v-1',
+        (dokument) => {
+          expect(dokument).toEqual({ id: 'version-1', daten: { revision: 2 } });
+          return {
+            ergebnis: 3,
+            operationen: [
+              { documentPath: 'version/v-1', daten: { revision: 3 } },
+              { documentPath: 'version/v-1/schicht/s-1', delete: true },
+            ],
+          };
+        },
+      ),
+    ).resolves.toBe(3);
+
+    expect(runTransactionMock).toHaveBeenCalledWith(firestoreMock, expect.any(Function));
+    expect(transactionSetMock).toHaveBeenCalledWith(
+      'ref:version/v-1',
+      { revision: 3 },
+      { merge: true },
+    );
+    expect(transactionDeleteMock).toHaveBeenCalledWith('ref:version/v-1/schicht/s-1');
   });
 
   it('should load a collection with document ids', async () => {

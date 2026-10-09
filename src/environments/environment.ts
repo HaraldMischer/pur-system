@@ -16,6 +16,7 @@ export const environment = {
   firestoreLesestrategien: {
     benutzerprofil: 'networkOnly',
     stammdaten: 'networkOnly',
+    dienstplaene: 'networkOnly',
   } as TFirestoreLesestrategien,
   firebase: firebaseConfig,
 };

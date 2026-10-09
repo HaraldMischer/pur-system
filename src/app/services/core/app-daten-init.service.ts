@@ -7,6 +7,7 @@ import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lese
 import { IBenutzerProfilDokument, TBenutzerZugriffe } from '../../commons/models/domain/benutzer';
 import { IMitarbeiterEintrag } from '../../commons/models/domain/mitarbeiter';
 import { StammdatenStore, TStammdatenLadeauftrag } from '../../stores/app/stammdaten.store';
+import { DienstplanStore } from '../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../stores/domain/mitarbeiter.store';
 import { MitarbeiterService } from '../domain/mitarbeiter.service';
 import { DebugLogService } from './debug-log.service';
@@ -26,13 +27,14 @@ const UNGUELTIGES_BENUTZERPROFIL = { code: 'app/invalid-user-profile' } as const
 export class AppDatenInitService {
   // ===== Interne Dependency Injection =========
   private readonly _stammdatenStore = inject(StammdatenStore);
+  private readonly _dienstplanStore = inject(DienstplanStore);
   private readonly _mitarbeiterStore = inject(MitarbeiterStore);
   private readonly _mitarbeiterService = inject(MitarbeiterService);
   private readonly _debugLogService = inject(DebugLogService);
 
   // ===== Öffentliche Aktionen =================
   /**
-   * Lädt alle für das aktive Benutzerprofil zwingend benötigten Stammdaten.
+   * Lädt alle für das aktive Benutzerprofil zwingend benötigten Sitzungsdaten.
    *
    * @param benutzerId - UID des angemeldeten Firebase-Benutzers.
    * @param profil - Aktives Benutzerprofil mit Rolle und Datenzugriffen.
@@ -43,27 +45,38 @@ export class AppDatenInitService {
   async loadStammdaten(
     benutzerId: string,
     profil: IBenutzerProfilDokument,
-    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.stammdaten,
+    strategie?: TFirestoreLesestrategie,
   ): Promise<void> {
     if (!profil.aktiv) {
       throw UNGUELTIGES_BENUTZERPROFIL;
     }
 
-    this._debugLogService.logDatenflussTitel('2. STAMMDATEN ');
+    this._debugLogService.logDatenflussTitel('2. UNTERNEHMENSDATEN ');
+    const stammdatenStrategie = strategie ?? environment.firestoreLesestrategien.stammdaten;
+    const dienstplanStrategie = strategie ?? environment.firestoreLesestrategien.dienstplaene;
 
     let mitarbeiterAuftraege: readonly TMitarbeiterLadeauftrag[];
     switch (profil.userRole) {
       case 'master':
-        mitarbeiterAuftraege = await this.loadMasterDaten(benutzerId, strategie);
+        mitarbeiterAuftraege = await this.loadMasterDaten(benutzerId, stammdatenStrategie);
         break;
       case 'office':
-        mitarbeiterAuftraege = await this.loadOfficeDaten(benutzerId, profil, strategie);
+        mitarbeiterAuftraege = await this.loadOfficeDaten(benutzerId, profil, stammdatenStrategie);
         break;
       case 'filiale':
-        mitarbeiterAuftraege = await this.loadFilialeDaten(benutzerId, profil, strategie);
+        mitarbeiterAuftraege = await this.loadFilialeDaten(
+          benutzerId,
+          profil,
+          stammdatenStrategie,
+          dienstplanStrategie,
+        );
         break;
       case 'mitarbeiter':
-        mitarbeiterAuftraege = await this.loadMitarbeiterDaten(benutzerId, profil, strategie);
+        mitarbeiterAuftraege = await this.loadMitarbeiterDaten(
+          benutzerId,
+          profil,
+          stammdatenStrategie,
+        );
         break;
       default:
         throw UNGUELTIGES_BENUTZERPROFIL;
@@ -73,11 +86,12 @@ export class AppDatenInitService {
   }
 
   /**
-   * Setzt alle durch den Ladeservice verwalteten sitzungsbezogenen Stammdaten zurück.
+   * Setzt alle durch den Ladeservice verwalteten sitzungsbezogenen Daten zurück.
    */
   reset(): void {
     this._stammdatenStore.reset();
     this._mitarbeiterStore.resetMitarbeiter();
+    this._dienstplanStore.resetDienstplaene();
   }
 
   // ===== Interne Helfer =======================
@@ -142,6 +156,7 @@ export class AppDatenInitService {
     benutzerId: string,
     profil: IBenutzerProfilDokument,
     strategie: TFirestoreLesestrategie,
+    dienstplanStrategie: TFirestoreLesestrategie,
   ): Promise<readonly TMitarbeiterLadeauftrag[]> {
     const zugriffe = this.getGueltigeZugriffe(profil.zugriffe);
     const firmen = this.getFirmenZuordnungen(zugriffe);
@@ -169,6 +184,16 @@ export class AppDatenInitService {
     // Schritt 2: Mitarbeiter der zugeordneten Filiale laden.
     await this.warteAufLadeauftraege(
       this.loadMitarbeiterAuftraege(mitarbeiterAuftraege, strategie),
+    );
+
+    // Schritt 3: Vollständigen Dienstplanbestand der zugeordneten Filiale laden.
+    await this._dienstplanStore.loadDienstplanBestand(
+      {
+        unternehmerId: firmen[0].unternehmerId,
+        firmaId: firmen[0].firmaId,
+        filialeId: firmen[0].filialIds[0],
+      },
+      dienstplanStrategie,
     );
     return mitarbeiterAuftraege;
   }
@@ -403,7 +428,5 @@ export class AppDatenInitService {
     for (const ergebnis of mitarbeiterErgebnisse) {
       this._debugLogService.logDatenGeladen(ergebnis.bezeichnung, ergebnis.anzahl);
     }
-
-    this._debugLogService.logDatenflussTitel('STAMMDATEN VOLLSTÄNDIG GELADEN ');
   }
 }

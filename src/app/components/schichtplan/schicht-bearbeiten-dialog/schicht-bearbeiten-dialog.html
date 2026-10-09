@@ -1,0 +1,92 @@
+<!-- pur-system/src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.html -->
+
+<h2 mat-dialog-title>{{ istBearbeitung ? 'Schicht bearbeiten' : 'Schicht anlegen' }}</h2>
+<mat-dialog-content>
+  <form
+    id="schicht-form"
+    class="pur-form pur-form--grid"
+    [formGroup]="schichtForm"
+    (ngSubmit)="saveSchicht()"
+  >
+    <mat-form-field appearance="outline">
+      <mat-label>Mitarbeiter</mat-label>
+      <mat-select formControlName="mitarbeiterId">
+        @for (eintrag of daten.mitarbeiter; track eintrag.id) {
+          <mat-option [value]="eintrag.id">
+            {{ eintrag.person.nachname }}, {{ eintrag.person.vorname }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (!istBearbeitung && schichtvorlagen.length === 0) {
+      <p class="pur-form__item" role="status">
+        Lege zuerst eine aktive Schichtvorlage für diese Filiale an.
+      </p>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>Schichtvorlage</mat-label>
+      <mat-select formControlName="schichtvorlageId">
+        @for (vorlage of schichtvorlagen; track vorlage.id) {
+          <mat-option [value]="vorlage.id">
+            {{ vorlage.bezeichnung }} · {{ vorlage.beginnLokalzeit }}–{{ vorlage.endeLokalzeit }}
+            @if (vorlage.endetAmFolgetag) {
+              (Folgetag)
+            }
+            @if (!vorlage.aktiv) {
+              · inaktiv
+            }
+          </mat-option>
+        }
+        @if (hatGespeicherteVorlageOhneEintrag && daten.schicht; as schicht) {
+          <mat-option [value]="schicht.schichtvorlageId">
+            {{ schicht.schichtvorlageBezeichnung }} · gespeicherte Vorlage
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Datum</mat-label>
+      <input
+        matInput
+        type="date"
+        [min]="daten.zeitraumStart"
+        [max]="daten.zeitraumEnde"
+        formControlName="datum"
+      />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Pause in Minuten</mat-label>
+      <input matInput type="number" min="0" formControlName="pauseMinuten" />
+    </mat-form-field>
+    @if (error() || dienstplanStore.error(); as fehlermeldung) {
+      <p class="pur-form__item pur-form__item--error" role="alert">
+        {{ error() ?? fehlermeldung }}
+      </p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  @if (istBearbeitung) {
+    <button
+      matButton
+      type="button"
+      [disabled]="dienstplanStore.inProgress()"
+      (click)="deleteSchicht()"
+    >
+      Löschen
+    </button>
+  }
+  <button matButton type="button" [disabled]="dienstplanStore.inProgress()" mat-dialog-close>
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="schicht-form"
+    [disabled]="
+      schichtForm.invalid || dienstplanStore.inProgress() || (istBearbeitung && !hatAenderungen())
+    "
+  >
+    Speichern
+  </button>
+</mat-dialog-actions>

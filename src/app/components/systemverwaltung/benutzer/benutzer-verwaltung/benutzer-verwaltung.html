@@ -1,0 +1,108 @@
+<!-- pur-system/src/app/components/systemverwaltung/benutzer/benutzer-verwaltung/benutzer-verwaltung.html -->
+
+<section class="pur-page-section benutzer-verwaltung">
+  <!-- Benutzerauswahl -->
+  <div class="pur-form pur-form--grid">
+    <h2 class="pur-form__titel">Benutzer auswählen</h2>
+
+    <div class="pur-form__row benutzer-verwaltung__auswahl">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+        <mat-label>Benutzer</mat-label>
+        <mat-select
+          class="pur-select"
+          [panelClass]="['pur-select__panel', 'pur-select__panel--grouped']"
+          [formControl]="benutzerUid"
+          (selectionChange)="selectBenutzer($event.value)"
+        >
+          @for (gruppe of benutzergruppen(); track gruppe.rolle) {
+            <mat-optgroup [label]="gruppe.label">
+              @for (profil of gruppe.benutzer; track profil.uid) {
+                <mat-option [value]="profil.uid">{{ profil.anzeigename }}</mat-option>
+              }
+            </mat-optgroup>
+          } @empty {
+            <mat-option disabled>Keine Benutzerprofile verfügbar</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (verwaltungStore.selectedBenutzer()?.userRole === 'master') {
+        <button
+          class="pur-form__item pur-form__item--button"
+          matButton="outlined"
+          type="button"
+          [disabled]="verwaltungStore.inProgress()"
+          (click)="openBenutzerBearbeitenDialog()"
+        >
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          Benutzer bearbeiten
+        </button>
+      } @else {
+        <button
+          class="pur-form__item pur-form__item--button"
+          matButton="outlined"
+          type="button"
+          [matMenuTriggerFor]="benutzerBearbeitenMenu"
+          [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
+        >
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          Benutzer bearbeiten
+        </button>
+      }
+
+      <mat-menu #benutzerBearbeitenMenu="matMenu">
+        <button
+          mat-menu-item
+          type="button"
+          [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
+          (click)="openBenutzerBearbeitenDialog()"
+        >
+          <mat-icon aria-hidden="true">person_edit</mat-icon>
+          <span>Benutzerdaten bearbeiten</span>
+        </button>
+
+        @if (verwaltungStore.selectedBenutzer()?.userRole !== 'master') {
+          <button
+            mat-menu-item
+            type="button"
+            [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
+            (click)="openBenutzerDatenzuordnungDialog()"
+          >
+            <mat-icon aria-hidden="true">account_tree</mat-icon>
+            <span>Datenzuordnung ändern</span>
+          </button>
+
+          <mat-divider />
+
+          <button
+            mat-menu-item
+            type="button"
+            [disabled]="!verwaltungStore.selectedBenutzer() || verwaltungStore.inProgress()"
+            (click)="openBenutzerLoeschenDialog()"
+          >
+            <mat-icon aria-hidden="true">delete</mat-icon>
+            <span>Benutzerkonto löschen</span>
+          </button>
+        }
+      </mat-menu>
+    </div>
+
+    @if (verwaltungStore.benutzerprofileError(); as error) {
+      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+    } @else if (
+      verwaltungStore.benutzerprofileIsLoaded() && verwaltungStore.benutzerprofile().length === 0
+    ) {
+      <p class="pur-form__item pur-form__item--message" role="status">
+        Keine Benutzerprofile verfügbar.
+      </p>
+    }
+
+    @if (verwaltungStore.updateSuccess(); as erfolg) {
+      <p class="pur-form__item pur-form__item--success" role="status">{{ erfolg }}</p>
+    }
+
+    @if (verwaltungStore.updateError(); as error) {
+      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+    }
+  </div>
+</section>

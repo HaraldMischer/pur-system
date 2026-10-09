@@ -24,10 +24,10 @@ const EINTRAEGE: readonly INavigationLink[] = [
   },
   {
     typ: 'link',
-    id: 'schichtplan',
-    label: 'Schichtplan',
-    icon: 'calendar_month',
-    route: '/schichtplan',
+    id: 'dienstplanansicht',
+    label: 'Dienstplan ansehen',
+    icon: 'visibility',
+    route: '/schichtplan/ansicht',
     bereich: 'schichtplan',
   },
 ];
@@ -41,7 +41,10 @@ describe('AppSidenavFlatNavigation', () => {
       providers: [
         provideRouter([
           { path: 'dashboard', component: TestRouteComponent },
-          { path: 'schichtplan', component: TestRouteComponent },
+          {
+            path: 'schichtplan',
+            children: [{ path: 'ansicht', component: TestRouteComponent }],
+          },
         ]),
       ],
     }).compileComponents();
@@ -58,8 +61,8 @@ describe('AppSidenavFlatNavigation', () => {
     expect(links).toHaveLength(2);
     expect(links[0].textContent).toContain('dashboard');
     expect(links[0].textContent).toContain('Dashboard');
-    expect(links[1].textContent).toContain('calendar_month');
-    expect(links[1].textContent).toContain('Schichtplan');
+    expect(links[1].textContent).toContain('visibility');
+    expect(links[1].textContent).toContain('Dienstplan ansehen');
   });
 
   it('should emit the navigation selection when a link is selected', () => {
@@ -77,11 +80,11 @@ describe('AppSidenavFlatNavigation', () => {
   it('should mark the link of the active route', async () => {
     const router = TestBed.inject(Router);
 
-    await router.navigateByUrl('/schichtplan');
+    await router.navigateByUrl('/schichtplan/ansicht');
     fixture.detectChanges();
     await fixture.whenStable();
     const activeLink = (fixture.nativeElement as HTMLElement).querySelector('.active-nav-item');
 
-    expect(activeLink?.textContent).toContain('Schichtplan');
+    expect(activeLink?.textContent).toContain('Dienstplan ansehen');
   });
 });

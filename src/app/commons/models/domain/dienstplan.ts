@@ -2,6 +2,8 @@
 
 import { Timestamp } from 'firebase/firestore';
 
+import type { ISchichtEintrag } from './schicht';
+
 export type TDienstplanVersionStatus = 'entwurf' | 'veroeffentlicht' | 'archiviert';
 
 // ===== Anwendungs-Typen ====================
@@ -12,19 +14,30 @@ export interface IDienstplanAnlage {
   zeitzone: string;
 }
 
-export interface IDienstplanEintrag extends IDienstplanAnlage {
+export interface IDienstplanEintrag extends IDienstplanDokument {
   id: string;
   unternehmerId: string;
   firmaId: string;
   filialeId: string;
 }
 
-export interface IDienstplanVersionEintrag {
+export interface IDienstplanVersionEintrag extends IDienstplanVersionDokument {
   id: string;
   dienstplanId: string;
-  nummer: number;
-  revision: number;
-  status: TDienstplanVersionStatus;
+  unternehmerId: string;
+  firmaId: string;
+  filialeId: string;
+}
+
+export interface IDienstplanBestand {
+  dienstplaene: readonly IDienstplanEintrag[];
+  versionen: readonly IDienstplanVersionEintrag[];
+  schichten: readonly ISchichtEintrag[];
+}
+
+export interface IDienstplanAnlageErgebnis {
+  dienstplan: IDienstplanEintrag;
+  version: IDienstplanVersionEintrag;
 }
 
 // ===== Firestore-Dokumente ==================

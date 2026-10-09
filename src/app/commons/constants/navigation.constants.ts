@@ -12,13 +12,47 @@ const DASHBOARD_NAVIGATION: INavigationLink = {
   bereich: 'dashboard',
 };
 
-const SCHICHTPLAN_NAVIGATION: INavigationLink = {
+const DIENSTPLAN_ANSICHT_NAVIGATION: INavigationLink = {
   typ: 'link',
+  id: 'dienstplanansicht',
+  label: 'Dienstplan ansehen',
+  icon: 'visibility',
+  route: '/schichtplan/ansicht',
+  bereich: 'schichtplan',
+};
+
+const SCHICHTPLAN_NAVIGATION: INavigationGruppe = {
+  typ: 'gruppe',
   id: 'schichtplan',
   label: 'Schichtplan',
   icon: 'calendar_month',
-  route: '/schichtplan',
-  bereich: 'schichtplan',
+  kinder: [
+    DIENSTPLAN_ANSICHT_NAVIGATION,
+    {
+      typ: 'link',
+      id: 'dienstplanplanung',
+      label: 'Dienstplan planen',
+      icon: 'edit_calendar',
+      route: '/schichtplan/planung',
+      bereich: 'schichtplan',
+    },
+    {
+      typ: 'link',
+      id: 'schichtvorlagen',
+      label: 'Schichtvorlagen',
+      icon: 'tune',
+      route: '/schichtplan/einstellungen',
+      bereich: 'schichtplan',
+    },
+  ],
+};
+
+const SCHICHTPLAN_ANSICHT_NAVIGATION: INavigationGruppe = {
+  typ: 'gruppe',
+  id: 'schichtplan',
+  label: 'Schichtplan',
+  icon: 'calendar_month',
+  kinder: [DIENSTPLAN_ANSICHT_NAVIGATION],
 };
 
 const MITARBEITER_NAVIGATION: INavigationGruppe = {
@@ -110,10 +144,10 @@ export const NAVIGATION_NACH_ROLLE = {
   },
   filiale: {
     darstellung: 'nested',
-    eintraege: [DASHBOARD_NAVIGATION, SCHICHTPLAN_NAVIGATION, MITARBEITER_NAVIGATION],
+    eintraege: [DASHBOARD_NAVIGATION, SCHICHTPLAN_ANSICHT_NAVIGATION, MITARBEITER_NAVIGATION],
   },
   mitarbeiter: {
     darstellung: 'flat',
-    eintraege: [DASHBOARD_NAVIGATION, SCHICHTPLAN_NAVIGATION],
+    eintraege: [DASHBOARD_NAVIGATION, DIENSTPLAN_ANSICHT_NAVIGATION],
   },
 } as const satisfies Readonly<Record<TUserRole, IRollenNavigation>>;

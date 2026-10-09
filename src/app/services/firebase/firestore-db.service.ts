@@ -15,6 +15,7 @@ import {
   FIRESTORE_GET_DOCS_FROM_SERVER,
   FIRESTORE_ON_SNAPSHOT,
   FIRESTORE_QUERY,
+  FIRESTORE_RUN_TRANSACTION,
   FIRESTORE_SERVER_TIMESTAMP,
   FIRESTORE_SET_DOC,
   FIRESTORE_WRITE_BATCH,
@@ -40,6 +41,11 @@ export interface IFirestoreBatchLoeschung {
 }
 
 export type TFirestoreBatchOperation = IFirestoreBatchAktualisierung | IFirestoreBatchLoeschung;
+
+export interface IFirestoreTransaktionsergebnis<TResult> {
+  ergebnis: TResult;
+  operationen: readonly TFirestoreBatchOperation[];
+}
 
 const TECHNISCHE_SERVERFEHLER = new Set([
   'aborted',
@@ -67,6 +73,7 @@ export class FirestoreDbService {
   private readonly getDocsFromServer = inject(FIRESTORE_GET_DOCS_FROM_SERVER);
   private readonly onSnapshot = inject(FIRESTORE_ON_SNAPSHOT);
   private readonly query = inject(FIRESTORE_QUERY);
+  private readonly runTransaction = inject(FIRESTORE_RUN_TRANSACTION);
   private readonly loadingService = inject(LoadingService);
   private readonly netzwerkStatusService = inject(NetzwerkStatusService);
   private readonly serverTimestamp = inject(FIRESTORE_SERVER_TIMESTAMP);
@@ -405,6 +412,46 @@ export class FirestoreDbService {
           batch.set(documentRef, operation.daten, options);
         }
         return batch.commit();
+      });
+    });
+  }
+
+  /**
+   * Liest ein Dokument und schreibt davon abhängige Änderungen in einer Firestore-Transaktion.
+   *
+   * @param documentPath - Pfad des zuerst zu lesenden Dokuments.
+   * @param aktion - Erstellt aus dem gelesenen Stand Ergebnis und Schreiboperationen.
+   * @returns Das durch die Aktion erzeugte fachliche Ergebnis.
+   * @throws Gibt Validierungs- und Firestore-Fehler an die aufrufende Stelle weiter.
+   */
+  async executeDocumentTransaction<T extends DocumentData, TResult>(
+    documentPath: string,
+    aktion: (dokument: IFirestoreDokument<T> | null) => IFirestoreTransaktionsergebnis<TResult>,
+  ): Promise<TResult> {
+    this.netzwerkStatusService.assertOnline();
+
+    return this.loadingService.trackWrite(async () => {
+      return this.runInContext(() => {
+        return this.runTransaction(this.firestore, async (transaction) => {
+          const documentRef = this.doc(this.firestore, documentPath);
+          const snapshot = await transaction.get(documentRef);
+          const dokument = snapshot.exists()
+            ? { id: snapshot.id, daten: snapshot.data() as T }
+            : null;
+          const { ergebnis, operationen } = aktion(dokument);
+          for (const operation of operationen) {
+            const operationRef = this.doc(this.firestore, operation.documentPath);
+            if ('delete' in operation) {
+              transaction.delete(operationRef);
+              continue;
+            }
+            const options = operation.replaceFields
+              ? { mergeFields: Object.keys(operation.daten) }
+              : { merge: true };
+            transaction.set(operationRef, operation.daten, options);
+          }
+          return ergebnis;
+        });
       });
     });
   }
