@@ -7,6 +7,7 @@ import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lese
 import {
   FIRESTORE_ADD_DOC,
   FIRESTORE_COLLECTION,
+  FIRESTORE_DELETE_FIELD,
   FIRESTORE_DELETE_DOC,
   FIRESTORE_DOC,
   FIRESTORE_GET_DOC_FROM_CACHE,
@@ -65,6 +66,7 @@ export class FirestoreDbService {
   private readonly firestore = inject(Firestore);
   private readonly addDoc = inject(FIRESTORE_ADD_DOC);
   private readonly collection = inject(FIRESTORE_COLLECTION);
+  private readonly deleteField = inject(FIRESTORE_DELETE_FIELD);
   private readonly deleteDoc = inject(FIRESTORE_DELETE_DOC);
   private readonly doc = inject(FIRESTORE_DOC);
   private readonly getDocFromCache = inject(FIRESTORE_GET_DOC_FROM_CACHE);
@@ -463,6 +465,15 @@ export class FirestoreDbService {
    */
   createServerTimestamp(): FieldValue {
     return this.serverTimestamp();
+  }
+
+  /**
+   * Erstellt einen Firestore-Platzhalter zum Entfernen eines vorhandenen Feldes.
+   *
+   * @returns Platzhalter für das zu entfernende Dokumentfeld.
+   */
+  createDeleteField(): FieldValue {
+    return this.deleteField();
   }
 
   // ===== Interne Helfer =======================

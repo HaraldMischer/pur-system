@@ -17,6 +17,11 @@
           </mat-option>
         }
       </mat-select>
+      @if (schichtForm.controls.mitarbeiterId.hasError('ungueltigerMitarbeiter')) {
+        <mat-error
+          >Der ausgewählte Mitarbeiter darf in dieser Filiale nicht eingeplant werden.</mat-error
+        >
+      }
     </mat-form-field>
     @if (!istBearbeitung && schichtvorlagen.length === 0) {
       <p class="pur-form__item" role="status">
@@ -43,6 +48,9 @@
           </mat-option>
         }
       </mat-select>
+      @if (schichtForm.controls.schichtvorlageId.hasError('ungueltigeSchichtvorlage')) {
+        <mat-error>Die ausgewählte Schichtvorlage ist nicht mehr aktiv.</mat-error>
+      }
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Datum</mat-label>
@@ -53,11 +61,27 @@
         [max]="daten.zeitraumEnde"
         formControlName="datum"
       />
+      @if (schichtForm.controls.datum.hasError('datumAusserhalbZeitraum')) {
+        <mat-error>Das Datum muss innerhalb des ausgewählten Dienstplanmonats liegen.</mat-error>
+      }
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Pause in Minuten</mat-label>
       <input matInput type="number" min="0" formControlName="pauseMinuten" />
+      @if (schichtForm.controls.pauseMinuten.hasError('ungueltigePause')) {
+        <mat-error>Die Pause muss eine nicht negative ganze Minutenanzahl sein.</mat-error>
+      }
     </mat-form-field>
+    @if (schichtForm.hasError('pauseNichtUnterSchichtdauer')) {
+      <p class="pur-form__item pur-form__item--error" role="alert">
+        Die Pause muss kürzer als die Schichtdauer sein.
+      </p>
+    }
+    @if (schichtForm.hasError('ungueltigeZeitwerte')) {
+      <p class="pur-form__item pur-form__item--error" role="alert">
+        Die Schichtzeiten sind für das gewählte Datum ungültig.
+      </p>
+    }
     @if (error() || dienstplanStore.error(); as fehlermeldung) {
       <p class="pur-form__item pur-form__item--error" role="alert">
         {{ error() ?? fehlermeldung }}

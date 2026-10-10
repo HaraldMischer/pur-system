@@ -46,18 +46,18 @@ describe('MitarbeiterStore', () => {
   let mitarbeiterServiceMock: {
     loadMitarbeiter: ReturnType<typeof vi.fn>;
     loadMitarbeiterNachFilialen: ReturnType<typeof vi.fn>;
+    loadMitarbeiterEintrag: ReturnType<typeof vi.fn>;
     createMitarbeiter: ReturnType<typeof vi.fn>;
     updateMitarbeiter: ReturnType<typeof vi.fn>;
-    deleteMitarbeiter: ReturnType<typeof vi.fn>;
     mergeMitarbeiter: ReturnType<typeof vi.fn>;
   };
   beforeEach(() => {
     mitarbeiterServiceMock = {
       loadMitarbeiter: vi.fn().mockResolvedValue([zulu, alpha]),
       loadMitarbeiterNachFilialen: vi.fn().mockResolvedValue([zulu, alpha]),
+      loadMitarbeiterEintrag: vi.fn().mockResolvedValue(null),
       createMitarbeiter: vi.fn().mockResolvedValue({ id: 'm-neu' }),
       updateMitarbeiter: vi.fn().mockResolvedValue(undefined),
-      deleteMitarbeiter: vi.fn().mockResolvedValue(undefined),
       mergeMitarbeiter: vi.fn().mockResolvedValue(undefined),
     };
     TestBed.configureTestingModule({
@@ -73,6 +73,7 @@ describe('MitarbeiterStore', () => {
 
     expect(store.snapshot()).toEqual({
       kontexte: {},
+      referenzierteMitarbeiter: {},
       inProgress: false,
       error: null,
     });
@@ -145,6 +146,48 @@ describe('MitarbeiterStore', () => {
     expect(store.getMitarbeiter('u', 'f')).toEqual([]);
   });
 
+  it('should load only missing referenced employees from the network', async () => {
+    mitarbeiterServiceMock.loadMitarbeiterEintrag.mockImplementation(
+      async (_unternehmerId: string, _firmaId: string, mitarbeiterId: string) => {
+        return mitarbeiterId === 'z' ? zulu : null;
+      },
+    );
+    const store = TestBed.inject(MitarbeiterStore);
+    await store.loadMitarbeiter('u', 'f', 'b-1');
+
+    await store.loadMitarbeiterNachIds('u', 'f', ['a', 'z', 'neu', 'neu']);
+
+    expect(mitarbeiterServiceMock.loadMitarbeiterEintrag).toHaveBeenCalledOnce();
+    expect(mitarbeiterServiceMock.loadMitarbeiterEintrag).toHaveBeenCalledWith(
+      'u',
+      'f',
+      'neu',
+      'networkOnly',
+    );
+    expect(store.getMitarbeiterById('u', 'f', 'a')).toEqual(alpha);
+  });
+
+  it('should retain a targeted employee reference outside complete contexts', async () => {
+    mitarbeiterServiceMock.loadMitarbeiterEintrag.mockResolvedValueOnce({
+      ...alpha,
+      id: 'referenziert',
+      filialIds: [],
+      aktiv: false,
+    });
+    const store = TestBed.inject(MitarbeiterStore);
+
+    await store.loadMitarbeiterNachIds('u', 'f', ['referenziert']);
+
+    expect(store.getMitarbeiterById('u', 'f', 'referenziert')).toEqual({
+      ...alpha,
+      id: 'referenziert',
+      filialIds: [],
+      aktiv: false,
+    });
+    await store.loadMitarbeiterNachIds('u', 'f', ['referenziert']);
+    expect(mitarbeiterServiceMock.loadMitarbeiterEintrag).toHaveBeenCalledOnce();
+  });
+
   it('should share a pending load and reuse a fully loaded context', async () => {
     let resolveLoad!: (mitarbeiter: IMitarbeiterEintrag[]) => void;
     mitarbeiterServiceMock.loadMitarbeiter.mockReturnValue(
@@ -184,6 +227,7 @@ describe('MitarbeiterStore', () => {
 
     expect(store.snapshot()).toEqual({
       kontexte: {},
+      referenzierteMitarbeiter: {},
       inProgress: false,
       error: null,
     });
@@ -226,6 +270,7 @@ describe('MitarbeiterStore', () => {
 
     expect(store.snapshot()).toEqual({
       kontexte: {},
+      referenzierteMitarbeiter: {},
       inProgress: false,
       error: null,
     });
@@ -265,17 +310,6 @@ describe('MitarbeiterStore', () => {
       'Die Mitarbeiter müssen vor dem Schreiben in einem eindeutigen Firmenkontext vollständig geladen werden.',
     );
     expect(mitarbeiterServiceMock.createMitarbeiter).not.toHaveBeenCalled();
-  });
-
-  it('should remove a deleted employee from its loaded context', async () => {
-    const store = TestBed.inject(MitarbeiterStore);
-    await store.loadMitarbeiter('u', 'f');
-
-    await store.deleteMitarbeiter('u', 'f', 'z');
-
-    expect(mitarbeiterServiceMock.deleteMitarbeiter).toHaveBeenCalledWith('u', 'f', 'z');
-    expect(store.getMitarbeiter('u', 'f')).toEqual([alpha]);
-    expect(store.inProgress()).toBe(false);
   });
 
   it('should merge branch assignments and remove the source employee', async () => {

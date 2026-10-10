@@ -9,7 +9,15 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -37,6 +45,81 @@ export type TSchichtBearbeitenDialogDaten = {
   readonly schichtvorlagen: readonly ISchichtvorlageEintrag[];
   readonly schicht?: ISchichtEintrag;
 };
+
+// ===== Top-Level Helper =====================
+
+function auswahlValidator(erlaubteIds: readonly string[], fehler: string): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const id = control.value as string;
+    return !id || erlaubteIds.includes(id) ? null : { [fehler]: true };
+  };
+}
+
+function datumValidator(zeitraumStart: string, zeitraumEnde: string): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const datum = control.value as string;
+    if (!datum) return null;
+    return /^\d{4}-\d{2}-\d{2}$/.test(datum) && datum >= zeitraumStart && datum <= zeitraumEnde
+      ? null
+      : { datumAusserhalbZeitraum: true };
+  };
+}
+
+function pauseValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const pauseMinuten = control.value as number;
+    return Number.isInteger(pauseMinuten) && pauseMinuten >= 0 ? null : { ungueltigePause: true };
+  };
+}
+
+function schichtzeitValidator(daten: TSchichtBearbeitenDialogDaten): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const datum = control.get('datum')?.value as string | undefined;
+    const schichtvorlageId = control.get('schichtvorlageId')?.value as string | undefined;
+    const pauseMinuten = control.get('pauseMinuten')?.value as number | undefined;
+    if (!datum || !schichtvorlageId || pauseMinuten === undefined) return null;
+    if (control.get('datum')?.invalid || control.get('schichtvorlageId')?.invalid) return null;
+    if (control.get('pauseMinuten')?.invalid) return null;
+
+    try {
+      const vorlage = getVorlagenMomentaufnahme(daten, schichtvorlageId);
+      const { beginn, ende } = createSchichtZeitstempelAusVorlage(datum, vorlage, daten.zeitzone);
+      const dauerMinuten = (ende.toMillis() - beginn.toMillis()) / 60_000;
+      if (dauerMinuten <= 0) return { ungueltigeZeitwerte: true };
+      return pauseMinuten < dauerMinuten ? null : { pauseNichtUnterSchichtdauer: true };
+    } catch {
+      return { ungueltigeZeitwerte: true };
+    }
+  };
+}
+
+function getVorlagenMomentaufnahme(
+  daten: TSchichtBearbeitenDialogDaten,
+  schichtvorlageId: string,
+): {
+  bezeichnung: string;
+  beginnLokalzeit: string;
+  endeLokalzeit: string;
+  endetAmFolgetag: boolean;
+} {
+  const schicht = daten.schicht;
+  if (schicht?.schichtvorlageId === schichtvorlageId) {
+    return {
+      bezeichnung: schicht.schichtvorlageBezeichnung,
+      beginnLokalzeit: formatSchichtUhrzeit(schicht.beginn, daten.zeitzone),
+      endeLokalzeit: formatSchichtUhrzeit(schicht.ende, daten.zeitzone),
+      endetAmFolgetag:
+        formatSchichtDatum(schicht.beginn, daten.zeitzone) !==
+        formatSchichtDatum(schicht.ende, daten.zeitzone),
+    };
+  }
+
+  const vorlage = daten.schichtvorlagen.find((eintrag) => {
+    return eintrag.id === schichtvorlageId && eintrag.aktiv;
+  });
+  if (!vorlage) throw new Error('Die ausgewählte Schichtvorlage ist nicht mehr aktiv.');
+  return vorlage;
+}
 
 @Component({
   selector: 'app-schicht-bearbeiten-dialog',
@@ -71,26 +154,52 @@ export class SchichtBearbeitenDialog {
       return vorlage.id === this.daten.schicht?.schichtvorlageId;
     }),
   );
-  readonly schichtForm = new FormGroup({
-    mitarbeiterId: new FormControl(this.daten.schicht?.mitarbeiterId ?? '', {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
-    datum: new FormControl(
-      this.daten.schicht
-        ? formatSchichtDatum(this.daten.schicht.beginn, this.daten.zeitzone)
-        : this.daten.datum,
-      { nonNullable: true, validators: [Validators.required] },
-    ),
-    schichtvorlageId: new FormControl(this.daten.schicht?.schichtvorlageId ?? '', {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
-    pauseMinuten: new FormControl(this.daten.schicht?.pauseMinuten ?? 0, {
-      nonNullable: true,
-      validators: [Validators.required, Validators.min(0)],
-    }),
-  });
+  readonly schichtForm = new FormGroup(
+    {
+      mitarbeiterId: new FormControl(this.daten.schicht?.mitarbeiterId ?? '', {
+        nonNullable: true,
+        validators: [
+          Validators.required,
+          auswahlValidator(
+            this.daten.mitarbeiter.map((eintrag) => eintrag.id),
+            'ungueltigerMitarbeiter',
+          ),
+        ],
+      }),
+      datum: new FormControl(
+        this.daten.schicht
+          ? formatSchichtDatum(this.daten.schicht.beginn, this.daten.zeitzone)
+          : this.daten.datum,
+        {
+          nonNullable: true,
+          validators: [
+            Validators.required,
+            datumValidator(this.daten.zeitraumStart, this.daten.zeitraumEnde),
+          ],
+        },
+      ),
+      schichtvorlageId: new FormControl(this.daten.schicht?.schichtvorlageId ?? '', {
+        nonNullable: true,
+        validators: [
+          Validators.required,
+          auswahlValidator(
+            [
+              ...this.daten.schichtvorlagen
+                .filter((vorlage) => vorlage.aktiv)
+                .map((vorlage) => vorlage.id),
+              ...(this.daten.schicht ? [this.daten.schicht.schichtvorlageId] : []),
+            ],
+            'ungueltigeSchichtvorlage',
+          ),
+        ],
+      }),
+      pauseMinuten: new FormControl(this.daten.schicht?.pauseMinuten ?? 0, {
+        nonNullable: true,
+        validators: [Validators.required, pauseValidator()],
+      }),
+    },
+    { validators: [schichtzeitValidator(this.daten)] },
+  );
   readonly istBearbeitung = Boolean(this.daten.schicht);
   readonly error = signal<string | null>(null);
   readonly hatAenderungen = signal(!this.istBearbeitung);
@@ -135,16 +244,12 @@ export class SchichtBearbeitenDialog {
     }
     if (this.istBearbeitung && !this.hatAenderungen()) return;
     const value = this.schichtForm.getRawValue();
-    if (value.datum < this.daten.zeitraumStart || value.datum > this.daten.zeitraumEnde) {
-      this.error.set('Das Schichtdatum muss innerhalb des ausgewählten Monats liegen.');
-      return;
-    }
     const mitarbeiter = this.daten.mitarbeiter.find(
       (eintrag) => eintrag.id === value.mitarbeiterId,
     );
     if (!mitarbeiter) return;
     try {
-      const vorlagenMomentaufnahme = this.getVorlagenMomentaufnahme(value.schichtvorlageId);
+      const vorlagenMomentaufnahme = getVorlagenMomentaufnahme(this.daten, value.schichtvorlageId);
       const { beginn, ende } = createSchichtZeitstempelAusVorlage(
         value.datum,
         vorlagenMomentaufnahme,
@@ -152,7 +257,6 @@ export class SchichtBearbeitenDialog {
       );
       const aktualisierung = {
         mitarbeiterId: mitarbeiter.id,
-        mitarbeiterAnzeigename: getMitarbeiterName(mitarbeiter),
         schichtvorlageId: value.schichtvorlageId,
         schichtvorlageBezeichnung: vorlagenMomentaufnahme.bezeichnung,
         beginn,
@@ -188,34 +292,4 @@ export class SchichtBearbeitenDialog {
       );
     }
   }
-
-  // ===== Interne Helfer =======================
-  private getVorlagenMomentaufnahme(schichtvorlageId: string): {
-    bezeichnung: string;
-    beginnLokalzeit: string;
-    endeLokalzeit: string;
-    endetAmFolgetag: boolean;
-  } {
-    const schicht = this.daten.schicht;
-    if (schicht?.schichtvorlageId === schichtvorlageId) {
-      return {
-        bezeichnung: schicht.schichtvorlageBezeichnung,
-        beginnLokalzeit: formatSchichtUhrzeit(schicht.beginn, this.daten.zeitzone),
-        endeLokalzeit: formatSchichtUhrzeit(schicht.ende, this.daten.zeitzone),
-        endetAmFolgetag:
-          formatSchichtDatum(schicht.beginn, this.daten.zeitzone) !==
-          formatSchichtDatum(schicht.ende, this.daten.zeitzone),
-      };
-    }
-
-    const vorlage = this.daten.schichtvorlagen.find((eintrag) => {
-      return eintrag.id === schichtvorlageId && eintrag.aktiv;
-    });
-    if (!vorlage) throw new Error('Die ausgewählte Schichtvorlage ist nicht mehr aktiv.');
-    return vorlage;
-  }
-}
-
-function getMitarbeiterName(mitarbeiter: IMitarbeiterEintrag): string {
-  return `${mitarbeiter.person.nachname}, ${mitarbeiter.person.vorname}`.trim();
 }

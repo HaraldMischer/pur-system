@@ -8,6 +8,7 @@ import {
   IDienstplanEintrag,
   IDienstplanVersionEintrag,
 } from '../../../commons/models/domain/dienstplan';
+import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 
 type TSchichtplanTag = {
@@ -29,6 +30,7 @@ export class SchichtplanMonat {
   readonly dienstplan = input.required<IDienstplanEintrag>();
   readonly versionen = input.required<readonly IDienstplanVersionEintrag[]>();
   readonly schichten = input.required<readonly ISchichtEintrag[]>();
+  readonly mitarbeiter = input<readonly IMitarbeiterEintrag[]>([]);
   readonly darfSchreiben = input(false);
   readonly schichtAnlegen = output<string>();
   readonly schichtBearbeiten = output<ISchichtEintrag>();
@@ -50,6 +52,9 @@ export class SchichtplanMonat {
     if (status === 'veroeffentlicht') return 'Veröffentlicht';
     if (status === 'archiviert') return 'Archiviert';
     return 'Kein Stand';
+  });
+  readonly mitarbeiterNachId = computed(() => {
+    return new Map(this.mitarbeiter().map((mitarbeiter) => [mitarbeiter.id, mitarbeiter]));
   });
   readonly tage = computed<readonly TSchichtplanTag[]>(() => {
     const dienstplan = this.dienstplan();
@@ -98,6 +103,29 @@ export class SchichtplanMonat {
     const stunden = Math.floor(minuten / 60);
     const restMinuten = minuten % 60;
     return restMinuten === 0 ? `${stunden} Std.` : `${stunden} Std. ${restMinuten} Min.`;
+  }
+
+  /**
+   * Liefert den aktuellen Anzeigenamen eines referenzierten Mitarbeiters.
+   *
+   * @param mitarbeiterId - Dokument-ID des Mitarbeiters.
+   * @returns Nachname und Vorname oder ein verständlicher Ersatztext.
+   */
+  getMitarbeiterAnzeigename(mitarbeiterId: string): string {
+    const mitarbeiter = this.mitarbeiterNachId().get(mitarbeiterId);
+    return mitarbeiter
+      ? `${mitarbeiter.person.nachname}, ${mitarbeiter.person.vorname}`.trim()
+      : 'Mitarbeiter nicht verfügbar';
+  }
+
+  /**
+   * Liefert die aktuelle Farbkennung eines referenzierten Mitarbeiters.
+   *
+   * @param mitarbeiterId - Dokument-ID des Mitarbeiters.
+   * @returns Gespeicherte Farbkennung oder `null`.
+   */
+  getMitarbeiterFarbkennung(mitarbeiterId: string): string | null {
+    return this.mitarbeiterNachId().get(mitarbeiterId)?.farbkennung ?? null;
   }
 }
 

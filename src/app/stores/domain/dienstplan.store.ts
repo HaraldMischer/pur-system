@@ -23,6 +23,7 @@ import {
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { BenutzerStore } from '../app/benutzer.store';
 import { StammdatenStore } from '../app/stammdaten.store';
+import { MitarbeiterStore } from './mitarbeiter.store';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { DienstplanService } from '../../services/domain/dienstplan.service';
@@ -134,6 +135,7 @@ export const DienstplanStore = signalStore(
       dienstplanService = inject(DienstplanService),
       benutzerStore = inject(BenutzerStore),
       stammdatenStore = inject(StammdatenStore),
+      mitarbeiterStore = inject(MitarbeiterStore),
       debugLogService = inject(DebugLogService),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),
@@ -182,6 +184,7 @@ export const DienstplanStore = signalStore(
             nurVeroeffentlicht,
             strategie,
           );
+          await loadReferenzierteMitarbeiter(pfad, bestand);
           logDienstplanBestand(pfad, bestand);
           return { bestand, monat, modus };
         });
@@ -207,6 +210,7 @@ export const DienstplanStore = signalStore(
         ]);
         return loadKontext(pfad, auftragSchluessel, async () => {
           const bestand = await dienstplanService.loadDienstplanBestand(pfad, strategie);
+          await loadReferenzierteMitarbeiter(pfad, bestand);
           logDienstplanBestand(pfad, bestand);
           return { bestand, vollstaendig: true };
         });
@@ -506,6 +510,17 @@ export const DienstplanStore = signalStore(
 
       function getKontext(pfad: IFilialPfad): TDienstplanKontextBestand | undefined {
         return store.kontexte()[getKontextSchluessel(pfad)];
+      }
+
+      function loadReferenzierteMitarbeiter(
+        pfad: IFilialPfad,
+        bestand: IDienstplanBestand,
+      ): Promise<void> {
+        return mitarbeiterStore.loadMitarbeiterNachIds(
+          pfad.unternehmerId,
+          pfad.firmaId,
+          bestand.schichten.map((schicht) => schicht.mitarbeiterId),
+        );
       }
 
       function logDienstplanBestand(pfad: IFilialPfad, bestand: IDienstplanBestand): void {

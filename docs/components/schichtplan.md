@@ -13,9 +13,10 @@ Schichtvorlagen und öffnet die Schreibdialoge nur für einen erlaubten Entwurf.
 
 ## Monatsdarstellung
 
-`SchichtplanMonat` ordnet die Schichten nach lokalem Kalendertag. Jede Schicht zeigt Mitarbeiter, gespeicherte
-Vorlagenbezeichnung, Zeitspanne, Pause und Arbeitszeit. Schreibaktionen werden nur für eine bearbeitbare Entwurfsversion
-angeboten.
+`SchichtplanMonat` ordnet die Schichten nach lokalem Kalendertag. Jede Schicht löst Anzeigename und optionale `farbkennung` über
+die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf und zeigt außerdem Vorlagenbezeichnung, Zeitspanne, Pause und
+Arbeitszeit. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher Ersatztext. Schreibaktionen werden nur
+für eine bearbeitbare Entwurfsversion angeboten.
 
 ## Dialoge
 

@@ -34,6 +34,7 @@ export function mapMitarbeiterEintrag(
   daten: Record<string, unknown>,
 ): IMitarbeiterEintrag {
   const person = mapPerson(daten['person']);
+  const farbkennung = getOptionalString(daten['farbkennung']);
 
   return {
     id,
@@ -43,6 +44,7 @@ export function mapMitarbeiterEintrag(
     rollen: mapRollen(daten['rollen'], daten['rolle']),
     filialIds: getDokumentIds(daten['filialIds']),
     aktiv: daten['aktiv'] === true,
+    ...(farbkennung ? { farbkennung } : {}),
   };
 }
 

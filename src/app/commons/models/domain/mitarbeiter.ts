@@ -41,12 +41,14 @@ export interface IMitarbeiterEintrag extends IMitarbeiterAnlage {
   id: string;
   unternehmerId: string;
   firmaId: string;
+  farbkennung?: string;
 }
 
 // ===== Firestore-Dokumente ==================
 
 export interface IMitarbeiterDokument extends IMitarbeiterAnlage {
   anzeigename: string;
+  farbkennung?: string;
   benutzerUid?: string;
   erstelltAm?: Timestamp;
   aktualisiertAm?: Timestamp;

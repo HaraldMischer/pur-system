@@ -133,6 +133,8 @@ Neu hinzuzufügen:
 - [ ] Die Anmeldung eindeutig an den aktuell erlaubten Filialkontext binden.
 - [ ] Eingabe, laufende Prüfung, ungültige Zugangsdaten, Sperrung und technische Fehler verständlich darstellen.
 - [ ] Den betrieblichen Mitarbeiterzustand getrennt vom Firebase-Auth-Benutzerzustand verwalten.
+- [ ] Planungsaktionen in der Filial-App nur für einen aktiven, der eigenen Filiale zugeordneten Firma-Mitarbeiter mit
+      `dienstplaner` anbieten.
 - [ ] Mitarbeiterwechsel und Abmeldung ermöglichen, ohne die zugrunde liegende Firebase-Auth-Sitzung der Filiale zu beenden.
 
 #### Tests und Abschluss
@@ -153,6 +155,8 @@ Neu hinzuzufügen:
 - [ ] Nur die gemäß Rollenmatrix berechtigten Auth-Rollen sehen und erreichen den Mitarbeiter-Login.
 - [ ] Die Bereichsfreigabe `mitarbeiter` allein genügt nicht, um den betrieblichen Mitarbeiter-Login zu öffnen.
 - [ ] Der betriebliche Mitarbeiterzustand ist eindeutig vom Firebase-Auth-Benutzerzustand getrennt.
+- [ ] Ein Filialkonto kann Planungsaktionen nur mit einer gültigen betrieblichen Sitzung eines aktiven, der eigenen Filiale
+      zugeordneten Firma-Mitarbeiters mit `dienstplaner` verwenden.
 - [ ] Geheimnisse sind weder im Client noch als Klartext oder direkt vergleichbarer Wert in Firestore verfügbar.
 - [ ] Fehlversuche, Sperrung, Mitarbeiterwechsel und Sitzungsende funktionieren gemäß dem beschlossenen Sicherheitskonzept.
 - [ ] Automatisierte Tests, Produktionsbuild, Sicherheitsprüfung und manuelle Bedienprüfung sind erfolgreich.

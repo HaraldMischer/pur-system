@@ -30,6 +30,7 @@ export type TMitarbeiterKontextBestand = {
 
 export type TMitarbeiterSnapshot = {
   readonly kontexte: Readonly<Record<string, TMitarbeiterKontextBestand>>;
+  readonly referenzierteMitarbeiter: Readonly<Record<string, IMitarbeiterEintrag>>;
   readonly inProgress: boolean;
   readonly error: string | null;
 };
@@ -38,6 +39,7 @@ type TMitarbeiterState = TMitarbeiterSnapshot;
 
 const initialState: TMitarbeiterState = {
   kontexte: {},
+  referenzierteMitarbeiter: {},
   inProgress: false,
   error: null,
 };
@@ -52,6 +54,14 @@ function getFilialenKontextSchluessel(
   filialIds: readonly string[],
 ): string {
   return JSON.stringify([unternehmerId, firmaId, [...filialIds].sort()]);
+}
+
+function getMitarbeiterSchluessel(
+  unternehmerId: string,
+  firmaId: string,
+  mitarbeiterId: string,
+): string {
+  return JSON.stringify([unternehmerId, firmaId, mitarbeiterId]);
 }
 
 function sortMitarbeiter(
@@ -75,6 +85,10 @@ export const MitarbeiterStore = signalStore(
     ) => {
       let generation = 0;
       const ladeauftraege = new Map<string, { generation: number; promise: Promise<void> }>();
+      const referenzLadeauftraege = new Map<
+        string,
+        { generation: number; promise: Promise<IMitarbeiterEintrag | null> }
+      >();
 
       // ===== Methoden: Laden ======================
 
@@ -151,6 +165,32 @@ export const MitarbeiterStore = signalStore(
               strategie,
             );
           },
+        );
+      }
+
+      /**
+       * Lädt ausschließlich noch nicht im Store vorhandene Mitarbeiter über ihre Dokument-IDs.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der Firma.
+       * @param mitarbeiterIds - Eindeutige Mitarbeiter-IDs aus fachlichen Referenzen.
+       * @returns Ein Promise, das nach allen gezielten Netzwerkzugriffen abgeschlossen ist.
+       * @throws Gibt Fehler eines gezielten Firestore-Zugriffs an die aufrufende Stelle weiter.
+       */
+      async function loadMitarbeiterNachIds(
+        unternehmerId: string,
+        firmaId: string,
+        mitarbeiterIds: readonly string[],
+      ): Promise<void> {
+        const fehlendeIds = [...new Set(mitarbeiterIds)].filter((mitarbeiterId) => {
+          return (
+            Boolean(mitarbeiterId) && !getMitarbeiterById(unternehmerId, firmaId, mitarbeiterId)
+          );
+        });
+        await Promise.all(
+          fehlendeIds.map((mitarbeiterId) => {
+            return loadMitarbeiterReferenz(unternehmerId, firmaId, mitarbeiterId);
+          }),
         );
       }
 
@@ -251,48 +291,6 @@ export const MitarbeiterStore = signalStore(
           setKontext(schluessel, {
             ...kontext,
             mitarbeiter: sortMitarbeiter(mitarbeiter),
-          });
-        } catch (error: unknown) {
-          if (aktuelleGeneration === generation) {
-            patchState(store, { error: getFirebaseErrorMessage(error) });
-          }
-          throw error;
-        } finally {
-          if (aktuelleGeneration === generation) {
-            patchState(store, { inProgress: false });
-          }
-        }
-      }
-
-      /**
-       * Löscht einen Mitarbeiter aus seinem eindeutig geladenen Firmenkontext.
-       *
-       * @param unternehmerId - Die Dokument-ID des ausgewählten Unternehmers.
-       * @param firmaId - Die Dokument-ID der ausgewählten Firma.
-       * @param mitarbeiterId - Die Dokument-ID des Mitarbeiters.
-       * @returns Ein Promise, das nach der bestätigten Löschung abgeschlossen ist.
-       * @throws Wenn Kontext oder Mitarbeiter fehlen oder die Löschung fehlschlägt.
-       */
-      async function deleteMitarbeiter(
-        unternehmerId: string,
-        firmaId: string,
-        mitarbeiterId: string,
-      ): Promise<void> {
-        const [schluessel, kontext] = getEindeutigenFirmenkontext(unternehmerId, firmaId);
-        if (!kontext.mitarbeiter.some((eintrag) => eintrag.id === mitarbeiterId)) {
-          throw new Error('Der Mitarbeiter ist nicht im geladenen Firmenkontext enthalten.');
-        }
-        const aktuelleGeneration = generation;
-
-        patchState(store, { inProgress: true, error: null });
-        try {
-          await mitarbeiterService.deleteMitarbeiter(unternehmerId, firmaId, mitarbeiterId);
-          if (aktuelleGeneration !== generation) {
-            return;
-          }
-          setKontext(schluessel, {
-            ...kontext,
-            mitarbeiter: kontext.mitarbeiter.filter((eintrag) => eintrag.id !== mitarbeiterId),
           });
         } catch (error: unknown) {
           if (aktuelleGeneration === generation) {
@@ -417,6 +415,33 @@ export const MitarbeiterStore = signalStore(
       }
 
       /**
+       * Liefert einen bereits geladenen Mitarbeiter unabhängig vom ursprünglichen Ladekontext.
+       *
+       * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
+       * @param firmaId - Die Dokument-ID der Firma.
+       * @param mitarbeiterId - Die Dokument-ID des Mitarbeiters.
+       * @returns Der vorhandene Mitarbeiter oder `null`.
+       */
+      function getMitarbeiterById(
+        unternehmerId: string,
+        firmaId: string,
+        mitarbeiterId: string,
+      ): IMitarbeiterEintrag | null {
+        for (const kontext of Object.values(store.kontexte())) {
+          if (kontext.unternehmerId !== unternehmerId || kontext.firmaId !== firmaId) continue;
+          const mitarbeiter = kontext.mitarbeiter.find((eintrag) => {
+            return eintrag.id === mitarbeiterId;
+          });
+          if (mitarbeiter) return mitarbeiter;
+        }
+        return (
+          store.referenzierteMitarbeiter()[
+            getMitarbeiterSchluessel(unternehmerId, firmaId, mitarbeiterId)
+          ] ?? null
+        );
+      }
+
+      /**
        * Prüft, ob ein Firmen- oder Filialkontext vollständig geladen wurde.
        *
        * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
@@ -470,6 +495,7 @@ export const MitarbeiterStore = signalStore(
       function resetMitarbeiter(): void {
         generation += 1;
         ladeauftraege.clear();
+        referenzLadeauftraege.clear();
         patchState(store, initialState);
       }
 
@@ -488,12 +514,63 @@ export const MitarbeiterStore = signalStore(
       function snapshot(): TMitarbeiterSnapshot {
         return untracked(() => ({
           kontexte: store.kontexte(),
+          referenzierteMitarbeiter: store.referenzierteMitarbeiter(),
           inProgress: store.inProgress(),
           error: store.error(),
         }));
       }
 
       // ===== Interne Helfer =======================
+
+      function loadMitarbeiterReferenz(
+        unternehmerId: string,
+        firmaId: string,
+        mitarbeiterId: string,
+      ): Promise<IMitarbeiterEintrag | null> {
+        const schluessel = getMitarbeiterSchluessel(unternehmerId, firmaId, mitarbeiterId);
+        const laufenderAuftrag = referenzLadeauftraege.get(schluessel);
+        if (laufenderAuftrag) return laufenderAuftrag.promise;
+
+        const aktuelleGeneration = generation;
+        const promise = executeMitarbeiterReferenzLoad(
+          unternehmerId,
+          firmaId,
+          mitarbeiterId,
+          schluessel,
+          aktuelleGeneration,
+        );
+        referenzLadeauftraege.set(schluessel, { generation: aktuelleGeneration, promise });
+        return promise;
+      }
+
+      async function executeMitarbeiterReferenzLoad(
+        unternehmerId: string,
+        firmaId: string,
+        mitarbeiterId: string,
+        schluessel: string,
+        aktuelleGeneration: number,
+      ): Promise<IMitarbeiterEintrag | null> {
+        try {
+          const mitarbeiter = await mitarbeiterService.loadMitarbeiterEintrag(
+            unternehmerId,
+            firmaId,
+            mitarbeiterId,
+            'networkOnly',
+          );
+          if (aktuelleGeneration !== generation || !mitarbeiter) return mitarbeiter;
+          patchState(store, {
+            referenzierteMitarbeiter: {
+              ...store.referenzierteMitarbeiter(),
+              [schluessel]: mitarbeiter,
+            },
+          });
+          return mitarbeiter;
+        } finally {
+          if (referenzLadeauftraege.get(schluessel)?.generation === aktuelleGeneration) {
+            referenzLadeauftraege.delete(schluessel);
+          }
+        }
+      }
 
       function loadMitarbeiterKontext(
         schluessel: string,
@@ -621,12 +698,13 @@ export const MitarbeiterStore = signalStore(
       return {
         loadMitarbeiter,
         loadMitarbeiterNachFilialen,
+        loadMitarbeiterNachIds,
         createMitarbeiter,
         updateMitarbeiter,
-        deleteMitarbeiter,
         mergeMitarbeiter,
         getMitarbeiter,
         getMitarbeiterNachFilialen,
+        getMitarbeiterById,
         isMitarbeiterKontextLoaded,
         isMitarbeiterKontextLoading,
         getMitarbeiterKontextError,

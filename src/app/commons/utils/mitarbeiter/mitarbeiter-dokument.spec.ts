@@ -33,6 +33,7 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
         rolle: 'unbekannt',
         filialIds: [' b-1 ', 'b-1', '', null],
         aktiv: true,
+        farbkennung: ' #123456 ',
       }),
     ).toEqual({
       id: 'm-1',
@@ -48,6 +49,7 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
       rollen: ['servicekraft'],
       filialIds: ['b-1'],
       aktiv: true,
+      farbkennung: '#123456',
     });
   });
 

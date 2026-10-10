@@ -13,14 +13,16 @@ ausgewählten Dienstplan, seine Versionen und deren Schichten.
 
 ## Öffentliche API
 
-- `loadDienstplanMonat()` und `loadDienstplanBestand()` laden einen Monat beziehungsweise den vollständigen Filialbestand.
+- `loadDienstplanMonat()` und `loadDienstplanBestand()` laden einen Monat beziehungsweise den vollständigen Filialbestand und
+  lassen noch fehlende, durch Schichten referenzierte Mitarbeiter-IDs gezielt mit `networkOnly` nachladen.
 - `createDienstplan()`, `createSchicht()`, `updateSchicht()` und `deleteSchicht()` übernehmen bestätigte Service-Ergebnisse direkt
   in den lokalen Zustand und erhöhen die lokale Versionsrevision.
 - `selectDienstplan()` wechselt den aktiven Filial- und Monatskontext.
 - `getDienstplanKontext()`, `snapshot()`, `clearError()` und `resetDienstplaene()` stellen Lese- und Sitzungsaktionen bereit.
 
-Parallele Ladeaufträge werden je Kontext zusammengeführt. Ergebnisse einer bereits zurückgesetzten Sitzung werden verworfen.
-Schreibvorgänge benötigen einen vollständig geladenen Monat, eine Entwurfsversion und eine Benutzer-UID.
+Parallele Ladeaufträge werden je Kontext zusammengeführt. Bereits im Mitarbeiter-Store vorhandene Einträge werden
+wiederverwendet. Ergebnisse einer bereits zurückgesetzten Sitzung werden verworfen. Schreibvorgänge benötigen einen
+vollständig geladenen Monat, eine Entwurfsversion und eine Benutzer-UID.
 
 ## Beteiligte Dateien
 

@@ -37,13 +37,19 @@
           [dienstplan]="dienstplan"
           [versionen]="dienstplanStore.selectedVersionen()"
           [schichten]="dienstplanStore.selectedSchichten()"
+          [mitarbeiter]="schichtMitarbeiter()"
           [darfSchreiben]="darfSchreiben()"
           (schichtAnlegen)="openSchichtDialog($event)"
           (schichtBearbeiten)="openSchichtDialog(dienstplan.zeitraumStart, $event)"
         />
       } @else {
-        <div class="pur-page-section__empty-state" role="status">
-          <p>Für diesen Monat ist noch kein Dienstplan vorhanden.</p>
+        <div class="pur-page-section__empty-state">
+          <p role="status">Für diesen Monat ist noch kein Dienstplan vorhanden.</p>
+          @if (dienstplanStore.error(); as fehlermeldung) {
+            <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+              {{ fehlermeldung }}
+            </p>
+          }
           @if (darfSchreiben()) {
             <button
               matButton="filled"

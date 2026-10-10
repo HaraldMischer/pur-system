@@ -246,7 +246,6 @@ async function seedDienstplan() {
     for (const path of [veroeffentlichteSchichtPath, entwurfSchichtPath]) {
       await setDoc(doc(db, path), {
         mitarbeiterId: 'm-1',
-        mitarbeiterAnzeigename: 'Mia Muster',
         schichtvorlageId: 'fruehschicht',
         schichtvorlageBezeichnung: 'Frühschicht',
         beginn: new Date('2026-10-05T08:00:00.000Z'),
@@ -456,7 +455,6 @@ test('planner changes a draft shift only with the matching version revision', as
   await assertFails(
     setDoc(neueSchicht, {
       mitarbeiterId: 'm-1',
-      mitarbeiterAnzeigename: 'Mia Muster',
       schichtvorlageId: 'fruehschicht',
       schichtvorlageBezeichnung: 'Frühschicht',
       beginn: new Date('2026-10-06T08:00:00.000Z'),
@@ -477,7 +475,6 @@ test('planner changes a draft shift only with the matching version revision', as
   });
   batch.set(neueSchicht, {
     mitarbeiterId: 'm-1',
-    mitarbeiterAnzeigename: 'Mia Muster',
     schichtvorlageId: 'fruehschicht',
     schichtvorlageBezeichnung: 'Frühschicht',
     beginn: new Date('2026-10-06T08:00:00.000Z'),
@@ -489,6 +486,27 @@ test('planner changes a draft shift only with the matching version revision', as
     aktualisiertVonUid: 'scoped',
   });
   await assertSucceeds(batch.commit());
+
+  const legacyBatch = writeBatch(db);
+  legacyBatch.update(doc(db, entwurfVersionPath), {
+    revision: 2,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  legacyBatch.set(doc(db, `${entwurfVersionPath}/schicht/legacy`), {
+    mitarbeiterId: 'm-1',
+    mitarbeiterAnzeigename: 'Mia Muster',
+    schichtvorlageId: 'fruehschicht',
+    schichtvorlageBezeichnung: 'Frühschicht',
+    beginn: new Date('2026-10-07T08:00:00.000Z'),
+    ende: new Date('2026-10-07T16:00:00.000Z'),
+    pauseMinuten: 30,
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  await assertFails(legacyBatch.commit());
 
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
     await updateDoc(doc(context.firestore(), andererMitarbeiterPath), {
@@ -504,7 +522,6 @@ test('planner changes a draft shift only with the matching version revision', as
   });
   ungueltigerBatch.set(doc(db, `${entwurfVersionPath}/schicht/ungueltig`), {
     mitarbeiterId: 'm-2',
-    mitarbeiterAnzeigename: 'Fremde Person',
     schichtvorlageId: 'fruehschicht',
     schichtvorlageBezeichnung: 'Frühschicht',
     beginn: new Date('2026-10-07T08:00:00.000Z'),
@@ -549,7 +566,6 @@ test('planner keeps a stored template snapshot but cannot select an inactive tem
   });
   batch.set(doc(db, `${entwurfVersionPath}/schicht/neu-inaktiv`), {
     mitarbeiterId: 'm-1',
-    mitarbeiterAnzeigename: 'Mia Muster',
     schichtvorlageId: 'fruehschicht',
     schichtvorlageBezeichnung: 'Frühschicht',
     beginn: new Date('2026-10-08T08:00:00.000Z'),

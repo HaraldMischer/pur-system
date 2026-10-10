@@ -233,7 +233,11 @@ export class DienstplanService {
       erwarteteRevision,
       schicht.id,
       benutzerUid,
-      { ...aktualisierung, aktualisiertVonUid: benutzerUid },
+      {
+        ...aktualisierung,
+        mitarbeiterAnzeigename: this.firestoreDbService.createDeleteField(),
+        aktualisiertVonUid: benutzerUid,
+      },
       aktualisierteSchicht,
       false,
     );
@@ -393,7 +397,20 @@ function mapSchicht(
   id: string,
   daten: ISchichtDokument,
 ): ISchichtEintrag {
-  return { ...daten, ...pfad, id };
+  return {
+    ...pfad,
+    id,
+    mitarbeiterId: daten.mitarbeiterId,
+    schichtvorlageId: daten.schichtvorlageId,
+    schichtvorlageBezeichnung: daten.schichtvorlageBezeichnung,
+    beginn: daten.beginn,
+    ende: daten.ende,
+    pauseMinuten: daten.pauseMinuten,
+    erstelltVonUid: daten.erstelltVonUid,
+    aktualisiertVonUid: daten.aktualisiertVonUid,
+    ...(daten.erstelltAm ? { erstelltAm: daten.erstelltAm } : {}),
+    ...(daten.aktualisiertAm ? { aktualisiertAm: daten.aktualisiertAm } : {}),
+  };
 }
 
 function getNaechsteRevision(

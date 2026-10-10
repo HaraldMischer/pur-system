@@ -27,18 +27,22 @@ Architektur und Datenfluss stehen im [Projektplan](./projekt-plan.md).
 
 ### Matrix
 
-| Benutzerrolle | Unternehmer | Firmen     | Filialen             | Benutzerprofile | Geladene Mitarbeiter                  |
-| ------------- | ----------- | ---------- | -------------------- | --------------- | ------------------------------------- |
-| `master`      | alle        | alle       | alle                 | alle            | Mitarbeiter aller Firmen              |
-| `office`      | zugeordnet  | zugeordnet | zugeordnet           | –               | Mitarbeiter der zugeordneten Firmen   |
-| `filiale`     | genau einer | genau eine | genau eine           | –               | Mitarbeiter der zugeordneten Filiale  |
-| `mitarbeiter` | genau einer | genau eine | zugeordnete Filialen | –               | Mitarbeiter der zugeordneten Filialen |
+| Benutzerrolle | Unternehmer | Firmen     | Filialen             | Benutzerprofile | Geladene Mitarbeiter                              |
+| ------------- | ----------- | ---------- | -------------------- | --------------- | ------------------------------------------------- |
+| `master`      | alle        | alle       | alle                 | alle            | Mitarbeiter aller Firmen                          |
+| `office`      | zugeordnet  | zugeordnet | zugeordnet           | –               | Mitarbeiter der zugeordneten Firmen               |
+| `filiale`     | genau einer | genau eine | genau eine           | –               | Mitarbeiter der zugeordneten Filiale              |
+| `mitarbeiter` | genau einer | genau eine | zugeordnete Filialen | –               | eigener Mitarbeiter, weitere bei fachlichem Bedarf |
 
 ### Zusatzbedingungen
 
 - Bei `filiale` werden nur Mitarbeiter geladen, deren `filialIds` die dem Profil zugeordnete Filial-ID enthalten.
 - Bei `mitarbeiter` werden die zugeordneten Filialen aus den `filialIds` des über `firmaMitarbeiterId` verknüpften
   Mitarbeiterdokuments bestimmt.
+- Beim Öffnen eines Dienstplans werden für alle Rollen dessen eindeutige Mitarbeiter-IDs ermittelt. Bereits geladene Einträge
+  werden wiederverwendet und nur fehlende Mitarbeiterdokumente gezielt nachgeladen.
+- Inaktive oder nicht mehr zugeordnete Mitarbeiter werden nicht pauschal geladen, sondern nur, wenn der geöffnete Dienstplan sie
+  tatsächlich referenziert.
 - Feature-Daten gehören nicht zum zwingenden Ladeumfang und werden erst beim Öffnen des jeweiligen App-Bereichs geladen.
 
 ## 3. Fachliche Einordnung
@@ -67,8 +71,8 @@ Architektur und Datenfluss stehen im [Projektplan](./projekt-plan.md).
 - Bei `filiale` werden zuerst der zugeordnete Unternehmer, die Firma und die Filiale und danach die Mitarbeiter dieser Filiale
   geladen.
 - Bei `mitarbeiter` werden zuerst der zugeordnete Unternehmer und die Firma geladen. Anschließend wird der eigene aktive
-  Mitarbeiter gezielt über `firmaMitarbeiterId` geladen. Aus dessen `filialIds` werden zuerst die zugeordneten Filialen und
-  danach deren Mitarbeiter mit einer gemeinsamen `array-contains-any`-Abfrage eindeutig geladen.
+  Mitarbeiter gezielt über `firmaMitarbeiterId` geladen. Aus dessen `filialIds` werden anschließend die zugeordneten Filialen
+  geladen. Weitere Mitarbeiter werden erst für einen geöffneten Dienstplan anhand der dort verwendeten IDs nachgeladen.
 - Innerhalb eines Schritts parallel gestartete Aufträge werden vollständig abgewartet. Ist mindestens ein zwingender Auftrag
   fehlgeschlagen, wird die Initialisierung mit einem Fehler beendet und es wird kein erfolgreiches Ladeergebnis protokolliert.
 - Nach erfolgreichem Abschluss protokolliert der `AppDatenInitService` ausschließlich die Anzahl der geladenen Einträge. Die

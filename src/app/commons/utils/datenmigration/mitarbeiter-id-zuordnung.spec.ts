@@ -1,10 +1,7 @@
 // pur-system/src/app/commons/utils/datenmigration/mitarbeiter-id-zuordnung.spec.ts
 
 import { ISystemmigrationDokument } from '../../models/domain/datenmigration';
-import {
-  deleteMitarbeiterIdZuordnung,
-  replaceMitarbeiterIdZuordnungen,
-} from './mitarbeiter-id-zuordnung';
+import { replaceMitarbeiterIdZuordnungen } from './mitarbeiter-id-zuordnung';
 
 describe('Mitarbeiter-ID-Zuordnung', () => {
   const systemmigration = {
@@ -32,17 +29,6 @@ describe('Mitarbeiter-ID-Zuordnung', () => {
       'firma-alt': {
         'filiale-alt': {
           'mitarbeiter-alt': 'm-ziel',
-          'mitarbeiter-bleibt': 'm-2',
-        },
-      },
-      'andere-firma-alt': systemmigration.mitarbeiterIds?.['andere-firma-alt'],
-    });
-  });
-
-  it('should delete only matching target ids in the selected company', () => {
-    expect(deleteMitarbeiterIdZuordnung(systemmigration, 'f-1', 'm-1')).toEqual({
-      'firma-alt': {
-        'filiale-alt': {
           'mitarbeiter-bleibt': 'm-2',
         },
       },

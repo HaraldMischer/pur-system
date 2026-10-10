@@ -12,6 +12,7 @@ import { DienstplanService } from '../../services/domain/dienstplan.service';
 import { BenutzerStore } from '../app/benutzer.store';
 import { StammdatenStore } from '../app/stammdaten.store';
 import { DienstplanStore } from './dienstplan.store';
+import { MitarbeiterStore } from './mitarbeiter.store';
 
 describe('DienstplanStore', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
@@ -23,6 +24,7 @@ describe('DienstplanStore', () => {
   const createSchichtMock = vi.fn();
   const updateSchichtMock = vi.fn();
   const deleteSchichtMock = vi.fn();
+  const loadMitarbeiterNachIdsMock = vi.fn();
   const dienstplanServiceMock = {
     loadDienstplanMonat: loadDienstplanMonatMock,
     loadDienstplanBestand: loadDienstplanBestandMock,
@@ -59,12 +61,17 @@ describe('DienstplanStore', () => {
       schicht: createBestand().schichten[0],
       versionRevision: 3,
     });
+    loadMitarbeiterNachIdsMock.mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
       providers: [
         DienstplanStore,
         { provide: DienstplanService, useValue: dienstplanServiceMock },
         { provide: BenutzerStore, useValue: { benutzerId } },
+        {
+          provide: MitarbeiterStore,
+          useValue: { loadMitarbeiterNachIds: loadMitarbeiterNachIdsMock },
+        },
         {
           provide: StammdatenStore,
           useValue: {
@@ -91,6 +98,7 @@ describe('DienstplanStore', () => {
       false,
       'networkOnly',
     );
+    expect(loadMitarbeiterNachIdsMock).toHaveBeenCalledWith('u-1', 'f-1', ['m-1']);
     expect(store.selectedDienstplan()).toEqual(expect.objectContaining({ id: '2026-10' }));
     expect(store.selectedVersionen()).toEqual([
       expect.objectContaining({ id: 'v-1', status: 'entwurf' }),
@@ -331,7 +339,6 @@ describe('DienstplanStore', () => {
   function createSchichtAnlage(): ISchichtAnlage {
     return {
       mitarbeiterId: 'm-1',
-      mitarbeiterAnzeigename: 'Mia Muster',
       schichtvorlageId: 'sv-1',
       schichtvorlageBezeichnung: 'Frühschicht',
       beginn: Timestamp.fromDate(new Date('2026-10-05T08:00:00+02:00')),

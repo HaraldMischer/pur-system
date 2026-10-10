@@ -116,8 +116,23 @@ export class DienstplanArbeitsbereich {
     const pfad = this.filialPfad();
     if (!pfad) return [];
     return this.mitarbeiterStore
-      .getMitarbeiter(pfad.unternehmerId, pfad.firmaId, pfad.filialeId)
+      .getMitarbeiter(pfad.unternehmerId, pfad.firmaId)
       .filter((eintrag) => eintrag.aktiv && eintrag.filialIds.includes(pfad.filialeId));
+  });
+  readonly schichtMitarbeiter = computed(() => {
+    const pfad = this.filialPfad();
+    if (!pfad) return [];
+    return [
+      ...new Set(this.dienstplanStore.selectedSchichten().map((schicht) => schicht.mitarbeiterId)),
+    ]
+      .map((mitarbeiterId) => {
+        return this.mitarbeiterStore.getMitarbeiterById(
+          pfad.unternehmerId,
+          pfad.firmaId,
+          mitarbeiterId,
+        );
+      })
+      .filter((mitarbeiter) => mitarbeiter !== null);
   });
   readonly entwurfVersion = computed(() => {
     const entwurfId = this.dienstplanStore.selectedDienstplan()?.entwurfVersionId;

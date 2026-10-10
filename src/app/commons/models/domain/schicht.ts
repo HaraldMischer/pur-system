@@ -6,7 +6,6 @@ import { Timestamp } from 'firebase/firestore';
 
 export interface ISchichtAnlage {
   mitarbeiterId: string;
-  mitarbeiterAnzeigename: string;
   schichtvorlageId: string;
   schichtvorlageBezeichnung: string;
   beginn: Timestamp;
@@ -16,7 +15,6 @@ export interface ISchichtAnlage {
 
 export interface ISchichtAktualisierung {
   mitarbeiterId: string;
-  mitarbeiterAnzeigename: string;
   schichtvorlageId: string;
   schichtvorlageBezeichnung: string;
   beginn: Timestamp;

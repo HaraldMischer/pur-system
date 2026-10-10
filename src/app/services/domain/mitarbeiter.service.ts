@@ -15,10 +15,7 @@ import {
   IMitarbeiterAnlageErgebnis,
   IMitarbeiterEintrag,
 } from '../../commons/models/domain/mitarbeiter';
-import {
-  deleteMitarbeiterIdZuordnung,
-  replaceMitarbeiterIdZuordnungen,
-} from '../../commons/utils/datenmigration/mitarbeiter-id-zuordnung';
+import { replaceMitarbeiterIdZuordnungen } from '../../commons/utils/datenmigration/mitarbeiter-id-zuordnung';
 import {
   createAnzeigename,
   createMitarbeiterPerson,
@@ -188,61 +185,6 @@ export class MitarbeiterService {
         aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
       },
     );
-  }
-
-  /**
-   * Löscht einen nicht mit einem Benutzerkonto verknüpften Mitarbeiter und seine Migrationszuordnungen.
-   *
-   * @param unternehmerId - Die Dokument-ID des übergeordneten Unternehmers.
-   * @param firmaId - Die Dokument-ID der übergeordneten Firma.
-   * @param mitarbeiterId - Die Dokument-ID des Mitarbeiters.
-   * @returns Ein Promise, das nach der atomaren Löschung abgeschlossen ist.
-   * @throws Gibt Fehler des Firestore-Zugriffs an die aufrufende Stelle weiter.
-   */
-  async deleteMitarbeiter(
-    unternehmerId: string,
-    firmaId: string,
-    mitarbeiterId: string,
-  ): Promise<void> {
-    const dokumentPfad = FIRESTORE_DOCUMENT_PATHS.mitarbeiter(
-      unternehmerId,
-      firmaId,
-      mitarbeiterId,
-    );
-    const [dokument, systemmigrationen] = await Promise.all([
-      this.firestoreDbService.loadDocument<Record<string, unknown>>(dokumentPfad, 'networkOnly'),
-      this.firestoreDbService.loadCollection<ISystemmigrationDokument>(
-        FIRESTORE_COLLECTION_PATHS.systemMigrationen,
-        'networkOnly',
-      ),
-    ]);
-    if (!dokument) {
-      throw new Error('Der Mitarbeiter wurde nicht gefunden.');
-    }
-    if (typeof dokument.daten['benutzerUid'] === 'string') {
-      throw new Error(
-        'Ein mit einem Benutzerkonto verknüpfter Mitarbeiter kann nicht gelöscht werden.',
-      );
-    }
-
-    const zeitstempel = this.firestoreDbService.createServerTimestamp();
-    const operationen: TFirestoreBatchOperation[] = [{ documentPath: dokumentPfad, delete: true }];
-    for (const systemmigration of systemmigrationen) {
-      if (systemmigration.daten.unternehmerId !== unternehmerId) continue;
-      const mitarbeiterIds = deleteMitarbeiterIdZuordnung(
-        systemmigration.daten,
-        firmaId,
-        mitarbeiterId,
-      );
-      if (!mitarbeiterIds) continue;
-      operationen.push({
-        documentPath: FIRESTORE_DOCUMENT_PATHS.systemmigration(systemmigration.id),
-        daten: { mitarbeiterIds, aktualisiertAm: zeitstempel },
-        replaceFields: true,
-      });
-    }
-
-    await this.firestoreDbService.updateDocumentsAtomically(operationen);
   }
 
   /**

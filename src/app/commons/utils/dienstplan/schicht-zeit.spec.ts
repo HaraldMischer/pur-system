@@ -34,7 +34,6 @@ describe('calculateSchichtArbeitszeitMinuten', () => {
 function createSchicht(beginn: string, ende: string, pauseMinuten: number): ISchichtAnlage {
   return {
     mitarbeiterId: 'm-1',
-    mitarbeiterAnzeigename: 'Mia Muster',
     schichtvorlageId: 'sv-1',
     schichtvorlageBezeichnung: 'Frühschicht',
     beginn: Timestamp.fromDate(new Date(`${beginn}:00+02:00`)),

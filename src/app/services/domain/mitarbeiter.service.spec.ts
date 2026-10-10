@@ -287,40 +287,6 @@ describe('MitarbeiterService', () => {
     );
   });
 
-  it('should delete an employee and remove matching migration mappings atomically', async () => {
-    firestoreDbServiceMock.loadDocument.mockResolvedValue({ id: 'm-1', daten: anlage });
-    firestoreDbServiceMock.loadCollection.mockResolvedValue([
-      {
-        id: 'kunde-1',
-        daten: {
-          unternehmerId: 'u',
-          firmenIds: { 'firma-alt': 'f' },
-          mitarbeiterIds: {
-            'firma-alt': { 'filiale-alt': { 'mitarbeiter-alt': 'm-1' } },
-          },
-        },
-      },
-    ]);
-    const service = TestBed.inject(MitarbeiterService);
-
-    await service.deleteMitarbeiter('u', 'f', 'm-1');
-
-    expect(firestoreDbServiceMock.updateDocumentsAtomically).toHaveBeenCalledWith([
-      {
-        documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-1',
-        delete: true,
-      },
-      {
-        documentPath: 'systemMigrationen/kunde-1',
-        daten: {
-          mitarbeiterIds: { 'firma-alt': { 'filiale-alt': {} } },
-          aktualisiertAm: 'server-zeitstempel',
-        },
-        replaceFields: true,
-      },
-    ]);
-  });
-
   it('should merge employees and redirect all matching migration mappings atomically', async () => {
     firestoreDbServiceMock.loadDocument
       .mockResolvedValueOnce({

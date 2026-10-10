@@ -178,6 +178,10 @@ Stammdaten, Filialzuordnungen und betrieblichem Filialzugang. Der persönliche M
 Firebase-Auth-Benutzer mit `userRole: mitarbeiter` für die App Pur Mitarbeiter. Ein fachlicher Mitarbeiterdatensatz ist weder von
 einem solchen Zugang abhängig noch mit dem betrieblichen Filialzugang gleichzusetzen.
 
+Der fachliche Mitarbeiterdatensatz kann optional eine `farbkennung` als darstellungsbezogene Stammdatenangabe enthalten. Das
+Frontend ordnet diese Kennung später einer konkreten, zum Theme passenden Farbe zu; ein CSS- oder Hex-Farbwert wird nicht im
+Mitarbeiterdokument festgelegt.
+
 Ein persönlicher Mitarbeiterzugang ist genau einem fachlichen Mitarbeiterdatensatz zugeordnet. Sein Benutzerprofil enthält in
 `zugriffe` genau einen Unternehmer und darunter genau eine Firma mit einer leeren Filialliste. Zusätzlich enthält es die für
 `userRole: mitarbeiter` verpflichtende String-ID `firmaMitarbeiterId`; für andere Auth-Rollen ist dieses Feld unzulässig. Aus
@@ -200,7 +204,7 @@ Die Firmenzuordnung in `zugriffe` erlaubt einem Mitarbeiterzugang das Lesen des 
 Firmenstruktur mit Firma, Filialen und fachlichen Mitarbeiterdatensätzen. Filial-Untercollections und Schreibzugriffe bleiben
 gesperrt. Der tatsächliche initiale Ladeumfang ist enger: Der eigene Mitarbeiterdatensatz und dessen `filialIds` bestimmen die
 persönlich zugeordneten Filialen. Bei der Sitzungsinitialisierung werden nach dem eigenen Mitarbeiterdatensatz genau diese
-Filialstammdaten und mit einer gemeinsamen Abfrage die Mitarbeiter dieser Filialen geladen. Die `filialIds` bilden außerdem die
+Filialstammdaten geladen. Weitere Mitarbeiter gehören nicht zum initialen Ladeumfang. Die `filialIds` bilden außerdem die
 Grundlage für weitere persönliche Datenrechte, beispielsweise auf Dienstpläne bestimmter Filialen. `erlaubteBereiche` steuert
 ausschließlich, welche App-Funktionen geöffnet werden dürfen.
 
@@ -392,19 +396,19 @@ bereits über die Auth-Rolle `filiale` erlaubten Dienstplanaktionen ausgewertet.
 
 Für die Mitarbeiterverwaltung gilt folgende Rollenmatrix:
 
-| Auth-Rolle    | Sidebar und `/mitarbeiter/liste`                | Lesen                           | Schreiben                        |
-| ------------- | ----------------------------------------------- | ------------------------------- | -------------------------------- |
-| `master`      | mit Bereichsfreigabe                            | Mitarbeiter aller Firmen        | anlegen, bearbeiten und zusammenführen                 |
-| `office`      | mit Bereichsfreigabe und gültigem Datenzugriff  | Mitarbeiter erlaubter Firmen    | in erlaubten Firmen und Filialen |
-| `filiale`     | mit Bereichsfreigabe und gültigem Filialkontext | Mitarbeiter der eigenen Firma   | in der eigenen Filiale           |
-| `mitarbeiter` | nein                                            | Mitarbeiter der eigenen Firma   | nein                             |
+| Auth-Rolle    | Sidebar und `/mitarbeiter/liste`                | Lesen                         | Schreiben                              |
+| ------------- | ----------------------------------------------- | ----------------------------- | -------------------------------------- |
+| `master`      | mit Bereichsfreigabe                            | Mitarbeiter aller Firmen      | anlegen, bearbeiten und zusammenführen |
+| `office`      | mit Bereichsfreigabe und gültigem Datenzugriff  | Mitarbeiter erlaubter Firmen  | in erlaubten Firmen und Filialen       |
+| `filiale`     | mit Bereichsfreigabe und gültigem Filialkontext | Mitarbeiter der eigenen Firma | in der eigenen Filiale                 |
+| `mitarbeiter` | nein                                            | Mitarbeiter der eigenen Firma | nein                                   |
 
 Mit einem persönlichen Mitarbeiterzugang verknüpfte Datensätze dürfen weder gelöscht noch zusammengeführt werden. `aktiv`
 beschreibt den fachlichen Beschäftigungsstatus; berechtigte Rollen können inaktive Mitarbeiter wieder aktivieren. Beim manuellen
 Zusammenführen ist der Mitarbeiter, von dessen Card die Aktion geöffnet wurde, das bestehen bleibende Ziel. Die Auswahlliste
 enthält Mitarbeiter derselben Firma mit ausreichend ähnlichem Vor- und Nachnamen. Mehrere Duplikate können gemeinsam ausgewählt
 werden; ihre Rollen und Filialzuordnungen werden atomar in das Ziel übernommen, ihre Legacy-Zuordnungen auf das Ziel umgeleitet
-und die Duplikate physisch gelöscht. Eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten.
+und die Duplikate physisch gelöscht. Eine eigenständige Löschaktion außerhalb der Zusammenführung wird nicht angeboten.
 `erlaubteBereiche` steuert nur Sidebar und Routenzugriff; die Lese- und Schreibrechte gelten davon unabhängig nach Rolle und
 `zugriffe`. Der gleichnamige App-Bereich gewährt `userRole: mitarbeiter` keine Verwaltungsrechte.
 
@@ -539,7 +543,8 @@ Entwürfe noch veröffentlichte oder archivierte Dienstpläne.
 
 Schichtvorlagen dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. In der Filial-App gilt
 zusätzlich die clientseitige Bedienbegrenzung auf einen aktiven Firma-Mitarbeiter mit `dienstplaner`. Mitarbeiterzugänge lesen
-keine Schichtvorlagen, da die veröffentlichte Schicht alle für ihre Darstellung erforderlichen Momentaufnahmen enthält.
+keine Schichtvorlagen, da die veröffentlichte Schicht die benötigte Vorlagenbezeichnung sowie Beginn, Ende und Pause als
+Momentaufnahme enthält.
 
 ### Abfrage- und Cache-Strategie
 
@@ -568,7 +573,16 @@ nachgeladen. Der Kontext `Alle Filialen` löst keine Dienstplanabfrage aus.
 
 Pur Mitarbeiter verwendet ebenfalls `networkOnly`. Für jede fachlich erlaubte Filiale wird nur der Dienstplan des ausgewählten
 Monats direkt geladen. Über `veroeffentlichteVersionId` werden ausschließlich die veröffentlichte Version und deren Schichten
-gelesen. Entwürfe und archivierte Versionen werden weder abgefragt noch durch die Firestore Rules freigegeben.
+gelesen. Entwürfe und archivierte Versionen werden weder abgefragt noch durch die Firestore Rules freigegeben. Nach dem Laden
+werden die eindeutigen Mitarbeiter-IDs der sichtbaren Schichten ermittelt. Bereits im Mitarbeiter-Store vorhandene Einträge
+werden wiederverwendet; nur fehlende Mitarbeiterdokumente werden gezielt über ihre Dokument-ID nachgeladen.
+
+Alle Auslieferungsvarianten lösen Anzeigename und `farbkennung` einer Schicht über deren `mitarbeiterId` aus den aktuellen
+Mitarbeiterstammdaten auf. Master, Office und Filiale können dabei regelmäßig bereits geladene Mitarbeiter verwenden. Auch für
+inaktive oder inzwischen einer anderen Filiale zugeordnete Mitarbeiter werden nur die im geöffneten Dienstplan tatsächlich
+referenzierten Dokumente nachgeladen; ein vollständiges Laden aller ehemaligen Filialmitarbeiter ist nicht vorgesehen. Die
+Firestore Rules müssen diese gezielten Lesezugriffe erlauben. Da Firestore keine Leserechte auf einzelne Dokumentfelder
+unterstützt, umfasst eine solche Freigabe das vollständige Mitarbeiterdokument und wird vor der Umsetzung nochmals geprüft.
 
 Die Startabfragen von Pur Filiale sind unbeschränkte Collection-Abfragen innerhalb eines bereits bekannten Filialpfads; die
 anderen Varianten verwenden überwiegend direkte Dokumentzugriffe. Versionen und Schichten werden im Frontend nach Nummer und
@@ -583,9 +597,11 @@ mit der Historie zu. Eine spätere Aufbewahrungs- oder Löschregel wird erst bei
 Eine Version darf an einem Tag beliebig viele Schichten enthalten. Jede Schicht gehört in der ersten Ausbaustufe genau einem
 aktiven Mitarbeiter, der beim Anlegen oder Bearbeiten der betroffenen Filiale zugeordnet sein muss. Schichten ohne Mitarbeiter und
 eine gemeinsame Schicht für mehrere Mitarbeiter sind nicht vorgesehen. Derselbe Mitarbeiter darf mehrere nicht überlappende
-Schichten an einem Tag besitzen. Der zum Planungszeitpunkt verwendete Anzeigename wird zusätzlich zur Mitarbeiter-ID als
-Momentaufnahme an der Schicht gespeichert. Dadurch bleiben veröffentlichte und archivierte Stände auch nach einer späteren
-Umbenennung, Deaktivierung oder geänderten Filialzuordnung verständlich.
+Schichten an einem Tag besitzen. Die Schicht speichert ausschließlich die `mitarbeiterId` als Mitarbeiterzuordnung. Anzeigename
+und `farbkennung` werden in allen Ansichten aus dem aktuellen Mitarbeiterdokument abgeleitet und nicht als Momentaufnahme in der
+Schicht dupliziert. Reguläre Mitarbeiterdokumente bleiben deshalb auch bei Deaktivierung oder geänderter Filialzuordnung
+dauerhaft erhalten. Ausschließlich Duplikate werden im Rahmen der Migrationsbereinigung zusammengeführt und physisch gelöscht,
+bevor sie in Dienstplänen referenziert werden.
 
 Eine Schicht speichert ihre Schichtvorlagen-ID und die Bezeichnung der gewählten Vorlage als Momentaufnahme. Beginn und Ende
 werden aus dem gewählten Datum und den Zeitwerten der Vorlage als absolute Zeitpunkte gespeichert; die Pause wird in ganzen
@@ -644,8 +660,8 @@ bilden in der ersten Ausbaustufe das fachliche Änderungsprotokoll; ein separate
 Beim Anlegen oder Bearbeiten einer Schicht dürfen nur aktive Mitarbeiter ausgewählt werden, die der konkreten Filiale zugeordnet
 sind. Wird ein bereits in einem Entwurf verwendeter Mitarbeiter deaktiviert oder aus der Filiale entfernt, bleibt die Schicht
 zur Nachbearbeitung sichtbar, blockiert aber die Veröffentlichung. Veröffentlichte und archivierte Schichten bleiben unverändert
-und über ihren gespeicherten Anzeigenamen verständlich. Eine physische Löschung oder spätere Stammdatenänderung entfernt keine
-historische Schicht.
+und lösen Anzeigename sowie `farbkennung` weiterhin über die gespeicherte `mitarbeiterId` aus dem dauerhaft erhaltenen
+Mitarbeiterdokument auf. Spätere Stammdatenänderungen werden dadurch auch in historischen Dienstplanansichten sichtbar.
 
 ### Vorbereitete Modelltests und Probeablauf
 

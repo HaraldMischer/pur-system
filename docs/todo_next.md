@@ -288,7 +288,6 @@ Neu hinzuzufügen:
 - [x] Planung und Einstellungen durch einen eigenen Guard zunächst auf aktive Master- und Office-Konten begrenzen.
 - [x] Die Seite an den erlaubten Unternehmer-, Firmen- und Filialkontext der Sitzung anbinden.
 - [x] Für fehlenden oder uneindeutigen Filialkontext einen verständlichen leeren beziehungsweise gesperrten Zustand anzeigen.
-- [x] Zeitraumwechsel laden, ohne ungespeicherte Änderungen stillschweigend zu verwerfen.
 
 #### Schritt 2: Monatsübersicht umsetzen
 
@@ -302,12 +301,16 @@ Neu hinzuzufügen:
 
 - [x] Material-Dialog zum Anlegen und Bearbeiten einer Schicht umsetzen.
 - [x] Nur Mitarbeiter anbieten, die gemäß Fachmodell für die gewählte Filiale eingeplant werden dürfen.
-- [x] Pflichtfelder, Zeitwerte, Pause und Mitarbeiterzuordnung mit Reactive Forms validieren.
+- [x] Das Schichtformular fachlich vollständig validieren: gültiges Datum im Dienstplanmonat, zulässige Mitarbeiter- und
+      Vorlagenzuordnung sowie eine ganzzahlige, nicht negative Pause unterhalb der Schichtdauer; ungültige Zeitpunkte der
+      Zeitzonenumrechnung als Formularfehler anzeigen.
 - [x] Laufende Schreibvorgänge gegen Mehrfachausführung schützen und das gesamte Formular währenddessen deaktivieren.
-- [x] Planungsaktionen in der Filial-App nur für einen aktiven, der eigenen Filiale zugeordneten Firma-Mitarbeiter mit
-      `dienstplaner` anbieten.
 - [x] Schichten gemäß Rollen- und Zustandsregeln anlegen, bearbeiten und löschen.
 - [x] Erfolgreiche Änderungen ohne unnötiges vollständiges Neuladen in den Store übernehmen.
+- [x] `mitarbeiterAnzeigename` aus dem Schichtmodell und den Schreibzugriffen entfernen; ausschließlich `mitarbeiterId` als
+      Mitarbeiterzuordnung speichern.
+- [x] Für alle Rollen Anzeigename und `farbkennung` über die `mitarbeiterId` aus dem Mitarbeiter-Store auflösen und nur
+      fehlende, im geöffneten Dienstplan referenzierte Mitarbeiterdokumente gezielt nachladen.
 
 #### Schritt 4: Filialbezogene Schichtvorlagen umsetzen
 
@@ -324,18 +327,20 @@ Neu hinzuzufügen:
 #### Tests und Abschluss
 
 - [x] Service-Tests für Laden, Anlegen, Bearbeiten, Löschen und Fehlerweitergabe ergänzen.
-- [x] Store-Tests für Zustandsübergänge, Kontextwechsel, Schreibvorgänge und ungespeicherte Änderungen ergänzen.
+- [x] Store-Tests für Zustandsübergänge, Kontextwechsel und Schreibvorgänge ergänzen.
 - [x] Component-Tests für Monatswechsel, leere Zustände, Formularvalidierung und rollenabhängige Aktionen ergänzen.
 - [x] Service-, Store-, Rules- und Component-Tests für Vorlagenverwaltung, Filialgrenzen, Vorlagenauswahl und unveränderliche
       Schichtmomentaufnahmen ergänzen.
-- [ ] Tastaturbedienung, Dialogfokus und Darstellung auf Desktop sowie kleinem Viewport manuell prüfen.
+- [x] Service-, Store-, Rules- und Component-Tests für die ID-basierte Mitarbeiterauflösung, gezieltes Nachladen sowie inaktive
+      oder nicht mehr der Filiale zugeordnete Mitarbeiter ergänzen.
+- [x] Tastaturbedienung, Dialogfokus und Darstellung auf Desktop sowie kleinem Viewport manuell prüfen.
 - [x] Verantwortlichkeiten und tatsächliche APIs von Dienstplan- und Schichtvorlagen-Service unter `docs/services`
       dokumentieren.
 - [x] Zustand, Ableitungen und tatsächliche APIs von Dienstplan- und Schichtvorlagen-Store unter `docs/stores` dokumentieren.
 - [x] Aufbau und Verantwortlichkeiten der Schichtplan-Komponenten unter `docs/components` dokumentieren.
 - [x] `npm test` und die vorhandenen Builds für alle vier Auslieferungsvarianten erfolgreich ausführen.
-      `npm test`, `npm run test:rules` und `npm run build:office` sind erfolgreich. Die Varianten-Builds für Master, Filiale und
-      Mitarbeiter brechen im lokal verwendeten `esbuild` 0.28.1 mit einem Deadlock ab.
+      `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office`, `npm run build:filiale` und
+      `npm run build:mitarbeiter` sind erfolgreich.
 
 #### Erledigt, wenn
 
@@ -344,7 +349,7 @@ Neu hinzuzufügen:
 - [x] Schichten können mit einer aktiven Vorlage und gültiger Mitarbeiterzuordnung angelegt, bearbeitet und gelöscht werden.
 - [x] Änderungen an einer Schichtvorlage verändern keine bereits gespeicherten Schichten.
 - [x] Nicht berechtigte Rollen, fremde Filialen und unzulässige Zustände erlauben keine Änderung.
-- [ ] Monatsansicht, Fehlerzustände und Formulare sind auf Desktop und kleinen Viewports bedienbar.
+- [x] Monatsansicht, Fehlerzustände und Formulare sind auf Desktop und kleinen Viewports bedienbar.
 
 ### 20.5 Konfliktprüfung und Veröffentlichung umsetzen
 
@@ -394,6 +399,8 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 #### Schritt 3: Veröffentlichte Mitarbeiteransicht bereitstellen
 
 - [ ] Veröffentlichte Dienstpläne für Mitarbeiter gemäß der beschlossenen filialweiten Sicht laden.
+- [ ] Aus den Schichten des geöffneten Monats eindeutige Mitarbeiter-IDs ermitteln, vorhandene Store-Einträge wiederverwenden und
+      nur fehlende Mitarbeiterdokumente mit `networkOnly` gezielt laden.
 - [ ] Entwürfe und interne Notizen für Mitarbeiter vollständig ausblenden und durch Firestore Rules schützen.
 - [ ] Zeitraum, Schichten, Pausen und relevante Veröffentlichungsinformationen mobil verständlich darstellen.
 - [ ] Verhalten bei noch nicht veröffentlichten, zurückgezogenen oder nachträglich ersetzten Plänen festlegen und anzeigen.

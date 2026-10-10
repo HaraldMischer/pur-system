@@ -14,6 +14,7 @@ import {
   addDoc,
   collection,
   collectionData,
+  deleteField,
   deleteDoc,
   doc,
   getDocFromCache,
@@ -116,6 +117,14 @@ export const FIRESTORE_DELETE_DOC = new InjectionToken<typeof deleteDoc>('FIREST
   providedIn: 'root',
   factory: () => deleteDoc,
 });
+
+export const FIRESTORE_DELETE_FIELD = new InjectionToken<typeof deleteField>(
+  'FIRESTORE_DELETE_FIELD',
+  {
+    providedIn: 'root',
+    factory: () => deleteField,
+  },
+);
 
 export const FIRESTORE_ON_SNAPSHOT = new InjectionToken<typeof onSnapshot>(
   'FIRESTORE_ON_SNAPSHOT',

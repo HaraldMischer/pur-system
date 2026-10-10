@@ -15,6 +15,7 @@ describe('DienstplanService', () => {
   const loadDocumentMock = vi.fn();
   const loadCollectionMock = vi.fn();
   const createDocumentIdMock = vi.fn();
+  const createDeleteFieldMock = vi.fn();
   const createServerTimestampMock = vi.fn();
   const updateDocumentsAtomicallyMock = vi.fn();
   const executeDocumentTransactionMock = vi.fn();
@@ -22,6 +23,7 @@ describe('DienstplanService', () => {
     loadDocument: loadDocumentMock,
     loadCollection: loadCollectionMock,
     createDocumentId: createDocumentIdMock,
+    createDeleteField: createDeleteFieldMock,
     createServerTimestamp: createServerTimestampMock,
     updateDocumentsAtomically: updateDocumentsAtomicallyMock,
     executeDocumentTransaction: executeDocumentTransactionMock,
@@ -32,6 +34,7 @@ describe('DienstplanService', () => {
     loadDocumentMock.mockResolvedValue(null);
     loadCollectionMock.mockResolvedValue([]);
     createDocumentIdMock.mockReturnValue('neu-1');
+    createDeleteFieldMock.mockReturnValue('feld-loeschen');
     createServerTimestampMock.mockReturnValue('server-zeitstempel');
     updateDocumentsAtomicallyMock.mockResolvedValue(undefined);
     executeDocumentTransactionMock.mockImplementation(
@@ -91,6 +94,7 @@ describe('DienstplanService', () => {
       expect.objectContaining({ id: 'v-1', status: 'veroeffentlicht' }),
     ]);
     expect(bestand.schichten).toEqual([expect.objectContaining({ id: 's-1', versionId: 'v-1' })]);
+    expect(bestand.schichten[0]).not.toHaveProperty('mitarbeiterAnzeigename');
     expect(loadDocumentMock).not.toHaveBeenCalledWith(
       expect.stringContaining('/version/v-2'),
       expect.anything(),
@@ -198,6 +202,13 @@ describe('DienstplanService', () => {
     await expect(
       service.updateSchicht(versionsPfad, schicht, 2, createSchichtAnlage(), 'uid-1'),
     ).resolves.toEqual(expect.objectContaining({ versionRevision: 3 }));
+    const aktualisierungsOperationen = executeDocumentTransactionMock.mock.calls[0][1]({
+      id: 'v-1',
+      daten: createVersionDokument(),
+    }).operationen;
+    expect(aktualisierungsOperationen[1].daten).toEqual(
+      expect.objectContaining({ mitarbeiterAnzeigename: 'feld-loeschen' }),
+    );
     await expect(service.deleteSchicht(versionsPfad, schicht, 2, 'uid-1')).resolves.toEqual(
       expect.objectContaining({ versionRevision: 3 }),
     );
@@ -231,7 +242,6 @@ describe('DienstplanService', () => {
   function createSchichtAnlage(): ISchichtAnlage {
     return {
       mitarbeiterId: 'm-1',
-      mitarbeiterAnzeigename: 'Mia Muster',
       schichtvorlageId: 'sv-1',
       schichtvorlageBezeichnung: 'Frühschicht',
       beginn: Timestamp.fromDate(new Date('2026-10-05T08:00:00+02:00')),

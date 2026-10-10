@@ -21,9 +21,11 @@ und anschließend fachlich sortiert.
 - `createSchicht()`, `updateSchicht()` und `deleteSchicht()` schreiben eine Schicht gemeinsam mit der nächsten Versionsrevision in
   einer Firestore-Transaktion.
 
-Schichten enthalten Mitarbeiter-ID und Mitarbeitername sowie Vorlagen-ID und Vorlagenbezeichnung als Momentaufnahme. Beginn und
-Ende sind absolute Firestore-Zeitstempel; die Pause wird in Minuten gespeichert. Vor jedem Schreiben prüft der Service die
-anrechenbare Arbeitszeit. Eine abweichende Entwurfsrevision verhindert veraltete Schreibzugriffe.
+Schichten enthalten ausschließlich die Mitarbeiter-ID als Mitarbeiterzuordnung sowie Vorlagen-ID und Vorlagenbezeichnung als
+Momentaufnahme. Ein vorhandenes Legacy-Feld `mitarbeiterAnzeigename` wird beim Lesen nicht in das Domainmodell übernommen und
+beim nächsten Bearbeiten entfernt. Beginn und Ende sind absolute Firestore-Zeitstempel; die Pause wird in Minuten gespeichert.
+Vor jedem Schreiben prüft der Service die anrechenbare Arbeitszeit. Eine abweichende Entwurfsrevision verhindert veraltete
+Schreibzugriffe.
 
 ## Beteiligte Dateien
 

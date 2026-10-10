@@ -23,7 +23,16 @@
         <h3>{{ tag.bezeichnung }}</h3>
         @for (schicht of tag.schichten; track schicht.id) {
           <div class="schichtplan-monat__schicht">
-            <strong>{{ schicht.mitarbeiterAnzeigename }}</strong>
+            <strong>
+              @if (getMitarbeiterFarbkennung(schicht.mitarbeiterId); as farbkennung) {
+                <span
+                  class="schichtplan-monat__mitarbeiter-farbe"
+                  [style.background-color]="farbkennung"
+                  aria-hidden="true"
+                ></span>
+              }
+              {{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}
+            </strong>
             <span>{{ schicht.schichtvorlageBezeichnung }}</span>
             <span>{{ formatSchichtzeit(schicht) }}</span>
             <span>Pause: {{ schicht.pauseMinuten }} Min.</span>

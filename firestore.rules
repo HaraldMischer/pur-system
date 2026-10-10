@@ -273,7 +273,6 @@ service cloud.firestore {
     function hatGueltigeSchichtFelder(daten) {
       return daten.keys().hasAll([
           'mitarbeiterId',
-          'mitarbeiterAnzeigename',
           'schichtvorlageId',
           'schichtvorlageBezeichnung',
           'beginn',
@@ -286,7 +285,6 @@ service cloud.firestore {
         ])
         && daten.keys().hasOnly([
           'mitarbeiterId',
-          'mitarbeiterAnzeigename',
           'schichtvorlageId',
           'schichtvorlageBezeichnung',
           'beginn',
@@ -298,7 +296,6 @@ service cloud.firestore {
           'aktualisiertVonUid'
         ])
         && daten.mitarbeiterId is string
-        && daten.mitarbeiterAnzeigename is string
         && daten.schichtvorlageId is string
         && daten.schichtvorlageId.size() > 0
         && daten.schichtvorlageBezeichnung is string
@@ -360,8 +357,7 @@ service cloud.firestore {
       ).data;
       return mitarbeiter.aktiv == true
         && mitarbeiter.filialIds is list
-        && filialId in mitarbeiter.filialIds
-        && request.resource.data.mitarbeiterAnzeigename == mitarbeiter.anzeigename;
+        && filialId in mitarbeiter.filialIds;
     }
 
     function hatAktiveSchichtvorlagenreferenz(unternehmerId, firmaId, filialId) {

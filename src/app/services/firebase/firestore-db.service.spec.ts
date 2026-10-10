@@ -6,6 +6,7 @@ import { Firestore } from '@angular/fire/firestore';
 import {
   FIRESTORE_ADD_DOC,
   FIRESTORE_COLLECTION,
+  FIRESTORE_DELETE_FIELD,
   FIRESTORE_DELETE_DOC,
   FIRESTORE_DOC,
   FIRESTORE_GET_DOC_FROM_CACHE,
@@ -28,6 +29,7 @@ describe('FirestoreDbService', () => {
   const firestoreMock = {} as Firestore;
   const collectionMock = vi.fn().mockReturnValue('collection-ref');
   const docMock = vi.fn().mockReturnValue('document-ref');
+  const deleteFieldMock = vi.fn().mockReturnValue('feld-loeschen');
   const deleteDocMock = vi.fn();
   const getDocsFromCacheMock = vi.fn();
   const getDocsFromServerMock = vi.fn();
@@ -104,6 +106,7 @@ describe('FirestoreDbService', () => {
         { provide: Firestore, useValue: firestoreMock },
         { provide: FIRESTORE_ADD_DOC, useValue: addDocMock },
         { provide: FIRESTORE_COLLECTION, useValue: collectionMock },
+        { provide: FIRESTORE_DELETE_FIELD, useValue: deleteFieldMock },
         { provide: FIRESTORE_DELETE_DOC, useValue: deleteDocMock },
         { provide: FIRESTORE_DOC, useValue: docMock },
         { provide: FIRESTORE_GET_DOC_FROM_CACHE, useValue: getDocFromCacheMock },
@@ -124,6 +127,13 @@ describe('FirestoreDbService', () => {
         { provide: NetzwerkStatusService, useValue: { assertOnline: assertOnlineMock } },
       ],
     });
+  });
+
+  it('should create a delete-field placeholder', () => {
+    const service = TestBed.inject(FirestoreDbService);
+
+    expect(service.createDeleteField()).toBe('feld-loeschen');
+    expect(deleteFieldMock).toHaveBeenCalledOnce();
   });
 
   it('should update several documents atomically', async () => {

@@ -76,7 +76,10 @@ Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 - Die fachliche erste Ausbaustufe ist als filialbezogene Monatsplanung mit versionierten Bearbeitungsständen geplant.
   Domainmodelle, Dienstplan- und Schichtvorlagen-Service, die zugehörigen Stores sowie die benötigten Firestore-Datenzugriffe
-  sind umgesetzt. Die Dienstplan-Grundoberfläche und die Verwaltung filialbezogener Schichtvorlagen sind ebenfalls umgesetzt.
+  sind umgesetzt. Die Dienstplan-Grundfunktion einschließlich Grundoberfläche, manueller Schichtverwaltung und Verwaltung
+  filialbezogener Schichtvorlagen ist vollständig umgesetzt und abgenommen.
+- Das Mitarbeiter-Domainmodell führt optional `farbkennung` im Firestore-Dokument und im Anwendungseintrag. Speicherung,
+  Laden, Pflege und Darstellung der Farbkennung sind noch nicht umgesetzt.
 - Eine Version besitzt den Status `entwurf`, `veroeffentlicht` oder `archiviert`. Veröffentlichte und archivierte Versionen
   bleiben unveränderlich. Änderungen werden als neue Entwurfsversion auf Basis des veröffentlichten Stands vorbereitet.
 - Aktive Master dürfen in allen Filialen planen. Aktive Office-Konten bleiben auf ausdrücklich freigegebene Filialen und
@@ -101,6 +104,11 @@ Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Versionen werden erst bei Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` nur die veröffentlichte Version des
   ausgewählten Monats für eine fachlich erlaubte Filiale. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese
   Abfragewege zunächst nicht vorgesehen.
+- Für alle Rollen werden Anzeigename und `farbkennung` einer Schicht über deren `mitarbeiterId` aus dem aktuellen
+  Mitarbeiterdokument aufgelöst. Der Mitarbeiter-Store verwendet bereits geladene Einträge und lädt nur eindeutige, im
+  geöffneten Dienstplan referenzierte und noch fehlende Mitarbeiter mit `networkOnly` gezielt nach. Das Schichtmodell und neue
+  Schreibzugriffe speichern ausschließlich `mitarbeiterId`; ein vorhandenes Legacy-Feld `mitarbeiterAnzeigename` wird beim Lesen
+  ignoriert und beim nächsten Bearbeiten entfernt. Die Firestore Rules lehnen neue Schichtdokumente mit diesem Legacy-Feld ab.
 - Dienstplan, Version und Schicht bleiben einzelne kleine Dokumente. Es werden keine über Jahre wachsenden Arrays gespeichert;
   mit der Historie steigen nur Dokumentanzahl und Lesezugriffe der vollständigen Filialladung.
 - Veröffentlichung und Archivierung sollen mit UID und Zeitpunkt protokolliert werden. Eine Änderung nach Veröffentlichung
@@ -357,8 +365,9 @@ Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Voraussetzung noch mit dem betrieblichen Filialzugang gleichzusetzen. Dienstplandaten, persönliche Aktionen und
   Push-Benachrichtigungen werden bei fachlichem Bedarf separat geplant. `erlaubteBereiche` steuert nur verfügbare App-Funktionen.
 - Das fachliche Mitarbeiter-Domänenmodell und sein Datenzugriff sind lokal umgesetzt. Mitarbeiter liegen unter
-  `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`. Der Service lädt, erstellt, aktualisiert und löscht
-  Mitarbeiter. Geladene Einträge behalten ihre Unternehmer- und Firmen-ID als fachlichen Kontext.
+  `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`. Der Service lädt, erstellt und aktualisiert
+  Mitarbeiter und führt Migrationsduplikate zusammen. Geladene Einträge behalten ihre Unternehmer- und Firmen-ID als fachlichen
+  Kontext.
 - Der `MitarbeiterStore` hält mehrere Firmen-, Einzelfilial- und Mehrfilialkontexte gleichzeitig. Jeder Kontext besitzt eigene
   Lade-, Abschluss- und Fehlerzustände; dadurch bleibt auch ein vollständig geladenes leeres Ergebnis eindeutig. Identische
   laufende oder bereits geladene Kontexte werden nicht erneut geladen. Ein zentraler Reset verwirft sämtliche
@@ -368,11 +377,12 @@ Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
   Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
   `erlaubteBereiche`. Master können mehrere nicht verknüpfte Mitarbeiter atomar in einen Zielmitarbeiter zusammenführen; dabei
-  werden die Duplikate über die technische Löschfunktion physisch entfernt. Eine eigenständige Löschaktion bietet die Oberfläche
-  nicht an. Verknüpfte Mitarbeiter sind durch Rules vor dem Zusammenführen und Löschen geschützt. Der Aktivstatus beschreibt
-  allein den Beschäftigungsstatus und begrenzt die Lese- und Bearbeitungsrechte nicht. Office sowie Filiale können Mitarbeiter
-  in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Die am 04.10.2026 deployten Rules erlauben die vereinbarten
-  Mitarbeiterzugriffe. Die danach lokal ergänzten Regeln für Rollen-Arrays und das Zusammenführen sind getestet, aber noch nicht
+  werden die Duplikate innerhalb der atomaren Zusammenführung physisch entfernt. Eine eigenständige Löschfunktion stellen
+  Service, Store und Oberfläche nicht bereit. Verknüpfte Mitarbeiter sind durch Rules vor dem Zusammenführen und Löschen
+  geschützt. Der Aktivstatus beschreibt allein den Beschäftigungsstatus und begrenzt die Lese- und Bearbeitungsrechte nicht.
+  Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Die am 04.10.2026
+  deployten Rules erlauben die vereinbarten Mitarbeiterzugriffe. Die danach lokal ergänzten Regeln für Rollen-Arrays und das
+  Zusammenführen sind getestet, aber noch nicht
   als produktiv deployed dokumentiert.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
   `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
