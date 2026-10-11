@@ -35,7 +35,7 @@ describe('MitarbeiterListePage', () => {
       kontakt: {},
     },
     rollen: ['servicekraft'],
-    filialIds: [],
+    filialIds: ['b-1'],
     aktiv: true,
   };
   const unternehmer: IUnternehmerEintrag = {
@@ -63,7 +63,7 @@ describe('MitarbeiterListePage', () => {
   };
   const selectedUnternehmer = signal<IUnternehmerEintrag | null>(unternehmer);
   const selectedFirma = signal<IFirmaEintrag | null>(firma);
-  const selectedFiliale = signal<IFilialeEintrag | null>(null);
+  const selectedFilialen = signal<readonly IFilialeEintrag[]>([filiale]);
   const mitarbeiterSignal = signal<IMitarbeiterEintrag[]>([]);
   const download = signal(false);
   const isLoaded = signal(false);
@@ -93,7 +93,7 @@ describe('MitarbeiterListePage', () => {
   beforeEach(() => {
     selectedUnternehmer.set(unternehmer);
     selectedFirma.set(firma);
-    selectedFiliale.set(null);
+    selectedFilialen.set([filiale]);
     mitarbeiterSignal.set([]);
     download.set(false);
     isLoaded.set(false);
@@ -139,7 +139,7 @@ describe('MitarbeiterListePage', () => {
         { provide: MatDialog, useValue: dialogMock },
         {
           provide: AppKontextStore,
-          useValue: { selectedUnternehmer, selectedFirma, selectedFiliale },
+          useValue: { selectedUnternehmer, selectedFirma, selectedFilialen },
         },
         { provide: BenutzerStore, useValue: { benutzerProfil } },
         { provide: StammdatenStore, useValue: stammdatenStoreMock },
@@ -201,7 +201,7 @@ describe('MitarbeiterListePage', () => {
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenLastCalledWith('u-1', 'f-2', undefined);
   });
 
-  it('should filter already loaded employees by the selected branch without loading again', async () => {
+  it('should filter already loaded employees by the selected branches without loading again', async () => {
     const mitarbeiterFiliale = {
       ...mitarbeiter,
       id: 'm-b-1',
@@ -214,22 +214,45 @@ describe('MitarbeiterListePage', () => {
       filialIds: ['b-2'],
       person: { ...mitarbeiter.person, vorname: 'Filiale', nachname: 'Zwei' },
     };
+    const mitarbeiterNichtAusgewaehlt = {
+      ...mitarbeiter,
+      id: 'm-b-3',
+      filialIds: ['b-3'],
+      person: { ...mitarbeiter.person, vorname: 'Filiale', nachname: 'Drei' },
+    };
     mitarbeiterStoreMock.loadMitarbeiter.mockImplementation(async () => {
-      mitarbeiterSignal.set([mitarbeiterFiliale, mitarbeiterAndereFiliale]);
+      mitarbeiterSignal.set([
+        mitarbeiterFiliale,
+        mitarbeiterAndereFiliale,
+        mitarbeiterNichtAusgewaehlt,
+      ]);
       isLoaded.set(true);
     });
     const fixture = TestBed.createComponent(MitarbeiterListePage);
     fixture.detectChanges();
     await fixture.whenStable();
 
-    selectedFiliale.set(filiale);
+    selectedFilialen.set([filiale, { ...filiale, id: 'b-2', anzeigename: 'Filiale 2' }]);
     fixture.detectChanges();
     await fixture.whenStable();
 
     const text = (fixture.nativeElement as HTMLElement).textContent;
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledOnce();
     expect(text).toContain('Filiale Eins');
-    expect(text).not.toContain('Filiale Zwei');
+    expect(text).toContain('Filiale Zwei');
+    expect(text).not.toContain('Filiale Drei');
+  });
+
+  it('should keep the list empty until a branch is selected', async () => {
+    selectedFilialen.set([]);
+    const fixture = TestBed.createComponent(MitarbeiterListePage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledOnce();
+    expect(fixture.componentInstance.mitarbeiter()).toEqual([]);
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-mitarbeiter-card')).toBeNull();
   });
 
   it('should load only employees of the assigned branch for a branch account', async () => {

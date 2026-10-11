@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 11.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -40,10 +40,17 @@ Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Die Sidebar enthält den Bereich Systemverwaltung für berechtigte Master-Benutzer.
 - Die Sidebar zeigt die zentral in `app.constants.ts` gepflegte Anwendungsversion. Der aktuelle Stand ist `1.0.0`.
 - Der `AppKontextStore` hält den seitenübergreifenden Arbeitskontext aus Unternehmer, Firma und Filialumfang. Nach dem Laden der
-  Stammdaten wählt er den ersten verfügbaren Unternehmer, dessen erste Firma und bei vorhandenen Filialen `Alle Filialen` aus.
-  Ein Wechsel des Unternehmers oder der Firma stellt diesen vollständigen Kontext erneut her.
-- Master können Unternehmer und Firma über wiederverwendbare Selektoren in der Sidebar wechseln. Der Filial-Selektor zeigt den
-  Kontext `Alle Filialen`, bleibt aber bis zu einem konkreten fachlichen Bedarf deaktiviert.
+  Stammdaten wählt er den ersten verfügbaren Unternehmer, dessen erste Firma und die erste verfügbare Filiale. Der Benutzer kann
+  anschließend eine oder mehrere konkrete Filialen auswählen. Ein Wechsel des Unternehmers oder der Firma stellt den davon
+  abhängigen Kontext mit der jeweils ersten verfügbaren Filiale erneut her.
+- Die wiederverwendbaren Kontextselektoren bleiben während des Stammdatenladens verborgen und erscheinen danach unmittelbar,
+  wenn ihre Rollenkonfiguration die Auswahl erlaubt und mehr als ein fachlich wählbarer Eintrag vorhanden ist. Beim Wechsel des
+  App-Bereichs bleiben sie sichtbar; die Bereichskonfiguration steuert nur, ob sie bearbeitbar oder deaktiviert sind. Eindeutige
+  Unternehmer, Firmen und Filialen werden automatisch verwendet und nicht als deaktivierte Auswahl dargestellt.
+- Die Filialauswahl ist als Mehrfachauswahl konkreter Filialen umgesetzt. Einen künstlichen Eintrag `Alle Filialen` gibt es
+  nicht. Bestehende Einzelfilial-Verbraucher erhalten nur dann eine `selectedFiliale`, wenn genau eine Filiale ausgewählt ist.
+- Die Mitarbeiterliste bleibt ohne Filialauswahl leer. Bei einer oder mehreren ausgewählten Filialen filtert sie die bereits
+  geladene Firmenliste auf Mitarbeiter, die mindestens einer dieser Filialen zugeordnet sind.
 
 ## Seiten und Routen
 
@@ -93,17 +100,23 @@ Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   zusätzliche Prüfung des im Filial-Frontend geführten Firma-Mitarbeiters und seiner Rolle ist clientseitig, bei einem
   manipulierten Client umgehbar und noch nicht umgesetzt. Die Rules-Änderung ist lokal durch Emulator-Tests abgesichert, aber
   nicht produktiv deployed.
-- Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Jeder Dienstplanzugriff
-  benötigt eine konkrete Filiale; der Sammelkontext `Alle Filialen` wird für die erste Ausbaustufe nicht unterstützt.
+- Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Die vorhandene
+  Dienstplanverarbeitung benötigt derzeit noch genau eine ausgewählte Filiale; die Verarbeitung mehrerer ausgewählter Filialen
+  ist in Todo 20.5 offen.
+- Die vorhandene Dienstplanoberfläche verarbeitet derzeit genau eine konkrete Filiale. Als neuer Sollzustand sollen Master,
+  Office und Mitarbeiter mehrere erlaubte Filialen gemeinsam auswählen und deren filialbezogene Monatspläne in einer
+  gemeinsamen Ansicht verwenden können. Speicherung, Versionierung und Veröffentlichung bleiben je Filiale getrennt. Die
+  Umstellung ist in Todo 20.5 offen.
 - Für die Filial-App ist die vollständige Startladung umgesetzt: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
   Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung geladen. Mitarbeiter verwenden weiterhin die
   bestehende Stammdatenstrategie `cacheFirst`; der vollständige Dienstplanbestand verwendet `networkFirst`. Online werden die
   Dienstplandaten in den persistenten IndexedDB-Cache übernommen, bei einem technischen Serverfehler wird auf den vorhandenen
   Cache zurückgefallen. Schreibvorgänge bleiben online.
-- Master und Office laden mit `networkOnly` nur die konkret ausgewählte Filiale und den ausgewählten Monat; historische
-  Versionen werden erst bei Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` nur die veröffentlichte Version des
-  ausgewählten Monats für eine fachlich erlaubte Filiale. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese
-  Abfragewege zunächst nicht vorgesehen.
+- Master und Office laden mit `networkOnly` derzeit nur dann einen Monatsplan, wenn genau eine Filiale ausgewählt ist;
+  historische Versionen werden erst bei Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` derzeit ebenfalls nur die
+  veröffentlichte Version des ausgewählten Monats für genau eine fachlich erlaubte Filiale. Das gemeinsame Laden mehrerer
+  ausgewählter Filialen folgt in Todo 20.5. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese Abfragewege zunächst
+  nicht vorgesehen.
 - Für alle Rollen werden Anzeigename und `farbkennung` einer Schicht über deren `mitarbeiterId` aus dem aktuellen
   Mitarbeiterdokument aufgelöst. Der Mitarbeiter-Store verwendet bereits geladene Einträge und lädt nur eindeutige, im
   geöffneten Dienstplan referenzierte und noch fehlende Mitarbeiter mit `networkOnly` gezielt nach. Das Schichtmodell und neue
@@ -125,8 +138,10 @@ Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   dokumentiert.
 - Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtvorlagen. Ansicht und Planung
   verwenden einen gemeinsamen Dienstplan-Arbeitsbereich mit Monatsnavigation, tageweiser Darstellung sowie Lade-, Leer- und
-  Fehlerzuständen. Master, Office und Mitarbeiter können eine konkrete Filiale auswählen; Filialkonten verwenden unmittelbar
-  ihre einzige Profilzuordnung. Konfliktprüfung und atomare Veröffentlichung folgen in Todo 20.5.
+  Fehlerzuständen. Der globale Kontext erlaubt Master, Office und Mitarbeiter bereits die Auswahl einer oder mehrerer Filialen;
+  der Dienstplan-Arbeitsbereich verarbeitet davon derzeit genau eine. Filialkonten verwenden unmittelbar ihre einzige
+  Profilzuordnung. Die gemeinsame Verarbeitung mehrerer Filialen, die Konfliktprüfung und die atomare Veröffentlichung folgen in
+  Todo 20.5.
 - Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
   bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, lokale
   Uhrzeiten, Folgetag und Pause werden vor dem Schreiben validiert und in `Europe/Berlin` in Firestore-Zeitstempel umgewandelt.
@@ -558,9 +573,12 @@ Stand: 09.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `AppKontextStore` mit der Sidebar und setzt sich aus internen Unternehmer-, Firmen- und Filial-Selektoren zusammen. Die drei
   Unterkomponenten liegen in eigenen Unterordnern und werden außerhalb des `AppKontextSelector` nicht direkt verwendet. Über
   eine typisierte Konfiguration unterstützt der Wrapper je Selektor die Modi `hidden`, `readonly` und `editable`. Die Sidebar
-  ermittelt die Konfiguration zentral aus Benutzerrolle und aktivem `data.bereich` der Route. Für Master sind Unternehmer und
-  Firma in allen Fachbereichen veränderbar; die Filiale ist nur im Mitarbeiterbereich sichtbar und veränderbar. Noch offene
-  Rollenkonfigurationen verwenden bis zu ihrer Festlegung vollständig verborgene Selektoren.
+  ermittelt die Konfiguration zentral aus Benutzerrolle und aktivem `data.bereich` der Route. Ein konfigurierter Selektor wird
+  nur bei mehr als einer fachlich wählbaren Option dargestellt. Master können Unternehmer und Firma in allen Fachbereichen
+  verändern; die Filialauswahl ist im Schichtplan und Mitarbeiterbereich bearbeitbar und in den übrigen Bereichen deaktiviert.
+  Office verwendet denselben bereichsabhängigen Filialmodus ohne Unternehmerauswahl. Filialkonten verwenden ihren eindeutigen
+  Kontext ohne Selektoren; Mitarbeiter erhalten im Schichtplan nur bei mehreren erlaubten Filialen die Filialmehrfachauswahl.
+  Die vollständige Zuordnung steht in der [Kontextselektor-Matrix](./matrix-kontextselektor.md).
 - Der `MitarbeiterFilter` liegt unter `src/app/components/data-filters/mitarbeiter-filter`. Er zeigt Vor- und Nachname an, gibt
   den ausgewählten vollständigen Mitarbeiter zurück, ist vollständig getestet und noch nicht in eine Fachseite eingebunden.
 - Die Systemverwaltungsseite lädt Unternehmer aus `unternehmer`, Firmen aus `firma` und Filialen aus `filiale`. Die produktiven

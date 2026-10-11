@@ -15,7 +15,7 @@ const DASHBOARD_NAVIGATION: INavigationLink = {
 const DIENSTPLAN_ANSICHT_NAVIGATION: INavigationLink = {
   typ: 'link',
   id: 'dienstplanansicht',
-  label: 'Dienstplan ansehen',
+  label: 'Dienstplan',
   icon: 'visibility',
   route: '/schichtplan/ansicht',
   bereich: 'schichtplan',
@@ -31,7 +31,7 @@ const SCHICHTPLAN_NAVIGATION: INavigationGruppe = {
     {
       typ: 'link',
       id: 'dienstplanplanung',
-      label: 'Dienstplan planen',
+      label: 'Bearbeiten',
       icon: 'edit_calendar',
       route: '/schichtplan/planung',
       bereich: 'schichtplan',
@@ -39,7 +39,7 @@ const SCHICHTPLAN_NAVIGATION: INavigationGruppe = {
     {
       typ: 'link',
       id: 'schichtvorlagen',
-      label: 'Schichtvorlagen',
+      label: 'Vorlagen',
       icon: 'tune',
       route: '/schichtplan/einstellungen',
       bereich: 'schichtplan',

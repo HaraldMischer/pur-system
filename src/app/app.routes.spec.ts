@@ -37,9 +37,9 @@ describe('app routes', () => {
     expect(schichtplanRoute?.data?.['bereich']).toBe('schichtplan');
     expect(schichtplanRoute?.loadComponent).toBeUndefined();
     expect(redirectRoute).toEqual({ path: '', pathMatch: 'full', redirectTo: 'ansicht' });
-    expect(ansichtRoute?.title).toBe('Dienstplan ansehen');
+    expect(ansichtRoute?.title).toBe('Dienstplanübersicht');
     expect(ansichtRoute?.loadComponent).toBeDefined();
-    expect(planungRoute?.title).toBe('Dienstplan planen');
+    expect(planungRoute?.title).toBe('Dienstplan bearbeiten');
     expect(planungRoute?.canActivate).toEqual([dienstplanPlanungGuard]);
     expect(planungRoute?.loadComponent).toBeDefined();
     expect(einstellungenRoute?.title).toBe('Schichtvorlagen');

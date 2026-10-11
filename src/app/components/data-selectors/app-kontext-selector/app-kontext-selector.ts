@@ -2,8 +2,8 @@
 
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { TAppKontextSelectorKonfiguration } from '../../../commons/models/app/app-kontext-selector.types';
-import { TFilialKontext } from '../../../commons/models/app/app-kontext.types';
 import { IFirmaEintrag } from '../../../commons/models/domain/firma';
+import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IUnternehmerEintrag } from '../../../commons/models/domain/unternehmer';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { StammdatenStore } from '../../../stores/app/stammdaten.store';
@@ -44,7 +44,7 @@ export class AppKontextSelector {
   readonly firmen = this._appKontextStore.firmen;
   readonly selectedFirma = this._appKontextStore.selectedFirma;
   readonly filialen = this._appKontextStore.filialen;
-  readonly filialKontext = this._appKontextStore.filialKontext;
+  readonly selectedFilialen = this._appKontextStore.selectedFilialen;
 
   // ===== Öffentliche Aktionen =================
 
@@ -67,11 +67,11 @@ export class AppKontextSelector {
   }
 
   /**
-   * Übernimmt die konkrete oder übergreifende Filialauswahl in den globalen App-Kontext.
+   * Übernimmt die ausgewählten Filialen in den globalen App-Kontext.
    *
-   * @param filialKontext - Der ausgewählte Filialkontext oder `null`.
+   * @param filialen - Die ausgewählten Filialen.
    */
-  selectFilialKontext(filialKontext: TFilialKontext): void {
-    this._appKontextStore.selectFilialKontext(filialKontext);
+  selectFilialen(filialen: readonly IFilialeEintrag[]): void {
+    this._appKontextStore.selectFilialen(filialen);
   }
 }

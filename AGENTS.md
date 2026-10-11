@@ -229,6 +229,9 @@
 - Rollen, Berechtigungen, Validierung, erfolgreiche Abläufe und relevante Fehlerfälle werden gezielt abgesichert.
 - Template-Tests prüfen sichtbares oder interaktives Verhalten. Reine DOM-Verschachtelung, dekorative Elemente und CSS-Klassen
   werden nur getestet, wenn sie für Funktion, Barrierefreiheit oder verbindliche Projektkonventionen relevant sind.
+- Reine UI-Texte wie Labels, Überschriften und Formulierungen werden nicht auf ihren exakten Wortlaut getestet. Ausnahmen gelten
+  nur, wenn der Text fachliche Bedeutung hat, für Barrierefreiheit erforderlich ist oder einen verbindlichen Fehler-, Status-
+  oder Bestätigungstext darstellt.
 - Selektoren und Erwartungen werden so gewählt, dass fachlich bedeutungslose Template- oder Styling-Änderungen keine Tests
   brechen.
 - Bestehende Tests werden bei einer Verhaltensänderung auf ihre fachliche Aussage geprüft und angepasst, wenn das zuvor erwartete
@@ -247,4 +250,7 @@
 - Füge Dependencies nur bei begründetem Bedarf hinzu und aktualisiere `package.json` und `package-lock.json` gemeinsam.
 - Ergänze oder aktualisiere passende `.spec.ts` Dateien bei Verhaltensänderungen.
 - Führe vor Abschluss von Code-Änderungen `npm test` ohne Watch-Modus aus.
-- Führe bei Build-, Template- oder größeren UI-Änderungen zusätzlich `npm run build` aus.
+- Führe bei Build-, Template- oder größeren UI-Änderungen zusätzlich das zur betroffenen App passende vorhandene Build-Skript
+  (`npm run build:master`, `npm run build:office`, `npm run build:filiale` oder `npm run build:mitarbeiter`) aus. Sind mehrere
+  App-Varianten betroffen, führe die entsprechenden Builds einzeln aus. Verwende `npm run build` nur, wenn dieses Skript in der
+  `package.json` tatsächlich vorhanden ist.

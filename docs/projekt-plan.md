@@ -331,16 +331,27 @@ getrennt, weil er eine hierarchische Berechtigungszuordnung mit konfigurierbarer
 Mitarbeiters und verändert den globalen App-Kontext nicht.
 
 Für den seitenübergreifenden Arbeitskontext hält der `AppKontextStore` den ausgewählten Unternehmer, die ausgewählte Firma und
-den Filialkontext. Er leitet seine verfügbaren Einträge aus dem `StammdatenStore` ab und hält selbst keine fachlichen Stammdaten.
-Nach der Sitzungsinitialisierung wird der erste verfügbare Unternehmer, dessen erste Firma und bei vorhandenen Filialen der
-Kontext `Alle Filialen` gesetzt. Ein Unternehmerwechsel wählt entsprechend wieder dessen erste Firma und alle zugehörigen
-Filialen aus.
+die ausgewählten konkreten Filialen. Er leitet seine verfügbaren Einträge aus dem `StammdatenStore` ab und hält selbst keine
+fachlichen Stammdaten. Eindeutige Auswahlmöglichkeiten werden nach der Sitzungsinitialisierung und nach jedem Wechsel eines
+übergeordneten Kontexts automatisch ausgewählt. Für eine Firma wird unabhängig von der Anzahl ihrer Filialen zunächst die erste
+verfügbare Filiale ausgewählt. Der Benutzer kann anschließend eine oder mehrere Filialen auswählen. Einen künstlichen Kontext
+`Alle Filialen` gibt es nicht; die Auswahl aller konkreten Filialen bildet diesen Umfang ab.
 
-Die Sidebar ermittelt aus Benutzerrolle und aktivem App-Bereich die zentrale Konfiguration des `AppKontextSelector`. Für Master
-sind Unternehmer und Firma in allen Fachbereichen veränderbar. Der Filial-Selektor ist nur im Mitarbeiterbereich sichtbar und
-veränderbar. Noch nicht festgelegte Rollen- und Bereichskombinationen verwenden als sicheren Fallback vollständig verborgene
-Selektoren. Fachseiten wie die Mitarbeiterliste verwenden den zentralen Arbeitskontext und führen keine davon unabhängige
-Unternehmer- oder Firmenauswahl.
+Die Sidebar ermittelt aus Benutzerrolle und aktivem App-Bereich die zentrale Grundkonfiguration des `AppKontextSelector`. Ein
+grundsätzlich veränderbarer Selektor wird nur dargestellt, wenn im aktuellen Kontext mehr als ein fachlich wählbarer Eintrag
+vorhanden ist. Bei genau einem Eintrag wird dieser automatisch ausgewählt und der Selektor ausgeblendet. Bei keinem Eintrag
+zeigt die Fachseite ihren passenden Leer-, Fehler- oder Berechtigungszustand. Nach dem Wechsel eines Unternehmers oder einer
+Firma wird diese Regel für die abhängigen Ebenen erneut ausgewertet.
+
+Nur Master können zwischen mehreren Unternehmern wechseln. Office-, Filial- und Mitarbeiterkonten verwenden ihren eindeutig
+zugeordneten Unternehmer ohne sichtbaren Selektor. Office zeigt die Firmenauswahl nur bei mehreren zugewiesenen Firmen und die
+Filialauswahl als Mehrfachauswahl nur bei mehreren erlaubten Filialen der ausgewählten Firma. Ein Filialkonto besitzt einen
+vollständig eindeutigen Kontext und zeigt keine Kontextselektoren. Bei Mitarbeiterkonten bleiben Unternehmer und Firma verborgen;
+eine Filialmehrfachauswahl erscheint nur bei mehreren fachlich erlaubten Filialen. Die verbindliche Rollen- und Bereichsmatrix
+steht in der
+[Kontextselektor-Matrix](./matrix-kontextselektor.md). Noch nicht festgelegte Kombinationen verwenden als sicheren Fallback
+vollständig verborgene Selektoren. Fachseiten wie die Mitarbeiterliste verwenden den zentralen Arbeitskontext und führen keine
+davon unabhängige Unternehmer- oder Firmenauswahl.
 
 ### Laden und Validierung
 
@@ -468,10 +479,11 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
 
 1. **Dashboard (`/dashboard`):** Noch zu bestimmende Daten der einzelnen Filialen.
 
-2. **Schichtplan (`/schichtplan`):** Komponentenloser Elternbereich für die getrennten Pages „Dienstplan ansehen“
-   (`/schichtplan/ansicht`), „Dienstplan planen“ (`/schichtplan/planung`) und „Schichtvorlagen“
-   (`/schichtplan/einstellungen`). Mitarbeiter und Filialkonten verwenden zunächst nur die Ansicht. Planung und Einstellungen
-   stehen Master und Office zur Verfügung; Filialkonten erhalten sie erst mit dem betrieblichen `dienstplaner`-Sitzungszustand.
+2. **Schichtplan (`/schichtplan`):** Komponentenloser Elternbereich mit den Navigationspunkten „Dienstplan“
+   (`/schichtplan/ansicht`), „Bearbeiten“ (`/schichtplan/planung`) und „Vorlagen“ (`/schichtplan/einstellungen`). Die zugehörigen
+   Seitentitel lauten „Dienstplanübersicht“, „Dienstplan bearbeiten“ und „Schichtvorlagen“. Mitarbeiter und Filialkonten verwenden
+   zunächst nur die Ansicht. Planung und Vorlagen stehen Master und Office zur Verfügung; Filialkonten erhalten sie erst mit dem
+   betrieblichen `dienstplaner`-Sitzungszustand.
 
 3. **Mitarbeiter (`/mitarbeiter`):** Stammdaten der Mitarbeiter. `mitarbeiter` ist eine komponentenlose Elternroute für die
    gerouteten Unterseiten. Die routbaren Pages und ihre nicht routbaren Components sind getrennt abgelegt:
@@ -548,10 +560,11 @@ Momentaufnahme enthält.
 
 ### Abfrage- und Cache-Strategie
 
-Jeder Dienstplanzugriff verwendet einen konkreten vollständigen Filialpfad. Collection-Group-Abfragen über mehrere Filialen
-oder eine gemeinsame jahresbezogene Dienstplan-Collection sind in der ersten Ausbaustufe nicht vorgesehen. Der Kalendermonat im
-Format `YYYY-MM` bleibt die Dokument-ID eines Monatsplans; ein einzelner bekannter Monat kann dadurch ohne Zeitraumssuche direkt
-adressiert werden.
+Jeder einzelne Dienstplanzugriff verwendet weiterhin einen konkreten vollständigen Filialpfad. Eine filialübergreifende Ansicht
+lädt die Monatspläne der ausgewählten Filialen über getrennte direkte Zugriffe und führt sie ausschließlich im Frontend zusammen.
+Collection-Group-Abfragen über mehrere Filialen oder eine gemeinsame jahresbezogene Dienstplan-Collection sind nicht vorgesehen.
+Der Kalendermonat im Format `YYYY-MM` bleibt die Dokument-ID eines Monatsplans; ein einzelner bekannter Monat kann dadurch ohne
+Zeitraumsuche direkt adressiert werden.
 
 Pur Filiale lädt bei jedem Programmstart den vollständigen lesbaren Bestand der eigenen Filiale. Dazu werden über die bestehende
 Stammdatenstrategie `cacheFirst` alle Firma-Mitarbeiter mit der eigenen Filial-ID und mit `networkFirst` alle Dokumente der
@@ -566,10 +579,10 @@ Serverfehler wird auf die bereits lokal vorhandenen Dokumente zurückgefallen. N
 aus dem Cache entfernte Daten stehen offline nicht zur Verfügung; Firestore bleibt die verbindliche Datenquelle. Schreibvorgänge
 werden nicht aus IndexedDB nachsynchronisiert, sondern benötigen weiterhin eine aktive Serververbindung.
 
-Pur Master und Pur Office laden Dienstpläne mit `networkOnly`. Nach Auswahl einer konkreten Filiale und eines Kalendermonats
-lesen sie das bekannte Dienstplandokument direkt, anschließend die über `entwurfVersionId` beziehungsweise
-`veroeffentlichteVersionId` referenzierte Version und deren Schichten. Archivierte Versionen werden nur beim Öffnen der Historie
-nachgeladen. Der Kontext `Alle Filialen` löst keine Dienstplanabfrage aus.
+Pur Master und Pur Office laden Dienstpläne mit `networkOnly`. Für jede ausgewählte Filiale lesen sie im gewählten Kalendermonat
+das bekannte Dienstplandokument direkt, anschließend die über `entwurfVersionId` beziehungsweise `veroeffentlichteVersionId`
+referenzierte Version und deren Schichten. Archivierte Versionen werden nur für eine konkret geöffnete Filialhistorie
+nachgeladen. Die Auswahl mehrerer Filialen erzeugt damit mehrere direkte Zugriffe und keine filialübergreifende Firestore-Abfrage.
 
 Pur Mitarbeiter verwendet ebenfalls `networkOnly`. Für jede fachlich erlaubte Filiale wird nur der Dienstplan des ausgewählten
 Monats direkt geladen. Über `veroeffentlichteVersionId` werden ausschließlich die veröffentlichte Version und deren Schichten
@@ -595,9 +608,10 @@ Versionen oder Schichten; lediglich die Anzahl der Dokumente und die Zahl der be
 mit der Historie zu. Eine spätere Aufbewahrungs- oder Löschregel wird erst bei einem konkreten betrieblichen Bedarf geplant.
 
 Eine Version darf an einem Tag beliebig viele Schichten enthalten. Jede Schicht gehört in der ersten Ausbaustufe genau einem
-aktiven Mitarbeiter, der beim Anlegen oder Bearbeiten der betroffenen Filiale zugeordnet sein muss. Schichten ohne Mitarbeiter und
-eine gemeinsame Schicht für mehrere Mitarbeiter sind nicht vorgesehen. Derselbe Mitarbeiter darf mehrere nicht überlappende
-Schichten an einem Tag besitzen. Die Schicht speichert ausschließlich die `mitarbeiterId` als Mitarbeiterzuordnung. Anzeigename
+aktiven Mitarbeiter, der beim Anlegen oder Bearbeiten der betroffenen Filiale zugeordnet sein muss. Schichten ohne Mitarbeiter
+und eine gemeinsame Schicht für mehrere Mitarbeiter sind nicht vorgesehen. Derselbe Mitarbeiter darf auch in verschiedenen
+Filialen mehrere nicht überlappende Schichten an einem Tag besitzen. Die Schicht speichert ausschließlich die `mitarbeiterId` als
+Mitarbeiterzuordnung. Anzeigename
 und `farbkennung` werden in allen Ansichten aus dem aktuellen Mitarbeiterdokument abgeleitet und nicht als Momentaufnahme in der
 Schicht dupliziert. Reguläre Mitarbeiterdokumente bleiben deshalb auch bei Deaktivierung oder geänderter Filialzuordnung
 dauerhaft erhalten. Ausschließlich Duplikate werden im Rahmen der Migrationsbereinigung zusammengeführt und physisch gelöscht,
@@ -611,9 +625,13 @@ und Pausen ab der vollständigen Schichtdauer sind ungültig. Überlappende Schi
 Konflikt.
 
 Ein Entwurf darf gespeichert werden, solange seine einzelnen Schichten strukturell gültig sind. Überlappungen dürfen während
-der Bearbeitung vorübergehend bestehen, verhindern aber die Veröffentlichung. Weitergehende Hinweise zu langen Arbeitszeiten,
-kurzen Ruhezeiten oder gesetzlichen Grenzen sind nicht Teil der ersten Ausbaustufe. Automatische Planung, Abwesenheiten,
-Zeiterfassung, Schichttausch und Benachrichtigungen werden erst bei konkretem fachlichem Bedarf separat geplant.
+der Bearbeitung vorübergehend bestehen, verhindern aber die Veröffentlichung. Die Konfliktprüfung berücksichtigt die relevanten
+Planungsstände aller Filialen, denen der betroffene Mitarbeiter zugeordnet ist, unabhängig von einer zur Darstellung
+eingeschränkten Filialauswahl. Kann der angemeldete Planer einen dafür relevanten Filialplan nicht lesen oder nicht vollständig
+laden, bleibt die Veröffentlichung gesperrt; die Konfliktprüfung erweitert keine bestehenden Datenrechte. Weitergehende Hinweise
+zu langen Arbeitszeiten, kurzen Ruhezeiten oder gesetzlichen Grenzen sind nicht Teil der ersten Ausbaustufe. Automatische
+Planung, Abwesenheiten, Zeiterfassung, Schichttausch und Benachrichtigungen werden erst bei konkretem fachlichem Bedarf separat
+geplant.
 
 ### Rollen und Filialgrenzen
 
@@ -634,9 +652,12 @@ Firestore Rules erkennen bei einem Filialkonto ausschließlich die Auth-Rolle `f
 im Frontend geführten Firma-Mitarbeiter und dessen Rolle nicht vertrauenswürdig prüfen. Die zusätzliche Rollenprüfung ist daher
 bei einem manipulierten Client umgehbar und keine serverseitig abgesicherte Berechtigungsgrenze.
 
-Jeder Lese- und Schreibzugriff bezieht sich auf eine konkrete Filiale. Der Sammelkontext `Alle Filialen` erlaubt weder das Laden
-noch das Bearbeiten eines einzelnen Dienstplans. Benutzer mit Zugriff auf mehrere Filialen wählen vor dem Dienstplanzugriff eine
-konkrete Filiale. Eine filialübergreifende Dienstplanübersicht ist nicht Teil der ersten Ausbaustufe.
+Jeder einzelne Lese- und Schreibzugriff bezieht sich auf eine konkrete Filiale. Benutzer mit Zugriff auf mehrere Filialen können
+mehrere konkrete Filialen gleichzeitig auswählen und deren Monatspläne in einer gemeinsamen Ansicht laden. Jede dargestellte
+Schicht bleibt eindeutig ihrer Filiale zugeordnet. Beim Anlegen einer Schicht wird zuerst die Zielfiliale bestimmt; danach stehen
+nur deren aktive Schichtvorlagen und die dort einsetzbaren Mitarbeiter zur Auswahl. Speicherung, Versionierung und
+Veröffentlichung bleiben je Filialdienstplan getrennt und werden nicht zu einem filialübergreifenden Firestore-Dokument oder
+einer gemeinsamen Veröffentlichungstransaktion zusammengeführt.
 
 ### Planungs- und Veröffentlichungsablauf
 

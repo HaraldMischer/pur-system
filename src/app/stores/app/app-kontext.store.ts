@@ -3,8 +3,8 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 
-import { TFilialKontext } from '../../commons/models/app/app-kontext.types';
 import { IFirmaEintrag } from '../../commons/models/domain/firma';
+import { IFilialeEintrag } from '../../commons/models/domain/filiale';
 import { IUnternehmerEintrag } from '../../commons/models/domain/unternehmer';
 import { StammdatenStore } from './stammdaten.store';
 
@@ -13,15 +13,13 @@ import { StammdatenStore } from './stammdaten.store';
 type TAppKontextState = {
   readonly selectedUnternehmerId: string | null;
   readonly selectedFirmaId: string | null;
-  readonly selectedFilialeId: string | null;
-  readonly alleFilialen: boolean;
+  readonly selectedFilialeIds: readonly string[];
 };
 
 const initialState: TAppKontextState = {
   selectedUnternehmerId: null,
   selectedFirmaId: null,
-  selectedFilialeId: null,
-  alleFilialen: false,
+  selectedFilialeIds: [],
 };
 
 export const AppKontextStore = signalStore(
@@ -47,16 +45,13 @@ export const AppKontextStore = signalStore(
       const firmaId = store.selectedFirmaId();
       return unternehmerId && firmaId ? stammdatenStore.getFilialen(unternehmerId, firmaId) : [];
     });
-    const selectedFiliale = computed(() => {
-      return filialen().find((eintrag) => eintrag.id === store.selectedFilialeId()) ?? null;
+    const selectedFilialen = computed(() => {
+      const selectedFilialeIds = new Set(store.selectedFilialeIds());
+      return filialen().filter((eintrag) => selectedFilialeIds.has(eintrag.id));
     });
-    const filialKontext = computed<TFilialKontext>(() => {
-      if (store.alleFilialen()) {
-        return { typ: 'alle' };
-      }
-
-      const filiale = selectedFiliale();
-      return filiale ? { typ: 'filiale', filiale } : null;
+    const selectedFiliale = computed(() => {
+      const auswahl = selectedFilialen();
+      return auswahl.length === 1 ? auswahl[0] : null;
     });
 
     return {
@@ -64,8 +59,8 @@ export const AppKontextStore = signalStore(
       firmen,
       selectedFirma,
       filialen,
+      selectedFilialen,
       selectedFiliale,
-      filialKontext,
     };
   }),
   withMethods((store, stammdatenStore = inject(StammdatenStore)) => {
@@ -101,8 +96,7 @@ export const AppKontextStore = signalStore(
       patchState(store, {
         selectedUnternehmerId: selectedUnternehmer.id,
         selectedFirmaId: null,
-        selectedFilialeId: null,
-        alleFilialen: false,
+        selectedFilialeIds: [],
       });
       const firmen = stammdatenStore.getFirmen(selectedUnternehmer.id);
       if (firmen.length > 0) {
@@ -111,7 +105,7 @@ export const AppKontextStore = signalStore(
     }
 
     /**
-     * Wählt eine Firma des aktuellen Unternehmers und setzt den Filialkontext zurück.
+     * Wählt eine Firma des aktuellen Unternehmers und setzt deren Filialauswahl.
      *
      * @param firma - Die ausgewählte Firma oder `null`.
      */
@@ -123,46 +117,42 @@ export const AppKontextStore = signalStore(
       if (!unternehmerId || !selectedFirma) {
         patchState(store, {
           selectedFirmaId: null,
-          selectedFilialeId: null,
-          alleFilialen: false,
+          selectedFilialeIds: [],
         });
         return;
       }
 
+      const filialen = stammdatenStore.getFilialen(unternehmerId, selectedFirma.id);
       patchState(store, {
         selectedFirmaId: selectedFirma.id,
-        selectedFilialeId: null,
-        alleFilialen: stammdatenStore.getFilialen(unternehmerId, selectedFirma.id).length > 0,
+        selectedFilialeIds: filialen.length > 0 ? [filialen[0].id] : [],
       });
     }
 
     /**
-     * Wählt eine konkrete Filiale oder den Kontext aller Filialen der aktuellen Firma.
+     * Wählt eine oder mehrere konkrete Filialen der aktuellen Firma.
      *
-     * @param filialKontext - Der ausgewählte Filialkontext oder `null`.
+     * @param filialenAuswahl - Die ausgewählten Filialen.
      */
-    function selectFilialKontext(filialKontext: TFilialKontext): void {
+    function selectFilialen(filialenAuswahl: readonly IFilialeEintrag[]): void {
       const unternehmerId = store.selectedUnternehmerId();
       const firmaId = store.selectedFirmaId();
-      if (!unternehmerId || !firmaId || !filialKontext) {
-        patchState(store, { selectedFilialeId: null, alleFilialen: false });
+      if (!unternehmerId || !firmaId) {
+        patchState(store, { selectedFilialeIds: [] });
         return;
       }
 
       const filialen = stammdatenStore.getFilialen(unternehmerId, firmaId);
-      if (filialKontext.typ === 'alle') {
-        patchState(store, {
-          selectedFilialeId: null,
-          alleFilialen: filialen.length > 0,
-        });
+      if (filialen.length === 0) {
+        patchState(store, { selectedFilialeIds: [] });
         return;
       }
 
-      const selectedFiliale = filialen.find((eintrag) => eintrag.id === filialKontext.filiale.id);
-      patchState(store, {
-        selectedFilialeId: selectedFiliale?.id ?? null,
-        alleFilialen: false,
-      });
+      const ausgewaehlteIds = new Set(filialenAuswahl.map((filiale) => filiale.id));
+      const selectedFilialeIds = filialen
+        .filter((filiale) => ausgewaehlteIds.has(filiale.id))
+        .map((filiale) => filiale.id);
+      patchState(store, { selectedFilialeIds });
     }
 
     /**
@@ -176,7 +166,7 @@ export const AppKontextStore = signalStore(
       initialize,
       selectUnternehmer,
       selectFirma,
-      selectFilialKontext,
+      selectFilialen,
       reset,
     };
   }),

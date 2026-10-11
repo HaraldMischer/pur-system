@@ -1,7 +1,11 @@
 <!-- pur-system/src/app/components/data-selectors/app-kontext-selector/app-kontext-selector.html -->
 
 <div class="app-kontext-selector">
-  @if (konfiguration().unternehmer !== 'hidden') {
+  @if (
+    !stammdatenDownload() &&
+    konfiguration().unternehmer !== 'hidden' &&
+    unternehmer().length > 1
+  ) {
     <app-unternehmer-selector
       [unternehmer]="unternehmer()"
       [selectedUnternehmer]="selectedUnternehmer()"
@@ -9,7 +13,7 @@
       (selectedUnternehmerChange)="selectUnternehmer($event)"
     />
   }
-  @if (konfiguration().firma !== 'hidden') {
+  @if (!stammdatenDownload() && konfiguration().firma !== 'hidden' && firmen().length > 1) {
     <app-firma-selector
       [firmen]="firmen()"
       [selectedFirma]="selectedFirma()"
@@ -19,14 +23,14 @@
       (selectedFirmaChange)="selectFirma($event)"
     />
   }
-  @if (konfiguration().filiale !== 'hidden') {
+  @if (!stammdatenDownload() && konfiguration().filiale !== 'hidden' && filialen().length > 1) {
     <app-filiale-selector
       [filialen]="filialen()"
-      [filialKontext]="filialKontext()"
+      [selectedFilialen]="selectedFilialen()"
       [disabled]="
         stammdatenDownload() || !selectedFirma() || konfiguration().filiale !== 'editable'
       "
-      (filialKontextChange)="selectFilialKontext($event)"
+      (selectedFilialenChange)="selectFilialen($event)"
     />
   }
 </div>

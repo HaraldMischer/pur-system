@@ -49,7 +49,7 @@ export const routes: Routes = [
       },
       {
         path: 'ansicht',
-        title: 'Dienstplan ansehen',
+        title: 'Dienstplanübersicht',
         loadComponent: () =>
           import('./pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page').then(
             (m) => m.DienstplanAnsichtPage,
@@ -57,7 +57,7 @@ export const routes: Routes = [
       },
       {
         path: 'planung',
-        title: 'Dienstplan planen',
+        title: 'Dienstplan bearbeiten',
         canActivate: [dienstplanPlanungGuard],
         loadComponent: () =>
           import('./pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page').then(

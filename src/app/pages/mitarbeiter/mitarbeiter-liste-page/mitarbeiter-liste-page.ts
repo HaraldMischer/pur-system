@@ -80,18 +80,31 @@ export class MitarbeiterListePage {
     const profil = this.benutzerStore.benutzerProfil();
     return profil?.aktiv === true && profil.userRole === 'master';
   });
+  readonly filialauswahlErforderlich: Signal<boolean> = computed(() => {
+    const profil = this.benutzerStore.benutzerProfil();
+    return (
+      profil?.userRole !== 'filiale' &&
+      Boolean(this.appKontextStore.selectedFirma()) &&
+      this.appKontextStore.selectedFilialen().length === 0
+    );
+  });
   readonly mitarbeiter: Signal<readonly IMitarbeiterEintrag[]> = computed(() => {
     const kontext = this.getSelectedMitarbeiterKontext();
     if (!kontext) return [];
+
+    const filterFilialIds = this.getMitarbeiterFilterFilialIds();
+    if (filterFilialIds?.length === 0) return [];
 
     const mitarbeiter = this.mitarbeiterStore.getMitarbeiter(
       kontext.unternehmerId,
       kontext.firmaId,
       kontext.filialId,
     );
-    const filterFilialId = this.getMitarbeiterFilterFilialId();
-    const gefilterteMitarbeiter = filterFilialId
-      ? mitarbeiter.filter((eintrag) => eintrag.filialIds.includes(filterFilialId))
+    const filterFilialIdsSet = filterFilialIds ? new Set(filterFilialIds) : null;
+    const gefilterteMitarbeiter = filterFilialIdsSet
+      ? mitarbeiter.filter((eintrag) => {
+          return eintrag.filialIds.some((filialId) => filterFilialIdsSet.has(filialId));
+        })
       : mitarbeiter;
     return gefilterteMitarbeiter.filter((eintrag) => {
       if (this.mitarbeiterAnsicht() === 'aktiv') return eintrag.aktiv;
@@ -223,10 +236,10 @@ export class MitarbeiterListePage {
     return Array.isArray(filialIds) && filialIds.length === 1 ? filialIds[0] : undefined;
   }
 
-  private getMitarbeiterFilterFilialId(): string | undefined {
-    return this.benutzerStore.benutzerProfil()?.userRole === 'filiale'
-      ? undefined
-      : this.appKontextStore.selectedFiliale()?.id;
+  private getMitarbeiterFilterFilialIds(): readonly string[] | null {
+    if (this.benutzerStore.benutzerProfil()?.userRole === 'filiale') return null;
+
+    return this.appKontextStore.selectedFilialen().map((filiale) => filiale.id);
   }
 
   private getSelectedMitarbeiterKontext(): {

@@ -4,7 +4,6 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { APP_VERSION } from '../../../commons/constants/app.constants';
-import { TFilialKontext } from '../../../commons/models/app/app-kontext.types';
 import { IBenutzerProfilDokument, TUserRole } from '../../../commons/models/domain/benutzer';
 import { IFirmaEintrag } from '../../../commons/models/domain/firma';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
@@ -45,16 +44,16 @@ describe('AppSidenav', () => {
   const firmen = signal<readonly IFirmaEintrag[]>([]);
   const selectedFirma = signal<IFirmaEintrag | null>(null);
   const filialen = signal<readonly IFilialeEintrag[]>([]);
-  const filialKontext = signal<TFilialKontext>(null);
+  const selectedFilialen = signal<readonly IFilialeEintrag[]>([]);
   const appKontextStoreMock = {
     selectedUnternehmer,
     firmen,
     selectedFirma,
     filialen,
-    filialKontext,
+    selectedFilialen,
     selectUnternehmer: vi.fn(),
     selectFirma: vi.fn(),
-    selectFilialKontext: vi.fn(),
+    selectFilialen: vi.fn(),
   };
   const stammdatenStoreMock = {
     unternehmer,
@@ -69,7 +68,7 @@ describe('AppSidenav', () => {
     firmen.set([]);
     selectedFirma.set(null);
     filialen.set([]);
-    filialKontext.set(null);
+    selectedFilialen.set([]);
     benutzerStoreMock = {
       benutzerProfil: vi.fn().mockReturnValue(createProfil('master')),
     };
@@ -183,7 +182,7 @@ describe('AppSidenav', () => {
       (debugElement) => debugElement.componentInstance instanceof AppKontextSelector,
     ).componentInstance as AppKontextSelector;
 
-    expect(selector.konfiguration().filiale).toBe('hidden');
+    expect(selector.konfiguration().filiale).toBe('readonly');
 
     await router.navigateByUrl('/mitarbeiter');
     fixture.detectChanges();
@@ -238,7 +237,7 @@ describe('AppSidenav', () => {
     expect(navigationText).not.toContain('Verwaltung');
   });
 
-  it('should hide administration and open context selectors from non-master users', async () => {
+  it('should hide administration and show the configured context for office users', async () => {
     benutzerStoreMock.benutzerProfil.mockReturnValue(createProfil('office'));
     await TestBed.inject(Router).navigateByUrl('/dashboard');
     const fixture = TestBed.createComponent(AppSidenavHost);
@@ -252,7 +251,7 @@ describe('AppSidenav', () => {
     expect(navigationText).toContain('Mitarbeiter');
     expect(navigationText).toContain('Verwaltung');
     expect(navigationText).not.toContain('Systemverwaltung');
-    expect(compiled.querySelector('app-kontext-selector')).toBeNull();
+    expect(compiled.querySelector('app-kontext-selector')).not.toBeNull();
   });
 
   it.each([

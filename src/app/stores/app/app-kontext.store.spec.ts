@@ -71,7 +71,7 @@ describe('AppKontextStore', () => {
     });
   });
 
-  it('should select the first available hierarchy with all branches', () => {
+  it('should automatically select the only available hierarchy', () => {
     unternehmer.set([UNTERNEHMER[0]]);
     firmenNachUnternehmer['u1'] = [FIRMA_1];
     filialenNachFirma['u1'] = { f1: [FILIALE_1] };
@@ -81,20 +81,21 @@ describe('AppKontextStore', () => {
 
     expect(store.selectedUnternehmer()).toEqual(UNTERNEHMER[0]);
     expect(store.selectedFirma()).toEqual(FIRMA_1);
-    expect(store.filialKontext()).toEqual({ typ: 'alle' });
+    expect(store.selectedFilialen()).toEqual([FILIALE_1]);
+    expect(store.selectedFiliale()).toEqual(FILIALE_1);
   });
 
-  it('should use the first entrepreneur and its first company when multiple entries exist', () => {
+  it('should use the first entrepreneur, company and branch when multiple entries exist', () => {
     unternehmer.set(UNTERNEHMER);
     firmenNachUnternehmer['u1'] = [FIRMA_1, FIRMA_2];
-    filialenNachFirma['u1'] = { f1: [FILIALE_1], f2: [FILIALE_2] };
+    filialenNachFirma['u1'] = { f1: [FILIALE_1, FILIALE_2], f2: [FILIALE_2] };
     const store = TestBed.inject(AppKontextStore);
 
     store.initialize();
 
     expect(store.selectedUnternehmer()).toEqual(UNTERNEHMER[0]);
     expect(store.selectedFirma()).toEqual(FIRMA_1);
-    expect(store.filialKontext()).toEqual({ typ: 'alle' });
+    expect(store.selectedFilialen()).toEqual([FILIALE_1]);
   });
 
   it('should reset dependent selections when the entrepreneur changes', () => {
@@ -110,21 +111,38 @@ describe('AppKontextStore', () => {
 
     expect(store.selectedUnternehmer()).toEqual(UNTERNEHMER[1]);
     expect(store.selectedFirma()).toEqual(FIRMA_2);
-    expect(store.filialKontext()).toEqual({ typ: 'alle' });
+    expect(store.selectedFilialen()).toEqual([FILIALE_2]);
   });
 
-  it('should represent all branches as a distinct context', () => {
+  it('should initially select the first branch and allow a different concrete selection', () => {
     unternehmer.set([UNTERNEHMER[0]]);
     firmenNachUnternehmer['u1'] = [FIRMA_1];
     filialenNachFirma['u1'] = { f1: [FILIALE_1, FILIALE_2] };
     const store = TestBed.inject(AppKontextStore);
     store.initialize();
 
-    store.selectFilialKontext({ typ: 'filiale', filiale: FILIALE_1 });
-    store.selectFilialKontext({ typ: 'alle' });
+    expect(store.selectedFilialen()).toEqual([FILIALE_1]);
+    expect(store.selectedFiliale()).toEqual(FILIALE_1);
 
+    store.selectFilialen([FILIALE_2]);
+
+    expect(store.selectedFilialen()).toEqual([FILIALE_2]);
+    expect(store.selectedFiliale()).toEqual(FILIALE_2);
+  });
+
+  it('should allow an empty selection and ignore unavailable branches', () => {
+    unternehmer.set([UNTERNEHMER[0]]);
+    firmenNachUnternehmer['u1'] = [FIRMA_1];
+    filialenNachFirma['u1'] = { f1: [FILIALE_1, FILIALE_2] };
+    const store = TestBed.inject(AppKontextStore);
+    store.initialize();
+
+    store.selectFilialen([FILIALE_1, FILIALE_2]);
+    store.selectFilialen([]);
+    store.selectFilialen([{ ...FILIALE_1, id: 'unbekannt' }]);
+
+    expect(store.selectedFilialen()).toEqual([]);
     expect(store.selectedFiliale()).toBeNull();
-    expect(store.filialKontext()).toEqual({ typ: 'alle' });
   });
 
   it('should reject entries outside the loaded hierarchy', () => {
@@ -135,10 +153,10 @@ describe('AppKontextStore', () => {
     store.initialize();
 
     store.selectFirma(FIRMA_2);
-    store.selectFilialKontext({ typ: 'filiale', filiale: FILIALE_2 });
+    store.selectFilialen([FILIALE_2]);
 
     expect(store.selectedFirma()).toBeNull();
-    expect(store.filialKontext()).toBeNull();
+    expect(store.selectedFilialen()).toEqual([]);
   });
 
   it('should reset the complete context', () => {
@@ -152,6 +170,6 @@ describe('AppKontextStore', () => {
 
     expect(store.selectedUnternehmer()).toBeNull();
     expect(store.selectedFirma()).toBeNull();
-    expect(store.filialKontext()).toBeNull();
+    expect(store.selectedFilialen()).toEqual([]);
   });
 });

@@ -21,7 +21,7 @@ export const APP_KONTEXT_SELECTOR_MATRIX: TAppKontextSelectorMatrix = {
     dashboard: {
       unternehmer: 'editable',
       firma: 'editable',
-      filiale: 'hidden',
+      filiale: 'readonly',
     },
     schichtplan: {
       unternehmer: 'editable',
@@ -36,19 +36,34 @@ export const APP_KONTEXT_SELECTOR_MATRIX: TAppKontextSelectorMatrix = {
     verwaltung: {
       unternehmer: 'editable',
       firma: 'editable',
-      filiale: 'hidden',
+      filiale: 'readonly',
     },
     systemverwaltung: {
       unternehmer: 'editable',
       firma: 'editable',
-      filiale: 'hidden',
+      filiale: 'readonly',
     },
   },
   office: {
+    dashboard: {
+      unternehmer: 'hidden',
+      firma: 'editable',
+      filiale: 'readonly',
+    },
     schichtplan: {
-      unternehmer: 'editable',
+      unternehmer: 'hidden',
       firma: 'editable',
       filiale: 'editable',
+    },
+    mitarbeiter: {
+      unternehmer: 'hidden',
+      firma: 'editable',
+      filiale: 'editable',
+    },
+    verwaltung: {
+      unternehmer: 'hidden',
+      firma: 'editable',
+      filiale: 'readonly',
     },
   },
   mitarbeiter: {

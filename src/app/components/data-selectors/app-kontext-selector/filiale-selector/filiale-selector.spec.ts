@@ -41,51 +41,46 @@ describe('FilialeSelector', () => {
     fixture.detectChanges();
   });
 
-  it('should render all branches and the combined context', () => {
-    fixture.componentRef.setInput('filialKontext', { typ: 'alle' });
+  it('should render and select concrete branches', () => {
+    fixture.componentRef.setInput('selectedFilialen', FILIALEN);
     fixture.detectChanges();
     const select = fixture.debugElement.query(By.directive(MatSelect))
       .componentInstance as MatSelect;
 
+    expect(select.multiple).toBe(true);
     expect(select.options.map((option) => option.viewValue)).toEqual([
-      'Alle Filialen',
       'Filiale Alpha',
       'Filiale Beta',
     ]);
-    expect(select.value).toBe(fixture.componentInstance.alleFilialenWert);
+    expect(select.value).toEqual(['b1', 'b2']);
   });
 
-  it('should emit a concrete branch context', () => {
-    const filialKontextChangeSpy = vi.fn();
-    fixture.componentInstance.filialKontextChange.subscribe(filialKontextChangeSpy);
+  it('should emit multiple concrete branches in their available order', () => {
+    const selectedFilialenChangeSpy = vi.fn();
+    fixture.componentInstance.selectedFilialenChange.subscribe(selectedFilialenChangeSpy);
 
-    fixture.componentInstance.selectFilialKontext('b2');
+    fixture.componentInstance.selectFilialen(['b2', 'b1']);
 
-    expect(filialKontextChangeSpy).toHaveBeenCalledWith({
-      typ: 'filiale',
-      filiale: FILIALEN[1],
-    });
+    expect(selectedFilialenChangeSpy).toHaveBeenCalledWith(FILIALEN);
   });
 
-  it('should emit the context for all branches', () => {
-    const filialKontextChangeSpy = vi.fn();
-    fixture.componentInstance.filialKontextChange.subscribe(filialKontextChangeSpy);
+  it('should emit an empty branch selection', () => {
+    const selectedFilialenChangeSpy = vi.fn();
+    fixture.componentInstance.selectedFilialenChange.subscribe(selectedFilialenChangeSpy);
 
-    fixture.componentInstance.selectFilialKontext(fixture.componentInstance.alleFilialenWert);
+    fixture.componentInstance.selectFilialen([]);
 
-    expect(filialKontextChangeSpy).toHaveBeenCalledWith({ typ: 'alle' });
+    expect(selectedFilialenChangeSpy).toHaveBeenCalledWith([]);
   });
 
-  it('should offer the combined context for a single branch', () => {
+  it('should offer only the concrete option for a single branch', () => {
     fixture.componentRef.setInput('filialen', [FILIALEN[0]]);
+    fixture.componentRef.setInput('selectedFilialen', [FILIALEN[0]]);
     fixture.detectChanges();
     const select = fixture.debugElement.query(By.directive(MatSelect))
       .componentInstance as MatSelect;
 
-    expect(select.options.map((option) => option.viewValue)).toEqual([
-      'Alle Filialen',
-      'Filiale Alpha',
-    ]);
+    expect(select.options.map((option) => option.viewValue)).toEqual(['Filiale Alpha']);
   });
 
   it('should disable an empty selection and show its empty state', () => {

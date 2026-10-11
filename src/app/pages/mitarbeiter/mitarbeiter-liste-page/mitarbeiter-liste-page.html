@@ -37,6 +37,10 @@
       <p class="pur-page-section__message" role="status">
         Wähle eine Firma, um deren Mitarbeiter anzuzeigen.
       </p>
+    } @else if (filialauswahlErforderlich()) {
+      <p class="pur-page-section__message" role="status">
+        Wähle mindestens eine Filiale, um deren Mitarbeiter anzuzeigen.
+      </p>
     } @else if (mitarbeiterDownload()) {
       <p class="pur-page-section__message" role="status">Mitarbeiter werden geladen.</p>
     } @else if (mitarbeiterError(); as error) {

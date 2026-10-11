@@ -4,9 +4,10 @@
 
 ## 20. Dienst- und Schichtplanung
 
-Der Schichtplan wird schrittweise als filialbezogene Monatsplanung aufgebaut. Die erste Ausbaustufe konzentriert sich auf eine
-manuelle Planung mit klarer Entwurfs- und Veröffentlichungslogik. Automatische Planung, Urlaubsverwaltung, Zeiterfassung,
-Schichttausch und Benachrichtigungen bleiben zunächst außerhalb des vereinbarten Umfangs.
+Der Schichtplan wird schrittweise aus filialbezogenen Monatsplänen aufgebaut, die in einer filialübergreifenden Arbeitsansicht
+zusammengeführt werden können. Die erste Ausbaustufe konzentriert sich auf eine manuelle Planung mit klarer Entwurfs- und
+Veröffentlichungslogik. Automatische Planung, Urlaubsverwaltung, Zeiterfassung, Schichttausch und Benachrichtigungen bleiben
+zunächst außerhalb des vereinbarten Umfangs.
 
 ### 20.1 Fachliches Modell und erste Ausbaustufe festlegen
 
@@ -84,7 +85,7 @@ Der Ablauf vom Entwurf bis zur veröffentlichten Ansicht erhält klare Verantwor
 - [x] Für Mitarbeiter festlegen, ob sie nur eigene Schichten oder den veröffentlichten Plan ihrer Filialen sehen dürfen.
 - [x] Die Rolle `dienstplaner` als zusätzliche Frontend-Bedienberechtigung für aktive Firma-Mitarbeiter der eigenen Filiale
       festlegen, ohne damit Schreibrechte in der Mitarbeiter-App zu gewähren.
-- [x] Das Verhalten bei mehreren erlaubten Filialen und beim Kontext `Alle Filialen` bestimmen.
+- [x] Das Verhalten bei mehreren erlaubten Filialen ohne künstlichen Sammelkontext bestimmen.
 
 #### Schritt 2: Planungsablauf festlegen
 
@@ -371,24 +372,57 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- src/app/components/data-selectors/app-kontext-selector/app-kontext-selector.ts
+- src/app/components/data-selectors/app-kontext-selector/app-kontext-selector.html
+- src/app/components/data-selectors/app-kontext-selector/app-kontext-selector.spec.ts
+- src/app/components/data-selectors/app-kontext-selector/filiale-selector/filiale-selector.ts
+- src/app/components/data-selectors/app-kontext-selector/filiale-selector/filiale-selector.html
+- src/app/components/data-selectors/app-kontext-selector/filiale-selector/filiale-selector.spec.ts
+- src/app/commons/constants/app-kontext-selector.constants.ts
+- src/app/commons/constants/app-kontext-selector.constants.spec.ts
+- src/app/stores/app/app-kontext.store.ts
+- src/app/stores/app/app-kontext.store.spec.ts
 - src/app/services/domain/dienstplan.service.ts
 - src/app/services/domain/dienstplan.service.spec.ts
 - src/app/stores/domain/dienstplan.store.ts
 - src/app/stores/domain/dienstplan.store.spec.ts
 - firestore.rules
 - rules-tests/firestore.rules.test.mjs
+- docs/matrix-kontextselektor.md
 - docs/projekt-stand.md
 - docs/todo_next.md
 
-#### Schritt 1: Konflikte berechnen und darstellen
+#### Schritt 1: Filialübergreifenden Arbeitskontext umsetzen
 
-- [ ] Ungültige Zeitfolgen, Pausen und überlappende Schichten eines Mitarbeiters erkennen.
+- [x] Unternehmer-, Firmen- und Filialselektoren während des Stammdatenladens ausblenden und danach nur bei mehr als einem
+      fachlich wählbaren Eintrag unmittelbar darstellen.
+- [x] Eindeutige Unternehmer, Firmen und Filialen automatisch auswählen und ihre Selektoren ausblenden.
+- [x] Rollenabhängig mögliche Selektoren nach dem Laden bereichsübergreifend sichtbar halten und in Bereichen ohne fachliche
+      Bearbeitung deaktivieren.
+- [x] Den Filialkontext auf eine Mehrfachauswahl konkreter Filialen umstellen und den künstlichen Eintrag `Alle Filialen`
+      entfernen.
+- [x] Bei vorhandenen Filialen zunächst die erste Filiale auswählen und anschließend die Auswahl einer oder mehrerer konkreter
+      Filialen ermöglichen.
+- [ ] Für den ausgewählten Monat die filialbezogenen Dienstpläne aller ausgewählten Filialen über ihre direkten Firestore-Pfade
+      laden und in der Oberfläche gemeinsam darstellen.
+- [ ] Jede Schicht in der gemeinsamen Ansicht eindeutig mit ihrer Filiale kennzeichnen.
+- [ ] Beim Anlegen einer Schicht zunächst die Zielfiliale bestimmen und danach nur deren aktive Schichtvorlagen sowie die dort
+      einsetzbaren Mitarbeiter anbieten.
+- [ ] Speicherung, Versionierung und Veröffentlichung weiterhin je Filialdienstplan getrennt ausführen.
+
+#### Schritt 2: Konflikte berechnen und darstellen
+
+- [ ] Ungültige Zeitfolgen, Pausen und überlappende Schichten eines Mitarbeiters filialübergreifend erkennen.
+- [ ] Für die Veröffentlichung die relevanten Planungsstände aller Filialen des betroffenen Mitarbeiters berücksichtigen, auch
+      wenn die sichtbare Filialauswahl zuvor eingeschränkt wurde.
+- [ ] Die Veröffentlichung sperren, wenn ein relevanter Filialplan wegen fehlender Leseberechtigung oder eines Ladefehlers nicht
+      vollständig in die Konfliktprüfung einbezogen werden kann.
 - [ ] Blockierende Konflikte von nicht blockierenden Hinweisen unterscheiden.
 - [ ] Konflikte am betroffenen Tag und an der betroffenen Schicht verständlich anzeigen.
 - [ ] Veröffentlichung bei blockierenden Konflikten verhindern und zusätzlich im Schreibablauf absichern.
 - [ ] Konfliktberechnung mit Schichten über Mitternacht und an Zeitraumgrenzen prüfen.
 
-#### Schritt 2: Veröffentlichung umsetzen
+#### Schritt 3: Veröffentlichung umsetzen
 
 - [ ] Veröffentlichungsaktion nur für berechtigte Rollen und einen konfliktfreien aktuellen Entwurf anbieten.
 - [ ] Veröffentlichung einschließlich Benutzer, Zeitpunkt und Version gemäß Datenkonzept atomar speichern.
@@ -396,9 +430,10 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 - [ ] Zurückziehen oder nachträgliche Änderung ausschließlich nach dem beschlossenen Zustandsablauf erlauben.
 - [ ] Gleichzeitige Änderungen zwischen Prüfung und Veröffentlichung zuverlässig erkennen.
 
-#### Schritt 3: Veröffentlichte Mitarbeiteransicht bereitstellen
+#### Schritt 4: Veröffentlichte Mitarbeiteransicht bereitstellen
 
-- [ ] Veröffentlichte Dienstpläne für Mitarbeiter gemäß der beschlossenen filialweiten Sicht laden.
+- [ ] Veröffentlichte Dienstpläne für Mitarbeiter aus allen ausgewählten und fachlich erlaubten Filialen laden und gemeinsam
+      darstellen.
 - [ ] Aus den Schichten des geöffneten Monats eindeutige Mitarbeiter-IDs ermitteln, vorhandene Store-Einträge wiederverwenden und
       nur fehlende Mitarbeiterdokumente mit `networkOnly` gezielt laden.
 - [ ] Entwürfe und interne Notizen für Mitarbeiter vollständig ausblenden und durch Firestore Rules schützen.
@@ -407,16 +442,22 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 
 #### Tests und Abschluss
 
+- [ ] Store- und Component-Tests für die automatische erste Filialauswahl, Filialmehrfachauswahl, gemeinsames Laden und eindeutige
+      Filialkennzeichnung ergänzen.
+- [ ] Den filialabhängigen Schichtdialog mit Zielfiliale, Vorlagen und Mitarbeiterbegrenzung testen.
 - [ ] Unit-Tests für alle blockierenden Konflikte und Hinweise ergänzen.
 - [ ] Service- und Store-Tests für Veröffentlichung, konkurrierende Änderung, Zurückziehen und Fehlerfälle ergänzen.
 - [ ] Component-Tests für Konfliktanzeige, deaktivierte Veröffentlichung und Bestätigungsablauf ergänzen.
 - [ ] Firestore-Emulator-Tests für Entwurfszugriff, Veröffentlichung und Mitarbeiteransicht ergänzen.
 - [ ] Den Gesamtprozess mit realen Testkonten für Filiale, Office und Mitarbeiter manuell prüfen.
-- [ ] `npm test` und `npm run build` erfolgreich ausführen.
+- [ ] `npm test`, `npm run build:master`, `npm run build:office`, `npm run build:filiale` und `npm run build:mitarbeiter`
+      erfolgreich ausführen.
 
 #### Erledigt, wenn
 
+- [ ] Benutzer können die Monatspläne mehrerer erlaubter Filialen gemeinsam anzeigen und eindeutig unterscheiden.
 - [ ] Blockierende Konflikte verhindern zuverlässig eine Veröffentlichung und werden verständlich angezeigt.
+- [ ] Eine unvollständige filialübergreifende Konfliktprüfung verhindert die Veröffentlichung.
 - [ ] Ein berechtigter Benutzer kann einen konfliktfreien aktuellen Entwurf nachvollziehbar veröffentlichen.
 - [ ] Mitarbeiter sehen ausschließlich die für sie freigegebenen veröffentlichten Dienstplandaten.
 - [ ] Gleichzeitige und nachträgliche Änderungen folgen dem festgelegten konsistenten Ablauf.

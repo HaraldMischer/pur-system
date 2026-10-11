@@ -147,7 +147,8 @@ Neu hinzuzufügen:
 - [ ] Firestore-Emulator-Tests für den Schutz der Login-Daten und betrieblicher Sitzungszustände ergänzen.
 - [ ] Sicherheitsrelevante Entscheidungen und Betriebsabläufe in der Projektdokumentation festhalten.
 - [ ] Mitarbeiter-Login auf dem vorgesehenen Filialgerät mit Tastatur und einem kleinen Viewport manuell prüfen.
-- [ ] `npm test` und `npm run build` erfolgreich ausführen.
+- [ ] `npm test`, `npm run build:master`, `npm run build:office`, `npm run build:filiale` und `npm run build:mitarbeiter`
+      erfolgreich ausführen.
 
 #### Erledigt, wenn
 
