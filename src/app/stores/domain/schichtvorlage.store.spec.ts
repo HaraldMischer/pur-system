@@ -34,6 +34,7 @@ describe('SchichtvorlageStore', () => {
     },
     false,
   );
+  const andereVorlage = createSchichtvorlage('andere', anlage, true, andererPfad);
   const loadSchichtvorlagenMock = vi.fn();
   const createSchichtvorlageMock = vi.fn();
   const updateSchichtvorlageMock = vi.fn();
@@ -48,7 +49,11 @@ describe('SchichtvorlageStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     benutzerId.set('uid-1');
-    loadSchichtvorlagenMock.mockResolvedValue([fruehschicht, inaktiveSchicht]);
+    loadSchichtvorlagenMock.mockImplementation((ladePfad) => {
+      return Promise.resolve(
+        ladePfad.filialeId === 'b-1' ? [fruehschicht, inaktiveSchicht] : [andereVorlage],
+      );
+    });
     createSchichtvorlageMock.mockResolvedValue(createSchichtvorlage('spaet', anlage));
     updateSchichtvorlageMock.mockResolvedValue(undefined);
     deactivateSchichtvorlageMock.mockResolvedValue(undefined);
@@ -66,19 +71,21 @@ describe('SchichtvorlageStore', () => {
     });
   });
 
-  it('should load a branch context and derive active shift templates', async () => {
+  it('should retain independently loaded shift-template contexts for multiple branches', async () => {
     const store = TestBed.inject(SchichtvorlageStore);
 
-    await store.loadSchichtvorlagen(pfad);
+    await Promise.all([store.loadSchichtvorlagen(pfad), store.loadSchichtvorlagen(andererPfad)]);
 
     expect(loadSchichtvorlagenMock).toHaveBeenCalledWith(pfad, 'networkOnly');
-    expect(store.schichtvorlagen()).toEqual([fruehschicht, inaktiveSchicht]);
-    expect(store.activeSchichtvorlagen()).toEqual([fruehschicht]);
-    expect(store.download()).toBe(false);
-    expect(store.isLoaded()).toBe(true);
+    expect(loadSchichtvorlagenMock).toHaveBeenCalledWith(andererPfad, 'networkOnly');
+    expect(store.getSchichtvorlageKontext(pfad)?.schichtvorlagen).toEqual([
+      fruehschicht,
+      inaktiveSchicht,
+    ]);
+    expect(store.getSchichtvorlageKontext(andererPfad)?.schichtvorlagen).toEqual([andereVorlage]);
   });
 
-  it('should reuse an active load and replace data when the branch changes', async () => {
+  it('should reuse an active and a completely loaded branch request', async () => {
     let resolveLoad: ((vorlagen: ISchichtvorlageEintrag[]) => void) | undefined;
     loadSchichtvorlagenMock.mockReturnValueOnce(
       new Promise<ISchichtvorlageEintrag[]>((resolve) => {
@@ -92,28 +99,25 @@ describe('SchichtvorlageStore', () => {
     expect(gleicherAuftrag).toBe(ersterAuftrag);
     resolveLoad?.([fruehschicht]);
     await ersterAuftrag;
+    await store.loadSchichtvorlagen(pfad);
 
-    const andereVorlage = createSchichtvorlage('andere', anlage, true, andererPfad);
-    loadSchichtvorlagenMock.mockResolvedValueOnce([andereVorlage]);
-    await store.loadSchichtvorlagen(andererPfad);
-
-    expect(loadSchichtvorlagenMock).toHaveBeenCalledTimes(2);
-    expect(store.schichtvorlagen()).toEqual([andereVorlage]);
-    expect(store.selectedFilialeId()).toBe('b-2');
+    expect(loadSchichtvorlagenMock).toHaveBeenCalledTimes(1);
   });
 
-  it('should create a shift template and add it to the loaded context', async () => {
+  it('should create a shift template only in its branch context', async () => {
     const store = TestBed.inject(SchichtvorlageStore);
-    await store.loadSchichtvorlagen(pfad);
+    await Promise.all([store.loadSchichtvorlagen(pfad), store.loadSchichtvorlagen(andererPfad)]);
 
     await store.createSchichtvorlage(pfad, anlage);
 
     expect(createSchichtvorlageMock).toHaveBeenCalledWith(pfad, anlage, 'uid-1');
-    expect(store.schichtvorlagen().map((vorlage) => vorlage.id)).toContain('spaet');
-    expect(store.inProgress()).toBe(false);
+    expect(
+      store.getSchichtvorlageKontext(pfad)?.schichtvorlagen.map((vorlage) => vorlage.id),
+    ).toContain('spaet');
+    expect(store.getSchichtvorlageKontext(andererPfad)?.schichtvorlagen).toEqual([andereVorlage]);
   });
 
-  it('should update and deactivate a loaded shift template', async () => {
+  it('should update and deactivate a shift template in its branch context', async () => {
     const store = TestBed.inject(SchichtvorlageStore);
     await store.loadSchichtvorlagen(pfad);
 
@@ -128,91 +132,62 @@ describe('SchichtvorlageStore', () => {
       { ...anlage, bezeichnung: ' Frühschicht Werktag ', aktiv: true },
       'uid-1',
     );
-    expect(store.schichtvorlagen()[0]).toEqual(
+    expect(store.getSchichtvorlageKontext(pfad)?.schichtvorlagen[0]).toEqual(
       expect.objectContaining({ bezeichnung: 'Frühschicht Werktag' }),
     );
 
     await store.deactivateSchichtvorlage(pfad, 'frueh');
     expect(deactivateSchichtvorlageMock).toHaveBeenCalledWith(pfad, 'frueh', 'uid-1');
-    expect(store.schichtvorlagen().find((vorlage) => vorlage.id === 'frueh')?.aktiv).toBe(false);
-    expect(store.activeSchichtvorlagen()).toEqual([]);
+    expect(
+      store
+        .getSchichtvorlageKontext(pfad)
+        ?.schichtvorlagen.find((vorlage) => vorlage.id === 'frueh')?.aktiv,
+    ).toBe(false);
   });
 
-  it('should expose load errors and allow retrying the same branch', async () => {
+  it('should expose a load error only in the affected branch and allow retrying', async () => {
     loadSchichtvorlagenMock.mockRejectedValueOnce({ code: 'unavailable' });
     const store = TestBed.inject(SchichtvorlageStore);
 
     await expect(store.loadSchichtvorlagen(pfad)).rejects.toEqual({ code: 'unavailable' });
-    expect(store.error()).toBe('Die Daten sind gerade nicht erreichbar. Bitte versuche es erneut.');
-    expect(store.download()).toBe(false);
-    expect(store.isLoaded()).toBe(false);
-
-    await store.loadSchichtvorlagen(pfad);
-    expect(loadSchichtvorlagenMock).toHaveBeenCalledTimes(2);
-    expect(store.isLoaded()).toBe(true);
-  });
-
-  it('should expose write errors and restore the write state', async () => {
-    const error = { code: 'permission-denied' };
-    createSchichtvorlageMock.mockRejectedValue(error);
-    const store = TestBed.inject(SchichtvorlageStore);
-    await store.loadSchichtvorlagen(pfad);
-
-    await expect(store.createSchichtvorlage(pfad, anlage)).rejects.toBe(error);
-    expect(store.error()).toBe('Du hast keine Berechtigung für diese Aktion.');
-    expect(store.inProgress()).toBe(false);
-  });
-
-  it('should ignore a completed write after switching to another branch', async () => {
-    let resolveCreate: ((vorlage: ISchichtvorlageEintrag) => void) | undefined;
-    createSchichtvorlageMock.mockReturnValueOnce(
-      new Promise<ISchichtvorlageEintrag>((resolve) => {
-        resolveCreate = resolve;
-      }),
+    expect(store.getSchichtvorlageKontext(pfad)?.error).toBe(
+      'Die Daten sind gerade nicht erreichbar. Bitte versuche es erneut.',
     );
-    const store = TestBed.inject(SchichtvorlageStore);
-    await store.loadSchichtvorlagen(pfad);
 
-    const schreibauftrag = store.createSchichtvorlage(pfad, anlage);
-    const andereVorlage = createSchichtvorlage('andere', anlage, true, andererPfad);
-    loadSchichtvorlagenMock.mockResolvedValueOnce([andereVorlage]);
     await store.loadSchichtvorlagen(andererPfad);
-    resolveCreate?.(createSchichtvorlage('spaet', anlage));
-    await schreibauftrag;
-
-    expect(store.selectedFilialeId()).toBe('b-2');
-    expect(store.schichtvorlagen()).toEqual([andereVorlage]);
-    expect(store.inProgress()).toBe(false);
+    expect(store.getSchichtvorlageKontext(andererPfad)?.error).toBeNull();
+    await store.loadSchichtvorlagen(pfad);
+    expect(store.getSchichtvorlageKontext(pfad)?.isLoaded).toBe(true);
   });
 
-  it('should require a loaded matching branch and authenticated user before writing', async () => {
+  it('should expose write errors and require a loaded branch and authenticated user', async () => {
+    createSchichtvorlageMock.mockRejectedValue({ code: 'permission-denied' });
     const store = TestBed.inject(SchichtvorlageStore);
 
     await expect(store.createSchichtvorlage(pfad, anlage)).rejects.toThrow(
       'Die Schichtvorlagen der Filiale müssen vor dem Schreiben geladen werden.',
     );
     await store.loadSchichtvorlagen(pfad);
+    await expect(store.createSchichtvorlage(pfad, anlage)).rejects.toEqual({
+      code: 'permission-denied',
+    });
+    expect(store.error()).toBe('Du hast keine Berechtigung für diese Aktion.');
+    expect(store.inProgress()).toBe(false);
+
     benutzerId.set(null);
     await expect(store.deactivateSchichtvorlage(pfad, 'frueh')).rejects.toThrow(
       'Für den Schreibvorgang fehlt die Benutzeridentität.',
     );
-    expect(deactivateSchichtvorlageMock).not.toHaveBeenCalled();
   });
 
-  it('should clear errors and reset the complete branch context', async () => {
+  it('should discard all branch contexts on reset', async () => {
     const store = TestBed.inject(SchichtvorlageStore);
-    await store.loadSchichtvorlagen(pfad);
+    await Promise.all([store.loadSchichtvorlagen(pfad), store.loadSchichtvorlagen(andererPfad)]);
 
-    store.clearError();
     store.resetSchichtvorlagen();
 
     expect(store.snapshot()).toEqual({
-      schichtvorlagen: [],
-      selectedUnternehmerId: null,
-      selectedFirmaId: null,
-      selectedFilialeId: null,
-      download: false,
-      isLoaded: false,
+      kontexte: {},
       inProgress: false,
       error: null,
     });

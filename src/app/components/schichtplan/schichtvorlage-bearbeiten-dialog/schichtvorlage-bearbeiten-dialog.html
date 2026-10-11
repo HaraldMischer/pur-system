@@ -3,39 +3,86 @@
 <h2 mat-dialog-title>
   {{ istBearbeitung ? 'Schichtvorlage bearbeiten' : 'Schichtvorlage anlegen' }}
 </h2>
-<mat-dialog-content>
+<mat-dialog-content class="pur-dialog__content">
   <form
     id="schichtvorlage-form"
     class="pur-form pur-form--grid"
     [formGroup]="schichtvorlageForm"
     (ngSubmit)="saveSchichtvorlage()"
   >
-    <mat-form-field appearance="outline" class="pur-form__item">
-      <mat-label>Bezeichnung</mat-label>
-      <input matInput formControlName="bezeichnung" maxlength="80" />
-      @if (schichtvorlageForm.controls.bezeichnung.hasError('maxlength')) {
-        <mat-error>Die Bezeichnung darf höchstens 80 Zeichen lang sein.</mat-error>
-      }
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Beginn</mat-label>
-      <input matInput type="time" formControlName="beginnLokalzeit" />
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Ende</mat-label>
-      <input matInput type="time" formControlName="endeLokalzeit" />
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Standardpause in Minuten</mat-label>
-      <input matInput type="number" min="0" max="1439" formControlName="standardpauseMinuten" />
-    </mat-form-field>
-    <mat-checkbox formControlName="endetAmFolgetag">Ende am Folgetag</mat-checkbox>
-    @if (istBearbeitung) {
-      <mat-checkbox formControlName="aktiv">Aktiv</mat-checkbox>
-    }
+    <div class="pur-form__group">
+      <div class="pur-form__row">
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field"
+        >
+          <mat-label>Bezeichnung</mat-label>
+          <input matInput formControlName="bezeichnung" maxlength="80" />
+          @if (schichtvorlageForm.controls.bezeichnung.hasError('maxlength')) {
+            <mat-error>Die Bezeichnung darf höchstens 80 Zeichen lang sein.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-checkbox
+          class="pur-form__item pur-form__item--checkbox pur-form__item--auto"
+          formControlName="aktiv"
+        >
+          Aktiv
+        </mat-checkbox>
+      </div>
+
+      <div class="pur-form__row">
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Beginn</mat-label>
+          <input matInput type="time" formControlName="beginnLokalzeit" />
+          <span matTextSuffix>Uhr</span>
+        </mat-form-field>
+
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Ende</mat-label>
+          <input matInput type="time" formControlName="endeLokalzeit" />
+          <span matTextSuffix>Uhr</span>
+        </mat-form-field>
+      </div>
+
+      <div class="pur-form__row">
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Schicht</mat-label>
+          <input matInput readonly [value]="schichtdauerStunden()" />
+          <span matTextSuffix>Std.</span>
+        </mat-form-field>
+
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Pause</mat-label>
+          <input
+            matInput
+            readonly
+            type="number"
+            min="0"
+            max="1439"
+            formControlName="standardpauseMinuten"
+          />
+          <span matTextSuffix>Min.</span>
+        </mat-form-field>
+      </div>
+
+    </div>
+
     @if (schichtvorlageForm.hasError('ungueltigeZeitfolge')) {
       <p class="pur-form__item pur-form__item--error" role="alert">
-        Das Ende muss nach dem Beginn liegen oder als Folgetag gekennzeichnet sein.
+        Beginn und Ende dürfen nicht gleich sein.
       </p>
     }
     @if (submitError() || schichtvorlageStore.error(); as fehlermeldung) {
@@ -45,7 +92,9 @@
     }
   </form>
 </mat-dialog-content>
-<mat-dialog-actions align="end">
+
+<!-- Dialogaktionen -->
+<mat-dialog-actions class="pur-dialog__footer" align="end">
   <button matButton type="button" [disabled]="schichtvorlageStore.inProgress()" mat-dialog-close>
     Abbrechen
   </button>

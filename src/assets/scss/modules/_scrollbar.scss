@@ -1,0 +1,22 @@
+// pur-system/src/assets/scss/modules/_scrollbar.scss
+
+.pur-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mat-sys-outline-variant) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: var(--mat-sys-outline-variant);
+    background-clip: padding-box;
+  }
+}

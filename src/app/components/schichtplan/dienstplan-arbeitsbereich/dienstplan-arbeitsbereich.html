@@ -3,7 +3,7 @@
 <section class="pur-page _pur-page--limited dienstplan-arbeitsbereich">
   <section class="pur-page-section">
     <header class="pur-page-section__header">
-      <h2 class="pur-page-section__title">Monatsplan</h2>
+      <h2 class="pur-page-section__title">Monatspläne</h2>
       <div class="pur-page-section__header-actions dienstplan-arbeitsbereich__navigation">
         <button matIconButton type="button" aria-label="Vorheriger Monat" (click)="changeMonat(-1)">
           <mat-icon aria-hidden="true">chevron_left</mat-icon>
@@ -18,50 +18,34 @@
       </div>
     </header>
 
-    @if (!filialPfad()) {
-      <p class="pur-page-section__message" role="status">
-        Wähle eine konkrete Filiale, um ihren Dienstplan anzuzeigen.
-      </p>
-    } @else if (download() && !isLoaded()) {
-      <p class="pur-page-section__message" role="status">Dienstplan wird geladen.</p>
-    } @else if (ladeFehler(); as error) {
-      <div class="pur-page-section__error-state">
-        <p class="pur-page-section__message pur-page-section__message--error" role="alert">
-          {{ error }}
-        </p>
-        <button matButton="tonal" type="button" (click)="retryLoad()">Erneut laden</button>
+    <div class="dienstplan-arbeitsbereich__arbeitsflaeche">
+      <div class="dienstplan-arbeitsbereich__dienstplaene pur-scrollbar">
+        @if (filialauswahl().length === 0) {
+          <p class="pur-page-section__message" role="status">
+            Wähle mindestens eine Filiale, um ihre Dienstpläne anzuzeigen.
+          </p>
+        } @else {
+          <div class="dienstplan-arbeitsbereich__filialabschnitte">
+            @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
+              <app-dienstplan-filialabschnitt
+                [filiale]="auswahl.filiale"
+                [pfad]="auswahl.pfad"
+                [monat]="selectedMonat()"
+                [planungsmodus]="planungsmodus()"
+              />
+            }
+          </div>
+        }
       </div>
-    } @else if (isLoaded()) {
-      @if (dienstplanStore.selectedDienstplan(); as dienstplan) {
-        <app-schichtplan-monat
-          [dienstplan]="dienstplan"
-          [versionen]="dienstplanStore.selectedVersionen()"
-          [schichten]="dienstplanStore.selectedSchichten()"
-          [mitarbeiter]="schichtMitarbeiter()"
-          [darfSchreiben]="darfSchreiben()"
-          (schichtAnlegen)="openSchichtDialog($event)"
-          (schichtBearbeiten)="openSchichtDialog(dienstplan.zeitraumStart, $event)"
-        />
-      } @else {
+
+      <section class="pur-page-section dienstplan-arbeitsbereich__mitarbeiter pur-scrollbar">
+        <header class="pur-page-section__header">
+          <h3 class="pur-page-section__title">Mitarbeiter</h3>
+        </header>
         <div class="pur-page-section__empty-state">
-          <p role="status">Für diesen Monat ist noch kein Dienstplan vorhanden.</p>
-          @if (dienstplanStore.error(); as fehlermeldung) {
-            <p class="pur-page-section__message pur-page-section__message--error" role="alert">
-              {{ fehlermeldung }}
-            </p>
-          }
-          @if (darfSchreiben()) {
-            <button
-              matButton="filled"
-              type="button"
-              [disabled]="dienstplanStore.inProgress()"
-              (click)="createDienstplan()"
-            >
-              Dienstplan anlegen
-            </button>
-          }
+          Die Mitarbeiterübersicht wird in einem nächsten Schritt ergänzt.
         </div>
-      }
-    }
+      </section>
+    </div>
   </section>
 </section>

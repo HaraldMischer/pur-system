@@ -6,6 +6,10 @@
     width: calc(100vw - 32px);
     max-width: min(448px, calc(100vw - 32px)) !important;
 
+    &--medium {
+      max-width: min(640px, calc(100vw - 32px)) !important;
+    }
+
     &--large {
       max-width: min(768px, calc(100vw - 32px)) !important;
     }

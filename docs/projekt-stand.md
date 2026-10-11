@@ -100,23 +100,21 @@ Stand: 11.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   zusätzliche Prüfung des im Filial-Frontend geführten Firma-Mitarbeiters und seiner Rolle ist clientseitig, bei einem
   manipulierten Client umgehbar und noch nicht umgesetzt. Die Rules-Änderung ist lokal durch Emulator-Tests abgesichert, aber
   nicht produktiv deployed.
-- Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Die vorhandene
-  Dienstplanverarbeitung benötigt derzeit noch genau eine ausgewählte Filiale; die Verarbeitung mehrerer ausgewählter Filialen
-  ist in Todo 20.5 offen.
-- Die vorhandene Dienstplanoberfläche verarbeitet derzeit genau eine konkrete Filiale. Als neuer Sollzustand sollen Master,
-  Office und Mitarbeiter mehrere erlaubte Filialen gemeinsam auswählen und deren filialbezogene Monatspläne in einer
-  gemeinsamen Ansicht verwenden können. Speicherung, Versionierung und Veröffentlichung bleiben je Filiale getrennt. Die
-  Umstellung ist in Todo 20.5 offen.
+- Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Master, Office und
+  Mitarbeiter können mehrere erlaubte Filialen auswählen. Eine gemeinsame Monatsauswahl lädt deren filialbezogene Monatspläne
+  über getrennte direkte Firestore-Pfade und stellt jede Filiale in einem eigenen Monatsplanabschnitt dar.
+- Jeder Monatsplanabschnitt besitzt einen eigenen Lade-, Fehler-, Leer- oder Planzustand. Fehlt ein Plan, bleiben die übrigen
+  Filialpläne sichtbar; berechtigte Benutzer können den fehlenden Plan ausschließlich in dessen Abschnitt anlegen. Speicherung
+  und Versionierung bleiben je Filiale getrennt. Die Veröffentlichung folgt in Todo 20.5.
 - Für die Filial-App ist die vollständige Startladung umgesetzt: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
   Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung geladen. Mitarbeiter verwenden weiterhin die
   bestehende Stammdatenstrategie `cacheFirst`; der vollständige Dienstplanbestand verwendet `networkFirst`. Online werden die
   Dienstplandaten in den persistenten IndexedDB-Cache übernommen, bei einem technischen Serverfehler wird auf den vorhandenen
   Cache zurückgefallen. Schreibvorgänge bleiben online.
-- Master und Office laden mit `networkOnly` derzeit nur dann einen Monatsplan, wenn genau eine Filiale ausgewählt ist;
-  historische Versionen werden erst bei Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` derzeit ebenfalls nur die
-  veröffentlichte Version des ausgewählten Monats für genau eine fachlich erlaubte Filiale. Das gemeinsame Laden mehrerer
-  ausgewählter Filialen folgt in Todo 20.5. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese Abfragewege zunächst
-  nicht vorgesehen.
+- Master und Office laden mit `networkOnly` den ausgewählten Monat für jede ausgewählte Filiale; historische Versionen werden
+  erst bei Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` für jede ausgewählte und fachlich erlaubte Filiale nur
+  die veröffentlichte Version dieses Monats. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese getrennten direkten
+  Abfragewege zunächst nicht vorgesehen.
 - Für alle Rollen werden Anzeigename und `farbkennung` einer Schicht über deren `mitarbeiterId` aus dem aktuellen
   Mitarbeiterdokument aufgelöst. Der Mitarbeiter-Store verwendet bereits geladene Einträge und lädt nur eindeutige, im
   geöffneten Dienstplan referenzierte und noch fehlende Mitarbeiter mit `networkOnly` gezielt nach. Das Schichtmodell und neue
@@ -137,23 +135,27 @@ Stand: 11.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   und Zustandswechsel sowie ein Monatsplan mit mehreren Tagen, Mitarbeitern und Schichten sind als Grundlage für 20.4 und 20.5
   dokumentiert.
 - Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtvorlagen. Ansicht und Planung
-  verwenden einen gemeinsamen Dienstplan-Arbeitsbereich mit Monatsnavigation, tageweiser Darstellung sowie Lade-, Leer- und
-  Fehlerzuständen. Der globale Kontext erlaubt Master, Office und Mitarbeiter bereits die Auswahl einer oder mehrerer Filialen;
-  der Dienstplan-Arbeitsbereich verarbeitet davon derzeit genau eine. Filialkonten verwenden unmittelbar ihre einzige
-  Profilzuordnung. Die gemeinsame Verarbeitung mehrerer Filialen, die Konfliktprüfung und die atomare Veröffentlichung folgen in
-  Todo 20.5.
+  verwenden einen gemeinsamen Dienstplan-Arbeitsbereich mit einer Monatsnavigation für alle ausgewählten Filialen. Für jede
+  Filiale wird ein eigener Abschnitt mit tageweiser Darstellung sowie Lade-, Leer- und Fehlerzuständen gerendert. Filialkonten
+  verwenden unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Tageskarte den
+  Schichtdialog mit dem bereits gewählten Datum. Die filialübergreifende Konfliktprüfung und die atomare Veröffentlichung
+  folgen in Todo 20.5.
 - Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
   bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, lokale
   Uhrzeiten, Folgetag und Pause werden vor dem Schreiben validiert und in `Europe/Berlin` in Firestore-Zeitstempel umgewandelt.
   Während eines Schreibvorgangs ist das vollständige Formular deaktiviert. Filialkonten bleiben bis zur Umsetzung des
   betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser Sitzungszustand einen aktiven Firma-Mitarbeiter mit
   `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
-- Master und berechtigte Office-Konten können je ausgewählter Filiale Schichtvorlagen mit Bezeichnung, lokaler Beginn- und
-  Endzeit, Folgetagsangabe, Standardpause und Aktivstatus anlegen und bearbeiten. Inaktive Vorlagen bleiben sichtbar und können
-  wieder aktiviert werden. Beim Einplanen wird eine aktive Vorlage ausgewählt; Beginn und Ende werden aus Datum, lokalen
-  Vorlagenzeiten, Folgetagsangabe und `Europe/Berlin` berechnet. Vorlagen-ID und Bezeichnung sowie die berechneten Zeitpunkte und
-  die konkrete Pause werden als Momentaufnahme in der Schicht gespeichert. Spätere Vorlagenänderungen verändern vorhandene
-  Schichten nicht.
+- Master und berechtigte Office-Konten können für alle ausgewählten Filialen gleichzeitig getrennte Vorlagenabschnitte
+  anzeigen. Jeder Abschnitt lädt ausschließlich seinen Filialbestand und erlaubt dort das Anlegen und Bearbeiten von
+  Schichtvorlagen mit Bezeichnung, lokaler Beginn- und Endzeit sowie Aktivstatus. Der Folgetag wird aus der Zeitfolge abgeleitet;
+  die Standardpause wird anhand der Schichtdauer automatisch mit 0, 30 oder 45 Minuten berechnet. Schichtdauer und Standardpause
+  sind im Dialog schreibgeschützt. Neue Vorlagen sind aktiv; die sichtbare Aktiv-Checkbox ist beim Anlegen deaktiviert und beim
+  Bearbeiten änderbar. Inaktive Vorlagen bleiben sichtbar und können wieder aktiviert werden. Firmenweite Vorlagen oder
+  filialübergreifende Kopien gibt es nicht. Beim Einplanen wird eine aktive Vorlage der konkreten Filiale ausgewählt; Beginn und
+  Ende werden aus Datum, lokalen Vorlagenzeiten, abgeleitetem Folgetag und `Europe/Berlin` berechnet. Vorlagen-ID und Bezeichnung
+  sowie die berechneten Zeitpunkte und die konkrete Pause werden als Momentaufnahme in der Schicht gespeichert. Spätere
+  Vorlagenänderungen verändern vorhandene Schichten nicht.
 - Firestore Rules verlangen bei einer neuen oder auf eine andere Vorlage umgestellten Schicht eine aktive filialbezogene Vorlage
   mit passender Bezeichnung. Beim Bearbeiten darf eine bereits gespeicherte Vorlagen-Momentaufnahme unverändert erhalten bleiben,
   auch wenn die ursprüngliche Vorlage inzwischen geändert oder deaktiviert wurde.

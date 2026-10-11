@@ -51,6 +51,13 @@
     }
   }
 
+  &__tag-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
   &__schicht {
     display: grid;
     gap: 4px;

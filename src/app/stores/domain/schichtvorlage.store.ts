@@ -1,7 +1,7 @@
 // pur-system/src/app/stores/domain/schichtvorlage.store.ts
 
-import { DestroyRef, computed, inject, untracked } from '@angular/core';
-import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { DestroyRef, inject, untracked } from '@angular/core';
+import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 import { environment } from '../../../environments/environment';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
@@ -18,13 +18,15 @@ import { BenutzerStore } from '../app/benutzer.store';
 
 // ===== Top-Level Helper =====================
 
-export type TSchichtvorlageSnapshot = {
+export type TSchichtvorlageKontext = IFilialPfad & {
   readonly schichtvorlagen: readonly ISchichtvorlageEintrag[];
-  readonly selectedUnternehmerId: string | null;
-  readonly selectedFirmaId: string | null;
-  readonly selectedFilialeId: string | null;
   readonly download: boolean;
   readonly isLoaded: boolean;
+  readonly error: string | null;
+};
+
+export type TSchichtvorlageSnapshot = {
+  readonly kontexte: Readonly<Record<string, TSchichtvorlageKontext>>;
   readonly inProgress: boolean;
   readonly error: string | null;
 };
@@ -32,18 +34,23 @@ export type TSchichtvorlageSnapshot = {
 type TSchichtvorlageState = TSchichtvorlageSnapshot;
 
 const initialState: TSchichtvorlageState = {
-  schichtvorlagen: [],
-  selectedUnternehmerId: null,
-  selectedFirmaId: null,
-  selectedFilialeId: null,
-  download: false,
-  isLoaded: false,
+  kontexte: {},
   inProgress: false,
   error: null,
 };
 
-function getPfadSchluessel(pfad: IFilialPfad): string {
+function getKontextSchluessel(pfad: IFilialPfad): string {
   return JSON.stringify([pfad.unternehmerId, pfad.firmaId, pfad.filialeId]);
+}
+
+function createLeerenKontext(pfad: IFilialPfad): TSchichtvorlageKontext {
+  return {
+    ...pfad,
+    schichtvorlagen: [],
+    download: false,
+    isLoaded: false,
+    error: null,
+  };
 }
 
 function sortSchichtvorlagen(a: ISchichtvorlageEintrag, b: ISchichtvorlageEintrag): number {
@@ -56,13 +63,6 @@ function sortSchichtvorlagen(a: ISchichtvorlageEintrag, b: ISchichtvorlageEintra
 export const SchichtvorlageStore = signalStore(
   { providedIn: 'root', protectedState: true } as const,
   withState<TSchichtvorlageState>(initialState),
-  withComputed((store) => {
-    const activeSchichtvorlagen = computed(() => {
-      return store.schichtvorlagen().filter((vorlage) => vorlage.aktiv);
-    });
-
-    return { activeSchichtvorlagen };
-  }),
   withMethods(
     (
       store,
@@ -72,12 +72,13 @@ export const SchichtvorlageStore = signalStore(
       storeSnapshotService = inject(StoreSnapshotService),
     ) => {
       let generation = 0;
-      let ladeauftrag: { key: string; promise: Promise<void> } | null = null;
+      const kontextGenerationen = new Map<string, number>();
+      const ladeauftraege = new Map<string, Promise<void>>();
 
       // ===== Methoden: Laden ======================
 
       /**
-       * Lädt alle Schichtvorlagen einer Filiale und ersetzt einen vorherigen Filialkontext.
+       * Lädt alle Schichtvorlagen einer Filiale, ohne andere Filialkontexte zu verwerfen.
        *
        * @param pfad - Vollständiger Filialpfad.
        * @param strategie - Datenquellenstrategie für den Ladevorgang.
@@ -88,25 +89,33 @@ export const SchichtvorlageStore = signalStore(
         pfad: IFilialPfad,
         strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.dienstplaene,
       ): Promise<void> {
-        const pfadSchluessel = getPfadSchluessel(pfad);
-        const gleicherKontext = isSelectedPfad(pfad);
-        if (gleicherKontext && store.isLoaded()) return Promise.resolve();
-        if (ladeauftrag?.key === `${pfadSchluessel}:${strategie}`) return ladeauftrag.promise;
+        const kontext = getSchichtvorlageKontext(pfad);
+        if (kontext?.isLoaded) return Promise.resolve();
 
-        const aktuelleGeneration = ++generation;
-        const key = `${pfadSchluessel}:${strategie}`;
-        patchState(store, {
-          schichtvorlagen: [],
-          selectedUnternehmerId: pfad.unternehmerId,
-          selectedFirmaId: pfad.firmaId,
-          selectedFilialeId: pfad.filialeId,
+        const kontextSchluessel = getKontextSchluessel(pfad);
+        const auftragSchluessel = `${kontextSchluessel}:${strategie}`;
+        const laufenderAuftrag = ladeauftraege.get(auftragSchluessel);
+        if (laufenderAuftrag) return laufenderAuftrag;
+
+        const aktuelleGeneration = generation;
+        const kontextGeneration = (kontextGenerationen.get(kontextSchluessel) ?? 0) + 1;
+        kontextGenerationen.set(kontextSchluessel, kontextGeneration);
+        setKontext(pfad, {
+          ...(kontext ?? createLeerenKontext(pfad)),
           download: true,
           isLoaded: false,
-          inProgress: false,
           error: null,
         });
-        const promise = executeLoad(pfad, strategie, key, aktuelleGeneration);
-        ladeauftrag = { key, promise };
+        const promise = executeLoad(pfad, strategie, aktuelleGeneration, kontextGeneration);
+        ladeauftraege.set(auftragSchluessel, promise);
+        void promise.then(
+          () => {
+            removeLadeauftrag(auftragSchluessel, promise);
+          },
+          () => {
+            removeLadeauftrag(auftragSchluessel, promise);
+          },
+        );
         return promise;
       }
 
@@ -117,25 +126,27 @@ export const SchichtvorlageStore = signalStore(
        *
        * @param pfad - Vollständiger Filialpfad.
        * @param anlage - Fachliche Daten der neuen Schichtvorlage.
-       * @returns Ein Promise, das nach dem bestätigten Schreibvorgang abgeschlossen ist.
        * @throws Wenn der Filialkontext oder die Benutzeridentität fehlt oder das Schreiben fehlschlägt.
        */
       async function createSchichtvorlage(
         pfad: IFilialPfad,
         anlage: ISchichtvorlageAnlage,
       ): Promise<void> {
-        requireSchreibkontext(pfad);
+        const kontext = requireSchreibkontext(pfad);
         const benutzerUid = requireBenutzerUid();
-        const schreibGeneration = generation;
         await executeWrite(async () => {
           const schichtvorlage = await schichtvorlageService.createSchichtvorlage(
             pfad,
             anlage,
             benutzerUid,
           );
-          if (schreibGeneration !== generation) return;
-          patchState(store, {
-            schichtvorlagen: [...store.schichtvorlagen(), schichtvorlage].sort(sortSchichtvorlagen),
+          const aktuellerKontext = getSchichtvorlageKontext(pfad);
+          if (!aktuellerKontext || aktuellerKontext !== kontext) return;
+          setKontext(pfad, {
+            ...aktuellerKontext,
+            schichtvorlagen: [...aktuellerKontext.schichtvorlagen, schichtvorlage].sort(
+              sortSchichtvorlagen,
+            ),
           });
         });
       }
@@ -146,7 +157,6 @@ export const SchichtvorlageStore = signalStore(
        * @param pfad - Vollständiger Filialpfad.
        * @param schichtvorlageId - Dokument-ID der Schichtvorlage.
        * @param aktualisierung - Vollständige bearbeitbare Vorlagendaten.
-       * @returns Ein Promise, das nach dem bestätigten Schreibvorgang abgeschlossen ist.
        * @throws Wenn Kontext, Vorlage oder Benutzeridentität fehlt oder das Schreiben fehlschlägt.
        */
       async function updateSchichtvorlage(
@@ -154,9 +164,8 @@ export const SchichtvorlageStore = signalStore(
         schichtvorlageId: string,
         aktualisierung: ISchichtvorlageAktualisierung,
       ): Promise<void> {
-        const schichtvorlage = requireSchichtvorlage(pfad, schichtvorlageId);
+        const { kontext, schichtvorlage } = requireSchichtvorlage(pfad, schichtvorlageId);
         const benutzerUid = requireBenutzerUid();
-        const schreibGeneration = generation;
         await executeWrite(async () => {
           await schichtvorlageService.updateSchichtvorlage(
             pfad,
@@ -164,7 +173,8 @@ export const SchichtvorlageStore = signalStore(
             aktualisierung,
             benutzerUid,
           );
-          if (schreibGeneration !== generation) return;
+          const aktuellerKontext = getSchichtvorlageKontext(pfad);
+          if (!aktuellerKontext || aktuellerKontext !== kontext) return;
           const aktualisierteSchichtvorlage: ISchichtvorlageEintrag = {
             ...schichtvorlage,
             ...aktualisierung,
@@ -172,9 +182,9 @@ export const SchichtvorlageStore = signalStore(
             standardpauseMinuten: aktualisierung.standardpauseMinuten ?? 0,
             aktualisiertVonUid: benutzerUid,
           };
-          patchState(store, {
-            schichtvorlagen: store
-              .schichtvorlagen()
+          setKontext(pfad, {
+            ...aktuellerKontext,
+            schichtvorlagen: aktuellerKontext.schichtvorlagen
               .map((vorlage) => {
                 return vorlage.id === schichtvorlageId ? aktualisierteSchichtvorlage : vorlage;
               })
@@ -188,21 +198,21 @@ export const SchichtvorlageStore = signalStore(
        *
        * @param pfad - Vollständiger Filialpfad.
        * @param schichtvorlageId - Dokument-ID der Schichtvorlage.
-       * @returns Ein Promise, das nach dem bestätigten Schreibvorgang abgeschlossen ist.
        * @throws Wenn Kontext, Vorlage oder Benutzeridentität fehlt oder das Schreiben fehlschlägt.
        */
       async function deactivateSchichtvorlage(
         pfad: IFilialPfad,
         schichtvorlageId: string,
       ): Promise<void> {
-        requireSchichtvorlage(pfad, schichtvorlageId);
+        const { kontext } = requireSchichtvorlage(pfad, schichtvorlageId);
         const benutzerUid = requireBenutzerUid();
-        const schreibGeneration = generation;
         await executeWrite(async () => {
           await schichtvorlageService.deactivateSchichtvorlage(pfad, schichtvorlageId, benutzerUid);
-          if (schreibGeneration !== generation) return;
-          patchState(store, {
-            schichtvorlagen: store.schichtvorlagen().map((vorlage) => {
+          const aktuellerKontext = getSchichtvorlageKontext(pfad);
+          if (!aktuellerKontext || aktuellerKontext !== kontext) return;
+          setKontext(pfad, {
+            ...aktuellerKontext,
+            schichtvorlagen: aktuellerKontext.schichtvorlagen.map((vorlage) => {
               return vorlage.id === schichtvorlageId
                 ? { ...vorlage, aktiv: false, aktualisiertVonUid: benutzerUid }
                 : vorlage;
@@ -214,11 +224,22 @@ export const SchichtvorlageStore = signalStore(
       // ===== Methoden: Sonstige Aktionen ==========
 
       /**
+       * Liefert den geladenen Schichtvorlagenkontext einer Filiale.
+       *
+       * @param pfad - Vollständiger Filialpfad.
+       * @returns Filialkontext oder `null`, wenn er noch nicht angelegt wurde.
+       */
+      function getSchichtvorlageKontext(pfad: IFilialPfad): TSchichtvorlageKontext | null {
+        return store.kontexte()[getKontextSchluessel(pfad)] ?? null;
+      }
+
+      /**
        * Setzt alle sitzungsbezogenen Schichtvorlagendaten zurück.
        */
       function resetSchichtvorlagen(): void {
         generation += 1;
-        ladeauftrag = null;
+        kontextGenerationen.clear();
+        ladeauftraege.clear();
         patchState(store, initialState);
       }
 
@@ -236,12 +257,7 @@ export const SchichtvorlageStore = signalStore(
        */
       function snapshot(): TSchichtvorlageSnapshot {
         return untracked(() => ({
-          schichtvorlagen: store.schichtvorlagen(),
-          selectedUnternehmerId: store.selectedUnternehmerId(),
-          selectedFirmaId: store.selectedFirmaId(),
-          selectedFilialeId: store.selectedFilialeId(),
-          download: store.download(),
-          isLoaded: store.isLoaded(),
+          kontexte: store.kontexte(),
           inProgress: store.inProgress(),
           error: store.error(),
         }));
@@ -252,29 +268,32 @@ export const SchichtvorlageStore = signalStore(
       async function executeLoad(
         pfad: IFilialPfad,
         strategie: TFirestoreLesestrategie,
-        key: string,
         aktuelleGeneration: number,
+        kontextGeneration: number,
       ): Promise<void> {
+        const kontextSchluessel = getKontextSchluessel(pfad);
         try {
           const schichtvorlagen = await schichtvorlageService.loadSchichtvorlagen(pfad, strategie);
-          if (aktuelleGeneration !== generation) return;
-          patchState(store, {
+          if (!istAktuellerLadeauftrag(kontextSchluessel, aktuelleGeneration, kontextGeneration)) {
+            return;
+          }
+          setKontext(pfad, {
+            ...pfad,
             schichtvorlagen,
             download: false,
             isLoaded: true,
             error: null,
           });
         } catch (error: unknown) {
-          if (aktuelleGeneration === generation) {
-            patchState(store, {
+          if (istAktuellerLadeauftrag(kontextSchluessel, aktuelleGeneration, kontextGeneration)) {
+            setKontext(pfad, {
+              ...(getSchichtvorlageKontext(pfad) ?? createLeerenKontext(pfad)),
               download: false,
               isLoaded: false,
               error: getFirebaseErrorMessage(error),
             });
           }
           throw error;
-        } finally {
-          if (ladeauftrag?.key === key) ladeauftrag = null;
         }
       }
 
@@ -298,34 +317,54 @@ export const SchichtvorlageStore = signalStore(
         }
       }
 
-      function isSelectedPfad(pfad: IFilialPfad): boolean {
+      function istAktuellerLadeauftrag(
+        kontextSchluessel: string,
+        aktuelleGeneration: number,
+        kontextGeneration: number,
+      ): boolean {
         return (
-          store.selectedUnternehmerId() === pfad.unternehmerId &&
-          store.selectedFirmaId() === pfad.firmaId &&
-          store.selectedFilialeId() === pfad.filialeId
+          aktuelleGeneration === generation &&
+          kontextGenerationen.get(kontextSchluessel) === kontextGeneration
         );
       }
 
-      function requireSchreibkontext(pfad: IFilialPfad): void {
-        if (!store.isLoaded() || !isSelectedPfad(pfad)) {
+      function removeLadeauftrag(auftragSchluessel: string, promise: Promise<void>): void {
+        if (ladeauftraege.get(auftragSchluessel) === promise) {
+          ladeauftraege.delete(auftragSchluessel);
+        }
+      }
+
+      function setKontext(pfad: IFilialPfad, kontext: TSchichtvorlageKontext): void {
+        patchState(store, {
+          kontexte: {
+            ...store.kontexte(),
+            [getKontextSchluessel(pfad)]: kontext,
+          },
+        });
+      }
+
+      function requireSchreibkontext(pfad: IFilialPfad): TSchichtvorlageKontext {
+        const kontext = getSchichtvorlageKontext(pfad);
+        if (!kontext?.isLoaded) {
           throw new Error(
             'Die Schichtvorlagen der Filiale müssen vor dem Schreiben geladen werden.',
           );
         }
+        return kontext;
       }
 
       function requireSchichtvorlage(
         pfad: IFilialPfad,
         schichtvorlageId: string,
-      ): ISchichtvorlageEintrag {
-        requireSchreibkontext(pfad);
-        const schichtvorlage = store.schichtvorlagen().find((vorlage) => {
+      ): { kontext: TSchichtvorlageKontext; schichtvorlage: ISchichtvorlageEintrag } {
+        const kontext = requireSchreibkontext(pfad);
+        const schichtvorlage = kontext.schichtvorlagen.find((vorlage) => {
           return vorlage.id === schichtvorlageId;
         });
         if (!schichtvorlage) {
           throw new Error('Die Schichtvorlage wurde im geladenen Filialkontext nicht gefunden.');
         }
-        return schichtvorlage;
+        return { kontext, schichtvorlage };
       }
 
       function requireBenutzerUid(): string {
@@ -347,6 +386,7 @@ export const SchichtvorlageStore = signalStore(
         createSchichtvorlage,
         updateSchichtvorlage,
         deactivateSchichtvorlage,
+        getSchichtvorlageKontext,
         resetSchichtvorlagen,
         clearError,
         snapshot,

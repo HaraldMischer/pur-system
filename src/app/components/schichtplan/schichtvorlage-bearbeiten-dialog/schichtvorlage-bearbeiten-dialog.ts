@@ -23,6 +23,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { merge } from 'rxjs';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import {
@@ -44,10 +45,42 @@ function zeitfolgeValidator(): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
     const beginn = control.get('beginnLokalzeit')?.value as string | undefined;
     const ende = control.get('endeLokalzeit')?.value as string | undefined;
-    const endetAmFolgetag = control.get('endetAmFolgetag')?.value as boolean | undefined;
-    if (!beginn || !ende || endetAmFolgetag) return null;
-    return beginn < ende ? null : { ungueltigeZeitfolge: true };
+    if (!beginn || !ende) return null;
+    return beginn !== ende ? null : { ungueltigeZeitfolge: true };
   };
+}
+
+function calculateStandardpauseMinuten(
+  beginnLokalzeit: string,
+  endeLokalzeit: string,
+): number | null {
+  const dauerMinuten = calculateSchichtdauerMinuten(beginnLokalzeit, endeLokalzeit);
+  if (dauerMinuten === null) return null;
+  if (dauerMinuten <= 0) return null;
+  if (dauerMinuten <= 6 * 60) return 0;
+  if (dauerMinuten <= 9 * 60) return 30;
+  return 45;
+}
+
+function calculateSchichtdauerMinuten(
+  beginnLokalzeit: string,
+  endeLokalzeit: string,
+): number | null {
+  const beginnMinuten = getLokalzeitMinuten(beginnLokalzeit);
+  const endeMinuten = getLokalzeitMinuten(endeLokalzeit);
+  if (beginnMinuten === null || endeMinuten === null || beginnMinuten === endeMinuten) {
+    return null;
+  }
+  return endeMinuten + (endeMinuten < beginnMinuten ? 24 * 60 : 0) - beginnMinuten;
+}
+
+function getLokalzeitMinuten(lokalzeit: string): number | null {
+  const treffer = /^(\d{2}):(\d{2})$/.exec(lokalzeit);
+  if (!treffer) return null;
+  const stunden = Number(treffer[1]);
+  const minuten = Number(treffer[2]);
+  if (stunden > 23 || minuten > 59) return null;
+  return stunden * 60 + minuten;
 }
 
 @Component({
@@ -77,6 +110,7 @@ export class SchichtvorlageBearbeitenDialog {
   readonly istBearbeitung = Boolean(this.daten.schichtvorlage);
   readonly submitError = signal<string | null>(null);
   readonly hatAenderungen = signal(!this.istBearbeitung);
+  readonly schichtdauerStunden = signal('0');
   readonly schichtvorlageForm = new FormGroup(
     {
       bezeichnung: new FormControl(this.daten.schichtvorlage?.bezeichnung ?? '', {
@@ -91,14 +125,14 @@ export class SchichtvorlageBearbeitenDialog {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      endetAmFolgetag: new FormControl(this.daten.schichtvorlage?.endetAmFolgetag ?? false, {
+      standardpauseMinuten: new FormControl(this.daten.schichtvorlage?.standardpauseMinuten ?? 0, {
         nonNullable: true,
+        validators: [Validators.min(0), Validators.max(1439)],
       }),
-      standardpauseMinuten: new FormControl<number | null>(
-        this.daten.schichtvorlage?.standardpauseMinuten ?? null,
-        [Validators.min(0), Validators.max(1439)],
+      aktiv: new FormControl(
+        { value: this.daten.schichtvorlage?.aktiv ?? true, disabled: !this.istBearbeitung },
+        { nonNullable: true },
       ),
-      aktiv: new FormControl(this.daten.schichtvorlage?.aktiv ?? true, { nonNullable: true }),
     },
     { validators: [zeitfolgeValidator()] },
   );
@@ -107,6 +141,16 @@ export class SchichtvorlageBearbeitenDialog {
     this.urspruenglicheAktualisierung = this.daten.schichtvorlage
       ? JSON.stringify(this.getAktualisierung())
       : null;
+    this.updateSchichtdauer();
+    merge(
+      this.schichtvorlageForm.controls.beginnLokalzeit.valueChanges,
+      this.schichtvorlageForm.controls.endeLokalzeit.valueChanges,
+    )
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        this.updateSchichtdauer();
+        this.updateStandardpause();
+      });
     this.schichtvorlageForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.hatAenderungen.set(
         this.urspruenglicheAktualisierung !== JSON.stringify(this.getAktualisierung()),
@@ -120,6 +164,9 @@ export class SchichtvorlageBearbeitenDialog {
           this.schichtvorlageForm.disable({ emitEvent: false });
         } else {
           this.schichtvorlageForm.enable({ emitEvent: false });
+          if (!this.istBearbeitung) {
+            this.schichtvorlageForm.controls.aktiv.disable({ emitEvent: false });
+          }
         }
       });
     });
@@ -158,16 +205,35 @@ export class SchichtvorlageBearbeitenDialog {
   }
 
   // ===== Interne Helfer =======================
+  private updateSchichtdauer(): void {
+    const dauerMinuten = calculateSchichtdauerMinuten(
+      this.schichtvorlageForm.controls.beginnLokalzeit.value,
+      this.schichtvorlageForm.controls.endeLokalzeit.value,
+    );
+    this.schichtdauerStunden.set(
+      dauerMinuten === null
+        ? '0'
+        : new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(dauerMinuten / 60),
+    );
+  }
+
+  private updateStandardpause(): void {
+    const standardpauseMinuten = calculateStandardpauseMinuten(
+      this.schichtvorlageForm.controls.beginnLokalzeit.value,
+      this.schichtvorlageForm.controls.endeLokalzeit.value,
+    );
+    if (standardpauseMinuten === null) return;
+    this.schichtvorlageForm.controls.standardpauseMinuten.setValue(standardpauseMinuten);
+  }
+
   private getAnlage(): ISchichtvorlageAnlage {
     const formwert = this.schichtvorlageForm.getRawValue();
     return {
       bezeichnung: formwert.bezeichnung.trim(),
       beginnLokalzeit: formwert.beginnLokalzeit,
       endeLokalzeit: formwert.endeLokalzeit,
-      endetAmFolgetag: formwert.endetAmFolgetag,
-      ...(formwert.standardpauseMinuten === null
-        ? {}
-        : { standardpauseMinuten: formwert.standardpauseMinuten }),
+      endetAmFolgetag: formwert.endeLokalzeit < formwert.beginnLokalzeit,
+      standardpauseMinuten: formwert.standardpauseMinuten,
     };
   }
 

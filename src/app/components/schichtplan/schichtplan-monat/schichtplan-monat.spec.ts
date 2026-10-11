@@ -74,10 +74,21 @@ describe('SchichtplanMonat', () => {
         farbkennung: '#123456',
       },
     ]);
+    fixture.componentRef.setInput('darfSchreiben', true);
+    const angelegteTage: string[] = [];
+    fixture.componentInstance.schichtAnlegen.subscribe((datum) => {
+      angelegteTage.push(datum);
+    });
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
+    const anlegenButtons = compiled.querySelectorAll<HTMLButtonElement>(
+      '.schichtplan-monat__tag-anlegen',
+    );
 
     expect(compiled.querySelectorAll('.schichtplan-monat__tag')).toHaveLength(28);
+    expect(anlegenButtons).toHaveLength(28);
+    anlegenButtons[2].click();
+    expect(angelegteTage).toEqual(['2026-02-03']);
     expect(compiled.textContent).toContain('Muster, Mia');
     expect(
       compiled.querySelector<HTMLElement>('.schichtplan-monat__mitarbeiter-farbe')?.style

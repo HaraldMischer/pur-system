@@ -42,11 +42,15 @@ describe('SchichtvorlageBearbeitenDialog', () => {
   it('should validate, normalize and create a template', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.schichtvorlageForm.controls.aktiv.value).toBe(true);
+    expect(component.schichtvorlageForm.controls.aktiv.disabled).toBe(true);
+
     component.schichtvorlageForm.setValue({
       bezeichnung: '  Frühschicht  ',
       beginnLokalzeit: '08:00',
       endeLokalzeit: '16:30',
-      endetAmFolgetag: false,
       standardpauseMinuten: 30,
       aktiv: true,
     });
@@ -80,6 +84,10 @@ describe('SchichtvorlageBearbeitenDialog', () => {
       },
     });
     const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('mat-checkbox')).not.toBeNull();
+    expect(component.schichtvorlageForm.controls.aktiv.enabled).toBe(true);
 
     await component.saveSchichtvorlage();
     expect(updateSchichtvorlage).not.toHaveBeenCalled();
@@ -94,21 +102,72 @@ describe('SchichtvorlageBearbeitenDialog', () => {
     );
   });
 
-  it('should reject an end before the start unless the template ends on the following day', async () => {
+  it('should infer the following day and reject equal start and end times', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
     component.schichtvorlageForm.patchValue({
       bezeichnung: 'Spätschicht',
       beginnLokalzeit: '16:30',
-      endeLokalzeit: '01:00',
-      endetAmFolgetag: false,
+      endeLokalzeit: '16:30',
     });
 
     await component.saveSchichtvorlage();
     expect(createSchichtvorlage).not.toHaveBeenCalled();
 
-    component.schichtvorlageForm.controls.endetAmFolgetag.setValue(true);
+    component.schichtvorlageForm.controls.endeLokalzeit.setValue('01:00');
     await component.saveSchichtvorlage();
-    expect(createSchichtvorlage).toHaveBeenCalledOnce();
+    expect(createSchichtvorlage).toHaveBeenCalledWith(
+      pfad,
+      expect.objectContaining({ endetAmFolgetag: true, standardpauseMinuten: 30 }),
+    );
+  });
+
+  it('should calculate the read-only standard break from the shift duration', async () => {
+    const fixture = await createComponent({ pfad });
+    const form = fixture.componentInstance.schichtvorlageForm;
+    fixture.detectChanges();
+
+    const pauseInput = fixture.nativeElement.querySelector(
+      'input[formControlName="standardpauseMinuten"]',
+    ) as HTMLInputElement;
+
+    expect(form.controls.standardpauseMinuten.value).toBe(0);
+    expect(pauseInput.readOnly).toBe(true);
+
+    form.controls.beginnLokalzeit.setValue('08:00');
+    form.controls.endeLokalzeit.setValue('14:00');
+    expect(fixture.componentInstance.schichtdauerStunden()).toBe('6');
+    expect(form.controls.standardpauseMinuten.value).toBe(0);
+
+    form.controls.endeLokalzeit.setValue('14:01');
+    expect(form.controls.standardpauseMinuten.value).toBe(30);
+
+    form.controls.endeLokalzeit.setValue('17:00');
+    expect(form.controls.standardpauseMinuten.value).toBe(30);
+
+    form.controls.endeLokalzeit.setValue('17:01');
+    expect(form.controls.standardpauseMinuten.value).toBe(45);
+  });
+
+  it('should calculate the standard break for a shift ending on the following day', async () => {
+    const fixture = await createComponent({ pfad });
+    const form = fixture.componentInstance.schichtvorlageForm;
+
+    form.controls.beginnLokalzeit.setValue('20:00');
+    form.controls.endeLokalzeit.setValue('04:00');
+    expect(fixture.componentInstance.schichtdauerStunden()).toBe('8');
+    expect(form.controls.standardpauseMinuten.value).toBe(30);
+  });
+
+  it('should format fractional shift hours and reset an invalid duration to zero', async () => {
+    const fixture = await createComponent({ pfad });
+    const form = fixture.componentInstance.schichtvorlageForm;
+
+    form.controls.beginnLokalzeit.setValue('08:00');
+    form.controls.endeLokalzeit.setValue('16:30');
+    expect(fixture.componentInstance.schichtdauerStunden()).toBe('8,5');
+
+    form.controls.endeLokalzeit.setValue('08:00');
+    expect(fixture.componentInstance.schichtdauerStunden()).toBe('0');
   });
 });

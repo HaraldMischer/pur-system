@@ -1,0 +1,52 @@
+<!-- pur-system/src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.html -->
+
+<section class="pur-page-section dienstplan-filialabschnitt">
+  <header class="pur-page-section__header">
+    <h3 class="pur-page-section__title">{{ filiale().anzeigename }}</h3>
+  </header>
+
+  @if (download() && !isLoaded()) {
+    <p class="pur-page-section__message" role="status">Dienstplan wird geladen.</p>
+  } @else if (ladeFehler(); as error) {
+    <div class="pur-page-section__error-state">
+      <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+        {{ error }}
+      </p>
+      <button matButton="tonal" type="button" (click)="retryLoad()">Erneut laden</button>
+    </div>
+  } @else if (isLoaded()) {
+    @if (aktionsfehler(); as fehlermeldung) {
+      <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+        {{ fehlermeldung }}
+      </p>
+    }
+
+    @if (dienstplan(); as geladenerDienstplan) {
+      <app-schichtplan-monat
+        [dienstplan]="geladenerDienstplan"
+        [versionen]="versionen()"
+        [schichten]="schichten()"
+        [mitarbeiter]="schichtMitarbeiter()"
+        [darfSchreiben]="darfSchreiben()"
+        (schichtAnlegen)="openSchichtDialog($event)"
+        (schichtBearbeiten)="openSchichtDialog(geladenerDienstplan.zeitraumStart, $event)"
+      />
+    } @else {
+      <div class="pur-page-section__empty-state">
+        <p role="status">Für diesen Monat ist noch kein Dienstplan vorhanden.</p>
+        @if (darfSchreiben()) {
+          <button
+            matButton="filled"
+            type="button"
+            [disabled]="dienstplanStore.inProgress()"
+            (click)="createDienstplan()"
+          >
+            Plan erstellen
+          </button>
+        }
+      </div>
+    }
+  } @else {
+    <p class="pur-page-section__message" role="status">Dienstplan wird geladen.</p>
+  }
+</section>

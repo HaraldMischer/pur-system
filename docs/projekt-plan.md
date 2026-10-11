@@ -543,9 +543,12 @@ unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/dienstplan/{monat
     /schicht/{schichtId}
 ```
 
-Jede Filiale besitzt eigene vorkonfigurierte Schichtvorlagen. Eine Vorlage enthält mindestens eine Bezeichnung, eine lokale
-Beginn- und Endzeit sowie die Angabe, ob sie am Folgetag endet. Eine Standardpause kann ebenfalls in der Vorlage hinterlegt
-werden. Nicht mehr verwendete Vorlagen werden deaktiviert und nicht physisch gelöscht.
+Jede Filiale besitzt eigene vorkonfigurierte Schichtvorlagen. Eine Vorlage enthält mindestens eine Bezeichnung sowie eine lokale
+Beginn- und Endzeit. Liegt die Endzeit vor der Beginnzeit, wird der Folgetag automatisch abgeleitet; identische Uhrzeiten sind
+ungültig. Die Standardpause wird in der Vorlage hinterlegt und bei Änderungen der Vorlagenzeiten anhand der vollständigen
+Schichtdauer automatisch festgelegt: 0 Minuten bis einschließlich 6 Stunden, 30 Minuten bei mehr als 6 bis einschließlich
+9 Stunden und 45 Minuten bei mehr als 9 Stunden. Der berechnete Wert ist in der Schichtvorlage nicht manuell anpassbar. Nicht
+mehr verwendete Vorlagen werden deaktiviert und nicht physisch gelöscht.
 
 Beim Anlegen einer Schicht wählt der Planer eine aktive Vorlage der konkreten Filiale. Eine freie Eingabe der regulären
 Schichtzeiten ist im grundlegenden Planungsablauf nicht vorgesehen. Die konkrete Schicht speichert die Vorlagen-ID sowie
@@ -623,6 +626,11 @@ Minuten übernommen. Dadurch können auch Schichten über Mitternacht eindeutig 
 wird aus Ende minus Beginn minus Pause berechnet und nicht redundant gespeichert. Ende vor oder gleich Beginn, negative Pausen
 und Pausen ab der vollständigen Schichtdauer sind ungültig. Überlappende Schichten desselben Mitarbeiters sind ein blockierender
 Konflikt.
+
+Während einer Pause genügt eine durchgängige Aufsicht durch eine Person. Ist nur ein Mitarbeiter im Dienst, übernimmt der
+Techniker während dessen Pause die Aufsicht. Sind zwei Mitarbeiter im Dienst, vertreten sie sich während ihrer Pausen
+gegenseitig. Eine verpflichtende Doppelbesetzung besteht nicht und wird deshalb weder als Planungsvoraussetzung noch als
+Planungskonflikt berücksichtigt.
 
 Ein Entwurf darf gespeichert werden, solange seine einzelnen Schichten strukturell gültig sind. Überlappungen dürfen während
 der Bearbeitung vorübergehend bestehen, verhindern aber die Veröffentlichung. Die Konfliktprüfung berücksichtigt die relevanten

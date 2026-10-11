@@ -6,21 +6,24 @@
       {{ statusBezeichnung() }}
     </span>
     <span>{{ aktiveVersion()?.revision ?? 0 }}. Revision</span>
-    @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
-      <button
-        matButton="outlined"
-        type="button"
-        (click)="schichtAnlegen.emit(dienstplan().zeitraumStart)"
-      >
-        <mat-icon aria-hidden="true">add</mat-icon>Schicht anlegen
-      </button>
-    }
   </header>
 
   <div class="schichtplan-monat__tage">
     @for (tag of tage(); track tag.datum) {
       <article class="schichtplan-monat__tag">
-        <h3>{{ tag.bezeichnung }}</h3>
+        <header class="schichtplan-monat__tag-header">
+          <h3>{{ tag.bezeichnung }}</h3>
+          @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
+            <button
+              matButton
+              type="button"
+              class="schichtplan-monat__tag-anlegen"
+              (click)="schichtAnlegen.emit(tag.datum)"
+            >
+              <mat-icon aria-hidden="true">add</mat-icon>Anlegen
+            </button>
+          }
+        </header>
         @for (schicht of tag.schichten; track schicht.id) {
           <div class="schichtplan-monat__schicht">
             <strong>
