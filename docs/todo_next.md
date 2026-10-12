@@ -25,6 +25,7 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.scss
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
+- src/app/components/app-shell/app-sidenav/app-sidenav.scss
 - src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.ts
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
@@ -69,6 +70,12 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 
 Neu hinzuzufügen:
 
+- src/app/commons/utils/datum/monat.ts
+- src/app/commons/utils/datum/monat.spec.ts
+- src/app/components/date-selectors/monat-selector/monat-selector.ts
+- src/app/components/date-selectors/monat-selector/monat-selector.html
+- src/app/components/date-selectors/monat-selector/monat-selector.scss
+- src/app/components/date-selectors/monat-selector/monat-selector.spec.ts
 - src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.ts
 - src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.html
 - src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.scss
@@ -106,7 +113,8 @@ Neu hinzuzufügen:
 - [x] In jeder Tageskarte eines bearbeitbaren Entwurfs eine Anlageaktion anbieten und das gewählte Datum an den Schichtdialog
       übergeben.
 - [x] Unter der gemeinsamen Monatsauswahl eine responsive zweispaltige Arbeitsfläche für Dienstpläne und eine vorbereitete
-      Mitarbeiterübersicht bereitstellen; beide Spalten auf breiten Ansichten unabhängig scrollbar halten.
+      Mitarbeiterübersicht bereitstellen; beide Spalten auf breiten Ansichten unabhängig scrollbar halten und auf schmalen
+      Ansichten untereinander in einer gemeinsamen Arbeitsfläche scrollen.
 - [x] Für jede ausgewählte Filiale einen eigenen Schichtvorlagenabschnitt laden und Vorlagen ausschließlich in ihrem jeweiligen
       Filialkontext anlegen oder bearbeiten; firmenweite Vorlagen und filialübergreifende Kopien ausschließen.
 

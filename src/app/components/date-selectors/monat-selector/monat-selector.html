@@ -1,0 +1,11 @@
+<!-- pur-system/src/app/components/date-selectors/monat-selector/monat-selector.html -->
+
+<div class="monat-selector__auswahl">
+  <button matIconButton type="button" aria-label="Vorheriger Monat" (click)="changeMonat(-1)">
+    <mat-icon aria-hidden="true">chevron_left</mat-icon>
+  </button>
+  <strong>{{ monatsbezeichnung() }}</strong>
+  <button matIconButton type="button" aria-label="Nächster Monat" (click)="changeMonat(1)">
+    <mat-icon aria-hidden="true">chevron_right</mat-icon>
+  </button>
+</div>

@@ -35,7 +35,9 @@
   }
 
   &__mitarbeiter {
+    display: grid;
     align-content: start;
+    gap: 16px;
   }
 
   &__filialabschnitte {
@@ -43,18 +45,13 @@
     gap: 24px;
   }
 
-  &__navigation {
-    strong {
-      min-width: 150px;
-      text-align: center;
-      text-transform: capitalize;
-    }
-  }
-
   @container dienstplan-arbeitsbereich (max-width: 900px) {
     &__arbeitsflaeche {
       grid-template-columns: 1fr;
-      overflow: visible;
+      grid-template-rows: max-content max-content;
+      align-content: start;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
 
     &__dienstplaene,

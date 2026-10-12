@@ -10,6 +10,16 @@ Darstellung und Dialoge liegen unter `src/app/components/schichtplan`.
 `DienstplanArbeitsbereich` verwaltet eine gemeinsame Monatsauswahl und rendert für jede ausgewählte Filiale einen
 `DienstplanFilialabschnitt`. Ein Monatswechsel gilt dadurch gleichzeitig für alle ausgewählten Filialen.
 
+Die wiederverwendbare Component `MonatSelector` erhält den ausgewählten Monat über `selectedMonat` im Format `YYYY-MM` und
+meldet Änderungen über `selectedMonatChange`. Sie bietet ausschließlich die Navigation zum vorherigen und nächsten Monat an.
+Der Arbeitsbereich bindet sein Signal über `[(selectedMonat)]`, bleibt Eigentümer des Auswahlzustands und ergänzt bei Bedarf
+eigene Aktionen wie den Wechsel zum aktuellen Kalendermonat.
+
+Das Utility `getAktuellerMonat()` ermittelt den aktuellen Monat für die verbindliche Zeitzone `Europe/Berlin`. Auf breiten
+Ansichten stellt der Arbeitsbereich die Dienstpläne und die vorbereitete Mitarbeiterübersicht in zwei unabhängig scrollbaren
+Spalten dar. Bei höchstens `900px` Containerbreite werden die Bereiche untereinander angeordnet und innerhalb der gemeinsamen
+Arbeitsfläche gescrollt.
+
 Jeder `DienstplanFilialabschnitt` lädt seinen Monatsplan über den direkten Filialpfad und zeigt seinen eigenen Lade-, Fehler-,
 Leer- oder Planzustand. Ein fehlender Plan kann im Planungsmodus ausschließlich in diesem Filialabschnitt angelegt werden. Im
 Ansichtsmodus bleiben alle Abschnitte lesend. Beim Öffnen eines Schichtdialogs lädt der Abschnitt die Schichtvorlagen seiner
@@ -43,6 +53,8 @@ Vorlagenbestände können dadurch gemeinsam dargestellt werden, bleiben aber fac
 
 ## Beteiligte Dateien
 
+- `src/app/commons/utils/datum/monat.ts`
+- `src/app/components/date-selectors/monat-selector`
 - `src/app/components/schichtplan/dienstplan-arbeitsbereich`
 - `src/app/components/schichtplan/dienstplan-filialabschnitt`
 - `src/app/components/schichtplan/schichtplan-monat`

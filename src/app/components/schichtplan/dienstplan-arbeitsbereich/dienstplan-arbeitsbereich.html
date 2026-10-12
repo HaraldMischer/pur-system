@@ -4,21 +4,16 @@
   <section class="pur-page-section">
     <header class="pur-page-section__header">
       <h2 class="pur-page-section__title">Monatspläne</h2>
-      <div class="pur-page-section__header-actions dienstplan-arbeitsbereich__navigation">
-        <button matIconButton type="button" aria-label="Vorheriger Monat" (click)="changeMonat(-1)">
-          <mat-icon aria-hidden="true">chevron_left</mat-icon>
-        </button>
-        <strong>{{ monatsbezeichnung() }}</strong>
-        <button matIconButton type="button" aria-label="Nächster Monat" (click)="changeMonat(1)">
-          <mat-icon aria-hidden="true">chevron_right</mat-icon>
-        </button>
-        <button matButton="outlined" type="button" (click)="selectAktuellerMonat()">
+
+      <div class="pur-page-section__header-actions">
+        <app-monat-selector [(selectedMonat)]="selectedMonat" />
+        <button matButton="outlined" type="button" (click)="setAktuellerMonat()">
           Aktueller Monat
         </button>
       </div>
     </header>
 
-    <div class="dienstplan-arbeitsbereich__arbeitsflaeche">
+    <div class="dienstplan-arbeitsbereich__arbeitsflaeche pur-scrollbar">
       <div class="dienstplan-arbeitsbereich__dienstplaene pur-scrollbar">
         @if (filialauswahl().length === 0) {
           <p class="pur-page-section__message" role="status">
@@ -38,14 +33,14 @@
         }
       </div>
 
-      <section class="pur-page-section dienstplan-arbeitsbereich__mitarbeiter pur-scrollbar">
+      <div class="dienstplan-arbeitsbereich__mitarbeiter pur-scrollbar">
         <header class="pur-page-section__header">
           <h3 class="pur-page-section__title">Mitarbeiter</h3>
         </header>
         <div class="pur-page-section__empty-state">
           Die Mitarbeiterübersicht wird in einem nächsten Schritt ergänzt.
         </div>
-      </section>
+      </div>
     </div>
   </section>
 </section>

@@ -2,6 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { MatDialog } from '@angular/material/dialog';
 
 import { IBenutzerProfilDokument } from '../../../commons/models/domain/benutzer';
@@ -11,6 +12,7 @@ import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtvorlageStore } from '../../../stores/domain/schichtvorlage.store';
+import { MonatSelector } from '../../date-selectors/monat-selector/monat-selector';
 import { DienstplanArbeitsbereich } from './dienstplan-arbeitsbereich';
 
 const FILIALE_1: IFilialeEintrag = {
@@ -114,7 +116,9 @@ describe('DienstplanArbeitsbereich', () => {
     await fixture.whenStable();
     vi.clearAllMocks();
 
-    fixture.componentInstance.changeMonat(-1);
+    const monatSelector = fixture.debugElement.query(By.directive(MonatSelector))
+      .componentInstance as MonatSelector;
+    monatSelector.changeMonat(-1);
     fixture.detectChanges();
     await fixture.whenStable();
 

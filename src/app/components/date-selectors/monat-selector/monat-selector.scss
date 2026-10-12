@@ -1,0 +1,24 @@
+// pur-system/src/app/components/date-selectors/monat-selector/monat-selector.scss
+
+:host {
+  display: block;
+}
+
+.monat-selector__auswahl {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 999px;
+  color: var(--mat-sys-primary);
+  overflow: hidden;
+
+  button {
+    --mat-icon-button-icon-color: var(--mat-sys-primary);
+  }
+
+  strong {
+    min-width: 120px;
+    text-align: center;
+    text-transform: capitalize;
+  }
+}

@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 11.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 12.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -37,6 +37,9 @@ Stand: 11.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Auslieferungsvariante `Pur Master`, `Pur Office`, `Pur Filiale` oder `Pur Mitarbeiter`; die Entwicklungsumgebung verwendet
   `Pur-System`.
 - Das Layout reagiert auf kleinere Bildschirmbreiten.
+- Die globale Klasse `pur-scrollbar` stellt schmale Scrollbalken bereit, hält mit `scrollbar-gutter: stable` deren Platz frei
+  und wahrt mit `4px` rechtem Innenabstand den Abstand zum Inhalt. Die Sidebar und die Dienstplan-Arbeitsfläche verwenden diese
+  gemeinsame Darstellung.
 - Die Sidebar enthält den Bereich Systemverwaltung für berechtigte Master-Benutzer.
 - Die Sidebar zeigt die zentral in `app.constants.ts` gepflegte Anwendungsversion. Der aktuelle Stand ist `1.0.0`.
 - Der `AppKontextStore` hält den seitenübergreifenden Arbeitskontext aus Unternehmer, Firma und Filialumfang. Nach dem Laden der
@@ -103,6 +106,9 @@ Stand: 11.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Master, Office und
   Mitarbeiter können mehrere erlaubte Filialen auswählen. Eine gemeinsame Monatsauswahl lädt deren filialbezogene Monatspläne
   über getrennte direkte Firestore-Pfade und stellt jede Filiale in einem eigenen Monatsplanabschnitt dar.
+- Die wiederverwendbare Component `MonatSelector` erhält und meldet den ausgewählten Monat im Format `YYYY-MM`. Der
+  Dienstplan-Arbeitsbereich bindet sein Monatssignal darüber in beide Richtungen und setzt es über eine eigene Aktion auf den
+  mit `getAktuellerMonat()` für `Europe/Berlin` ermittelten aktuellen Monat zurück.
 - Jeder Monatsplanabschnitt besitzt einen eigenen Lade-, Fehler-, Leer- oder Planzustand. Fehlt ein Plan, bleiben die übrigen
   Filialpläne sichtbar; berechtigte Benutzer können den fehlenden Plan ausschließlich in dessen Abschnitt anlegen. Speicherung
   und Versionierung bleiben je Filiale getrennt. Die Veröffentlichung folgt in Todo 20.5.
@@ -140,6 +146,9 @@ Stand: 11.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   verwenden unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Tageskarte den
   Schichtdialog mit dem bereits gewählten Datum. Die filialübergreifende Konfliktprüfung und die atomare Veröffentlichung
   folgen in Todo 20.5.
+- Der Dienstplan-Arbeitsbereich stellt Dienstpläne und die vorbereitete Mitarbeiterübersicht auf breiten Ansichten in zwei
+  unabhängig scrollbaren Spalten dar. Bei höchstens `900px` Containerbreite werden beide Bereiche untereinander angeordnet
+  und innerhalb der gemeinsamen Arbeitsfläche gescrollt.
 - Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
   bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, lokale
   Uhrzeiten, Folgetag und Pause werden vor dem Schreiben validiert und in `Europe/Berlin` in Firestore-Zeitstempel umgewandelt.

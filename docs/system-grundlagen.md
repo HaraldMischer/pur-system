@@ -35,8 +35,11 @@ Betriebliche Mitarbeiterrollen werden im Array `rollen` gespeichert. Vorgesehen 
 - `administrator`
 - `kassierer`
 - `techniker`
+- `dienstplaner`
 
-Diese Rollen beschreiben Tätigkeiten im Betrieb und gewähren keine App- oder Firestore-Berechtigungen.
+Diese Rollen beschreiben Tätigkeiten im Betrieb und gewähren keine Auth- oder Firestore-Berechtigungen. `dienstplaner` wird in
+der Filial-App zusätzlich als clientseitige Bedienvoraussetzung für Planungsaktionen ausgewertet, erweitert aber keine
+Datenrechte.
 
 ## Benutzerrollen
 
