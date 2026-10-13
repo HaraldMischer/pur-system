@@ -1,11 +1,13 @@
 // pur-system/src/app/commons/constants/firebase.constants.ts
 
 import type {
+  IDienstplanModellschichtPfad,
   IDienstplanPfad,
   IDienstplanVersionPfad,
   IFilialPfad,
+  IModellschichtPfad,
   ISchichtPfad,
-  ISchichtvorlagePfad,
+  ISchichtmodellPfad,
 } from '../models/app/firestore-pfad.types';
 import type {
   IPurBranchPfad,
@@ -43,11 +45,17 @@ export const FIRESTORE_COLLECTION_PATHS = {
   mitarbeiter(unternehmerId: string, firmaId: string): string {
     return `unternehmer/${unternehmerId}/firma/${firmaId}/mitarbeiter`;
   },
-  schichtvorlagen(pfad: IFilialPfad): string {
-    return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/schichtvorlage`;
+  schichtmodelle(pfad: IFilialPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/schichtmodell`;
+  },
+  modellschichten(pfad: ISchichtmodellPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.schichtmodell(pfad)}/modellschicht`;
   },
   dienstplaene(pfad: IFilialPfad): string {
     return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/dienstplan`;
+  },
+  dienstplanModellschichten(pfad: IDienstplanPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad)}/modellschicht`;
   },
   dienstplanVersionen(pfad: IDienstplanPfad): string {
     return `${FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad)}/version`;
@@ -94,11 +102,17 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   mitarbeiter(unternehmerId: string, firmaId: string, mitarbeiterId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId)}/${mitarbeiterId}`;
   },
-  schichtvorlage(pfad: ISchichtvorlagePfad): string {
-    return `${FIRESTORE_COLLECTION_PATHS.schichtvorlagen(pfad)}/${pfad.schichtvorlageId}`;
+  schichtmodell(pfad: ISchichtmodellPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad)}/${pfad.schichtmodellId}`;
+  },
+  modellschicht(pfad: IModellschichtPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.modellschichten(pfad)}/${pfad.modellschichtId}`;
   },
   dienstplan(pfad: IDienstplanPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.dienstplaene(pfad)}/${pfad.dienstplanId}`;
+  },
+  dienstplanModellschicht(pfad: IDienstplanModellschichtPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.dienstplanModellschichten(pfad)}/${pfad.modellschichtId}`;
   },
   dienstplanVersion(pfad: IDienstplanVersionPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.dienstplanVersionen(pfad)}/${pfad.versionId}`;

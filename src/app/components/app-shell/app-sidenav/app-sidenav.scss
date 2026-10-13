@@ -44,3 +44,10 @@
     flex: 1 1 auto;
   }
 }
+
+@media (max-width: 720px) {
+  .app-sidenav__body.pur-scrollbar {
+    padding-inline-end: 12px;
+    scrollbar-gutter: auto;
+  }
+}

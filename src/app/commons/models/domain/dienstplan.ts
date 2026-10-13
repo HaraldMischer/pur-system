@@ -3,10 +3,16 @@
 import { Timestamp } from 'firebase/firestore';
 
 import type { ISchichtEintrag } from './schicht';
+import type { IModellschichtMomentaufnahmeEintrag } from './schichtmodell';
 
 export type TDienstplanVersionStatus = 'entwurf' | 'veroeffentlicht' | 'archiviert';
 
 // ===== Anwendungs-Typen ====================
+
+export interface IDienstplanSchichtmodellReferenz {
+  schichtmodellId: string;
+  schichtmodellBezeichnung: string;
+}
 
 export interface IDienstplanAnlage {
   zeitraumStart: string;
@@ -33,16 +39,18 @@ export interface IDienstplanBestand {
   dienstplaene: readonly IDienstplanEintrag[];
   versionen: readonly IDienstplanVersionEintrag[];
   schichten: readonly ISchichtEintrag[];
+  modellschichten: readonly IModellschichtMomentaufnahmeEintrag[];
 }
 
 export interface IDienstplanAnlageErgebnis {
   dienstplan: IDienstplanEintrag;
   version: IDienstplanVersionEintrag;
+  modellschichten: readonly IModellschichtMomentaufnahmeEintrag[];
 }
 
 // ===== Firestore-Dokumente ==================
 
-export interface IDienstplanDokument extends IDienstplanAnlage {
+export interface IDienstplanDokument extends IDienstplanAnlage, IDienstplanSchichtmodellReferenz {
   entwurfVersionId?: string;
   veroeffentlichteVersionId?: string;
   naechsteVersionsnummer: number;

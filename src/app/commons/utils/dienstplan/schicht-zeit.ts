@@ -1,6 +1,6 @@
 // pur-system/src/app/commons/utils/dienstplan/schicht-zeit.ts
 
-import { ISchichtAnlage } from '../../models/domain/schicht';
+import { ISchichtZeitdaten } from '../../models/domain/schicht';
 
 /**
  * Berechnet die anrechenbare Arbeitszeit einer strukturell gültigen Schicht.
@@ -9,7 +9,7 @@ import { ISchichtAnlage } from '../../models/domain/schicht';
  * @returns Anrechenbare Arbeitszeit in ganzen Minuten.
  * @throws Wenn Zeitwerte oder Pause keine gültige Schicht ergeben.
  */
-export function calculateSchichtArbeitszeitMinuten(schicht: ISchichtAnlage): number {
+export function calculateSchichtArbeitszeitMinuten(schicht: ISchichtZeitdaten): number {
   const dauerMillisekunden = schicht.ende.toMillis() - schicht.beginn.toMillis();
   const dauerMinuten = dauerMillisekunden / 60_000;
   if (

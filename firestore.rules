@@ -22,8 +22,12 @@ service cloud.firestore {
       return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/mitarbeiter/$(mitarbeiterId);
     }
 
-    function schichtvorlageDokumentPfad(unternehmerId, firmaId, filialId, schichtvorlageId) {
-      return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/filiale/$(filialId)/schichtvorlage/$(schichtvorlageId);
+    function schichtmodellDokumentPfad(unternehmerId, firmaId, filialId, schichtmodellId) {
+      return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/filiale/$(filialId)/schichtmodell/$(schichtmodellId);
+    }
+
+    function modellschichtDokumentPfad(unternehmerId, firmaId, filialId, schichtmodellId, modellschichtId) {
+      return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/filiale/$(filialId)/schichtmodell/$(schichtmodellId)/modellschicht/$(modellschichtId);
     }
 
     function dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat) {
@@ -32,6 +36,10 @@ service cloud.firestore {
 
     function dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, versionId) {
       return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/filiale/$(filialId)/dienstplan/$(monat)/version/$(versionId);
+    }
+
+    function dienstplanModellschichtPfad(unternehmerId, firmaId, filialId, monat, modellschichtId) {
+      return /databases/$(database)/documents/unternehmer/$(unternehmerId)/firma/$(firmaId)/filiale/$(filialId)/dienstplan/$(monat)/modellschicht/$(modellschichtId);
     }
 
     function isMaster() {
@@ -215,6 +223,8 @@ service cloud.firestore {
           'zeitraumStart',
           'zeitraumEnde',
           'zeitzone',
+          'schichtmodellId',
+          'schichtmodellBezeichnung',
           'naechsteVersionsnummer',
           'erstelltAm',
           'erstelltVonUid',
@@ -225,6 +235,8 @@ service cloud.firestore {
           'zeitraumStart',
           'zeitraumEnde',
           'zeitzone',
+          'schichtmodellId',
+          'schichtmodellBezeichnung',
           'entwurfVersionId',
           'veroeffentlichteVersionId',
           'naechsteVersionsnummer',
@@ -236,6 +248,11 @@ service cloud.firestore {
         && daten.zeitraumStart is string
         && daten.zeitraumEnde is string
         && daten.zeitzone == 'Europe/Berlin'
+        && daten.schichtmodellId is string
+        && daten.schichtmodellId.size() > 0
+        && daten.schichtmodellBezeichnung is string
+        && daten.schichtmodellBezeichnung.size() > 0
+        && daten.schichtmodellBezeichnung.size() <= 80
         && daten.naechsteVersionsnummer is int
         && daten.naechsteVersionsnummer > 0;
     }
@@ -273,8 +290,7 @@ service cloud.firestore {
     function hatGueltigeSchichtFelder(daten) {
       return daten.keys().hasAll([
           'mitarbeiterId',
-          'schichtvorlageId',
-          'schichtvorlageBezeichnung',
+          'modellschichtId',
           'beginn',
           'ende',
           'pauseMinuten',
@@ -285,8 +301,7 @@ service cloud.firestore {
         ])
         && daten.keys().hasOnly([
           'mitarbeiterId',
-          'schichtvorlageId',
-          'schichtvorlageBezeichnung',
+          'modellschichtId',
           'beginn',
           'ende',
           'pauseMinuten',
@@ -296,11 +311,8 @@ service cloud.firestore {
           'aktualisiertVonUid'
         ])
         && daten.mitarbeiterId is string
-        && daten.schichtvorlageId is string
-        && daten.schichtvorlageId.size() > 0
-        && daten.schichtvorlageBezeichnung is string
-        && daten.schichtvorlageBezeichnung.size() > 0
-        && daten.schichtvorlageBezeichnung.size() <= 80
+        && daten.modellschichtId is string
+        && daten.modellschichtId.size() > 0
         && daten.beginn is timestamp
         && daten.ende is timestamp
         && daten.beginn < daten.ende
@@ -308,12 +320,9 @@ service cloud.firestore {
         && daten.pauseMinuten >= 0;
     }
 
-    function hatGueltigeSchichtvorlagenFelder(daten) {
+    function hatGueltigeSchichtmodellFelder(daten) {
       return daten.keys().hasAll([
           'bezeichnung',
-          'beginnLokalzeit',
-          'endeLokalzeit',
-          'endetAmFolgetag',
           'aktiv',
           'erstelltAm',
           'erstelltVonUid',
@@ -322,10 +331,6 @@ service cloud.firestore {
         ])
         && daten.keys().hasOnly([
           'bezeichnung',
-          'beginnLokalzeit',
-          'endeLokalzeit',
-          'endetAmFolgetag',
-          'standardpauseMinuten',
           'aktiv',
           'erstelltAm',
           'erstelltVonUid',
@@ -335,20 +340,51 @@ service cloud.firestore {
         && daten.bezeichnung is string
         && daten.bezeichnung.size() > 0
         && daten.bezeichnung.size() <= 80
+        && daten.aktiv is bool;
+    }
+
+    function hatGueltigeModellschichtFelder(daten) {
+      return daten.keys().hasAll([
+          'bezeichnung',
+          'reihenfolge',
+          'beginnLokalzeit',
+          'endeLokalzeit',
+          'endetAmFolgetag',
+          'standardpauseMinuten'
+        ])
+        && daten.keys().hasOnly([
+          'bezeichnung',
+          'reihenfolge',
+          'beginnLokalzeit',
+          'endeLokalzeit',
+          'endetAmFolgetag',
+          'standardpauseMinuten'
+        ])
+        && daten.bezeichnung is string
+        && daten.bezeichnung.size() > 0
+        && daten.bezeichnung.size() <= 80
+        && daten.reihenfolge is int
+        && daten.reihenfolge >= 0
         && daten.beginnLokalzeit is string
         && daten.beginnLokalzeit.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
         && daten.endeLokalzeit is string
         && daten.endeLokalzeit.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+        && daten.beginnLokalzeit != daten.endeLokalzeit
         && daten.endetAmFolgetag is bool
-        && daten.aktiv is bool
-        && (
-          !('standardpauseMinuten' in daten)
-          || (
-            daten.standardpauseMinuten is int
-            && daten.standardpauseMinuten >= 0
-            && daten.standardpauseMinuten < 1440
-          )
-        );
+        && daten.standardpauseMinuten in [0, 30, 45];
+    }
+
+    function hatAktiveSchichtmodellreferenz(unternehmerId, firmaId, filialId) {
+      let schichtmodell = get(
+        schichtmodellDokumentPfad(
+          unternehmerId,
+          firmaId,
+          filialId,
+          request.resource.data.schichtmodellId
+        )
+      ).data;
+      return schichtmodell.aktiv == true
+        && request.resource.data.schichtmodellBezeichnung == schichtmodell.bezeichnung;
     }
 
     function hatGueltigeSchichtMitarbeiterreferenz(unternehmerId, firmaId, filialId) {
@@ -360,23 +396,16 @@ service cloud.firestore {
         && filialId in mitarbeiter.filialIds;
     }
 
-    function hatAktiveSchichtvorlagenreferenz(unternehmerId, firmaId, filialId) {
-      let vorlage = get(
-        schichtvorlageDokumentPfad(
+    function hatGueltigeDienstplanModellschichtreferenz(unternehmerId, firmaId, filialId, monat) {
+      return exists(
+        dienstplanModellschichtPfad(
           unternehmerId,
           firmaId,
           filialId,
-          request.resource.data.schichtvorlageId
+          monat,
+          request.resource.data.modellschichtId
         )
-      ).data;
-      return vorlage.aktiv == true
-        && request.resource.data.schichtvorlageBezeichnung == vorlage.bezeichnung;
-    }
-
-    function behaeltSchichtvorlagenMomentaufnahme() {
-      return request.resource.data.schichtvorlageId == resource.data.schichtvorlageId
-        && request.resource.data.schichtvorlageBezeichnung
-          == resource.data.schichtvorlageBezeichnung;
+      );
     }
 
     function istAktuelleVeroeffentlichteVersion(unternehmerId, firmaId, filialId, monat, versionId) {
@@ -486,20 +515,27 @@ service cloud.firestore {
           allow read: if darfMitarbeiterFirmaLesen(unternehmerId, firmaId);
           allow update: if isOffice() && darfFilialeLesen(unternehmerId, firmaId, filialId);
 
-          match /schichtvorlage/{schichtvorlageId} {
+          match /schichtmodell/{schichtmodellId} {
             allow read: if darfDienstplanPlanen(unternehmerId, firmaId, filialId);
             allow create: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
-              && hatGueltigeSchichtvorlagenFelder(request.resource.data)
+              && hatGueltigeSchichtmodellFelder(request.resource.data)
               && request.resource.data.erstelltAm == request.time
               && request.resource.data.erstelltVonUid == request.auth.uid
               && request.resource.data.aktualisiertAm == request.time
               && request.resource.data.aktualisiertVonUid == request.auth.uid;
             allow update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
-              && hatGueltigeSchichtvorlagenFelder(request.resource.data)
+              && hatGueltigeSchichtmodellFelder(request.resource.data)
               && request.resource.data.erstelltAm == resource.data.erstelltAm
               && request.resource.data.erstelltVonUid == resource.data.erstelltVonUid
               && request.resource.data.aktualisiertAm == request.time
               && request.resource.data.aktualisiertVonUid == request.auth.uid;
+
+            match /modellschicht/{modellschichtId} {
+              allow read: if darfDienstplanPlanen(unternehmerId, firmaId, filialId);
+              allow create, update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                && hatGueltigeModellschichtFelder(request.resource.data);
+              allow delete: if darfDienstplanPlanen(unternehmerId, firmaId, filialId);
+            }
           }
 
           match /dienstplan/{monat} {
@@ -518,6 +554,7 @@ service cloud.firestore {
               && request.resource.data.erstelltVonUid == request.auth.uid
               && request.resource.data.aktualisiertAm == request.time
               && request.resource.data.aktualisiertVonUid == request.auth.uid
+              && hatAktiveSchichtmodellreferenz(unternehmerId, firmaId, filialId)
               && existsAfter(
                 dienstplanVersionPfad(unternehmerId, firmaId, filialId, monat, request.resource.data.entwurfVersionId)
               )
@@ -569,6 +606,42 @@ service cloud.firestore {
                 filialId,
                 monat
               );
+
+            match /modellschicht/{modellschichtId} {
+              allow read: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                || (
+                  darfMitarbeiterDienstplanLesen(unternehmerId, firmaId, filialId)
+                  && hatVeroeffentlichteVersion(unternehmerId, firmaId, filialId, monat)
+                );
+              allow create: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                && !exists(dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat))
+                && existsAfter(dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat))
+                && hatGueltigeModellschichtFelder(request.resource.data)
+                && getAfter(
+                  dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                ).data.schichtmodellId is string
+                && get(
+                  schichtmodellDokumentPfad(
+                    unternehmerId,
+                    firmaId,
+                    filialId,
+                    getAfter(
+                      dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                    ).data.schichtmodellId
+                  )
+                ).data.aktiv == true
+                && request.resource.data == get(
+                  modellschichtDokumentPfad(
+                    unternehmerId,
+                    firmaId,
+                    filialId,
+                    getAfter(
+                      dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+                    ).data.schichtmodellId,
+                    modellschichtId
+                  )
+                ).data;
+            }
 
             match /version/{versionId} {
               allow read: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
@@ -666,7 +739,12 @@ service cloud.firestore {
                 allow create: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
                   && hatGueltigeSchichtFelder(request.resource.data)
                   && hatGueltigeSchichtMitarbeiterreferenz(unternehmerId, firmaId, filialId)
-                  && hatAktiveSchichtvorlagenreferenz(unternehmerId, firmaId, filialId)
+                  && hatGueltigeDienstplanModellschichtreferenz(
+                    unternehmerId,
+                    firmaId,
+                    filialId,
+                    monat
+                  )
                   && request.resource.data.erstelltAm == request.time
                   && request.resource.data.erstelltVonUid == request.auth.uid
                   && request.resource.data.aktualisiertAm == request.time
@@ -681,10 +759,17 @@ service cloud.firestore {
                 allow update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
                   && hatGueltigeSchichtFelder(request.resource.data)
                   && hatGueltigeSchichtMitarbeiterreferenz(unternehmerId, firmaId, filialId)
-                  && (
-                    behaeltSchichtvorlagenMomentaufnahme()
-                    || hatAktiveSchichtvorlagenreferenz(unternehmerId, firmaId, filialId)
+                  && hatGueltigeDienstplanModellschichtreferenz(
+                    unternehmerId,
+                    firmaId,
+                    filialId,
+                    monat
                   )
+                  && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                    'mitarbeiterId',
+                    'aktualisiertAm',
+                    'aktualisiertVonUid'
+                  ])
                   && request.resource.data.erstelltAm == resource.data.erstelltAm
                   && request.resource.data.erstelltVonUid == resource.data.erstelltVonUid
                   && request.resource.data.aktualisiertAm == request.time

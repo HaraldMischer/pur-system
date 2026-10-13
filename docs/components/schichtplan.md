@@ -2,7 +2,7 @@
 
 # Schichtplan-Komponenten
 
-Der routbare Schichtplan-Bereich besteht aus getrennten Pages für Ansicht, Planung und Schichtvorlagen. Wiederverwendbare
+Der routbare Schichtplan-Bereich besteht aus getrennten Pages für Ansicht, Planung und Schichtmodelle. Wiederverwendbare
 Darstellung und Dialoge liegen unter `src/app/components/schichtplan`.
 
 ## Dienstplan-Arbeitsbereich
@@ -21,35 +21,43 @@ Spalten dar. Bei höchstens `900px` Containerbreite werden die Bereiche unterein
 Arbeitsfläche gescrollt.
 
 Jeder `DienstplanFilialabschnitt` lädt seinen Monatsplan über den direkten Filialpfad und zeigt seinen eigenen Lade-, Fehler-,
-Leer- oder Planzustand. Ein fehlender Plan kann im Planungsmodus ausschließlich in diesem Filialabschnitt angelegt werden. Im
-Ansichtsmodus bleiben alle Abschnitte lesend. Beim Öffnen eines Schichtdialogs lädt der Abschnitt die Schichtvorlagen seiner
-Filiale und begrenzt die Mitarbeiterwahl auf deren aktive Mitarbeiter.
+Leer- oder Planzustand. Ein fehlender Plan kann im Planungsmodus ausschließlich in diesem Filialabschnitt angelegt werden. Dazu
+lädt der Abschnitt die Schichtmodelle seiner Filiale und bietet nur aktive Modelle mit mindestens einer Modellschicht an. Im
+Ansichtsmodus bleiben alle Abschnitte lesend. Beim Öffnen eines Schichtdialogs übernimmt der Abschnitt Datum und Modellschicht
+aus der gewählten Rasterzelle und begrenzt die Mitarbeiterwahl auf die aktiven Mitarbeiter der Filiale.
 
 ## Monatsdarstellung
 
-`SchichtplanMonat` ordnet die Schichten nach lokalem Kalendertag. Jede Schicht löst Anzeigename und optionale `farbkennung` über
-die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf und zeigt außerdem Vorlagenbezeichnung, Zeitspanne, Pause und
-Arbeitszeit. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher Ersatztext. Schreibaktionen werden nur
-für eine bearbeitbare Entwurfsversion angeboten. Jede Tageskarte besitzt dann eine Anlageaktion, die den Schichtdialog mit dem
-Datum dieses Tages öffnet.
+`SchichtplanMonat` stellt den Monat als Tabelle dar. Die erste Spalte enthält die Kalendertage; jede weitere Spalte entspricht
+einer nach `reihenfolge` sortierten Modellschicht aus der unveränderlichen Momentaufnahme des Monatsplans. Jede Rasterzelle
+enthält alle konkreten Mitarbeiterschichten ihres Tages und ihrer Modellschicht und kann deshalb auch mehrfach besetzt sein.
+
+Jede Schicht löst Anzeigename und optionale `farbkennung` über die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf und
+zeigt Zeitspanne, Pause und Arbeitszeit. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher Ersatztext.
+Schreibaktionen werden nur für eine bearbeitbare Entwurfsversion angeboten. Dann besitzt jede Rasterzelle eine Anlageaktion mit
+bereits festgelegtem Datum und festgelegter Modellschicht. Auf kleinen Viewports bleibt die Tabelle horizontal scrollbar; die
+Tagesspalte bleibt beim horizontalen Scrollen sichtbar.
 
 ## Dialoge
 
-`SchichtBearbeitenDialog` ordnet einen aktiven Mitarbeiter und eine aktive Schichtvorlage einem Datum zu. Beginn und Ende werden
-aus den lokalen Vorlagenzeiten, der Folgetagsangabe und `Europe/Berlin` berechnet. Die Standardpause wird übernommen und kann
-für die konkrete Schicht angepasst werden. Beim Bearbeiten bleibt die gespeicherte Vorlagen-Momentaufnahme erhalten, solange
-keine andere Vorlage gewählt wird.
+`DienstplanAnlegenDialog` verlangt ein aktives Schichtmodell der konkreten Filiale. Die Anlage speichert Modell-ID und
+Modellbezeichnung am Monatsplan und übernimmt alle geordneten Modellschichten als unveränderliche Momentaufnahme. Plan, erste
+Entwurfsversion und Momentaufnahme entstehen gemeinsam in einem atomaren Schreibvorgang.
 
-`SchichtvorlageBearbeitenDialog` legt Vorlagen an und bearbeitet Bezeichnung, lokale Zeiten und Aktivstatus. Neue Vorlagen sind
-immer aktiv; die sichtbare Aktiv-Checkbox ist beim Anlegen deaktiviert und wird beim Bearbeiten freigeschaltet. Liegt das Ende
-vor dem Beginn, leitet der Dialog den Folgetag automatisch ab; gleiche Uhrzeiten sind ungültig. Nach Änderungen an den
-Zeitwerten zeigt er die vollständige Schichtdauer in Stunden an und berechnet die Standardpause daraus mit 0, 30 oder 45 Minuten.
-Schichtdauer und Standardpause werden schreibgeschützt angezeigt. Inaktive Vorlagen bleiben in der Verwaltungsseite sichtbar und
-können erneut aktiviert werden.
+`SchichtBearbeitenDialog` ordnet der bereits gewählten Rasterzelle einen aktiven Mitarbeiter zu. Datum, Modellschicht, Beginn,
+Ende und Standardpause stammen aus der Modell-Momentaufnahme und werden schreibgeschützt angezeigt. Beginn und Ende werden beim
+Speichern aus Datum, lokalen Modellschichtzeiten, Folgetagsangabe und Dienstplan-Zeitzone berechnet. Beim Bearbeiten kann nur die
+Mitarbeiterzuordnung geändert werden; die Rasterzelle und ihre Zeitwerte bleiben unverändert.
 
-Die `SchichtvorlagenPage` rendert für jede ausgewählte Filiale einen `SchichtvorlagenFilialabschnitt`. Jeder Abschnitt lädt und
-verwaltet ausschließlich die Vorlagen seines direkten Filialpfads und übernimmt diesen Pfad beim Öffnen des Dialogs. Mehrere
-Vorlagenbestände können dadurch gemeinsam dargestellt werden, bleiben aber fachlich und technisch vollständig filialbezogen.
+`SchichtmodellBearbeitenDialog` verwaltet die Bezeichnung und den Aktivstatus eines Schichtmodells sowie eine dynamische,
+geordnete Liste seiner Modellschichten. Jede Modellschicht besitzt Bezeichnung, Beginn, Ende, abgeleiteten Folgetag,
+schreibgeschützte Dauer und automatisch berechnete Standardpause. Mindestens eine Modellschicht bleibt erhalten; weitere können
+ergänzt, entfernt und über Hoch-/Runter-Aktionen umsortiert werden. Neue Modelle sind immer aktiv, vorhandene Modelle können
+deaktiviert oder erneut aktiviert werden.
+
+Die routbare `SchichtmodellePage` ersetzt in der Navigation die bisherige Vorlagenverwaltung. Sie rendert pro ausgewählter
+Filiale einen `SchichtmodelleFilialabschnitt`, der ausschließlich Modelle dieses Filialpfads lädt und bearbeitet. Die
+Monatsanlage, die Rasterdarstellung und das Anlegen einzelner Schichten verwenden ausschließlich die Modell-Momentaufnahme.
 
 ## Beteiligte Dateien
 
@@ -57,8 +65,9 @@ Vorlagenbestände können dadurch gemeinsam dargestellt werden, bleiben aber fac
 - `src/app/components/date-selectors/monat-selector`
 - `src/app/components/schichtplan/dienstplan-arbeitsbereich`
 - `src/app/components/schichtplan/dienstplan-filialabschnitt`
+- `src/app/components/schichtplan/dienstplan-anlegen-dialog`
 - `src/app/components/schichtplan/schichtplan-monat`
 - `src/app/components/schichtplan/schicht-bearbeiten-dialog`
-- `src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog`
-- `src/app/components/schichtplan/schichtvorlagen-filialabschnitt`
+- `src/app/components/schichtplan/schichtmodell-bearbeiten-dialog`
+- `src/app/components/schichtplan/schichtmodelle-filialabschnitt`
 - `src/app/pages/schichtplan`

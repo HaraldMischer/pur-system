@@ -50,7 +50,7 @@ describe('NAVIGATION_NACH_ROLLE', () => {
       expect(schichtplan.kinder.map((eintrag) => eintrag.id)).toEqual([
         'dienstplanansicht',
         'dienstplanplanung',
-        'schichtvorlagen',
+        'schichtmodelle',
       ]);
     }
 

@@ -20,9 +20,13 @@ import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
-import { SchichtvorlageStore } from '../../../stores/domain/schichtvorlage.store';
+import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
+import { DienstplanAnlegenDialog } from '../dienstplan-anlegen-dialog/dienstplan-anlegen-dialog';
 import { SchichtBearbeitenDialog } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
-import { SchichtplanMonat } from '../schichtplan-monat/schichtplan-monat';
+import {
+  SchichtplanMonat,
+  TSchichtplanRasterauswahl,
+} from '../schichtplan-monat/schichtplan-monat';
 
 @Component({
   selector: 'app-dienstplan-filialabschnitt',
@@ -37,7 +41,7 @@ export class DienstplanFilialabschnitt {
   readonly benutzerStore = inject(BenutzerStore);
   readonly dienstplanStore = inject(DienstplanStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
-  readonly schichtvorlageStore = inject(SchichtvorlageStore);
+  readonly schichtmodellStore = inject(SchichtmodellStore);
   private readonly dialog = inject(MatDialog);
 
   // ===== Öffentliche API ======================
@@ -82,6 +86,14 @@ export class DienstplanFilialabschnitt {
   readonly schichten = computed(() => {
     const versionIds = new Set(this.versionen().map((version) => version.id));
     return this.kontext()?.schichten.filter((schicht) => versionIds.has(schicht.versionId)) ?? [];
+  });
+  readonly modellschichten = computed(() => {
+    const dienstplanId = this.dienstplan()?.id;
+    return dienstplanId
+      ? (this.kontext()?.modellschichten.filter((modellschicht) => {
+          return modellschicht.dienstplanId === dienstplanId;
+        }) ?? [])
+      : [];
   });
   readonly entwurfVersion = computed(() => {
     const entwurfId = this.dienstplan()?.entwurfVersionId;
@@ -140,62 +152,87 @@ export class DienstplanFilialabschnitt {
   }
 
   /**
-   * Legt für diese Filiale und den gemeinsam ausgewählten Monat einen Dienstplanentwurf an.
+   * Öffnet für diese Filiale und den ausgewählten Monat die Schichtmodellauswahl.
    */
-  async createDienstplan(): Promise<void> {
+  async openDienstplanDialog(): Promise<void> {
     if (!this.darfSchreiben()) return;
     this.aktionsfehler.set(null);
     try {
-      await this.dienstplanStore.createDienstplan(this.pfad(), this.monat());
+      await this.schichtmodellStore.loadSchichtmodelle(this.pfad());
     } catch {
       this.aktionsfehler.set(
-        this.dienstplanStore.error() ?? 'Der Dienstplan konnte nicht angelegt werden.',
-      );
-    }
-  }
-
-  /**
-   * Öffnet den Dialog zum Anlegen oder Bearbeiten einer Schicht dieser Filiale.
-   *
-   * @param datum - Vorgeschlagenes Schichtdatum.
-   * @param schicht - Optional zu bearbeitende Schicht.
-   */
-  async openSchichtDialog(datum: string, schicht?: ISchichtEintrag): Promise<void> {
-    const dienstplan = this.dienstplan();
-    const version = this.entwurfVersion();
-    if (!dienstplan || !version || !this.darfSchreiben()) return;
-
-    this.aktionsfehler.set(null);
-    try {
-      await this.schichtvorlageStore.loadSchichtvorlagen(this.pfad());
-    } catch {
-      const schichtvorlageKontext = this.schichtvorlageStore.getSchichtvorlageKontext(this.pfad());
-      this.aktionsfehler.set(
-        schichtvorlageKontext?.error ??
-          this.schichtvorlageStore.error() ??
-          'Die Schichtvorlagen konnten nicht geladen werden.',
+        this.schichtmodellStore.getSchichtmodellKontext(this.pfad())?.error ??
+          this.schichtmodellStore.error() ??
+          'Die Schichtmodelle konnten nicht geladen werden.',
       );
       return;
     }
+    const schichtmodelle =
+      this.schichtmodellStore
+        .getSchichtmodellKontext(this.pfad())
+        ?.schichtmodelle.filter((bestand) => {
+          return bestand.schichtmodell.aktiv && bestand.modellschichten.length > 0;
+        }) ?? [];
+    if (schichtmodelle.length === 0) {
+      this.aktionsfehler.set(
+        'Lege zuerst ein aktives Schichtmodell mit mindestens einer Schicht an.',
+      );
+      return;
+    }
+    this.dialog.open(DienstplanAnlegenDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: { pfad: this.pfad(), monat: this.monat(), schichtmodelle },
+    });
+  }
 
-    const schichtvorlageKontext = this.schichtvorlageStore.getSchichtvorlageKontext(this.pfad());
+  /**
+   * Öffnet den Dialog zum Besetzen einer Rasterzelle.
+   *
+   * @param auswahl - Festgelegtes Datum und festgelegte Modellschicht.
+   */
+  openSchichtDialog(auswahl: TSchichtplanRasterauswahl): void {
+    this.openSchichtDialogIntern(auswahl, undefined);
+  }
+
+  /**
+   * Öffnet den Dialog zum Ändern einer vorhandenen Mitarbeiterschicht.
+   *
+   * @param schicht - Zu bearbeitende Mitarbeiterschicht.
+   */
+  openSchichtBearbeitenDialog(schicht: ISchichtEintrag): void {
+    this.openSchichtDialogIntern({ datum: '', modellschichtId: schicht.modellschichtId }, schicht);
+  }
+
+  // ===== Interne Helfer =======================
+
+  private openSchichtDialogIntern(
+    auswahl: TSchichtplanRasterauswahl,
+    schicht: ISchichtEintrag | undefined,
+  ): void {
+    const dienstplan = this.dienstplan();
+    const version = this.entwurfVersion();
+    if (!dienstplan || !version || !this.darfSchreiben()) return;
+    this.aktionsfehler.set(null);
+    const modellschicht = this.modellschichten().find((eintrag) => {
+      return eintrag.id === auswahl.modellschichtId;
+    });
+    if (!modellschicht) {
+      this.aktionsfehler.set('Die Modellschicht wurde im Monatsplan nicht gefunden.');
+      return;
+    }
 
     this.dialog.open(SchichtBearbeitenDialog, {
       panelClass: ['pur-dialog__panel'],
       data: {
         pfad: { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
         zeitzone: dienstplan.zeitzone,
-        datum,
-        zeitraumStart: dienstplan.zeitraumStart,
-        zeitraumEnde: dienstplan.zeitraumEnde,
+        datum: auswahl.datum,
         mitarbeiter: this.mitarbeiter(),
-        schichtvorlagen: schichtvorlageKontext?.schichtvorlagen ?? [],
+        modellschicht,
         ...(schicht ? { schicht } : {}),
       },
     });
   }
-
-  // ===== Interne Helfer =======================
 
   private async loadDienstplan(
     pfad: IFilialPfad,

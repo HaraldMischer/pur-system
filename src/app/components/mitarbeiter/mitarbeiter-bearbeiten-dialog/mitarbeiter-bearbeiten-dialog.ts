@@ -3,6 +3,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   signal,
@@ -25,6 +26,7 @@ import {
 } from '../../../commons/models/domain/mitarbeiter';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
+import { FilialeService } from '../../../services/domain/filiale.service';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 
@@ -55,6 +57,7 @@ export class MitarbeiterBearbeitenDialog {
   private readonly dialogRef = inject(
     MatDialogRef<MitarbeiterBearbeitenDialog, IMitarbeiterEintrag | undefined>,
   );
+  private readonly filialeService = inject(FilialeService);
   readonly dialogDaten = inject<IMitarbeiterBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly benutzerStore = inject(BenutzerStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
@@ -69,6 +72,8 @@ export class MitarbeiterBearbeitenDialog {
 
   // ===== Interner State =======================
   private readonly urspruenglicherFormwert: string;
+  private readonly verwaisteFilialIds = signal<readonly string[]>([]);
+  private readonly entfernteVerwaisteFilialIds = signal<readonly string[]>([]);
 
   // ===== Öffentliche Werte ====================
   readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
@@ -135,19 +140,27 @@ export class MitarbeiterBearbeitenDialog {
       }),
       {
         nonNullable: true,
-        validators: this.fremdeFilialIds.length > 0 ? [] : [Validators.required],
+        validators: [Validators.required],
       },
     ),
     aktiv: new FormControl(this.dialogDaten.mitarbeiter.aktiv, { nonNullable: true }),
   });
 
+  // ===== Öffentliche Ableitungen ==============
+  readonly verwaisteFilialzuordnungen = computed(() => {
+    return this.verwaisteFilialIds().length;
+  });
+  readonly entfernteVerwaisteFilialzuordnungen = computed(() => {
+    return this.entfernteVerwaisteFilialIds().length;
+  });
+
   constructor() {
     this.urspruenglicherFormwert = JSON.stringify(this.mitarbeiterForm.getRawValue());
     this.mitarbeiterForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
-      this.hatAenderungen.set(
-        JSON.stringify(this.mitarbeiterForm.getRawValue()) !== this.urspruenglicherFormwert,
-      );
+      this.updateHatAenderungen();
     });
+
+    void this.pruefeVerwaisteFilialzuordnungen();
 
     effect(() => {
       const inProgress = this.mitarbeiterStore.inProgress();
@@ -162,6 +175,14 @@ export class MitarbeiterBearbeitenDialog {
   }
 
   // ===== Öffentliche Aktionen =================
+  /**
+   * Merkt nachweislich nicht mehr existierende Filialzuordnungen zur Entfernung vor.
+   */
+  handleVerwaisteFilialzuordnungenEntfernen(): void {
+    this.entfernteVerwaisteFilialIds.set(this.verwaisteFilialIds());
+    this.updateHatAenderungen();
+  }
+
   /**
    * Validiert und aktualisiert den ausgewählten Mitarbeiter.
    */
@@ -221,6 +242,7 @@ export class MitarbeiterBearbeitenDialog {
     const value = this.mitarbeiterForm.getRawValue();
     const kontakt = value.person.kontakt;
     const geburtstag = value.person.geburtstag.trim();
+    const entfernteFilialIds = new Set(this.entfernteVerwaisteFilialIds());
 
     const verpflichtendeFilialId = this.getVerpflichtendeFilialId();
     return {
@@ -247,13 +269,49 @@ export class MitarbeiterBearbeitenDialog {
       rollen: value.rollen,
       filialIds: [
         ...new Set([
-          ...this.fremdeFilialIds,
+          ...this.fremdeFilialIds.filter((filialId) => {
+            return !entfernteFilialIds.has(filialId);
+          }),
           ...value.filialIds,
           ...(verpflichtendeFilialId ? [verpflichtendeFilialId] : []),
         ]),
       ],
       aktiv: value.aktiv,
     };
+  }
+  private async pruefeVerwaisteFilialzuordnungen(): Promise<void> {
+    if (
+      this.fremdeFilialIds.length === 0 ||
+      this.benutzerStore.benutzerProfil()?.userRole === 'filiale'
+    ) {
+      return;
+    }
+
+    const ergebnisse = await Promise.all(
+      this.fremdeFilialIds.map(async (filialId) => {
+        try {
+          const filiale = await this.filialeService.loadFilialeEintrag(
+            this.dialogDaten.unternehmerId,
+            this.dialogDaten.firmaId,
+            filialId,
+            'networkOnly',
+          );
+          return filiale ? null : filialId;
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    this.verwaisteFilialIds.set(
+      ergebnisse.filter((filialId): filialId is string => filialId !== null),
+    );
+  }
+  private updateHatAenderungen(): void {
+    this.hatAenderungen.set(
+      JSON.stringify(this.mitarbeiterForm.getRawValue()) !== this.urspruenglicherFormwert ||
+        this.entfernteVerwaisteFilialIds().length > 0,
+    );
   }
   private getVerpflichtendeFilialId(): string | undefined {
     const profil = this.benutzerStore.benutzerProfil();

@@ -480,10 +480,10 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
 1. **Dashboard (`/dashboard`):** Noch zu bestimmende Daten der einzelnen Filialen.
 
 2. **Schichtplan (`/schichtplan`):** Komponentenloser Elternbereich mit den Navigationspunkten „Dienstplan“
-   (`/schichtplan/ansicht`), „Bearbeiten“ (`/schichtplan/planung`) und „Vorlagen“ (`/schichtplan/einstellungen`). Die zugehörigen
-   Seitentitel lauten „Dienstplanübersicht“, „Dienstplan bearbeiten“ und „Schichtvorlagen“. Mitarbeiter und Filialkonten verwenden
-   zunächst nur die Ansicht. Planung und Vorlagen stehen Master und Office zur Verfügung; Filialkonten erhalten sie erst mit dem
-   betrieblichen `dienstplaner`-Sitzungszustand.
+   (`/schichtplan/ansicht`), „Bearbeiten“ (`/schichtplan/planung`) und „Schichtmodelle“
+   (`/schichtplan/einstellungen`). Die zugehörigen Seitentitel lauten „Dienstplanübersicht“, „Dienstplan bearbeiten“ und
+   „Schichtmodelle“. Mitarbeiter und Filialkonten verwenden zunächst nur die Ansicht. Planung und Schichtmodelle stehen
+   Master und Office zur Verfügung; Filialkonten erhalten sie erst mit dem betrieblichen `dienstplaner`-Sitzungszustand.
 
 3. **Mitarbeiter (`/mitarbeiter`):** Stammdaten der Mitarbeiter. `mitarbeiter` ist eine komponentenlose Elternroute für die
    gerouteten Unterseiten. Die routbaren Pages und ihre nicht routbaren Components sind getrennt abgelegt:
@@ -537,29 +537,43 @@ mehr verändert.
 Die vorgesehene Firestore-Struktur liegt vollständig unter der betroffenen Filiale:
 
 ```text
-unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/schichtvorlage/{schichtvorlageId}
+unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/schichtmodell/{schichtmodellId}
+  /modellschicht/{modellschichtId}
 unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/dienstplan/{monat}
+  /modellschicht/{modellschichtId}
   /version/{versionId}
     /schicht/{schichtId}
 ```
 
-Jede Filiale besitzt eigene vorkonfigurierte Schichtvorlagen. Eine Vorlage enthält mindestens eine Bezeichnung sowie eine lokale
-Beginn- und Endzeit. Liegt die Endzeit vor der Beginnzeit, wird der Folgetag automatisch abgeleitet; identische Uhrzeiten sind
-ungültig. Die Standardpause wird in der Vorlage hinterlegt und bei Änderungen der Vorlagenzeiten anhand der vollständigen
-Schichtdauer automatisch festgelegt: 0 Minuten bis einschließlich 6 Stunden, 30 Minuten bei mehr als 6 bis einschließlich
-9 Stunden und 45 Minuten bei mehr als 9 Stunden. Der berechnete Wert ist in der Schichtvorlage nicht manuell anpassbar. Nicht
-mehr verwendete Vorlagen werden deaktiviert und nicht physisch gelöscht.
+Jede Filiale besitzt eigene vorkonfigurierte Schichtmodelle, damit unterschiedliche Öffnungs- und Betriebszeiten unabhängig
+voneinander abgebildet werden können. Ein Schichtmodell enthält eine Bezeichnung, einen Aktivstatus und eine geordnete Liste
+eigener Modellschichten. Jede Modellschicht gehört ausschließlich zu ihrem Modell und wird nicht als eigenständige,
+wiederverwendbare Schichtvorlage geführt. Dadurch können beispielsweise die Modelle `Sommer` mit Früh-, Mittags- und
+Spätschicht sowie `Winter` mit nur Früh- und Spätschicht vollständig unabhängig voneinander definiert werden.
 
-Beim Anlegen einer Schicht wählt der Planer eine aktive Vorlage der konkreten Filiale. Eine freie Eingabe der regulären
-Schichtzeiten ist im grundlegenden Planungsablauf nicht vorgesehen. Die konkrete Schicht speichert die Vorlagen-ID sowie
-Bezeichnung, Beginn, Ende und Pause als Momentaufnahme. Beginn und Ende werden dabei weiterhin als absolute Zeitpunkte für das
-gewählte Datum gespeichert. Spätere Änderungen oder die Deaktivierung einer Vorlage verändern dadurch weder bestehende
-Entwürfe noch veröffentlichte oder archivierte Dienstpläne.
+Eine Modellschicht enthält mindestens eine innerhalb ihres Modells eindeutige ID, eine Bezeichnung sowie eine lokale Beginn- und
+Endzeit. Liegt die Endzeit vor der Beginnzeit, wird der Folgetag automatisch abgeleitet; identische Uhrzeiten sind ungültig. Die
+Standardpause wird bei Änderungen der Modellschichtzeiten anhand der vollständigen Schichtdauer automatisch festgelegt:
+0 Minuten bis einschließlich 6 Stunden, 30 Minuten bei mehr als 6 bis einschließlich 9 Stunden und 45 Minuten bei mehr als
+9 Stunden. Der berechnete Wert ist innerhalb der Modellschicht nicht manuell anpassbar. Die Anzahl der Modellschichten ergibt
+sich aus der Liste und wird nicht redundant gespeichert. Nicht mehr verwendete Schichtmodelle werden deaktiviert und nicht
+physisch gelöscht.
 
-Schichtvorlagen dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. In der Filial-App gilt
+Beim Anlegen eines Monatsdienstplans wählt der Planer ein aktives Schichtmodell der konkreten Filiale. Der Dienstplan speichert
+die Modell-ID, die Modellbezeichnung und die vollständige geordnete Liste seiner Modellschichten als Momentaufnahme. Diese
+Momentaufnahme bestimmt das Schichtraster und bleibt für den gesamten Monatsdienstplan einschließlich seiner späteren Versionen
+verbindlich. Spätere Änderungen oder die Deaktivierung des ursprünglichen Schichtmodells verändern bestehende Entwürfe,
+veröffentlichte oder archivierte Dienstpläne nicht.
+
+Im grundlegenden Planungsablauf wählt der Planer eine Rasterzelle aus Modellschicht und Kalendertag und ordnet ihr einen aktiven
+Mitarbeiter zu. Datum und Modellschicht stehen dadurch bereits fest; eine freie Auswahl oder Eingabe regulärer Schichtzeiten ist
+beim Anlegen der konkreten Schicht nicht vorgesehen. Beginn und Ende werden aus dem gewählten Datum und der Modellschicht der
+Dienstplan-Momentaufnahme als absolute Zeitpunkte gespeichert.
+
+Schichtmodelle dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. In der Filial-App gilt
 zusätzlich die clientseitige Bedienbegrenzung auf einen aktiven Firma-Mitarbeiter mit `dienstplaner`. Mitarbeiterzugänge lesen
-keine Schichtvorlagen, da die veröffentlichte Schicht die benötigte Vorlagenbezeichnung sowie Beginn, Ende und Pause als
-Momentaufnahme enthält.
+keine verwaltbaren Schichtmodelle; die für ihre veröffentlichten Schichten benötigten Angaben stehen über die unveränderliche
+Schichtmodell-Momentaufnahme des Dienstplans und die gespeicherten konkreten Schichtzeiten bereit.
 
 ### Abfrage- und Cache-Strategie
 
@@ -620,12 +634,12 @@ Schicht dupliziert. Reguläre Mitarbeiterdokumente bleiben deshalb auch bei Deak
 dauerhaft erhalten. Ausschließlich Duplikate werden im Rahmen der Migrationsbereinigung zusammengeführt und physisch gelöscht,
 bevor sie in Dienstplänen referenziert werden.
 
-Eine Schicht speichert ihre Schichtvorlagen-ID und die Bezeichnung der gewählten Vorlage als Momentaufnahme. Beginn und Ende
-werden aus dem gewählten Datum und den Zeitwerten der Vorlage als absolute Zeitpunkte gespeichert; die Pause wird in ganzen
-Minuten übernommen. Dadurch können auch Schichten über Mitternacht eindeutig abgebildet werden. Die anrechenbare Arbeitszeit
-wird aus Ende minus Beginn minus Pause berechnet und nicht redundant gespeichert. Ende vor oder gleich Beginn, negative Pausen
-und Pausen ab der vollständigen Schichtdauer sind ungültig. Überlappende Schichten desselben Mitarbeiters sind ein blockierender
-Konflikt.
+Eine Schicht speichert die ID ihrer Modellschicht aus der Schichtmodell-Momentaufnahme des Monatsdienstplans. Beginn und Ende
+werden aus dem gewählten Datum und den Zeitwerten dieser Modellschicht als absolute Zeitpunkte gespeichert; die Pause wird in
+ganzen Minuten übernommen. Dadurch können auch Schichten über Mitternacht eindeutig abgebildet werden. Die anrechenbare
+Arbeitszeit wird aus Ende minus Beginn minus Pause berechnet und nicht redundant gespeichert. Ende vor oder gleich Beginn,
+negative Pausen und Pausen ab der vollständigen Schichtdauer sind ungültig. Überlappende Schichten desselben Mitarbeiters sind
+ein blockierender Konflikt.
 
 Während einer Pause genügt eine durchgängige Aufsicht durch eine Person. Ist nur ein Mitarbeiter im Dienst, übernimmt der
 Techniker während dessen Pause die Aufsicht. Sind zwei Mitarbeiter im Dienst, vertreten sie sich während ihrer Pausen
@@ -662,16 +676,19 @@ bei einem manipulierten Client umgehbar und keine serverseitig abgesicherte Bere
 
 Jeder einzelne Lese- und Schreibzugriff bezieht sich auf eine konkrete Filiale. Benutzer mit Zugriff auf mehrere Filialen können
 mehrere konkrete Filialen gleichzeitig auswählen und deren Monatspläne in einer gemeinsamen Ansicht laden. Jede dargestellte
-Schicht bleibt eindeutig ihrer Filiale zugeordnet. Beim Anlegen einer Schicht wird zuerst die Zielfiliale bestimmt; danach stehen
-nur deren aktive Schichtvorlagen und die dort einsetzbaren Mitarbeiter zur Auswahl. Speicherung, Versionierung und
-Veröffentlichung bleiben je Filialdienstplan getrennt und werden nicht zu einem filialübergreifenden Firestore-Dokument oder
-einer gemeinsamen Veröffentlichungstransaktion zusammengeführt.
+Schicht bleibt eindeutig ihrer Filiale zugeordnet. Beim Anlegen eines Monatsdienstplans wird zuerst die Zielfiliale bestimmt;
+danach stehen nur deren aktive Schichtmodelle zur Auswahl. Beim anschließenden Besetzen einer Rasterzelle stehen nur die in der
+betroffenen Filiale einsetzbaren Mitarbeiter zur Auswahl. Speicherung, Versionierung und Veröffentlichung bleiben je
+Filialdienstplan getrennt und werden nicht zu einem filialübergreifenden Firestore-Dokument oder einer gemeinsamen
+Veröffentlichungstransaktion zusammengeführt.
 
 ### Planungs- und Veröffentlichungsablauf
 
-Existiert für einen Monat noch kein Dienstplan, legt ein berechtigter Planer den Dienstplan mit Version 1 im Status `entwurf` an.
-Solange die Version ein Entwurf ist, dürfen berechtigte Planer ihre Schichten gemeinsam bearbeiten. Das Löschen einzelner
-Schichten und der vollständigen, nie veröffentlichten Entwurfsversion ist erlaubt.
+Existiert für einen Monat noch kein Dienstplan, wählt ein berechtigter Planer ein aktives Schichtmodell der Filiale und legt den
+Dienstplan mit dessen Momentaufnahme sowie Version 1 im Status `entwurf` an. Die Modellschichten bilden die Spalten des
+Monatsrasters; die Kalendertage bilden dessen Zeilen. Solange die Version ein Entwurf ist, dürfen berechtigte Planer die
+Rasterzellen gemeinsam mit Mitarbeitern besetzen und vorhandene Schichten bearbeiten. Das Löschen einzelner Schichten und der
+vollständigen, nie veröffentlichten Entwurfsversion ist erlaubt.
 
 Die Veröffentlichung setzt eine vollständig geprüfte und konfliktfreie Entwurfsversion voraus. Sie setzt deren Status auf
 `veroeffentlicht`. Existiert bereits eine veröffentlichte Version, wird diese im selben konsistenten Schreibvorgang auf
@@ -701,19 +718,22 @@ Die Modelltests werden mit den fachlichen Hilfsfunktionen der Grundfunktion umge
 - Die Arbeitszeit ergibt sich aus Ende minus Beginn minus Pause. Schichten am selben Tag und über Mitternacht werden geprüft;
   Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen Schichtdauer sind ungültig.
 - Eine Frühschicht von 08:00 bis 16:30 Uhr bleibt am gewählten Kalendertag. Eine Spätschicht von 16:30 bis 01:00 Uhr endet am
-  Folgetag. Änderungen an ihren Vorlagen verändern die bereits gespeicherten Schichtmomentaufnahmen nicht.
+  Folgetag. Änderungen am ursprünglichen Schichtmodell verändern die bereits im Monatsdienstplan gespeicherte
+  Schichtmodell-Momentaufnahme nicht.
 - Neue Versionen beginnen als `entwurf` mit Revision 0. Zulässig sind nur die Übergänge von `entwurf` zu `veroeffentlicht` und
   bei einer Ersatzveröffentlichung von `veroeffentlicht` zu `archiviert`; historische Stände bleiben unveränderlich.
 - Normalisierte Dienstplan-, Versions- und Schichtdaten behalten ihre IDs, Referenzen und Metadaten, speichern aber keine
   berechnete Arbeitszeit redundant.
 
-Als Probeablauf dient der Monatsplan `2026-10` einer Filiale mit den Vorlagen `Frühschicht` von 08:00 bis 16:30 Uhr und
-`Spätschicht` von 16:30 bis 01:00 Uhr des Folgetags. Mitarbeiter A erhält am 5. Oktober eine Frühschicht und am 6. Oktober eine
-Spätschicht. Mitarbeiter B erhält am 5. Oktober eine Spätschicht. Der Plan wird zusammen mit Version 1 als Entwurf mit Revision
-0 angelegt. Jede der drei Schichttransaktionen erhöht die Revision um eins, sodass die geprüfte Version vor der Veröffentlichung
-Revision 3 besitzt. Die Veröffentlichung erhöht sie auf Revision 4, entfernt den Entwurfsverweis und setzt Version 1 als
-veröffentlichte Version. Mitarbeiterzugänge lesen danach nur diesen Stand. Eine spätere Änderung beginnt mit Version 2 als
-neuem Entwurf; bei deren Veröffentlichung wird Version 1 im selben atomaren Schreibvorgang archiviert.
+Als Probeablauf dient der Monatsplan `2026-10` einer Filiale mit dem Schichtmodell `Standard`. Das Modell enthält die geordneten
+Modellschichten `Frühschicht` von 08:00 bis 16:30 Uhr und `Spätschicht` von 16:30 bis 01:00 Uhr des Folgetags. Beim Anlegen des
+Monatsplans wird das Modell vollständig als Momentaufnahme übernommen und bildet die beiden Schichtspalten. Mitarbeiter A
+erhält am 5. Oktober eine Frühschicht und am 6. Oktober eine Spätschicht. Mitarbeiter B erhält am 5. Oktober eine Spätschicht.
+Der Plan wird zusammen mit Version 1 als Entwurf mit Revision 0 angelegt. Jede der drei Schichttransaktionen erhöht die Revision
+um eins, sodass die geprüfte Version vor der Veröffentlichung Revision 3 besitzt. Die Veröffentlichung erhöht sie auf Revision
+4, entfernt den Entwurfsverweis und setzt Version 1 als veröffentlichte Version. Mitarbeiterzugänge lesen danach nur diesen
+Stand. Eine spätere Änderung beginnt mit Version 2 als neuem Entwurf; bei deren Veröffentlichung wird Version 1 im selben
+atomaren Schreibvorgang archiviert.
 
 ### Frontend-Transaktionen und parallele Bearbeitung
 

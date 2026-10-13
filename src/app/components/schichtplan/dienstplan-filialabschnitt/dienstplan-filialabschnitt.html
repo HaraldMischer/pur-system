@@ -26,10 +26,11 @@
         [dienstplan]="geladenerDienstplan"
         [versionen]="versionen()"
         [schichten]="schichten()"
+        [modellschichten]="modellschichten()"
         [mitarbeiter]="schichtMitarbeiter()"
         [darfSchreiben]="darfSchreiben()"
         (schichtAnlegen)="openSchichtDialog($event)"
-        (schichtBearbeiten)="openSchichtDialog(geladenerDienstplan.zeitraumStart, $event)"
+        (schichtBearbeiten)="openSchichtBearbeitenDialog($event)"
       />
     } @else {
       <div class="pur-page-section__empty-state">
@@ -39,7 +40,7 @@
             matButton="filled"
             type="button"
             [disabled]="dienstplanStore.inProgress()"
-            (click)="createDienstplan()"
+            (click)="openDienstplanDialog()"
           >
             Plan erstellen
           </button>

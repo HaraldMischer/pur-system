@@ -144,7 +144,23 @@
                 <mat-option [value]="filiale.id">{{ filiale.anzeigename }}</mat-option>
               }
             </mat-select>
-            @if (weitereFilialzuordnungen > 0) {
+            @if (entfernteVerwaisteFilialzuordnungen() > 0) {
+              <mat-hint
+                >{{ entfernteVerwaisteFilialzuordnungen() }} unbekannte Zuordnung(en) werden beim
+                Speichern entfernt.</mat-hint
+              >
+            } @else if (verwaisteFilialzuordnungen() > 0) {
+              <mat-hint>
+                <button
+                  matButton
+                  type="button"
+                  [disabled]="mitarbeiterStore.inProgress()"
+                  (click)="handleVerwaisteFilialzuordnungenEntfernen()"
+                >
+                  {{ verwaisteFilialzuordnungen() }} unbekannte Zuordnung(en) entfernen
+                </button>
+              </mat-hint>
+            } @else if (weitereFilialzuordnungen > 0) {
               <mat-hint
                 >{{ weitereFilialzuordnungen }} weitere Zuordnung(en) bleiben erhalten.</mat-hint
               >

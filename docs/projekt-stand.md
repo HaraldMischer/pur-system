@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 12.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -59,7 +59,7 @@ Stand: 12.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 - `dashboard-page` wurde unter `src/app/pages/dashboard-page` angelegt.
 - `schichtplan` ist ein komponentenloser Seitenbereich unter `src/app/pages/schichtplan` mit getrennten Pages für Ansicht,
-  Planung und Schichtvorlagen.
+  Planung und Schichtmodelle.
 - `mitarbeiter` ist ein komponentenloser Routenbereich. Unter `src/app/pages/mitarbeiter` liegen ausschließlich seine routbaren
   Pages; Cards und Dialoge liegen unter `src/app/components/mitarbeiter`.
 - Die Route `/dashboard` und die drei untergeordneten Schichtplan-Pages werden per `loadComponent` geladen.
@@ -85,9 +85,9 @@ Stand: 12.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 ## Dienst- und Schichtplanung
 
 - Die fachliche erste Ausbaustufe ist als filialbezogene Monatsplanung mit versionierten Bearbeitungsständen geplant.
-  Domainmodelle, Dienstplan- und Schichtvorlagen-Service, die zugehörigen Stores sowie die benötigten Firestore-Datenzugriffe
+  Domainmodelle, Dienstplan- und Schichtmodell-Services, die zugehörigen Stores sowie die benötigten Firestore-Datenzugriffe
   sind umgesetzt. Die Dienstplan-Grundfunktion einschließlich Grundoberfläche, manueller Schichtverwaltung und Verwaltung
-  filialbezogener Schichtvorlagen ist vollständig umgesetzt und abgenommen.
+  filialbezogener Schichtmodelle ist umgesetzt.
 - Das Mitarbeiter-Domainmodell führt optional `farbkennung` im Firestore-Dokument und im Anwendungseintrag. Speicherung,
   Laden, Pflege und Darstellung der Farbkennung sind noch nicht umgesetzt.
 - Eine Version besitzt den Status `entwurf`, `veroeffentlicht` oder `archiviert`. Veröffentlichte und archivierte Versionen
@@ -111,7 +111,7 @@ Stand: 12.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   mit `getAktuellerMonat()` für `Europe/Berlin` ermittelten aktuellen Monat zurück.
 - Jeder Monatsplanabschnitt besitzt einen eigenen Lade-, Fehler-, Leer- oder Planzustand. Fehlt ein Plan, bleiben die übrigen
   Filialpläne sichtbar; berechtigte Benutzer können den fehlenden Plan ausschließlich in dessen Abschnitt anlegen. Speicherung
-  und Versionierung bleiben je Filiale getrennt. Die Veröffentlichung folgt in Todo 20.5.
+  und Versionierung bleiben je Filiale getrennt. Die Veröffentlichung folgt in Todo 20.7.
 - Für die Filial-App ist die vollständige Startladung umgesetzt: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
   Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung geladen. Mitarbeiter verwenden weiterhin die
   bestehende Stammdatenstrategie `cacheFirst`; der vollständige Dienstplanbestand verwendet `networkFirst`. Online werden die
@@ -125,27 +125,29 @@ Stand: 12.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Mitarbeiterdokument aufgelöst. Der Mitarbeiter-Store verwendet bereits geladene Einträge und lädt nur eindeutige, im
   geöffneten Dienstplan referenzierte und noch fehlende Mitarbeiter mit `networkOnly` gezielt nach. Das Schichtmodell und neue
   Schreibzugriffe speichern ausschließlich `mitarbeiterId`; ein vorhandenes Legacy-Feld `mitarbeiterAnzeigename` wird beim Lesen
-  ignoriert und beim nächsten Bearbeiten entfernt. Die Firestore Rules lehnen neue Schichtdokumente mit diesem Legacy-Feld ab.
-- Dienstplan, Version und Schicht bleiben einzelne kleine Dokumente. Es werden keine über Jahre wachsenden Arrays gespeichert;
-  mit der Historie steigen nur Dokumentanzahl und Lesezugriffe der vollständigen Filialladung.
+  ignoriert. Die Firestore Rules lehnen neue Schichtdokumente mit diesem Legacy-Feld ab.
+- Dienstplan, unveränderliche Modellschichten, Version und konkrete Schichten bleiben einzelne kleine Dokumente. Es werden keine
+  über Jahre wachsenden Arrays gespeichert; mit der Historie steigen nur Dokumentanzahl und Lesezugriffe der vollständigen
+  Filialladung.
 - Veröffentlichung und Archivierung sollen mit UID und Zeitpunkt protokolliert werden. Eine Änderung nach Veröffentlichung
   erzeugt eine neue Entwurfsversion, während der vorherige Stand für Mitarbeiter sichtbar bleibt.
 - Dienstplanaktionen erfolgen im Angular-Frontend über den Firestore Client; Cloud Functions und andere serverseitige
-  Fachaktionen sind für diesen Bereich ausgeschlossen. Das Anlegen eines Monatsplans mit erster Entwurfsversion erfolgt atomar.
-  Anlegen, Bearbeiten und Löschen einer Schicht erhöhen die Versionsrevision in einer Firestore-Transaktion. Eine abweichende
-  Revision verhindert veraltete Schreibzugriffe. Die Transaktion für Veröffentlichung und Archivierung folgt in Todo 20.5.
+  Fachaktionen sind für diesen Bereich ausgeschlossen. Das Anlegen eines Monatsplans mit Modellreferenz, vollständiger
+  Modell-Momentaufnahme und erster Entwurfsversion erfolgt atomar. Anlegen, Bearbeiten und Löschen einer Schicht erhöhen die
+  Versionsrevision in einer Firestore-Transaktion. Eine abweichende Revision verhindert veraltete Schreibzugriffe. Die
+  Transaktion für Veröffentlichung und Archivierung folgt in Todo 20.7.
 - Die zeitliche Konfliktprüfung bleibt eine Frontend-Fachprüfung. Firestore Rules sollen Rollen, Filialgrenzen, Entwurfsstatus,
   Benutzer-UID und Revisionsfortschritt absichern, können Überschneidungen mehrerer Schichtdokumente aber nicht berechnen.
 - Die technische Planung aus Todo 20.3 ist abgeschlossen. Domainmodell, deutsche Firestore-Pfade, Abfrage- und Cache-Strategien,
   Transaktionsablauf und Sicherheitsgrenzen sind festgelegt. Modelltestfälle für Monatsgrenzen, Zeitberechnung, Normalisierung
   und Zustandswechsel sowie ein Monatsplan mit mehreren Tagen, Mitarbeitern und Schichten sind als Grundlage für 20.4 und 20.5
   dokumentiert.
-- Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtvorlagen. Ansicht und Planung
+- Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtmodelle. Ansicht und Planung
   verwenden einen gemeinsamen Dienstplan-Arbeitsbereich mit einer Monatsnavigation für alle ausgewählten Filialen. Für jede
-  Filiale wird ein eigener Abschnitt mit tageweiser Darstellung sowie Lade-, Leer- und Fehlerzuständen gerendert. Filialkonten
-  verwenden unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Tageskarte den
-  Schichtdialog mit dem bereits gewählten Datum. Die filialübergreifende Konfliktprüfung und die atomare Veröffentlichung
-  folgen in Todo 20.5.
+  Filiale wird ein eigener Abschnitt mit Schichtraster sowie Lade-, Leer- und Fehlerzuständen gerendert. Filialkonten verwenden
+  unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Rasterzelle den
+  Schichtdialog mit bereits gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende Konfliktprüfung und die
+  atomare Veröffentlichung folgen in Todo 20.7.
 - Der Dienstplan-Arbeitsbereich stellt Dienstpläne und die vorbereitete Mitarbeiterübersicht auf breiten Ansichten in zwei
   unabhängig scrollbaren Spalten dar. Bei höchstens `900px` Containerbreite werden beide Bereiche untereinander angeordnet
   und innerhalb der gemeinsamen Arbeitsfläche gescrollt.
@@ -155,22 +157,28 @@ Stand: 12.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Während eines Schreibvorgangs ist das vollständige Formular deaktiviert. Filialkonten bleiben bis zur Umsetzung des
   betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser Sitzungszustand einen aktiven Firma-Mitarbeiter mit
   `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
-- Master und berechtigte Office-Konten können für alle ausgewählten Filialen gleichzeitig getrennte Vorlagenabschnitte
-  anzeigen. Jeder Abschnitt lädt ausschließlich seinen Filialbestand und erlaubt dort das Anlegen und Bearbeiten von
-  Schichtvorlagen mit Bezeichnung, lokaler Beginn- und Endzeit sowie Aktivstatus. Der Folgetag wird aus der Zeitfolge abgeleitet;
-  die Standardpause wird anhand der Schichtdauer automatisch mit 0, 30 oder 45 Minuten berechnet. Schichtdauer und Standardpause
-  sind im Dialog schreibgeschützt. Neue Vorlagen sind aktiv; die sichtbare Aktiv-Checkbox ist beim Anlegen deaktiviert und beim
-  Bearbeiten änderbar. Inaktive Vorlagen bleiben sichtbar und können wieder aktiviert werden. Firmenweite Vorlagen oder
-  filialübergreifende Kopien gibt es nicht. Beim Einplanen wird eine aktive Vorlage der konkreten Filiale ausgewählt; Beginn und
-  Ende werden aus Datum, lokalen Vorlagenzeiten, abgeleitetem Folgetag und `Europe/Berlin` berechnet. Vorlagen-ID und Bezeichnung
-  sowie die berechneten Zeitpunkte und die konkrete Pause werden als Momentaufnahme in der Schicht gespeichert. Spätere
-  Vorlagenänderungen verändern vorhandene Schichten nicht.
-- Firestore Rules verlangen bei einer neuen oder auf eine andere Vorlage umgestellten Schicht eine aktive filialbezogene Vorlage
-  mit passender Bezeichnung. Beim Bearbeiten darf eine bereits gespeicherte Vorlagen-Momentaufnahme unverändert erhalten bleiben,
-  auch wenn die ursprüngliche Vorlage inzwischen geändert oder deaktiviert wurde.
-- Die Dienstplan- und Schichtvorlagen-Services, ihre Stores sowie der Aufbau der Schichtplan-Komponenten sind unter
-  `docs/services`, `docs/stores` und `docs/components` dokumentiert. Angular- und Rules-Tests sowie der Office-Build sind
-  erfolgreich. Die drei weiteren Varianten-Builds werden derzeit durch einen lokalen Deadlock in `esbuild` 0.28.1 abgebrochen.
+- Die Route und Navigation für die Schichtplaneinstellungen führen auf die neue filialbezogene Schichtmodellverwaltung. Ein
+  Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer geordneten eigenen Modellschicht. Modellschichten können
+  ergänzt, entfernt und umsortiert werden; Beginn, Ende, Folgetag, Dauer und automatische Standardpause folgen den bestehenden
+  Zeitregeln. Modell und Modellschichten werden atomar gespeichert. Vorhandene Modelle werden nicht gelöscht, sondern bei Bedarf
+  deaktiviert. Beim Anlegen eines Monatsplans stehen ausschließlich aktive, nicht leere Modelle der konkreten Filiale zur
+  Auswahl. Modell-ID, Modellbezeichnung und alle geordneten Modellschichten werden gemeinsam mit der ersten Entwurfsversion als
+  unveränderliche Momentaufnahme gespeichert und bei Monats- sowie Bestandsladungen mitgeführt. Spätere Änderungen oder die
+  Deaktivierung des Quellmodells verändern bestehende Pläne nicht.
+- Die Monatsplanung wird als horizontal bedienbares Schichtraster dargestellt: Kalendertage bilden die Zeilen, die geordneten
+  Modellschichten der Momentaufnahme bilden die Spalten. Jede Zelle kann mehrere Mitarbeiterschichten enthalten. Beim Anlegen
+  stehen Datum, Modellschicht, lokale Zeiten und Standardpause bereits fest; nur der Mitarbeiter wird ausgewählt. Beim Bearbeiten
+  bleibt die Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden.
+- Firestore Rules verlangen bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben Monatsplans.
+  Beim Bearbeiten sind Modellschicht, Beginn, Ende und Pause unveränderlich; nur die Mitarbeiterzuordnung darf zusammen mit den
+  technischen Aktualisierungsfeldern geändert werden.
+- Die bisherige Schichtvorlagenstruktur mit Page, Components, Dialog, Service, Store, Domainmodell, Pfaden und Firestore Rules ist
+  vollständig entfernt. Neue und bearbeitete Schichten verwenden ausschließlich `modellschichtId` aus der Momentaufnahme des
+  Monatsplans.
+- Die Dienstplan- und Schichtmodell-Services, ihre Stores sowie der Aufbau der Schichtplan-Komponenten sind unter `docs/services`,
+  `docs/stores` und `docs/components` dokumentiert. Angular- und Rules-Tests sowie alle vier Varianten-Builds sind erfolgreich.
+  Für die Varianten-Builds wurde der persistente Angular-Cache in der lokalen Umgebung mit `CI=1` deaktiviert, weil dessen
+  native LMDB-Anbindung den Buildprozess mit Exit-Code 134 beendet hat.
 - Erfolgreiche Monats- und Gesamtladungen protokollieren im lokalen Entwicklungslog unter `3. FILIALDATEN` die Anzahl geladener
   Dienstpläne, Versionen und Schichten mit dem Anzeigenamen der betreffenden Filiale.
 

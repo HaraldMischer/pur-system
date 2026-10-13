@@ -11,7 +11,7 @@ import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
-import { SchichtvorlageStore } from '../../../stores/domain/schichtvorlage.store';
+import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { MonatSelector } from '../../date-selectors/monat-selector/monat-selector';
 import { DienstplanArbeitsbereich } from './dienstplan-arbeitsbereich';
 
@@ -76,11 +76,11 @@ describe('DienstplanArbeitsbereich', () => {
           },
         },
         {
-          provide: SchichtvorlageStore,
+          provide: SchichtmodellStore,
           useValue: {
-            schichtvorlagen: signal([]),
+            loadSchichtmodelle: vi.fn(),
+            getSchichtmodellKontext: vi.fn().mockReturnValue(null),
             error: signal(null),
-            loadSchichtvorlagen: vi.fn(),
           },
         },
         { provide: MatDialog, useValue: { open: vi.fn() } },

@@ -18,70 +18,48 @@
         }
       </mat-select>
       @if (schichtForm.controls.mitarbeiterId.hasError('ungueltigerMitarbeiter')) {
-        <mat-error
-          >Der ausgewählte Mitarbeiter darf in dieser Filiale nicht eingeplant werden.</mat-error
-        >
+        <mat-error>Mitarbeiter ungültig.</mat-error>
       }
     </mat-form-field>
-    @if (!istBearbeitung && schichtvorlagen.length === 0) {
-      <p class="pur-form__item" role="status">
-        Lege zuerst eine aktive Schichtvorlage für diese Filiale an.
-      </p>
-    }
+    <div class="pur-form__row">
+      <mat-form-field
+        appearance="outline"
+        class="pur-form__item pur-form__item--field pur-form__item--50"
+      >
+        <mat-label>Datum</mat-label>
+        <input matInput readonly [value]="datumAnzeige" />
+      </mat-form-field>
+      <mat-form-field
+        appearance="outline"
+        class="pur-form__item pur-form__item--field pur-form__item--50"
+      >
+        <mat-label>Modellschicht</mat-label>
+        <input matInput readonly [value]="daten.modellschicht.bezeichnung" />
+      </mat-form-field>
+    </div>
+    <div class="pur-form__row">
+      <mat-form-field
+        appearance="outline"
+        class="pur-form__item pur-form__item--field pur-form__item--50"
+      >
+        <mat-label>Beginn</mat-label>
+        <input matInput readonly [value]="daten.modellschicht.beginnLokalzeit" />
+        <span matTextSuffix>Uhr</span>
+      </mat-form-field>
+      <mat-form-field
+        appearance="outline"
+        class="pur-form__item pur-form__item--field pur-form__item--50"
+      >
+        <mat-label>Ende</mat-label>
+        <input matInput readonly [value]="daten.modellschicht.endeLokalzeit" />
+        <span matTextSuffix>Uhr</span>
+      </mat-form-field>
+    </div>
     <mat-form-field appearance="outline">
-      <mat-label>Schichtvorlage</mat-label>
-      <mat-select formControlName="schichtvorlageId">
-        @for (vorlage of schichtvorlagen; track vorlage.id) {
-          <mat-option [value]="vorlage.id">
-            {{ vorlage.bezeichnung }} · {{ vorlage.beginnLokalzeit }}–{{ vorlage.endeLokalzeit }}
-            @if (vorlage.endetAmFolgetag) {
-              (Folgetag)
-            }
-            @if (!vorlage.aktiv) {
-              · inaktiv
-            }
-          </mat-option>
-        }
-        @if (hatGespeicherteVorlageOhneEintrag && daten.schicht; as schicht) {
-          <mat-option [value]="schicht.schichtvorlageId">
-            {{ schicht.schichtvorlageBezeichnung }} · gespeicherte Vorlage
-          </mat-option>
-        }
-      </mat-select>
-      @if (schichtForm.controls.schichtvorlageId.hasError('ungueltigeSchichtvorlage')) {
-        <mat-error>Die ausgewählte Schichtvorlage ist nicht mehr aktiv.</mat-error>
-      }
+      <mat-label>Pause</mat-label>
+      <input matInput readonly [value]="daten.modellschicht.standardpauseMinuten" />
+      <span matTextSuffix>Min.</span>
     </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Datum</mat-label>
-      <input
-        matInput
-        type="date"
-        [min]="daten.zeitraumStart"
-        [max]="daten.zeitraumEnde"
-        formControlName="datum"
-      />
-      @if (schichtForm.controls.datum.hasError('datumAusserhalbZeitraum')) {
-        <mat-error>Das Datum muss innerhalb des ausgewählten Dienstplanmonats liegen.</mat-error>
-      }
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Pause in Minuten</mat-label>
-      <input matInput type="number" min="0" formControlName="pauseMinuten" />
-      @if (schichtForm.controls.pauseMinuten.hasError('ungueltigePause')) {
-        <mat-error>Die Pause muss eine nicht negative ganze Minutenanzahl sein.</mat-error>
-      }
-    </mat-form-field>
-    @if (schichtForm.hasError('pauseNichtUnterSchichtdauer')) {
-      <p class="pur-form__item pur-form__item--error" role="alert">
-        Die Pause muss kürzer als die Schichtdauer sein.
-      </p>
-    }
-    @if (schichtForm.hasError('ungueltigeZeitwerte')) {
-      <p class="pur-form__item pur-form__item--error" role="alert">
-        Die Schichtzeiten sind für das gewählte Datum ungültig.
-      </p>
-    }
     @if (error() || dienstplanStore.error(); as fehlermeldung) {
       <p class="pur-form__item pur-form__item--error" role="alert">
         {{ error() ?? fehlermeldung }}

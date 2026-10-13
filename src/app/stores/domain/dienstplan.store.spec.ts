@@ -6,6 +6,7 @@ import { Timestamp } from 'firebase/firestore';
 
 import { IDienstplanBestand } from '../../commons/models/domain/dienstplan';
 import { ISchichtAnlage } from '../../commons/models/domain/schicht';
+import { ISchichtmodellBestand } from '../../commons/models/domain/schichtmodell';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { DienstplanService } from '../../services/domain/dienstplan.service';
@@ -46,6 +47,7 @@ describe('DienstplanStore', () => {
     createDienstplanMock.mockResolvedValue({
       dienstplan: createBestand().dienstplaene[0],
       version: createBestand().versionen[0],
+      modellschichten: createBestand().modellschichten,
     });
     createSchichtMock.mockResolvedValue({
       schicht: createBestand().schichten[0],
@@ -224,17 +226,22 @@ describe('DienstplanStore', () => {
       dienstplaene: [],
       versionen: [],
       schichten: [],
+      modellschichten: [],
     });
     const store = TestBed.inject(DienstplanStore);
     await store.loadDienstplanMonat(pfad, '2026-10', false);
 
-    await store.createDienstplan(pfad, '2026-10');
+    const schichtmodell = createSchichtmodell();
+    await store.createDienstplan(pfad, '2026-10', schichtmodell);
 
-    expect(createDienstplanMock).toHaveBeenCalledWith(pfad, '2026-10', 'uid-1');
+    expect(createDienstplanMock).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell, 'uid-1');
     expect(store.getDienstplanKontext(pfad)?.dienstplaene).toEqual([
       expect.objectContaining({ id: '2026-10' }),
     ]);
     expect(store.inProgress()).toBe(false);
+    expect(store.getDienstplanKontext(pfad)?.modellschichten).toEqual(
+      createBestand().modellschichten,
+    );
   });
 
   it('should create, update and delete shifts while advancing the local revision', async () => {
@@ -268,7 +275,7 @@ describe('DienstplanStore', () => {
   it('should require a fully loaded planning month and an authenticated user for writes', async () => {
     const store = TestBed.inject(DienstplanStore);
 
-    await expect(store.createDienstplan(pfad, '2026-10')).rejects.toThrow(
+    await expect(store.createDienstplan(pfad, '2026-10', createSchichtmodell())).rejects.toThrow(
       'Der vollständige Dienstplanmonat muss vor dem Schreiben geladen werden.',
     );
     await store.loadDienstplanMonat(pfad, '2026-10', false);
@@ -307,6 +314,8 @@ describe('DienstplanStore', () => {
           zeitraumStart: '2026-10-01',
           zeitraumEnde: '2026-10-31',
           zeitzone: 'Europe/Berlin',
+          schichtmodellId: 'modell-1',
+          schichtmodellBezeichnung: 'Sommer',
           entwurfVersionId: 'v-1',
           naechsteVersionsnummer: 2,
           erstelltVonUid: 'uid-1',
@@ -333,14 +342,52 @@ describe('DienstplanStore', () => {
           aktualisiertVonUid: 'uid-1',
         },
       ],
+      modellschichten: [
+        {
+          ...pfad,
+          dienstplanId: '2026-10',
+          id: 'frueh',
+          bezeichnung: 'Früh',
+          reihenfolge: 0,
+          beginnLokalzeit: '07:00',
+          endeLokalzeit: '12:00',
+          endetAmFolgetag: false,
+          standardpauseMinuten: 0,
+        },
+      ],
+    };
+  }
+
+  function createSchichtmodell(): ISchichtmodellBestand {
+    return {
+      schichtmodell: {
+        ...pfad,
+        id: 'modell-1',
+        bezeichnung: 'Sommer',
+        aktiv: true,
+        erstelltVonUid: 'uid-1',
+        aktualisiertVonUid: 'uid-1',
+      },
+      modellschichten: [
+        {
+          ...pfad,
+          id: 'frueh',
+          schichtmodellId: 'modell-1',
+          bezeichnung: 'Früh',
+          reihenfolge: 0,
+          beginnLokalzeit: '07:00',
+          endeLokalzeit: '12:00',
+          endetAmFolgetag: false,
+          standardpauseMinuten: 0,
+        },
+      ],
     };
   }
 
   function createSchichtAnlage(): ISchichtAnlage {
     return {
       mitarbeiterId: 'm-1',
-      schichtvorlageId: 'sv-1',
-      schichtvorlageBezeichnung: 'Frühschicht',
+      modellschichtId: 'frueh',
       beginn: Timestamp.fromDate(new Date('2026-10-05T08:00:00+02:00')),
       ende: Timestamp.fromDate(new Date('2026-10-05T16:00:00+02:00')),
       pauseMinuten: 30,

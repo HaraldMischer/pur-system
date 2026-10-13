@@ -1,190 +1,177 @@
 // pur-system/src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
 
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Timestamp } from 'firebase/firestore';
 
-import { SchichtplanMonat } from './schichtplan-monat';
+import { SchichtplanMonat, TSchichtplanRasterauswahl } from './schichtplan-monat';
 
 describe('SchichtplanMonat', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({ imports: [SchichtplanMonat] }).compileComponents();
   });
 
-  it('should render every calendar day and the shifts of the active draft', () => {
-    const fixture = TestBed.createComponent(SchichtplanMonat);
-    fixture.componentRef.setInput('dienstplan', {
-      id: '2026-02',
-      unternehmerId: 'u-1',
-      firmaId: 'f-1',
-      filialeId: 'b-1',
-      zeitraumStart: '2026-02-01',
-      zeitraumEnde: '2026-02-28',
-      zeitzone: 'Europe/Berlin',
-      entwurfVersionId: 'v-1',
-      naechsteVersionsnummer: 2,
-      erstelltVonUid: 'uid-1',
-      aktualisiertVonUid: 'uid-1',
-    });
-    fixture.componentRef.setInput('versionen', [
-      {
-        id: 'v-1',
-        dienstplanId: '2026-02',
-        unternehmerId: 'u-1',
-        firmaId: 'f-1',
-        filialeId: 'b-1',
-        nummer: 1,
-        revision: 2,
-        status: 'entwurf',
-        erstelltVonUid: 'uid-1',
-        aktualisiertVonUid: 'uid-1',
-      },
-    ]);
+  it('should render the month as a day and model-shift grid', () => {
+    const fixture = createFixture();
     fixture.componentRef.setInput('schichten', [
-      {
-        id: 's-1',
-        dienstplanId: '2026-02',
-        versionId: 'v-1',
-        unternehmerId: 'u-1',
-        firmaId: 'f-1',
-        filialeId: 'b-1',
-        mitarbeiterId: 'm-1',
-        schichtvorlageId: 'sv-1',
-        schichtvorlageBezeichnung: 'Spätschicht',
-        beginn: Timestamp.fromDate(new Date('2026-02-03T22:00:00+01:00')),
-        ende: Timestamp.fromDate(new Date('2026-02-04T06:30:00+01:00')),
-        pauseMinuten: 30,
-        erstelltVonUid: 'uid-1',
-        aktualisiertVonUid: 'uid-1',
-      },
+      createSchicht('s-1', 'm-1'),
+      createSchicht('s-2', 'm-2'),
     ]);
     fixture.componentRef.setInput('mitarbeiter', [
-      {
-        id: 'm-1',
-        unternehmerId: 'u-1',
-        firmaId: 'f-1',
-        person: {
-          vorname: 'Mia',
-          nachname: 'Muster',
-          adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
-          kontakt: {},
-        },
-        rollen: ['servicekraft'],
-        filialIds: [],
-        aktiv: false,
-        farbkennung: '#123456',
-      },
+      createMitarbeiter('m-1', 'Mia', '#123456'),
+      createMitarbeiter('m-2', 'Max'),
     ]);
     fixture.componentRef.setInput('darfSchreiben', true);
-    const angelegteTage: string[] = [];
-    fixture.componentInstance.schichtAnlegen.subscribe((datum) => {
-      angelegteTage.push(datum);
+    const auswahl: TSchichtplanRasterauswahl[] = [];
+    fixture.componentInstance.schichtAnlegen.subscribe((wert) => {
+      auswahl.push(wert);
     });
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const anlegenButtons = compiled.querySelectorAll<HTMLButtonElement>(
-      '.schichtplan-monat__tag-anlegen',
-    );
 
-    expect(compiled.querySelectorAll('.schichtplan-monat__tag')).toHaveLength(28);
-    expect(anlegenButtons).toHaveLength(28);
-    anlegenButtons[2].click();
-    expect(angelegteTage).toEqual(['2026-02-03']);
-    expect(compiled.textContent).toContain('Muster, Mia');
+    const compiled = fixture.nativeElement as HTMLElement;
+    const spaltenkoepfe = Array.from(compiled.querySelectorAll('thead th')).map((element) => {
+      return element.textContent?.replace(/\s+/g, ' ').trim();
+    });
+    const anlegenButtons = compiled.querySelectorAll<HTMLButtonElement>(
+      '.schichtplan-monat__zelle-anlegen',
+    );
+    const dritteTageszeile = compiled.querySelectorAll('tbody tr')[2];
+
+    expect(compiled.querySelectorAll('tbody tr')).toHaveLength(28);
+    expect(spaltenkoepfe).toEqual([
+      'Tag',
+      'Früh 07:00–12:00 Uhr',
+      'Spät 16:30–01:00 Uhr (Folgetag)',
+    ]);
+    expect(anlegenButtons).toHaveLength(56);
+    anlegenButtons[5].click();
+    expect(auswahl).toEqual([{ datum: '2026-02-03', modellschichtId: 'spaet' }]);
+    expect(dritteTageszeile.querySelectorAll('.schichtplan-monat__schicht')).toHaveLength(2);
+    expect(dritteTageszeile.textContent).toContain('Muster, Mia');
+    expect(dritteTageszeile.textContent).toContain('Muster, Max');
     expect(
-      compiled.querySelector<HTMLElement>('.schichtplan-monat__mitarbeiter-farbe')?.style
+      dritteTageszeile.querySelector<HTMLElement>('.schichtplan-monat__mitarbeiter-farbe')?.style
         .backgroundColor,
     ).toBe('rgb(18, 52, 86)');
-    expect(compiled.textContent).toContain('Spätschicht');
-    expect(compiled.textContent).toContain('22:00–06:30 (Folgetag)');
-    expect(compiled.textContent).toContain('Arbeitszeit: 8 Std.');
+    expect(dritteTageszeile.textContent).toContain('16:30–01:00 (Folgetag)');
+    expect(dritteTageszeile.textContent).toContain('Arbeitszeit: 8 Std.');
     expect(compiled.textContent).toContain('Entwurf');
   });
 
-  it('should use the loaded published version when the draft is not available', () => {
-    const fixture = TestBed.createComponent(SchichtplanMonat);
-    fixture.componentRef.setInput('dienstplan', {
-      id: '2026-02',
-      unternehmerId: 'u-1',
-      firmaId: 'f-1',
-      filialeId: 'b-1',
-      zeitraumStart: '2026-02-01',
-      zeitraumEnde: '2026-02-28',
-      zeitzone: 'Europe/Berlin',
-      entwurfVersionId: 'v-2',
-      veroeffentlichteVersionId: 'v-1',
-      naechsteVersionsnummer: 3,
-      erstelltVonUid: 'uid-1',
-      aktualisiertVonUid: 'uid-1',
-    });
-    fixture.componentRef.setInput('versionen', [
-      {
-        id: 'v-1',
-        dienstplanId: '2026-02',
-        unternehmerId: 'u-1',
-        firmaId: 'f-1',
-        filialeId: 'b-1',
-        nummer: 1,
-        revision: 3,
-        status: 'veroeffentlicht',
-        erstelltVonUid: 'uid-1',
-        aktualisiertVonUid: 'uid-1',
-      },
-    ]);
-    fixture.componentRef.setInput('schichten', []);
+  it('should keep a published plan readonly', () => {
+    const fixture = createFixture(true);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Veröffentlicht');
+    expect(fixture.nativeElement.querySelector('.schichtplan-monat__zelle-anlegen')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.schichtplan-monat__schicht button')).toBeNull();
   });
 
   it('should show a fallback when a referenced employee is unavailable', () => {
-    const fixture = TestBed.createComponent(SchichtplanMonat);
-    fixture.componentRef.setInput('dienstplan', {
-      id: '2026-02',
-      unternehmerId: 'u-1',
-      firmaId: 'f-1',
-      filialeId: 'b-1',
-      zeitraumStart: '2026-02-01',
-      zeitraumEnde: '2026-02-28',
-      zeitzone: 'Europe/Berlin',
-      entwurfVersionId: 'v-1',
-      naechsteVersionsnummer: 2,
-      erstelltVonUid: 'uid-1',
-      aktualisiertVonUid: 'uid-1',
-    });
-    fixture.componentRef.setInput('versionen', [
-      {
-        id: 'v-1',
-        dienstplanId: '2026-02',
-        unternehmerId: 'u-1',
-        firmaId: 'f-1',
-        filialeId: 'b-1',
-        nummer: 1,
-        revision: 2,
-        status: 'entwurf',
-        erstelltVonUid: 'uid-1',
-        aktualisiertVonUid: 'uid-1',
-      },
-    ]);
-    fixture.componentRef.setInput('schichten', [
-      {
-        id: 's-1',
-        dienstplanId: '2026-02',
-        versionId: 'v-1',
-        unternehmerId: 'u-1',
-        firmaId: 'f-1',
-        filialeId: 'b-1',
-        mitarbeiterId: 'm-fehlt',
-        schichtvorlageId: 'sv-1',
-        schichtvorlageBezeichnung: 'Spätschicht',
-        beginn: Timestamp.fromDate(new Date('2026-02-03T22:00:00+01:00')),
-        ende: Timestamp.fromDate(new Date('2026-02-04T06:30:00+01:00')),
-        pauseMinuten: 30,
-        erstelltVonUid: 'uid-1',
-        aktualisiertVonUid: 'uid-1',
-      },
-    ]);
+    const fixture = createFixture();
+    fixture.componentRef.setInput('schichten', [createSchicht('s-1', 'm-fehlt')]);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Mitarbeiter nicht verfügbar');
   });
+
+  function createFixture(veroeffentlicht = false): ComponentFixture<SchichtplanMonat> {
+    const fixture = TestBed.createComponent(SchichtplanMonat);
+    fixture.componentRef.setInput('dienstplan', {
+      id: '2026-02',
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      filialeId: 'b-1',
+      zeitraumStart: '2026-02-01',
+      zeitraumEnde: '2026-02-28',
+      zeitzone: 'Europe/Berlin',
+      schichtmodellId: 'modell-1',
+      schichtmodellBezeichnung: 'Sommer',
+      ...(veroeffentlicht ? { veroeffentlichteVersionId: 'v-1' } : { entwurfVersionId: 'v-1' }),
+      naechsteVersionsnummer: 2,
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    });
+    fixture.componentRef.setInput('versionen', [
+      {
+        id: 'v-1',
+        dienstplanId: '2026-02',
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        filialeId: 'b-1',
+        nummer: 1,
+        revision: 2,
+        status: veroeffentlicht ? 'veroeffentlicht' : 'entwurf',
+        erstelltVonUid: 'uid-1',
+        aktualisiertVonUid: 'uid-1',
+      },
+    ]);
+    fixture.componentRef.setInput('modellschichten', [
+      {
+        id: 'spaet',
+        dienstplanId: '2026-02',
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        filialeId: 'b-1',
+        bezeichnung: 'Spät',
+        reihenfolge: 2,
+        beginnLokalzeit: '16:30',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+        standardpauseMinuten: 30,
+      },
+      {
+        id: 'frueh',
+        dienstplanId: '2026-02',
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        filialeId: 'b-1',
+        bezeichnung: 'Früh',
+        reihenfolge: 1,
+        beginnLokalzeit: '07:00',
+        endeLokalzeit: '12:00',
+        endetAmFolgetag: false,
+        standardpauseMinuten: 0,
+      },
+    ]);
+    fixture.componentRef.setInput('schichten', []);
+    fixture.componentRef.setInput('mitarbeiter', []);
+    fixture.componentRef.setInput('darfSchreiben', !veroeffentlicht);
+    return fixture;
+  }
+
+  function createSchicht(id: string, mitarbeiterId: string) {
+    return {
+      id,
+      dienstplanId: '2026-02',
+      versionId: 'v-1',
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      filialeId: 'b-1',
+      mitarbeiterId,
+      modellschichtId: 'spaet',
+      beginn: Timestamp.fromDate(new Date('2026-02-03T16:30:00+01:00')),
+      ende: Timestamp.fromDate(new Date('2026-02-04T01:00:00+01:00')),
+      pauseMinuten: 30,
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    };
+  }
+
+  function createMitarbeiter(id: string, vorname: string, farbkennung?: string) {
+    return {
+      id,
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      person: {
+        vorname,
+        nachname: 'Muster',
+        adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
+        kontakt: {},
+      },
+      rollen: ['servicekraft'],
+      filialIds: ['b-1'],
+      aktiv: true,
+      ...(farbkennung ? { farbkennung } : {}),
+    };
+  }
 });

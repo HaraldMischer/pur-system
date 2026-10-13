@@ -5,6 +5,8 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Timestamp } from 'firebase/firestore';
 
+import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
+import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import {
   SchichtBearbeitenDialog,
@@ -13,44 +15,18 @@ import {
 
 describe('SchichtBearbeitenDialog', () => {
   const inProgress = signal(false);
-  const error = signal<string | null>(null);
+  const storeError = signal<string | null>(null);
   const createSchicht = vi.fn().mockResolvedValue(undefined);
   const updateSchicht = vi.fn().mockResolvedValue(undefined);
+  const deleteSchicht = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
   let dialogDaten: TSchichtBearbeitenDialogDaten;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    dialogDaten = {
-      pfad: {
-        unternehmerId: 'u-1',
-        firmaId: 'f-1',
-        filialeId: 'b-1',
-        dienstplanId: '2026-10',
-        versionId: 'v-1',
-      },
-      zeitzone: 'Europe/Berlin',
-      datum: '2026-10-05',
-      zeitraumStart: '2026-10-01',
-      zeitraumEnde: '2026-10-31',
-      mitarbeiter: [
-        {
-          id: 'm-1',
-          unternehmerId: 'u-1',
-          firmaId: 'f-1',
-          aktiv: true,
-          filialIds: ['b-1'],
-          rollen: ['servicekraft'],
-          person: {
-            vorname: 'Mia',
-            nachname: 'Muster',
-            adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
-            kontakt: {},
-          },
-        },
-      ],
-      schichtvorlagen: [createSchichtvorlage()],
-    };
+    inProgress.set(false);
+    storeError.set(null);
+    dialogDaten = createDialogDaten();
     await TestBed.configureTestingModule({
       imports: [SchichtBearbeitenDialog],
       providers: [
@@ -62,10 +38,10 @@ describe('SchichtBearbeitenDialog', () => {
           provide: DienstplanStore,
           useValue: {
             inProgress,
-            error,
+            error: storeError,
             createSchicht,
             updateSchicht,
-            deleteSchicht: vi.fn(),
+            deleteSchicht,
           },
         },
         { provide: MatDialogRef, useValue: { close } },
@@ -73,77 +49,73 @@ describe('SchichtBearbeitenDialog', () => {
     }).compileComponents();
   });
 
-  it('should validate and create a shift that ends on the following day', async () => {
+  it('should create a shift in the selected model cell', async () => {
     const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
     const component = fixture.componentInstance;
-    component.schichtForm.patchValue({
-      mitarbeiterId: 'm-1',
-      datum: '2026-10-05',
-    });
-    component.schichtForm.controls.schichtvorlageId.setValue('sv-1');
-
-    expect(component.schichtForm.controls.pauseMinuten.value).toBe(30);
+    component.schichtForm.controls.mitarbeiterId.setValue('m-1');
 
     await component.saveSchicht();
 
     expect(createSchicht).toHaveBeenCalledWith(
-      expect.anything(),
+      dialogDaten.pfad,
       expect.objectContaining({
         mitarbeiterId: 'm-1',
-        schichtvorlageId: 'sv-1',
-        schichtvorlageBezeichnung: 'Spätschicht',
+        modellschichtId: 'spaet',
         beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
         ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
+        pauseMinuten: 30,
       }),
     );
     expect(close).toHaveBeenCalledWith(true);
   });
 
-  it('should keep the stored template snapshot when the source template changes', async () => {
-    dialogDaten = {
-      ...dialogDaten,
-      schichtvorlagen: [
-        createSchichtvorlage({
-          bezeichnung: 'Geänderte Spätschicht',
-          beginnLokalzeit: '17:00',
-          endeLokalzeit: '02:00',
-        }),
-      ],
-      schicht: {
-        ...dialogDaten.pfad,
-        id: 's-1',
-        mitarbeiterId: 'm-1',
-        schichtvorlageId: 'sv-1',
-        schichtvorlageBezeichnung: 'Spätschicht',
-        beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
-        ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
-        pauseMinuten: 30,
-        erstelltVonUid: 'uid-1',
-        aktualisiertVonUid: 'uid-1',
-      },
-    };
+  it('should show date and model data as readonly values', () => {
+    const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    const readonlyInputs = Array.from(
+      compiled.querySelectorAll<HTMLInputElement>('input[readonly]'),
+    );
+
+    expect(readonlyInputs.map((input) => input.value)).toEqual([
+      '05.10.2026',
+      'Spät',
+      '16:30',
+      '01:00',
+      '30',
+    ]);
+  });
+
+  it('should update only after the employee assignment changes', async () => {
+    dialogDaten = createDialogDaten({
+      schicht: createSchichtEintrag({ mitarbeiterId: 'm-1' }),
+    });
     const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
     const component = fixture.componentInstance;
-    component.schichtForm.controls.pauseMinuten.setValue(45);
 
+    await component.saveSchicht();
+    expect(updateSchicht).not.toHaveBeenCalled();
+
+    component.schichtForm.controls.mitarbeiterId.setValue('m-2');
     await component.saveSchicht();
 
     expect(updateSchicht).toHaveBeenCalledWith(
       dialogDaten.pfad,
       's-1',
       expect.objectContaining({
-        schichtvorlageId: 'sv-1',
-        schichtvorlageBezeichnung: 'Spätschicht',
+        mitarbeiterId: 'm-2',
+        modellschichtId: 'spaet',
         beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
         ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
-        pauseMinuten: 45,
+        pauseMinuten: 30,
       }),
     );
   });
 
-  it('should keep the initially incomplete form from writing', async () => {
+  it('should reject an unavailable employee', async () => {
     const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
     const component = fixture.componentInstance;
+    component.schichtForm.controls.mitarbeiterId.setValue('m-fremd');
 
     await component.saveSchicht();
 
@@ -151,96 +123,109 @@ describe('SchichtBearbeitenDialog', () => {
     expect(createSchicht).not.toHaveBeenCalled();
   });
 
-  it.each([
-    [
-      'a date outside the service-plan month',
-      (component: SchichtBearbeitenDialog) => {
-        component.schichtForm.controls.datum.setValue('2026-11-01');
-      },
-    ],
-    [
-      'an employee outside the available branch selection',
-      (component: SchichtBearbeitenDialog) => {
-        component.schichtForm.controls.mitarbeiterId.setValue('m-fremd');
-      },
-    ],
-    [
-      'an unavailable shift template',
-      (component: SchichtBearbeitenDialog) => {
-        component.schichtForm.controls.schichtvorlageId.setValue('sv-fremd');
-      },
-    ],
-    [
-      'a fractional break',
-      (component: SchichtBearbeitenDialog) => {
-        component.schichtForm.controls.pauseMinuten.setValue(30.5);
-      },
-    ],
-    [
-      'a break matching the complete shift duration',
-      (component: SchichtBearbeitenDialog) => {
-        component.schichtForm.controls.pauseMinuten.setValue(510);
-      },
-    ],
-  ])('should reject %s', async (_beschreibung, setUngueltigerWert) => {
+  it('should delete the edited shift', async () => {
+    dialogDaten = createDialogDaten({ schicht: createSchichtEintrag() });
     const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
-    const component = fixture.componentInstance;
-    component.schichtForm.patchValue({
-      mitarbeiterId: 'm-1',
-      datum: '2026-10-05',
-      schichtvorlageId: 'sv-1',
-    });
 
-    setUngueltigerWert(component);
-    await component.saveSchicht();
+    await fixture.componentInstance.deleteSchicht();
 
-    expect(component.schichtForm.invalid).toBe(true);
-    expect(createSchicht).not.toHaveBeenCalled();
+    expect(deleteSchicht).toHaveBeenCalledWith(dialogDaten.pfad, 's-1');
+    expect(close).toHaveBeenCalledWith(true);
   });
 
-  it('should show a form error for a nonexistent local time', async () => {
-    dialogDaten = {
-      ...dialogDaten,
-      datum: '2026-03-29',
-      zeitraumStart: '2026-03-01',
-      zeitraumEnde: '2026-03-31',
-      schichtvorlagen: [
-        createSchichtvorlage({
-          beginnLokalzeit: '02:30',
-          endeLokalzeit: '03:30',
-          endetAmFolgetag: false,
-        }),
-      ],
-    };
+  it('should disable the form while a write is in progress', () => {
     const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
-    const component = fixture.componentInstance;
-    component.schichtForm.patchValue({
-      mitarbeiterId: 'm-1',
-      schichtvorlageId: 'sv-1',
-    });
     fixture.detectChanges();
 
-    await component.saveSchicht();
+    inProgress.set(true);
+    fixture.detectChanges();
 
-    expect(component.schichtForm.hasError('ungueltigeZeitwerte')).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain(
-      'Die Schichtzeiten sind für das gewählte Datum ungültig.',
-    );
+    expect(fixture.componentInstance.schichtForm.disabled).toBe(true);
+  });
+
+  it('should show an error for a nonexistent local time', async () => {
+    dialogDaten = createDialogDaten({
+      datum: '2026-03-29',
+      modellschicht: {
+        ...createDialogDaten().modellschicht,
+        beginnLokalzeit: '02:30',
+        endeLokalzeit: '03:30',
+        endetAmFolgetag: false,
+      },
+    });
+    const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
+    const component = fixture.componentInstance;
+    component.schichtForm.controls.mitarbeiterId.setValue('m-1');
+
+    await component.saveSchicht();
+    fixture.detectChanges();
+
+    expect(component.error()).toContain('existiert');
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
     expect(createSchicht).not.toHaveBeenCalled();
   });
 
-  function createSchichtvorlage(overrides = {}) {
+  function createDialogDaten(
+    overrides: Partial<TSchichtBearbeitenDialogDaten> = {},
+  ): TSchichtBearbeitenDialogDaten {
     return {
-      id: 'sv-1',
+      pfad: {
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        filialeId: 'b-1',
+        dienstplanId: '2026-10',
+        versionId: 'v-1',
+      },
+      zeitzone: 'Europe/Berlin',
+      datum: '2026-10-05',
+      mitarbeiter: [createMitarbeiter('m-1', 'Mia'), createMitarbeiter('m-2', 'Max')],
+      modellschicht: {
+        id: 'spaet',
+        dienstplanId: '2026-10',
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        filialeId: 'b-1',
+        bezeichnung: 'Spät',
+        reihenfolge: 1,
+        beginnLokalzeit: '16:30',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+        standardpauseMinuten: 30,
+      },
+      ...overrides,
+    };
+  }
+
+  function createMitarbeiter(id: string, vorname: string): IMitarbeiterEintrag {
+    return {
+      id,
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      aktiv: true,
+      filialIds: ['b-1'],
+      rollen: ['servicekraft'],
+      person: {
+        vorname,
+        nachname: 'Muster',
+        adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
+        kontakt: {},
+      },
+    };
+  }
+
+  function createSchichtEintrag(overrides: Partial<ISchichtEintrag> = {}): ISchichtEintrag {
+    return {
+      id: 's-1',
+      dienstplanId: '2026-10',
+      versionId: 'v-1',
       unternehmerId: 'u-1',
       firmaId: 'f-1',
       filialeId: 'b-1',
-      bezeichnung: 'Spätschicht',
-      beginnLokalzeit: '16:30',
-      endeLokalzeit: '01:00',
-      endetAmFolgetag: true,
-      standardpauseMinuten: 30,
-      aktiv: true,
+      mitarbeiterId: 'm-1',
+      modellschichtId: 'spaet',
+      beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
+      ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
+      pauseMinuten: 30,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
       ...overrides,

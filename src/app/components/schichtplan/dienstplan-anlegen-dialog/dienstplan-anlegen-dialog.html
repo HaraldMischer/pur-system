@@ -1,0 +1,40 @@
+<!-- pur-system/src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.html -->
+
+<h2 mat-dialog-title>Dienstplan anlegen</h2>
+<mat-dialog-content>
+  <form
+    id="dienstplan-anlegen-form"
+    class="pur-form pur-form--flex"
+    [formGroup]="dienstplanForm"
+    (ngSubmit)="createDienstplan()"
+  >
+    <mat-form-field appearance="outline">
+      <mat-label>Schichtmodell</mat-label>
+      <mat-select formControlName="schichtmodellId">
+        @for (bestand of daten.schichtmodelle; track bestand.schichtmodell.id) {
+          <mat-option [value]="bestand.schichtmodell.id">
+            {{ bestand.schichtmodell.bezeichnung }} · {{ bestand.modellschichten.length }} Schichten
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (error() || dienstplanStore.error(); as fehlermeldung) {
+      <p class="pur-form__item pur-form__item--error" role="alert">
+        {{ error() ?? fehlermeldung }}
+      </p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" [disabled]="dienstplanStore.inProgress()" mat-dialog-close>
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="dienstplan-anlegen-form"
+    [disabled]="dienstplanForm.invalid || dienstplanStore.inProgress()"
+  >
+    Anlegen
+  </button>
+</mat-dialog-actions>

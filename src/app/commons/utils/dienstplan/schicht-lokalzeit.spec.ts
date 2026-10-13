@@ -2,7 +2,7 @@
 
 import {
   createSchichtZeitstempel,
-  createSchichtZeitstempelAusVorlage,
+  createSchichtZeitstempelAusLokalzeiten,
   formatSchichtDatum,
   formatSchichtUhrzeit,
 } from './schicht-lokalzeit';
@@ -19,7 +19,7 @@ describe('Schicht-Lokalzeit', () => {
   });
 
   it('should create a shift ending on the following local calendar day', () => {
-    const ergebnis = createSchichtZeitstempelAusVorlage(
+    const ergebnis = createSchichtZeitstempelAusLokalzeiten(
       '2026-10-05',
       {
         beginnLokalzeit: '16:30',

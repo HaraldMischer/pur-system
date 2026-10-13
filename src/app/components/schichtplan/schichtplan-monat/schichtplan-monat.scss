@@ -3,6 +3,7 @@
 .schichtplan-monat {
   display: grid;
   gap: 16px;
+  min-width: 0;
 
   &__header {
     display: flex;
@@ -20,42 +21,66 @@
     font: var(--mat-sys-label-large);
   }
 
-  &__tage {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 12px;
+  &__raster {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+
+    table {
+      width: max-content;
+      min-width: 100%;
+      border-spacing: 8px;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      min-width: 220px;
+      padding: 12px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 10px;
+      background: var(--mat-sys-surface-container-lowest);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    thead th {
+      background: var(--mat-sys-surface-container-low);
+
+      strong,
+      span {
+        display: block;
+      }
+
+      span {
+        margin-top: 4px;
+        color: var(--mat-sys-on-surface-variant);
+        font: var(--mat-sys-body-medium);
+      }
+    }
+
+    td {
+      height: 96px;
+    }
   }
 
-  &__tag {
-    display: grid;
-    align-content: start;
-    gap: 10px;
-    min-width: 0;
-    padding: 16px;
-    border: 1px solid var(--mat-sys-outline-variant);
-    border-radius: 12px;
-    background: var(--mat-sys-surface-container-lowest);
-
-    h3,
-    p {
-      margin: 0;
-    }
-
-    h3 {
-      font: var(--mat-sys-title-medium);
-      text-transform: capitalize;
-    }
-
-    p {
-      color: var(--mat-sys-on-surface-variant);
-    }
+  &__tag-spalte {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 120px !important;
+    width: 120px;
+    background: var(--mat-sys-surface-container-low) !important;
+    font: var(--mat-sys-title-small);
+    text-transform: capitalize;
   }
 
-  &__tag-header {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    justify-content: space-between;
+  thead &__tag-spalte {
+    z-index: 2;
+  }
+
+  &__zelle-anlegen {
+    margin-bottom: 8px;
   }
 
   &__schicht {
@@ -66,10 +91,19 @@
     background: var(--mat-sys-surface-container);
     overflow-wrap: anywhere;
 
+    & + & {
+      margin-top: 8px;
+    }
+
     span {
       color: var(--mat-sys-on-surface-variant);
       font: var(--mat-sys-body-medium);
     }
+  }
+
+  &__nicht-besetzt {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-medium);
   }
 
   &__mitarbeiter-farbe {

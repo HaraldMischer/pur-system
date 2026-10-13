@@ -5,6 +5,7 @@ import { Timestamp } from 'firebase/firestore';
 
 import { IDienstplanVersionDokument } from '../../commons/models/domain/dienstplan';
 import { ISchichtAnlage, ISchichtEintrag } from '../../commons/models/domain/schicht';
+import { ISchichtmodellBestand } from '../../commons/models/domain/schichtmodell';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { DienstplanService } from './dienstplan.service';
 
@@ -15,7 +16,6 @@ describe('DienstplanService', () => {
   const loadDocumentMock = vi.fn();
   const loadCollectionMock = vi.fn();
   const createDocumentIdMock = vi.fn();
-  const createDeleteFieldMock = vi.fn();
   const createServerTimestampMock = vi.fn();
   const updateDocumentsAtomicallyMock = vi.fn();
   const executeDocumentTransactionMock = vi.fn();
@@ -23,7 +23,6 @@ describe('DienstplanService', () => {
     loadDocument: loadDocumentMock,
     loadCollection: loadCollectionMock,
     createDocumentId: createDocumentIdMock,
-    createDeleteField: createDeleteFieldMock,
     createServerTimestamp: createServerTimestampMock,
     updateDocumentsAtomically: updateDocumentsAtomicallyMock,
     executeDocumentTransaction: executeDocumentTransactionMock,
@@ -34,7 +33,6 @@ describe('DienstplanService', () => {
     loadDocumentMock.mockResolvedValue(null);
     loadCollectionMock.mockResolvedValue([]);
     createDocumentIdMock.mockReturnValue('neu-1');
-    createDeleteFieldMock.mockReturnValue('feld-loeschen');
     createServerTimestampMock.mockReturnValue('server-zeitstempel');
     updateDocumentsAtomicallyMock.mockResolvedValue(undefined);
     executeDocumentTransactionMock.mockImplementation(
@@ -63,6 +61,7 @@ describe('DienstplanService', () => {
       dienstplaene: [],
       versionen: [],
       schichten: [],
+      modellschichten: [],
     });
     expect(loadDocumentMock).toHaveBeenCalledWith(
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10',
@@ -83,9 +82,11 @@ describe('DienstplanService', () => {
       }
       return { id: 'v-1', daten: createVersionDokument({ status: 'veroeffentlicht' }) };
     });
-    loadCollectionMock.mockResolvedValue([
-      { id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') },
-    ]);
+    loadCollectionMock.mockImplementation(async (path: string) => {
+      return path.endsWith('/modellschicht')
+        ? [{ id: 'frueh', daten: createModellschichtDaten() }]
+        : [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }];
+    });
     const service = TestBed.inject(DienstplanService);
 
     const bestand = await service.loadDienstplanMonat(monatsPfad, true);
@@ -95,6 +96,9 @@ describe('DienstplanService', () => {
     ]);
     expect(bestand.schichten).toEqual([expect.objectContaining({ id: 's-1', versionId: 'v-1' })]);
     expect(bestand.schichten[0]).not.toHaveProperty('mitarbeiterAnzeigename');
+    expect(bestand.modellschichten).toEqual([
+      expect.objectContaining({ id: 'frueh', dienstplanId: '2026-10' }),
+    ]);
     expect(loadDocumentMock).not.toHaveBeenCalledWith(
       expect.stringContaining('/version/v-2'),
       expect.anything(),
@@ -114,6 +118,9 @@ describe('DienstplanService', () => {
           { id: `${path.includes('2026-10') ? 'v-1' : 'v-2'}`, daten: createVersionDokument() },
         ];
       }
+      if (path.endsWith('/modellschicht')) {
+        return [{ id: 'frueh', daten: createModellschichtDaten() }];
+      }
       return [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }];
     });
     const service = TestBed.inject(DienstplanService);
@@ -126,6 +133,7 @@ describe('DienstplanService', () => {
       '2026-11/v-2',
     ]);
     expect(bestand.schichten).toHaveLength(2);
+    expect(bestand.modellschichten).toHaveLength(2);
     expect(loadCollectionMock).toHaveBeenCalledWith(
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan',
       'networkFirst',
@@ -135,7 +143,12 @@ describe('DienstplanService', () => {
   it('should create an initial monthly plan and draft atomically', async () => {
     const service = TestBed.inject(DienstplanService);
 
-    const ergebnis = await service.createDienstplan(pfad, '2024-02', 'uid-1');
+    const ergebnis = await service.createDienstplan(
+      pfad,
+      '2024-02',
+      createSchichtmodell(),
+      'uid-1',
+    );
 
     expect(ergebnis.dienstplan).toEqual(
       expect.objectContaining({
@@ -143,12 +156,17 @@ describe('DienstplanService', () => {
         zeitraumStart: '2024-02-01',
         zeitraumEnde: '2024-02-29',
         entwurfVersionId: 'neu-1',
+        schichtmodellId: 'modell-1',
+        schichtmodellBezeichnung: 'Sommer',
       }),
     );
     expect(ergebnis.version).toEqual(
       expect.objectContaining({ id: 'neu-1', nummer: 1, revision: 0, status: 'entwurf' }),
     );
     expect(updateDocumentsAtomicallyMock).toHaveBeenCalledOnce();
+    expect(ergebnis.modellschichten).toEqual([
+      expect.objectContaining({ id: 'frueh', dienstplanId: '2024-02' }),
+    ]);
     expect(updateDocumentsAtomicallyMock.mock.calls[0][0]).toEqual([
       expect.objectContaining({
         documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2024-02',
@@ -156,7 +174,44 @@ describe('DienstplanService', () => {
       expect.objectContaining({
         documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2024-02/version/neu-1',
       }),
+      expect.objectContaining({
+        documentPath:
+          'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2024-02/modellschicht/frueh',
+        daten: createModellschichtDaten(),
+      }),
     ]);
+  });
+
+  it('should reject inactive, empty and foreign models before writing', async () => {
+    const service = TestBed.inject(DienstplanService);
+    const schichtmodell = createSchichtmodell();
+
+    await expect(
+      service.createDienstplan(
+        pfad,
+        '2026-10',
+        {
+          ...schichtmodell,
+          schichtmodell: { ...schichtmodell.schichtmodell, aktiv: false },
+        },
+        'uid-1',
+      ),
+    ).rejects.toThrow('Für einen neuen Dienstplan muss das Schichtmodell aktiv sein.');
+    await expect(
+      service.createDienstplan(pfad, '2026-10', { ...schichtmodell, modellschichten: [] }, 'uid-1'),
+    ).rejects.toThrow('Das Schichtmodell enthält keine Schichten.');
+    await expect(
+      service.createDienstplan(
+        pfad,
+        '2026-10',
+        {
+          ...schichtmodell,
+          schichtmodell: { ...schichtmodell.schichtmodell, filialeId: 'b-2' },
+        },
+        'uid-1',
+      ),
+    ).rejects.toThrow('Das Schichtmodell gehört nicht zu dieser Filiale.');
+    expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
   });
 
   it('should create a shift together with the next draft revision', async () => {
@@ -202,13 +257,6 @@ describe('DienstplanService', () => {
     await expect(
       service.updateSchicht(versionsPfad, schicht, 2, createSchichtAnlage(), 'uid-1'),
     ).resolves.toEqual(expect.objectContaining({ versionRevision: 3 }));
-    const aktualisierungsOperationen = executeDocumentTransactionMock.mock.calls[0][1]({
-      id: 'v-1',
-      daten: createVersionDokument(),
-    }).operationen;
-    expect(aktualisierungsOperationen[1].daten).toEqual(
-      expect.objectContaining({ mitarbeiterAnzeigename: 'feld-loeschen' }),
-    );
     await expect(service.deleteSchicht(versionsPfad, schicht, 2, 'uid-1')).resolves.toEqual(
       expect.objectContaining({ versionRevision: 3 }),
     );
@@ -219,6 +267,8 @@ describe('DienstplanService', () => {
       zeitraumStart: '2026-10-01',
       zeitraumEnde: '2026-10-31',
       zeitzone: 'Europe/Berlin',
+      schichtmodellId: 'modell-1',
+      schichtmodellBezeichnung: 'Sommer',
       naechsteVersionsnummer: 2,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
@@ -242,8 +292,7 @@ describe('DienstplanService', () => {
   function createSchichtAnlage(): ISchichtAnlage {
     return {
       mitarbeiterId: 'm-1',
-      schichtvorlageId: 'sv-1',
-      schichtvorlageBezeichnung: 'Frühschicht',
+      modellschichtId: 'frueh',
       beginn: Timestamp.fromDate(new Date('2026-10-05T08:00:00+02:00')),
       ende: Timestamp.fromDate(new Date('2026-10-05T16:00:00+02:00')),
       pauseMinuten: 30,
@@ -266,6 +315,38 @@ describe('DienstplanService', () => {
       id: 's-1',
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
+    };
+  }
+
+  function createModellschichtDaten() {
+    return {
+      bezeichnung: 'Früh',
+      reihenfolge: 0,
+      beginnLokalzeit: '07:00',
+      endeLokalzeit: '12:00',
+      endetAmFolgetag: false,
+      standardpauseMinuten: 0,
+    };
+  }
+
+  function createSchichtmodell(): ISchichtmodellBestand {
+    return {
+      schichtmodell: {
+        ...pfad,
+        id: 'modell-1',
+        bezeichnung: 'Sommer',
+        aktiv: true,
+        erstelltVonUid: 'uid-1',
+        aktualisiertVonUid: 'uid-1',
+      },
+      modellschichten: [
+        {
+          ...pfad,
+          id: 'frueh',
+          schichtmodellId: 'modell-1',
+          ...createModellschichtDaten(),
+        },
+      ],
     };
   }
 });

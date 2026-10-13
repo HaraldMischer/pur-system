@@ -38,8 +38,8 @@ const SCHICHTPLAN_NAVIGATION: INavigationGruppe = {
     },
     {
       typ: 'link',
-      id: 'schichtvorlagen',
-      label: 'Vorlagen',
+      id: 'schichtmodelle',
+      label: 'Modelle',
       icon: 'tune',
       route: '/schichtplan/einstellungen',
       bereich: 'schichtplan',

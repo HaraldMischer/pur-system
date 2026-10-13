@@ -28,6 +28,11 @@ import {
   ISchichtEintrag,
   ISchichtSchreibergebnis,
 } from '../../commons/models/domain/schicht';
+import {
+  IModellschichtMomentaufnahmeDokument,
+  IModellschichtMomentaufnahmeEintrag,
+  ISchichtmodellBestand,
+} from '../../commons/models/domain/schichtmodell';
 import { createDienstplanZeitraum } from '../../commons/utils/dienstplan/dienstplan-zeitraum';
 import { calculateSchichtArbeitszeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
@@ -58,22 +63,26 @@ export class DienstplanService {
       strategie,
     );
     if (!dokument) {
-      return { dienstplaene: [], versionen: [], schichten: [] };
+      return { dienstplaene: [], versionen: [], schichten: [], modellschichten: [] };
     }
 
     const dienstplan = mapDienstplan(pfad, dokument.id, dokument.daten);
     const versionIds = nurVeroeffentlicht
       ? [dienstplan.veroeffentlichteVersionId]
       : [dienstplan.entwurfVersionId, dienstplan.veroeffentlichteVersionId];
-    const versionenMitSchichten = await Promise.all(
-      [...new Set(versionIds.filter((id): id is string => Boolean(id)))].map((versionId) => {
-        return this.loadVersionMitSchichten({ ...pfad, versionId }, strategie);
-      }),
-    );
+    const [versionenMitSchichten, modellschichten] = await Promise.all([
+      Promise.all(
+        [...new Set(versionIds.filter((id): id is string => Boolean(id)))].map((versionId) => {
+          return this.loadVersionMitSchichten({ ...pfad, versionId }, strategie);
+        }),
+      ),
+      this.loadModellschichten(pfad, strategie),
+    ]);
     return {
       dienstplaene: [dienstplan],
       versionen: versionenMitSchichten.flatMap((bestand) => bestand.versionen).sort(sortVersionen),
       schichten: versionenMitSchichten.flatMap((bestand) => bestand.schichten).sort(sortSchichten),
+      modellschichten,
     };
   }
 
@@ -97,34 +106,40 @@ export class DienstplanService {
         return mapDienstplan({ ...pfad, dienstplanId: dokument.id }, dokument.id, dokument.daten);
       })
       .sort((a, b) => a.id.localeCompare(b.id));
-    const versionenMitSchichten = await Promise.all(
+    const bestaende = await Promise.all(
       dienstplaene.map((dienstplan) => {
-        return this.loadAlleVersionenMitSchichten(
-          { ...pfad, dienstplanId: dienstplan.id },
-          strategie,
-        );
+        const dienstplanPfad = { ...pfad, dienstplanId: dienstplan.id };
+        return Promise.all([
+          this.loadAlleVersionenMitSchichten(dienstplanPfad, strategie),
+          this.loadModellschichten(dienstplanPfad, strategie),
+        ]);
       }),
     );
+    const versionenMitSchichten = bestaende.map(([bestand]) => bestand);
     return {
       dienstplaene,
       versionen: versionenMitSchichten.flatMap((bestand) => bestand.versionen).sort(sortVersionen),
       schichten: versionenMitSchichten.flatMap((bestand) => bestand.schichten).sort(sortSchichten),
+      modellschichten: bestaende.flatMap(([, modellschichten]) => modellschichten),
     };
   }
 
   /**
-   * Legt einen Monatsplan und seine erste Entwurfsversion atomar an.
+   * Legt einen Monatsplan, seine erste Entwurfsversion und die Modell-Momentaufnahme atomar an.
    *
    * @param pfad - Vollständiger Filialpfad.
    * @param monat - Monat im Format `YYYY-MM` und Dokument-ID des Dienstplans.
+   * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
    * @param benutzerUid - UID des ändernden Benutzers.
    * @returns Die lokal abbildbaren Einträge des neuen Dienstplans und seiner Version.
    */
   async createDienstplan(
     pfad: IFilialPfad,
     monat: string,
+    schichtmodell: ISchichtmodellBestand,
     benutzerUid: string,
   ): Promise<IDienstplanAnlageErgebnis> {
+    validateSchichtmodell(pfad, schichtmodell);
     const dienstplanPfad: IDienstplanPfad = { ...pfad, dienstplanId: monat };
     const versionId = this.firestoreDbService.createDocumentId(
       FIRESTORE_COLLECTION_PATHS.dienstplanVersionen(dienstplanPfad),
@@ -133,6 +148,8 @@ export class DienstplanService {
     const zeitraum = createDienstplanZeitraum(monat);
     const dienstplanDaten: IDienstplanDokument = {
       ...zeitraum,
+      schichtmodellId: schichtmodell.schichtmodell.id,
+      schichtmodellBezeichnung: schichtmodell.schichtmodell.bezeichnung,
       entwurfVersionId: versionId,
       naechsteVersionsnummer: 2,
       erstelltVonUid: benutzerUid,
@@ -145,6 +162,9 @@ export class DienstplanService {
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
+    const modellschichten = schichtmodell.modellschichten.map((modellschicht) => {
+      return mapModellschichtMomentaufnahme(dienstplanPfad, modellschicht.id, modellschicht);
+    });
     await this.firestoreDbService.updateDocumentsAtomically([
       {
         documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
@@ -157,11 +177,28 @@ export class DienstplanService {
         }),
         daten: { ...versionDaten, erstelltAm: zeitstempel, aktualisiertAm: zeitstempel },
       },
+      ...modellschichten.map((modellschicht) => {
+        return {
+          documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
+            ...dienstplanPfad,
+            modellschichtId: modellschicht.id,
+          }),
+          daten: {
+            bezeichnung: modellschicht.bezeichnung,
+            reihenfolge: modellschicht.reihenfolge,
+            beginnLokalzeit: modellschicht.beginnLokalzeit,
+            endeLokalzeit: modellschicht.endeLokalzeit,
+            endetAmFolgetag: modellschicht.endetAmFolgetag,
+            standardpauseMinuten: modellschicht.standardpauseMinuten,
+          },
+        };
+      }),
     ]);
 
     return {
       dienstplan: mapDienstplan(dienstplanPfad, monat, dienstplanDaten),
       version: mapVersion({ ...dienstplanPfad, versionId }, versionId, versionDaten),
+      modellschichten,
     };
   }
 
@@ -235,7 +272,6 @@ export class DienstplanService {
       benutzerUid,
       {
         ...aktualisierung,
-        mitarbeiterAnzeigename: this.firestoreDbService.createDeleteField(),
         aktualisiertVonUid: benutzerUid,
       },
       aktualisierteSchicht,
@@ -336,6 +372,22 @@ export class DienstplanService {
     });
   }
 
+  private async loadModellschichten(
+    pfad: IDienstplanPfad,
+    strategie: TFirestoreLesestrategie,
+  ): Promise<IModellschichtMomentaufnahmeEintrag[]> {
+    const dokumente =
+      await this.firestoreDbService.loadCollection<IModellschichtMomentaufnahmeDokument>(
+        FIRESTORE_COLLECTION_PATHS.dienstplanModellschichten(pfad),
+        strategie,
+      );
+    return dokumente
+      .map((dokument) => {
+        return mapModellschichtMomentaufnahme(pfad, dokument.id, dokument.daten);
+      })
+      .sort((a, b) => a.reihenfolge - b.reihenfolge || a.id.localeCompare(b.id));
+  }
+
   private writeSchicht(
     pfad: IDienstplanVersionPfad,
     erwarteteRevision: number,
@@ -401,8 +453,7 @@ function mapSchicht(
     ...pfad,
     id,
     mitarbeiterId: daten.mitarbeiterId,
-    schichtvorlageId: daten.schichtvorlageId,
-    schichtvorlageBezeichnung: daten.schichtvorlageBezeichnung,
+    modellschichtId: daten.modellschichtId,
     beginn: daten.beginn,
     ende: daten.ende,
     pauseMinuten: daten.pauseMinuten,
@@ -411,6 +462,31 @@ function mapSchicht(
     ...(daten.erstelltAm ? { erstelltAm: daten.erstelltAm } : {}),
     ...(daten.aktualisiertAm ? { aktualisiertAm: daten.aktualisiertAm } : {}),
   };
+}
+
+function mapModellschichtMomentaufnahme(
+  pfad: IDienstplanPfad,
+  id: string,
+  daten: IModellschichtMomentaufnahmeDokument,
+): IModellschichtMomentaufnahmeEintrag {
+  return { ...daten, ...pfad, id };
+}
+
+function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtmodellBestand): void {
+  const schichtmodell = bestand.schichtmodell;
+  const gleicherPfad =
+    schichtmodell.unternehmerId === pfad.unternehmerId &&
+    schichtmodell.firmaId === pfad.firmaId &&
+    schichtmodell.filialeId === pfad.filialeId;
+  if (!gleicherPfad) {
+    throw new Error('Das Schichtmodell gehört nicht zu dieser Filiale.');
+  }
+  if (!schichtmodell.aktiv) {
+    throw new Error('Für einen neuen Dienstplan muss das Schichtmodell aktiv sein.');
+  }
+  if (bestand.modellschichten.length === 0) {
+    throw new Error('Das Schichtmodell enthält keine Schichten.');
+  }
 }
 
 function getNaechsteRevision(

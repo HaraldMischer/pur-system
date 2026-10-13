@@ -2,54 +2,83 @@
 
 <section class="schichtplan-monat">
   <header class="schichtplan-monat__header">
-    <span class="schichtplan-monat__status">
-      {{ statusBezeichnung() }}
-    </span>
+    <span class="schichtplan-monat__status">{{ statusBezeichnung() }}</span>
     <span>{{ aktiveVersion()?.revision ?? 0 }}. Revision</span>
   </header>
 
-  <div class="schichtplan-monat__tage">
-    @for (tag of tage(); track tag.datum) {
-      <article class="schichtplan-monat__tag">
-        <header class="schichtplan-monat__tag-header">
-          <h3>{{ tag.bezeichnung }}</h3>
-          @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
-            <button
-              matButton
-              type="button"
-              class="schichtplan-monat__tag-anlegen"
-              (click)="schichtAnlegen.emit(tag.datum)"
-            >
-              <mat-icon aria-hidden="true">add</mat-icon>Anlegen
-            </button>
+  <div class="schichtplan-monat__raster" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th class="schichtplan-monat__tag-spalte" scope="col">Tag</th>
+          @for (modellschicht of geordneteModellschichten(); track modellschicht.id) {
+            <th scope="col">
+              <strong>{{ modellschicht.bezeichnung }}</strong>
+              <span>
+                {{ modellschicht.beginnLokalzeit }}–{{ modellschicht.endeLokalzeit }} Uhr
+                @if (modellschicht.endetAmFolgetag) {
+                  (Folgetag)
+                }
+              </span>
+            </th>
           }
-        </header>
-        @for (schicht of tag.schichten; track schicht.id) {
-          <div class="schichtplan-monat__schicht">
-            <strong>
-              @if (getMitarbeiterFarbkennung(schicht.mitarbeiterId); as farbkennung) {
-                <span
-                  class="schichtplan-monat__mitarbeiter-farbe"
-                  [style.background-color]="farbkennung"
-                  aria-hidden="true"
-                ></span>
-              }
-              {{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}
-            </strong>
-            <span>{{ schicht.schichtvorlageBezeichnung }}</span>
-            <span>{{ formatSchichtzeit(schicht) }}</span>
-            <span>Pause: {{ schicht.pauseMinuten }} Min.</span>
-            <span>Arbeitszeit: {{ formatArbeitszeit(schicht) }}</span>
-            @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
-              <button matButton type="button" (click)="schichtBearbeiten.emit(schicht)">
-                Bearbeiten
-              </button>
+        </tr>
+      </thead>
+      <tbody>
+        @for (tag of tage(); track tag.datum) {
+          <tr>
+            <th class="schichtplan-monat__tag-spalte" scope="row">
+              <time [attr.datetime]="tag.datum">{{ tag.bezeichnung }}</time>
+            </th>
+            @for (zelle of tag.zellen; track zelle.modellschicht.id) {
+              <td>
+                @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
+                  <button
+                    matButton
+                    type="button"
+                    class="schichtplan-monat__zelle-anlegen"
+                    [attr.aria-label]="
+                      zelle.modellschicht.bezeichnung + ' am ' + tag.bezeichnung + ' anlegen'
+                    "
+                    (click)="
+                      schichtAnlegen.emit({
+                        datum: tag.datum,
+                        modellschichtId: zelle.modellschicht.id,
+                      })
+                    "
+                  >
+                    <mat-icon aria-hidden="true">add</mat-icon>Anlegen
+                  </button>
+                }
+                @for (schicht of zelle.schichten; track schicht.id) {
+                  <div class="schichtplan-monat__schicht">
+                    <strong>
+                      @if (getMitarbeiterFarbkennung(schicht.mitarbeiterId); as farbkennung) {
+                        <span
+                          class="schichtplan-monat__mitarbeiter-farbe"
+                          [style.background-color]="farbkennung"
+                          aria-hidden="true"
+                        ></span>
+                      }
+                      {{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}
+                    </strong>
+                    <span>{{ formatSchichtzeit(schicht) }}</span>
+                    <span>Pause: {{ schicht.pauseMinuten }} Min.</span>
+                    <span>Arbeitszeit: {{ formatArbeitszeit(schicht) }}</span>
+                    @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
+                      <button matButton type="button" (click)="schichtBearbeiten.emit(schicht)">
+                        Bearbeiten
+                      </button>
+                    }
+                  </div>
+                } @empty {
+                  <span class="schichtplan-monat__nicht-besetzt">Nicht besetzt</span>
+                }
+              </td>
             }
-          </div>
-        } @empty {
-          <p>Keine Schichten</p>
+          </tr>
         }
-      </article>
-    }
+      </tbody>
+    </table>
   </div>
 </section>

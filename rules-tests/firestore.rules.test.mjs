@@ -112,9 +112,13 @@ const andererMitarbeiterPath = `${firmaPath}/mitarbeiter/m-2`;
 const nichtZugeordneteFirmaPath = `${unternehmerPath}/firma/f-2`;
 const nichtZugeordneterMitarbeiterPath = `${nichtZugeordneteFirmaPath}/mitarbeiter/m-3`;
 const nichtZugeordneteFilialePath = `${firmaPath}/filiale/b-2`;
-const schichtvorlagePath = `${filialePath}/schichtvorlage/fruehschicht`;
-const fremdeSchichtvorlagePath = `${nichtZugeordneteFilialePath}/schichtvorlage/fruehschicht`;
+const schichtmodellPath = `${filialePath}/schichtmodell/sommer`;
+const modellschichtPath = `${schichtmodellPath}/modellschicht/frueh`;
+const dienstplanSchichtmodellPath = `${filialePath}/schichtmodell/standard`;
+const dienstplanQuellModellschichtPath = `${dienstplanSchichtmodellPath}/modellschicht/frueh`;
+const fremdesSchichtmodellPath = `${nichtZugeordneteFilialePath}/schichtmodell/sommer`;
 const dienstplanPath = `${filialePath}/dienstplan/2026-10`;
+const dienstplanModellschichtPath = `${dienstplanPath}/modellschicht/frueh`;
 const veroeffentlichteVersionPath = `${dienstplanPath}/version/v1`;
 const entwurfVersionPath = `${dienstplanPath}/version/v2`;
 const archivierteVersionPath = `${dienstplanPath}/version/v0`;
@@ -178,6 +182,15 @@ async function seedProfile(userRole, overrides = {}) {
       erlaubteBereiche: ['dashboard'],
       zugriffe,
     });
+    await setDoc(doc(db, dienstplanSchichtmodellPath), {
+      bezeichnung: 'Standard',
+      aktiv: true,
+      erstelltAm: new Date('2026-01-01T00:00:00.000Z'),
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: new Date('2026-01-01T00:00:00.000Z'),
+      aktualisiertVonUid: 'scoped',
+    });
+    await setDoc(doc(db, dienstplanQuellModellschichtPath), modellschichtDaten());
   });
   return testEnvironment.authenticatedContext('scoped').firestore();
 }
@@ -190,6 +203,8 @@ async function seedDienstplan() {
       zeitraumStart: '2026-10-01',
       zeitraumEnde: '2026-10-31',
       zeitzone: 'Europe/Berlin',
+      schichtmodellId: 'standard',
+      schichtmodellBezeichnung: 'Standard',
       entwurfVersionId: 'v2',
       veroeffentlichteVersionId: 'v1',
       naechsteVersionsnummer: 3,
@@ -231,23 +246,11 @@ async function seedDienstplan() {
       aktualisiertAm: zeitpunkt,
       aktualisiertVonUid: 'scoped',
     });
-    await setDoc(doc(db, schichtvorlagePath), {
-      bezeichnung: 'Frühschicht',
-      beginnLokalzeit: '08:00',
-      endeLokalzeit: '16:30',
-      endetAmFolgetag: false,
-      standardpauseMinuten: 30,
-      aktiv: true,
-      erstelltAm: zeitpunkt,
-      erstelltVonUid: 'scoped',
-      aktualisiertAm: zeitpunkt,
-      aktualisiertVonUid: 'scoped',
-    });
+    await setDoc(doc(db, dienstplanModellschichtPath), modellschichtDaten());
     for (const path of [veroeffentlichteSchichtPath, entwurfSchichtPath]) {
       await setDoc(doc(db, path), {
         mitarbeiterId: 'm-1',
-        schichtvorlageId: 'fruehschicht',
-        schichtvorlageBezeichnung: 'Frühschicht',
+        modellschichtId: 'frueh',
         beginn: new Date('2026-10-05T08:00:00.000Z'),
         ende: new Date('2026-10-05T16:00:00.000Z'),
         pauseMinuten: 30,
@@ -269,6 +272,8 @@ function setInitialenDienstplan(batch, db, basisPfad, monat) {
     zeitraumStart: `${monat}-01`,
     zeitraumEnde: `${monat}-${letzterTag}`,
     zeitzone: 'Europe/Berlin',
+    schichtmodellId: 'standard',
+    schichtmodellBezeichnung: 'Standard',
     entwurfVersionId: 'v1',
     naechsteVersionsnummer: 2,
     erstelltAm: serverTimestamp(),
@@ -285,15 +290,12 @@ function setInitialenDienstplan(batch, db, basisPfad, monat) {
     aktualisiertAm: serverTimestamp(),
     aktualisiertVonUid: 'scoped',
   });
+  batch.set(doc(db, `${basisPfad}/modellschicht/frueh`), modellschichtDaten());
 }
 
-function schichtvorlageDaten(overrides = {}) {
+function schichtmodellDaten(overrides = {}) {
   return {
-    bezeichnung: 'Frühschicht',
-    beginnLokalzeit: '08:00',
-    endeLokalzeit: '16:30',
-    endetAmFolgetag: false,
-    standardpauseMinuten: 30,
+    bezeichnung: 'Sommer',
     aktiv: true,
     erstelltAm: serverTimestamp(),
     erstelltVonUid: 'scoped',
@@ -303,66 +305,64 @@ function schichtvorlageDaten(overrides = {}) {
   };
 }
 
-for (const role of ['master', 'office', 'filiale']) {
-  test(`${role} manages shift templates in an allowed branch`, async () => {
-    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
-    const vorlage = doc(db, schichtvorlagePath);
+function modellschichtDaten(overrides = {}) {
+  return {
+    bezeichnung: 'Frühschicht',
+    reihenfolge: 0,
+    beginnLokalzeit: '07:00',
+    endeLokalzeit: '12:00',
+    endetAmFolgetag: false,
+    standardpauseMinuten: 0,
+    ...overrides,
+  };
+}
 
-    await assertSucceeds(setDoc(vorlage, schichtvorlageDaten()));
-    await assertSucceeds(getDoc(vorlage));
+for (const role of ['master', 'office', 'filiale']) {
+  test(`${role} manages shift models and ordered model shifts in an allowed branch`, async () => {
+    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
+    const modell = doc(db, schichtmodellPath);
+    const schicht = doc(db, modellschichtPath);
+
+    await assertSucceeds(setDoc(modell, schichtmodellDaten()));
+    await assertSucceeds(setDoc(schicht, modellschichtDaten()));
+    await assertSucceeds(getDoc(modell));
+    await assertSucceeds(getDoc(schicht));
     await assertSucceeds(
-      updateDoc(vorlage, {
-        bezeichnung: 'Frühschicht Werktag',
+      updateDoc(modell, {
         aktiv: false,
         aktualisiertAm: serverTimestamp(),
         aktualisiertVonUid: 'scoped',
       }),
     );
-    await assertFails(deleteDoc(vorlage));
+    await assertSucceeds(updateDoc(schicht, { reihenfolge: 1 }));
+    await assertSucceeds(deleteDoc(schicht));
+    await assertFails(deleteDoc(modell));
   });
 }
 
-test('office cannot access shift templates in a foreign branch', async () => {
-  const db = await seedProfile('office');
+test('shift models reject foreign branches, employee accounts and invalid model shifts', async () => {
+  const officeDb = await seedProfile('office');
 
-  await assertFails(getDoc(doc(db, fremdeSchichtvorlagePath)));
-  await assertFails(setDoc(doc(db, fremdeSchichtvorlagePath), schichtvorlageDaten()));
-});
+  await assertFails(getDoc(doc(officeDb, fremdesSchichtmodellPath)));
+  await assertFails(setDoc(doc(officeDb, fremdesSchichtmodellPath), schichtmodellDaten()));
+  await assertSucceeds(setDoc(doc(officeDb, schichtmodellPath), schichtmodellDaten()));
+  await assertFails(
+    setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ reihenfolge: -1 })),
+  );
+  await assertFails(
+    setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ beginnLokalzeit: '7:00' })),
+  );
+  await assertFails(
+    setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ standardpauseMinuten: 15 })),
+  );
 
-test('employee accounts cannot read or write shift templates', async () => {
-  const db = await seedProfile('mitarbeiter', {
+  const mitarbeiterDb = await seedProfile('mitarbeiter', {
     erlaubteBereiche: ['dashboard', 'schichtplan'],
     zugriffe: { 'u-1': { 'f-1': [] } },
     firmaMitarbeiterId: 'm-1',
   });
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), schichtvorlagePath), {
-      ...schichtvorlageDaten(),
-      erstelltAm: new Date('2026-10-01T08:00:00.000Z'),
-      aktualisiertAm: new Date('2026-10-01T08:00:00.000Z'),
-    });
-  });
-
-  await assertFails(getDoc(doc(db, schichtvorlagePath)));
-  await assertFails(
-    setDoc(doc(db, `${filialePath}/schichtvorlage/spaetschicht`), schichtvorlageDaten()),
-  );
-});
-
-test('shift templates reject invalid fields and protected metadata changes', async () => {
-  const db = await seedProfile('office');
-  const vorlage = doc(db, schichtvorlagePath);
-
-  await assertFails(setDoc(vorlage, schichtvorlageDaten({ beginnLokalzeit: '8:00' })));
-  await assertFails(setDoc(vorlage, schichtvorlageDaten({ standardpauseMinuten: 1440 })));
-  await assertSucceeds(setDoc(vorlage, schichtvorlageDaten()));
-  await assertFails(
-    updateDoc(vorlage, {
-      erstelltVonUid: 'other',
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
+  await assertFails(getDoc(doc(mitarbeiterDb, schichtmodellPath)));
+  await assertFails(setDoc(doc(mitarbeiterDb, schichtmodellPath), schichtmodellDaten()));
 });
 
 for (const role of ['master', 'office', 'filiale']) {
@@ -377,6 +377,7 @@ for (const role of ['master', 'office', 'filiale']) {
       entwurfVersionPath,
       veroeffentlichteSchichtPath,
       entwurfSchichtPath,
+      dienstplanModellschichtPath,
     ]) {
       await assertSucceeds(getDoc(doc(db, path)));
     }
@@ -390,6 +391,40 @@ for (const role of ['master', 'office', 'filiale']) {
     await assertSucceeds(batch.commit());
   });
 }
+
+test('office cannot create a service plan with an inactive or foreign model snapshot', async () => {
+  const db = await seedProfile('office');
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await updateDoc(doc(context.firestore(), dienstplanSchichtmodellPath), { aktiv: false });
+  });
+  let batch = writeBatch(db);
+  setInitialenDienstplan(batch, db, `${filialePath}/dienstplan/2026-11`, '2026-11');
+  await assertFails(batch.commit());
+
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await updateDoc(doc(context.firestore(), dienstplanSchichtmodellPath), { aktiv: true });
+  });
+  batch = writeBatch(db);
+  setInitialenDienstplan(batch, db, `${filialePath}/dienstplan/2026-11`, '2026-11');
+  batch.update(doc(db, `${filialePath}/dienstplan/2026-11`), {
+    schichtmodellId: 'fremd',
+  });
+  await assertFails(batch.commit());
+});
+
+test('model snapshots of an existing service plan are immutable', async () => {
+  const db = await seedProfile('office');
+  await seedDienstplan();
+
+  await assertFails(updateDoc(doc(db, dienstplanModellschichtPath), { bezeichnung: 'Geändert' }));
+  await assertFails(deleteDoc(doc(db, dienstplanModellschichtPath)));
+  await assertFails(
+    setDoc(doc(db, `${dienstplanPath}/modellschicht/spaet`), {
+      ...modellschichtDaten(),
+      bezeichnung: 'Spät',
+    }),
+  );
+});
 
 test('office cannot create service plans for malformed months or foreign branches', async () => {
   const db = await seedProfile('office');
@@ -455,8 +490,7 @@ test('planner changes a draft shift only with the matching version revision', as
   await assertFails(
     setDoc(neueSchicht, {
       mitarbeiterId: 'm-1',
-      schichtvorlageId: 'fruehschicht',
-      schichtvorlageBezeichnung: 'Frühschicht',
+      modellschichtId: 'frueh',
       beginn: new Date('2026-10-06T08:00:00.000Z'),
       ende: new Date('2026-10-06T16:00:00.000Z'),
       pauseMinuten: 30,
@@ -475,8 +509,7 @@ test('planner changes a draft shift only with the matching version revision', as
   });
   batch.set(neueSchicht, {
     mitarbeiterId: 'm-1',
-    schichtvorlageId: 'fruehschicht',
-    schichtvorlageBezeichnung: 'Frühschicht',
+    modellschichtId: 'frueh',
     beginn: new Date('2026-10-06T08:00:00.000Z'),
     ende: new Date('2026-10-06T16:00:00.000Z'),
     pauseMinuten: 30,
@@ -496,6 +529,7 @@ test('planner changes a draft shift only with the matching version revision', as
   legacyBatch.set(doc(db, `${entwurfVersionPath}/schicht/legacy`), {
     mitarbeiterId: 'm-1',
     mitarbeiterAnzeigename: 'Mia Muster',
+    modellschichtId: 'frueh',
     schichtvorlageId: 'fruehschicht',
     schichtvorlageBezeichnung: 'Frühschicht',
     beginn: new Date('2026-10-07T08:00:00.000Z'),
@@ -522,8 +556,7 @@ test('planner changes a draft shift only with the matching version revision', as
   });
   ungueltigerBatch.set(doc(db, `${entwurfVersionPath}/schicht/ungueltig`), {
     mitarbeiterId: 'm-2',
-    schichtvorlageId: 'fruehschicht',
-    schichtvorlageBezeichnung: 'Frühschicht',
+    modellschichtId: 'frueh',
     beginn: new Date('2026-10-07T08:00:00.000Z'),
     ende: new Date('2026-10-07T16:00:00.000Z'),
     pauseMinuten: 30,
@@ -535,15 +568,26 @@ test('planner changes a draft shift only with the matching version revision', as
   await assertFails(ungueltigerBatch.commit());
 });
 
-test('planner keeps a stored template snapshot but cannot select an inactive template anew', async () => {
+test('planner deletes a draft shift only with the matching version revision', async () => {
   const db = await seedProfile('office');
   await seedDienstplan();
-  await updateDoc(doc(db, schichtvorlagePath), {
-    bezeichnung: 'Geänderte Frühschicht',
-    aktiv: false,
+
+  await assertFails(deleteDoc(doc(db, entwurfSchichtPath)));
+
+  const batch = writeBatch(db);
+  batch.update(doc(db, entwurfVersionPath), {
+    revision: 1,
     aktualisiertAm: serverTimestamp(),
     aktualisiertVonUid: 'scoped',
   });
+  batch.delete(doc(db, entwurfSchichtPath));
+
+  await assertSucceeds(batch.commit());
+});
+
+test('planner changes only the employee of an existing model-shift assignment', async () => {
+  const db = await seedProfile('office');
+  await seedDienstplan();
 
   let batch = writeBatch(db);
   batch.update(doc(db, entwurfVersionPath), {
@@ -552,7 +596,7 @@ test('planner keeps a stored template snapshot but cannot select an inactive tem
     aktualisiertVonUid: 'scoped',
   });
   batch.update(doc(db, entwurfSchichtPath), {
-    pauseMinuten: 45,
+    mitarbeiterId: 'm-2',
     aktualisiertAm: serverTimestamp(),
     aktualisiertVonUid: 'scoped',
   });
@@ -564,10 +608,22 @@ test('planner keeps a stored template snapshot but cannot select an inactive tem
     aktualisiertAm: serverTimestamp(),
     aktualisiertVonUid: 'scoped',
   });
-  batch.set(doc(db, `${entwurfVersionPath}/schicht/neu-inaktiv`), {
+  batch.update(doc(db, entwurfSchichtPath), {
+    pauseMinuten: 45,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  await assertFails(batch.commit());
+
+  batch = writeBatch(db);
+  batch.update(doc(db, entwurfVersionPath), {
+    revision: 2,
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.set(doc(db, `${entwurfVersionPath}/schicht/ungueltige-modellschicht`), {
     mitarbeiterId: 'm-1',
-    schichtvorlageId: 'fruehschicht',
-    schichtvorlageBezeichnung: 'Frühschicht',
+    modellschichtId: 'nicht-vorhanden',
     beginn: new Date('2026-10-08T08:00:00.000Z'),
     ende: new Date('2026-10-08T16:00:00.000Z'),
     pauseMinuten: 30,

@@ -66,11 +66,11 @@ export const routes: Routes = [
       },
       {
         path: 'einstellungen',
-        title: 'Schichtvorlagen',
+        title: 'Schichtmodelle',
         canActivate: [dienstplanPlanungGuard],
         loadComponent: () =>
-          import('./pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page').then(
-            (m) => m.SchichtvorlagenPage,
+          import('./pages/schichtplan/schichtmodelle-page/schichtmodelle-page').then(
+            (m) => m.SchichtmodellePage,
           ),
       },
     ],

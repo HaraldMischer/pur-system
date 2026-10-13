@@ -20,6 +20,7 @@ import {
   ISchichtAnlage,
   ISchichtEintrag,
 } from '../../commons/models/domain/schicht';
+import { ISchichtmodellBestand } from '../../commons/models/domain/schichtmodell';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { BenutzerStore } from '../app/benutzer.store';
 import { StammdatenStore } from '../app/stammdaten.store';
@@ -75,6 +76,7 @@ function createLeerenKontext(pfad: IFilialPfad): TDienstplanKontextBestand {
     dienstplaene: [],
     versionen: [],
     schichten: [],
+    modellschichten: [],
     monatsmodi: {},
     vollstaendigGeladen: false,
     download: false,
@@ -223,21 +225,33 @@ export const DienstplanStore = signalStore(
        *
        * @param pfad - Vollständiger Filialpfad.
        * @param monat - Monat im Format `YYYY-MM`.
+       * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
        */
-      async function createDienstplan(pfad: IFilialPfad, monat: string): Promise<void> {
+      async function createDienstplan(
+        pfad: IFilialPfad,
+        monat: string,
+        schichtmodell: ISchichtmodellBestand,
+      ): Promise<void> {
         const kontext = requireSchreibkontext(pfad, monat, false);
         if (kontext.dienstplaene.some((dienstplan) => dienstplan.id === monat)) {
           throw new Error('Für diesen Monat ist bereits ein Dienstplan vorhanden.');
         }
+        validateSchichtmodell(pfad, schichtmodell);
         const benutzerUid = requireBenutzerUid();
         await executeWrite(async () => {
-          const ergebnis = await dienstplanService.createDienstplan(pfad, monat, benutzerUid);
+          const ergebnis = await dienstplanService.createDienstplan(
+            pfad,
+            monat,
+            schichtmodell,
+            benutzerUid,
+          );
           setKontext(pfad, {
             ...kontext,
             dienstplaene: [...kontext.dienstplaene, ergebnis.dienstplan].sort((a, b) => {
               return a.id.localeCompare(b.id);
             }),
             versionen: [...kontext.versionen, ergebnis.version].sort(sortVersionen),
+            modellschichten: [...kontext.modellschichten, ...ergebnis.modellschichten],
             monatsmodi: { ...kontext.monatsmodi, [monat]: 'vollstaendig' },
           });
         });
@@ -652,7 +666,34 @@ function mergeMonatBestand(
       ...kontext.schichten.filter((schicht) => !bisherigeVersionIds.has(schicht.versionId)),
       ...bestand.schichten,
     ].sort(sortSchichten),
+    modellschichten: [
+      ...kontext.modellschichten.filter((modellschicht) => modellschicht.dienstplanId !== monat),
+      ...bestand.modellschichten,
+    ].sort((a, b) => {
+      return (
+        a.dienstplanId.localeCompare(b.dienstplanId) ||
+        a.reihenfolge - b.reihenfolge ||
+        a.id.localeCompare(b.id)
+      );
+    }),
   };
+}
+
+function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtmodellBestand): void {
+  const schichtmodell = bestand.schichtmodell;
+  if (
+    schichtmodell.unternehmerId !== pfad.unternehmerId ||
+    schichtmodell.firmaId !== pfad.firmaId ||
+    schichtmodell.filialeId !== pfad.filialeId
+  ) {
+    throw new Error('Das Schichtmodell gehört nicht zu dieser Filiale.');
+  }
+  if (!schichtmodell.aktiv) {
+    throw new Error('Für einen neuen Dienstplan muss das Schichtmodell aktiv sein.');
+  }
+  if (bestand.modellschichten.length === 0) {
+    throw new Error('Das Schichtmodell enthält keine Schichten.');
+  }
 }
 
 function updateVersionRevision(

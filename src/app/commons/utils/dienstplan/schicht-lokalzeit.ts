@@ -2,7 +2,11 @@
 
 import { Timestamp } from 'firebase/firestore';
 
-import { ISchichtvorlageAnlage } from '../../models/domain/schichtvorlage';
+type TSchichtLokalzeiten = {
+  readonly beginnLokalzeit: string;
+  readonly endeLokalzeit: string;
+  readonly endetAmFolgetag: boolean;
+};
 
 export interface ISchichtZeitstempel {
   readonly beginn: Timestamp;
@@ -10,22 +14,22 @@ export interface ISchichtZeitstempel {
 }
 
 /**
- * Erzeugt die absoluten Zeitpunkte einer Schicht aus Datum und Vorlagenzeiten.
+ * Erzeugt absolute Zeitpunkte aus einem Datum und lokalen Schichtzeiten.
  *
  * @param datum - Lokales Schichtdatum im Format `YYYY-MM-DD`.
- * @param vorlage - Beginn, Ende und Folgetagsangabe der Schichtvorlage.
+ * @param lokalzeiten - Beginn, Ende und Folgetagsangabe der Modellschicht.
  * @param zeitzone - IANA-Zeitzone des Dienstplans.
  * @returns Absolute Zeitstempel für Beginn und Ende.
  */
-export function createSchichtZeitstempelAusVorlage(
+export function createSchichtZeitstempelAusLokalzeiten(
   datum: string,
-  vorlage: Pick<ISchichtvorlageAnlage, 'beginnLokalzeit' | 'endeLokalzeit' | 'endetAmFolgetag'>,
+  lokalzeiten: TSchichtLokalzeiten,
   zeitzone: string,
 ): ISchichtZeitstempel {
-  const endeDatum = vorlage.endetAmFolgetag ? addKalendertag(datum) : datum;
+  const endeDatum = lokalzeiten.endetAmFolgetag ? addKalendertag(datum) : datum;
   return {
-    beginn: createSchichtZeitstempel(datum, vorlage.beginnLokalzeit, zeitzone),
-    ende: createSchichtZeitstempel(endeDatum, vorlage.endeLokalzeit, zeitzone),
+    beginn: createSchichtZeitstempel(datum, lokalzeiten.beginnLokalzeit, zeitzone),
+    ende: createSchichtZeitstempel(endeDatum, lokalzeiten.endeLokalzeit, zeitzone),
   };
 }
 

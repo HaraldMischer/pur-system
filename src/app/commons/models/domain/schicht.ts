@@ -4,23 +4,18 @@ import { Timestamp } from 'firebase/firestore';
 
 // ===== Anwendungs-Typen ====================
 
-export interface ISchichtAnlage {
-  mitarbeiterId: string;
-  schichtvorlageId: string;
-  schichtvorlageBezeichnung: string;
+export interface ISchichtZeitdaten {
   beginn: Timestamp;
   ende: Timestamp;
   pauseMinuten: number;
 }
 
-export interface ISchichtAktualisierung {
+export interface ISchichtAnlage extends ISchichtZeitdaten {
   mitarbeiterId: string;
-  schichtvorlageId: string;
-  schichtvorlageBezeichnung: string;
-  beginn: Timestamp;
-  ende: Timestamp;
-  pauseMinuten: number;
+  modellschichtId: string;
 }
+
+export interface ISchichtAktualisierung extends ISchichtAnlage {}
 
 export interface ISchichtEintrag extends ISchichtDokument {
   id: string;

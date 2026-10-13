@@ -2,7 +2,11 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { ISchichtPfad, ISchichtvorlagePfad } from '../models/app/firestore-pfad.types';
+import type {
+  IDienstplanModellschichtPfad,
+  IModellschichtPfad,
+  ISchichtPfad,
+} from '../models/app/firestore-pfad.types';
 import type { IPurEmployeePfad } from '../models/legacy/pur-firestore-pfad.types';
 import { FIRESTORE_COLLECTION_PATHS, FIRESTORE_DOCUMENT_PATHS } from './firebase.constants';
 
@@ -73,19 +77,39 @@ describe('Firebase-Konstanten', () => {
     );
   });
 
-  it('bildet die Schichtvorlagenpfade innerhalb einer Filiale', () => {
-    const pfad: ISchichtvorlagePfad = {
+  it('bildet die Schichtmodellpfade und die Dienstplan-Momentaufnahme', () => {
+    const modellschichtPfad: IModellschichtPfad = {
       unternehmerId: 'unternehmer-1',
       firmaId: 'firma-1',
       filialeId: 'filiale-1',
-      schichtvorlageId: 'fruehschicht',
+      schichtmodellId: 'sommer',
+      modellschichtId: 'frueh',
+    };
+    const momentaufnahmePfad: IDienstplanModellschichtPfad = {
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialeId: 'filiale-1',
+      dienstplanId: '2026-10',
+      modellschichtId: 'frueh',
     };
 
-    expect(FIRESTORE_COLLECTION_PATHS.schichtvorlagen(pfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtvorlage',
+    expect(FIRESTORE_COLLECTION_PATHS.schichtmodelle(modellschichtPfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtmodell',
     );
-    expect(FIRESTORE_DOCUMENT_PATHS.schichtvorlage(pfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtvorlage/fruehschicht',
+    expect(FIRESTORE_DOCUMENT_PATHS.schichtmodell(modellschichtPfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtmodell/sommer',
+    );
+    expect(FIRESTORE_COLLECTION_PATHS.modellschichten(modellschichtPfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtmodell/sommer/modellschicht',
+    );
+    expect(FIRESTORE_DOCUMENT_PATHS.modellschicht(modellschichtPfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtmodell/sommer/modellschicht/frueh',
+    );
+    expect(FIRESTORE_COLLECTION_PATHS.dienstplanModellschichten(momentaufnahmePfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/modellschicht',
+    );
+    expect(FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht(momentaufnahmePfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/modellschicht/frueh',
     );
   });
 });

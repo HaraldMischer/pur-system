@@ -42,7 +42,7 @@ describe('app routes', () => {
     expect(planungRoute?.title).toBe('Dienstplan bearbeiten');
     expect(planungRoute?.canActivate).toEqual([dienstplanPlanungGuard]);
     expect(planungRoute?.loadComponent).toBeDefined();
-    expect(einstellungenRoute?.title).toBe('Schichtvorlagen');
+    expect(einstellungenRoute?.title).toBe('Schichtmodelle');
     expect(einstellungenRoute?.canActivate).toEqual([dienstplanPlanungGuard]);
     expect(einstellungenRoute?.loadComponent).toBeDefined();
   });

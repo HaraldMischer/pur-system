@@ -10,11 +10,22 @@ import {
 } from '../../../commons/models/domain/dienstplan';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
+import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
+
+export type TSchichtplanRasterauswahl = {
+  readonly datum: string;
+  readonly modellschichtId: string;
+};
+
+type TSchichtplanZelle = {
+  readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
+  readonly schichten: readonly ISchichtEintrag[];
+};
 
 type TSchichtplanTag = {
   readonly datum: string;
   readonly bezeichnung: string;
-  readonly schichten: readonly ISchichtEintrag[];
+  readonly zellen: readonly TSchichtplanZelle[];
 };
 
 @Component({
@@ -30,9 +41,10 @@ export class SchichtplanMonat {
   readonly dienstplan = input.required<IDienstplanEintrag>();
   readonly versionen = input.required<readonly IDienstplanVersionEintrag[]>();
   readonly schichten = input.required<readonly ISchichtEintrag[]>();
+  readonly modellschichten = input.required<readonly IModellschichtMomentaufnahmeEintrag[]>();
   readonly mitarbeiter = input<readonly IMitarbeiterEintrag[]>([]);
   readonly darfSchreiben = input(false);
-  readonly schichtAnlegen = output<string>();
+  readonly schichtAnlegen = output<TSchichtplanRasterauswahl>();
   readonly schichtBearbeiten = output<ISchichtEintrag>();
 
   // ===== Öffentliche Ableitungen ==============
@@ -53,6 +65,12 @@ export class SchichtplanMonat {
     if (status === 'archiviert') return 'Archiviert';
     return 'Kein Stand';
   });
+  readonly geordneteModellschichten = computed(() => {
+    const dienstplanId = this.dienstplan().id;
+    return this.modellschichten()
+      .filter((modellschicht) => modellschicht.dienstplanId === dienstplanId)
+      .sort((a, b) => a.reihenfolge - b.reihenfolge || a.id.localeCompare(b.id));
+  });
   readonly mitarbeiterNachId = computed(() => {
     return new Map(this.mitarbeiter().map((mitarbeiter) => [mitarbeiter.id, mitarbeiter]));
   });
@@ -66,6 +84,7 @@ export class SchichtplanMonat {
       dienstplan.zeitraumStart,
       dienstplan.zeitraumEnde,
       dienstplan.zeitzone,
+      this.geordneteModellschichten(),
       schichten,
     );
   });
@@ -133,12 +152,14 @@ function createTage(
   zeitraumStart: string,
   zeitraumEnde: string,
   zeitzone: string,
+  modellschichten: readonly IModellschichtMomentaufnahmeEintrag[],
   schichten: readonly ISchichtEintrag[],
 ): TSchichtplanTag[] {
-  const schichtenNachDatum = new Map<string, ISchichtEintrag[]>();
+  const schichtenNachZelle = new Map<string, ISchichtEintrag[]>();
   for (const schicht of schichten) {
     const datum = formatIsoDatum(schicht.beginn.toDate(), zeitzone);
-    schichtenNachDatum.set(datum, [...(schichtenNachDatum.get(datum) ?? []), schicht]);
+    const schluessel = getZellenschluessel(datum, schicht.modellschichtId);
+    schichtenNachZelle.set(schluessel, [...(schichtenNachZelle.get(schluessel) ?? []), schicht]);
   }
 
   const tage: TSchichtplanTag[] = [];
@@ -150,17 +171,26 @@ function createTage(
       datum: isoDatum,
       bezeichnung: new Intl.DateTimeFormat('de-DE', {
         timeZone: 'UTC',
-        weekday: 'long',
+        weekday: 'short',
         day: '2-digit',
         month: '2-digit',
       }).format(datum),
-      schichten: (schichtenNachDatum.get(isoDatum) ?? []).sort((a, b) => {
-        return a.beginn.toMillis() - b.beginn.toMillis();
+      zellen: modellschichten.map((modellschicht) => {
+        return {
+          modellschicht,
+          schichten: (schichtenNachZelle.get(getZellenschluessel(isoDatum, modellschicht.id)) ?? [])
+            .slice()
+            .sort((a, b) => a.id.localeCompare(b.id)),
+        };
       }),
     });
     datum.setUTCDate(datum.getUTCDate() + 1);
   }
   return tage;
+}
+
+function getZellenschluessel(datum: string, modellschichtId: string): string {
+  return JSON.stringify([datum, modellschichtId]);
 }
 
 function formatIsoDatum(datum: Date, zeitzone: string): string {

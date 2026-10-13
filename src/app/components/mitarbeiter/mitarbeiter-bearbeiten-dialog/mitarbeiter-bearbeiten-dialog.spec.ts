@@ -8,6 +8,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { IBenutzerProfilDokument } from '../../../commons/models/domain/benutzer';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { EGender } from '../../../commons/models/domain/person';
+import { FilialeService } from '../../../services/domain/filiale.service';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { MitarbeiterBearbeitenDialog } from './mitarbeiter-bearbeiten-dialog';
@@ -53,6 +54,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
   const error = signal<string | null>(null);
   const benutzerProfil = signal<IBenutzerProfilDokument | null>(profil);
   let aktuelleDialogDaten: typeof dialogDaten;
+  let loadFilialeEintragMock: ReturnType<typeof vi.fn>;
   let updateMitarbeiterMock: ReturnType<typeof vi.fn>;
   let dialogRefMock: { close: ReturnType<typeof vi.fn>; disableClose: boolean };
 
@@ -61,6 +63,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
     error.set(null);
     benutzerProfil.set(profil);
     aktuelleDialogDaten = dialogDaten;
+    loadFilialeEintragMock = vi.fn().mockRejectedValue({ code: 'permission-denied' });
     updateMitarbeiterMock = vi.fn().mockResolvedValue(undefined);
     dialogRefMock = { close: vi.fn(), disableClose: false };
 
@@ -70,6 +73,10 @@ describe('MitarbeiterBearbeitenDialog', () => {
         { provide: MAT_DIALOG_DATA, useFactory: () => aktuelleDialogDaten },
         { provide: MatDialogRef, useValue: dialogRefMock },
         { provide: BenutzerStore, useValue: { benutzerProfil } },
+        {
+          provide: FilialeService,
+          useValue: { loadFilialeEintrag: loadFilialeEintragMock },
+        },
         {
           provide: MitarbeiterStore,
           useValue: { inProgress, error, updateMitarbeiter: updateMitarbeiterMock },
@@ -158,12 +165,60 @@ describe('MitarbeiterBearbeitenDialog', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('2 Filialen zugeordnet');
   });
 
+  it('should remove a confirmed orphaned branch assignment only with the submitted update', async () => {
+    benutzerProfil.set({ ...profil, userRole: 'office' });
+    loadFilialeEintragMock.mockResolvedValue(null);
+    const fixture = TestBed.createComponent(MitarbeiterBearbeitenDialog);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const entfernen = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'mat-hint button',
+    );
+    expect(entfernen?.textContent).toContain('1 unbekannte Zuordnung(en) entfernen');
+
+    entfernen?.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.hatAenderungen()).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      '1 unbekannte Zuordnung(en) werden beim Speichern entfernt.',
+    );
+    expect(updateMitarbeiterMock).not.toHaveBeenCalled();
+
+    await fixture.componentInstance.onSubmit();
+
+    expect(updateMitarbeiterMock).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      'm-1',
+      expect.objectContaining({ filialIds: ['b-1'] }),
+    );
+  });
+
+  it('should preserve an existing branch assignment outside the current selection', async () => {
+    benutzerProfil.set({ ...profil, userRole: 'office' });
+    loadFilialeEintragMock.mockResolvedValue({ id: 'b-3', anzeigename: 'Filiale 3' });
+    const fixture = TestBed.createComponent(MitarbeiterBearbeitenDialog);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('mat-hint button'),
+    ).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      '1 weitere Zuordnung(en) bleiben erhalten.',
+    );
+  });
+
   it('should preserve inaccessible branch assignments while updating editable data', async () => {
     const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
     component.mitarbeiterForm.patchValue({
       person: { vorname: ' Mia Neu ' },
       rollen: ['administrator'],
-      filialIds: [],
+      filialIds: ['b-1'],
       aktiv: false,
     });
 
@@ -239,10 +294,10 @@ describe('MitarbeiterBearbeitenDialog', () => {
     );
   });
 
-  it('should reject removing the last branch assignment', async () => {
+  it('should require a selectable branch despite an inaccessible assignment', async () => {
     aktuelleDialogDaten = {
       ...dialogDaten,
-      mitarbeiter: { ...mitarbeiter, filialIds: ['b-1'] },
+      mitarbeiter: { ...mitarbeiter, filialIds: ['b-1', 'b-3'] },
     };
     const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
     component.mitarbeiterForm.controls.filialIds.setValue([]);

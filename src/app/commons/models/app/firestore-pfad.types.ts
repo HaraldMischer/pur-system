@@ -12,12 +12,20 @@ export interface IFilialPfad extends IFirmaPfad {
   filialeId: string;
 }
 
-export interface ISchichtvorlagePfad extends IFilialPfad {
-  schichtvorlageId: string;
+export interface ISchichtmodellPfad extends IFilialPfad {
+  schichtmodellId: string;
+}
+
+export interface IModellschichtPfad extends ISchichtmodellPfad {
+  modellschichtId: string;
 }
 
 export interface IDienstplanPfad extends IFilialPfad {
   dienstplanId: string;
+}
+
+export interface IDienstplanModellschichtPfad extends IDienstplanPfad {
+  modellschichtId: string;
 }
 
 export interface IDienstplanVersionPfad extends IDienstplanPfad {
