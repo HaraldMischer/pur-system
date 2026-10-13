@@ -210,8 +210,11 @@
   `safe-area-inset-bottom` relevant.
 - Safe-Area-Werte werden mit dem regulären Abstand per `calc()` kombiniert.
 - Damit Safe-Area-Werte auf iOS greifen, verwendet der Viewport-Meta-Tag `viewport-fit=cover`.
-- Wiederverwendbare CSS-Klassen folgen BEM: `block__element` für Elemente und `block__element--modifier` für Varianten oder
-  Zustände. Zusammengesetzte Elementnamen verwenden einfache Bindestriche.
+- Globale, wiederverwendbare CSS-Klassen verwenden den Präfix `pur-` und folgen BEM: `block__element` für Elemente und
+  `block__element--modifier` für Varianten oder Zustände. Zusammengesetzte Elementnamen verwenden einfache Bindestriche.
+- Lokale, durch Angulars Style-Kapselung begrenzte Helferklassen müssen nicht nach BEM benannt werden. Sie erhalten kurze
+  fachliche Namen und enthalten keine vermeintlich global wiederverwendbaren Layoutregeln.
+- Wird eine lokale Helferklasse später wiederverwendet, wird sie als globale `pur-*`-Klasse nach BEM überführt.
 - Formulargruppen verwenden `pur-form__group`; ihre Überschriften verwenden `pur-form__group-titel` (in SCSS unter `&__group` als
   `&-titel`). `titel` ist ein eigenes Element, kein Modifier.
 - Formulargruppen werden ohne `fieldset` und `legend` aufgebaut: `div`-Gruppen mit sichtbaren `h2`-Überschriften mit

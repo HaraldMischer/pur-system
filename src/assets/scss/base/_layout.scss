@@ -6,6 +6,8 @@
   display: grid;
   gap: 24px;
   width: 100%;
+  container-type: inline-size;
+  container-name: pur-page;
 
   &--limited {
     max-width: 1024px;

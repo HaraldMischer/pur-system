@@ -1,6 +1,6 @@
 <!-- pur-system/src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html -->
 
-<section class="pur-page _pur-page--limited dienstplan-arbeitsbereich">
+<section class="pur-page">
   <section class="pur-page-section">
     <header class="pur-page-section__header">
       <h2 class="pur-page-section__title">Monatspläne</h2>
@@ -13,14 +13,14 @@
       </div>
     </header>
 
-    <div class="dienstplan-arbeitsbereich__arbeitsflaeche pur-scrollbar">
-      <div class="dienstplan-arbeitsbereich__dienstplaene pur-scrollbar">
+    <div class="pur-page-section__grid pur-scrollbar">
+      <div class="firmen-dienstplaene pur-scrollbar">
         @if (filialauswahl().length === 0) {
           <p class="pur-page-section__message" role="status">
             Wähle mindestens eine Filiale, um ihre Dienstpläne anzuzeigen.
           </p>
         } @else {
-          <div class="dienstplan-arbeitsbereich__filialabschnitte">
+          <div class="filial-dienstplaene">
             @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
               <app-dienstplan-filialabschnitt
                 [filiale]="auswahl.filiale"
@@ -33,7 +33,7 @@
         }
       </div>
 
-      <div class="dienstplan-arbeitsbereich__mitarbeiter pur-scrollbar">
+      <div class="firmen-mitarbeiter pur-scrollbar">
         <header class="pur-page-section__header">
           <h3 class="pur-page-section__title">Mitarbeiter</h3>
         </header>
