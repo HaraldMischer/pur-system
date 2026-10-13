@@ -13,7 +13,11 @@
       </div>
     </header>
 
-    <div class="pur-page-section__grid pur-scrollbar">
+    <div
+      cdkDropListGroup
+      class="pur-page-section__grid pur-scrollbar"
+      [cdkDropListGroupDisabled]="!planungsmodus()"
+    >
       <div class="firmen-dienstplaene pur-scrollbar">
         @if (filialauswahl().length === 0) {
           <p class="pur-page-section__message" role="status">
@@ -37,9 +41,31 @@
         <header class="pur-page-section__header">
           <h3 class="pur-page-section__title">Mitarbeiter</h3>
         </header>
-        <div class="pur-page-section__empty-state">
-          Die Mitarbeiterübersicht wird in einem nächsten Schritt ergänzt.
-        </div>
+        @if (filialauswahl().length === 0) {
+          <p class="pur-page-section__empty-state">
+            Wähle mindestens eine Filiale, um ihre Mitarbeiter anzuzeigen.
+          </p>
+        } @else if (mitarbeiter().length > 0) {
+          <ul cdkDropList class="mitarbeiter-liste" [cdkDropListSortingDisabled]="true">
+            @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
+              <li
+                cdkDrag
+                class="mitarbeiter-karte"
+                [cdkDragData]="mitarbeiter.id"
+                [cdkDragDisabled]="!planungsmodus()"
+              >
+                <span
+                  class="mitarbeiter-farbe"
+                  [style.background-color]="mitarbeiter.farbkennung ?? null"
+                  aria-hidden="true"
+                ></span>
+                <strong>{{ mitarbeiter.anzeigename }}</strong>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="pur-page-section__empty-state">Keine aktiven Mitarbeiter.</p>
+        }
       </div>
     </div>
   </section>

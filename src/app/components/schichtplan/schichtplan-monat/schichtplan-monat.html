@@ -2,6 +2,7 @@
 
 <section class="schichtplan-monat">
   <header class="schichtplan-monat__header">
+    <span>Version {{ aktiveVersion()?.nummer }}</span>
     <span class="schichtplan-monat__status">{{ statusBezeichnung() }}</span>
     <span>{{ aktiveVersion()?.revision ?? 0 }}. Revision</span>
   </header>
@@ -31,12 +32,24 @@
               <time [attr.datetime]="tag.datum">{{ tag.bezeichnung }}</time>
             </th>
             @for (zelle of tag.zellen; track zelle.modellschicht.id) {
-              <td>
+              <td
+                cdkDropList
+                [cdkDropListData]="{
+                  datum: tag.datum,
+                  modellschichtId: zelle.modellschicht.id,
+                  mitarbeiterIds: zelle.mitarbeiterIds,
+                }"
+                [cdkDropListDisabled]="!kannSchichtenAblegen()"
+                [cdkDropListEnterPredicate]="darfMitarbeiterAblegen"
+                [cdkDropListSortingDisabled]="true"
+                (cdkDropListDropped)="handleMitarbeiterDrop($event)"
+              >
                 @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                   <button
                     matButton
                     type="button"
                     class="schichtplan-monat__zelle-anlegen"
+                    [disabled]="schreibvorgang()"
                     [attr.aria-label]="
                       zelle.modellschicht.bezeichnung + ' am ' + tag.bezeichnung + ' anlegen'
                     "

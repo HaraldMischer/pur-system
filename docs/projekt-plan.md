@@ -534,7 +534,8 @@ ausschließlich die veröffentlichte Version. Bei einer erneuten Veröffentlichu
 archiviert und der bisherige Entwurf zum neuen veröffentlichten Stand. Veröffentlichte und archivierte Versionen werden nicht
 mehr verändert.
 
-Die vorgesehene Firestore-Struktur liegt vollständig unter der betroffenen Filiale:
+Die Dienstpläne und Schichtmodelle liegen unter der betroffenen Filiale. Ein zusätzlicher firmenweiter Belegungsindex führt die
+für filialübergreifende Konfliktprüfungen benötigten Zeiträume pro Mitarbeiter und Kalendertag zusammen:
 
 ```text
 unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/schichtmodell/{schichtmodellId}
@@ -543,7 +544,11 @@ unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/dienstplan/{monat
   /modellschicht/{modellschichtId}
   /version/{versionId}
     /schicht/{schichtId}
+unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiterbelegung/{mitarbeiterId}_{datum}
 ```
+
+Die filialbezogenen Dienstpläne bleiben die fachliche Quelle der einzelnen Schichten. Der Belegungsindex ist eine gemeinsam mit
+den Schichten atomar gepflegte Prüfstruktur und ersetzt weder die Dienstplandokumente noch deren getrennte Versionierung.
 
 Jede Filiale besitzt eigene vorkonfigurierte Schichtmodelle, damit unterschiedliche Öffnungs- und Betriebszeiten unabhängig
 voneinander abgebildet werden können. Ein Schichtmodell enthält eine Bezeichnung, einen Aktivstatus und eine geordnete Liste
@@ -565,10 +570,10 @@ Momentaufnahme bestimmt das Schichtraster und bleibt für den gesamten Monatsdie
 verbindlich. Spätere Änderungen oder die Deaktivierung des ursprünglichen Schichtmodells verändern bestehende Entwürfe,
 veröffentlichte oder archivierte Dienstpläne nicht.
 
-Im grundlegenden Planungsablauf wählt der Planer eine Rasterzelle aus Modellschicht und Kalendertag und ordnet ihr einen aktiven
-Mitarbeiter zu. Datum und Modellschicht stehen dadurch bereits fest; eine freie Auswahl oder Eingabe regulärer Schichtzeiten ist
-beim Anlegen der konkreten Schicht nicht vorgesehen. Beginn und Ende werden aus dem gewählten Datum und der Modellschicht der
-Dienstplan-Momentaufnahme als absolute Zeitpunkte gespeichert.
+Im grundlegenden Planungsablauf zieht der Planer einen aktiven Mitarbeiter in eine Rasterzelle aus Modellschicht und Kalendertag
+oder verwendet die gleichwertige Anlageaktion als Tastatur- und Mobilalternative. Datum und Modellschicht stehen dadurch bereits
+fest; eine freie Auswahl oder Eingabe regulärer Schichtzeiten ist beim Anlegen der konkreten Schicht nicht vorgesehen. Beginn und
+Ende werden aus dem gewählten Datum und der Modellschicht der Dienstplan-Momentaufnahme als absolute Zeitpunkte gespeichert.
 
 Schichtmodelle dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. In der Filial-App gilt
 zusätzlich die clientseitige Bedienbegrenzung auf einen aktiven Firma-Mitarbeiter mit `dienstplaner`. Mitarbeiterzugänge lesen
@@ -578,10 +583,17 @@ Schichtmodell-Momentaufnahme des Dienstplans und die gespeicherten konkreten Sch
 ### Abfrage- und Cache-Strategie
 
 Jeder einzelne Dienstplanzugriff verwendet weiterhin einen konkreten vollständigen Filialpfad. Eine filialübergreifende Ansicht
-lädt die Monatspläne der ausgewählten Filialen über getrennte direkte Zugriffe und führt sie ausschließlich im Frontend zusammen.
-Collection-Group-Abfragen über mehrere Filialen oder eine gemeinsame jahresbezogene Dienstplan-Collection sind nicht vorgesehen.
-Der Kalendermonat im Format `YYYY-MM` bleibt die Dokument-ID eines Monatsplans; ein einzelner bekannter Monat kann dadurch ohne
-Zeitraumsuche direkt adressiert werden.
+lädt die Monatspläne der ausgewählten Filialen über getrennte direkte Zugriffe und führt sie ausschließlich im Frontend
+zusammen. Collection-Group-Abfragen über mehrere Filialen oder eine gemeinsame jahresbezogene Dienstplan-Collection sind nicht
+vorgesehen. Der Kalendermonat im Format `YYYY-MM` bleibt die Dokument-ID eines Monatsplans; ein einzelner bekannter Monat kann
+dadurch ohne Zeitraumsuche direkt adressiert werden.
+
+Für die Konfliktprüfung werden nicht sämtliche Dienstpläne aller möglichen Filialen geladen. Stattdessen beobachtet die
+Planung für den ausgewählten Zeitraum und die sichtbaren Mitarbeiter die benötigten Tagesdokumente des firmenweiten
+Belegungsindex über begrenzte Firestore-Snapshot-Listener. Änderungen aus einer anderen Filialplanung werden dadurch zeitnah im
+Belegungs-Store sichtbar. Listener werden bei Änderungen von Firma, Filialauswahl, Monat oder Mitarbeitermenge ersetzt und beim
+Verlassen der Planung beendet. Der Live-Stand dient der Darstellung und frühen Rückmeldung; verbindlich bleibt die erneute
+transaktionale Prüfung beim Schreiben.
 
 Pur Filiale lädt bei jedem Programmstart den vollständigen lesbaren Bestand der eigenen Filiale. Dazu werden über die bestehende
 Stammdatenstrategie `cacheFirst` alle Firma-Mitarbeiter mit der eigenen Filial-ID und mit `networkFirst` alle Dokumente der
@@ -627,8 +639,8 @@ mit der Historie zu. Eine spätere Aufbewahrungs- oder Löschregel wird erst bei
 Eine Version darf an einem Tag beliebig viele Schichten enthalten. Jede Schicht gehört in der ersten Ausbaustufe genau einem
 aktiven Mitarbeiter, der beim Anlegen oder Bearbeiten der betroffenen Filiale zugeordnet sein muss. Schichten ohne Mitarbeiter
 und eine gemeinsame Schicht für mehrere Mitarbeiter sind nicht vorgesehen. Derselbe Mitarbeiter darf auch in verschiedenen
-Filialen mehrere nicht überlappende Schichten an einem Tag besitzen. Die Schicht speichert ausschließlich die `mitarbeiterId` als
-Mitarbeiterzuordnung. Anzeigename
+Filialen mehrere nicht überlappende Schichten an einem Tag besitzen. Die Schicht speichert ausschließlich die `mitarbeiterId`
+als Mitarbeiterzuordnung. Anzeigename
 und `farbkennung` werden in allen Ansichten aus dem aktuellen Mitarbeiterdokument abgeleitet und nicht als Momentaufnahme in der
 Schicht dupliziert. Reguläre Mitarbeiterdokumente bleiben deshalb auch bei Deaktivierung oder geänderter Filialzuordnung
 dauerhaft erhalten. Ausschließlich Duplikate werden im Rahmen der Migrationsbereinigung zusammengeführt und physisch gelöscht,
@@ -646,14 +658,19 @@ Techniker während dessen Pause die Aufsicht. Sind zwei Mitarbeiter im Dienst, v
 gegenseitig. Eine verpflichtende Doppelbesetzung besteht nicht und wird deshalb weder als Planungsvoraussetzung noch als
 Planungskonflikt berücksichtigt.
 
-Ein Entwurf darf gespeichert werden, solange seine einzelnen Schichten strukturell gültig sind. Überlappungen dürfen während
-der Bearbeitung vorübergehend bestehen, verhindern aber die Veröffentlichung. Die Konfliktprüfung berücksichtigt die relevanten
-Planungsstände aller Filialen, denen der betroffene Mitarbeiter zugeordnet ist, unabhängig von einer zur Darstellung
-eingeschränkten Filialauswahl. Kann der angemeldete Planer einen dafür relevanten Filialplan nicht lesen oder nicht vollständig
-laden, bleibt die Veröffentlichung gesperrt; die Konfliktprüfung erweitert keine bestehenden Datenrechte. Weitergehende Hinweise
-zu langen Arbeitszeiten, kurzen Ruhezeiten oder gesetzlichen Grenzen sind nicht Teil der ersten Ausbaustufe. Automatische
-Planung, Abwesenheiten, Zeiterfassung, Schichttausch und Benachrichtigungen werden erst bei konkretem fachlichem Bedarf separat
-geplant.
+Eine Schicht darf nur gespeichert oder geändert werden, wenn ihre Zeitwerte strukturell gültig sind und sie sich nicht mit einer
+relevanten Belegung desselben Mitarbeiters überschneidet. Die verbindliche Prüfung liest in derselben Firestore-Transaktion die
+betroffenen Tagesdokumente des firmenweiten Belegungsindex und aktualisiert sie gemeinsam mit Schicht und Versionsrevision.
+Dadurch konkurrieren parallele Einplanungen desselben Mitarbeiters um dieselben Tagesdokumente und eine inzwischen entstandene
+Überschneidung wird vor dem Schreiben erneut erkannt. Schichten über Mitternacht berücksichtigen jeden berührten Kalendertag
+in der Zeitzone des Dienstplans.
+
+Die Prüfung umfasst relevante Entwürfe und veröffentlichte Stände aller Filialen des Mitarbeiters, unabhängig von der
+sichtbaren Filialauswahl. Kann der dafür erforderliche Belegungsstand wegen fehlender Berechtigung, einer unvollständigen
+Initialladung oder eines Listenerfehlers nicht zuverlässig ermittelt werden, bleibt die betreffende Planungsaktion gesperrt.
+Die Konfliktprüfung erweitert keine bestehenden Datenrechte. Weitergehende Hinweise zu langen Arbeitszeiten, kurzen Ruhezeiten
+oder gesetzlichen Grenzen sind nicht Teil der ersten Ausbaustufe. Automatische Planung, Abwesenheiten, Zeiterfassung,
+Schichttausch und Benachrichtigungen werden erst bei konkretem fachlichem Bedarf separat geplant.
 
 ### Rollen und Filialgrenzen
 
@@ -674,21 +691,21 @@ Firestore Rules erkennen bei einem Filialkonto ausschließlich die Auth-Rolle `f
 im Frontend geführten Firma-Mitarbeiter und dessen Rolle nicht vertrauenswürdig prüfen. Die zusätzliche Rollenprüfung ist daher
 bei einem manipulierten Client umgehbar und keine serverseitig abgesicherte Berechtigungsgrenze.
 
-Jeder einzelne Lese- und Schreibzugriff bezieht sich auf eine konkrete Filiale. Benutzer mit Zugriff auf mehrere Filialen können
+Jeder Zugriff auf einen Dienstplan bezieht sich auf eine konkrete Filiale. Benutzer mit Zugriff auf mehrere Filialen können
 mehrere konkrete Filialen gleichzeitig auswählen und deren Monatspläne in einer gemeinsamen Ansicht laden. Jede dargestellte
 Schicht bleibt eindeutig ihrer Filiale zugeordnet. Beim Anlegen eines Monatsdienstplans wird zuerst die Zielfiliale bestimmt;
 danach stehen nur deren aktive Schichtmodelle zur Auswahl. Beim anschließenden Besetzen einer Rasterzelle stehen nur die in der
 betroffenen Filiale einsetzbaren Mitarbeiter zur Auswahl. Speicherung, Versionierung und Veröffentlichung bleiben je
-Filialdienstplan getrennt und werden nicht zu einem filialübergreifenden Firestore-Dokument oder einer gemeinsamen
-Veröffentlichungstransaktion zusammengeführt.
+Filialdienstplan getrennt. Ausschließlich der firmenweite Belegungsindex wird als gemeinsame Prüfstruktur in die atomaren
+Schicht- und Statusänderungen einbezogen; daraus entsteht keine gemeinsame filialübergreifende Veröffentlichung.
 
 ### Planungs- und Veröffentlichungsablauf
 
 Existiert für einen Monat noch kein Dienstplan, wählt ein berechtigter Planer ein aktives Schichtmodell der Filiale und legt den
 Dienstplan mit dessen Momentaufnahme sowie Version 1 im Status `entwurf` an. Die Modellschichten bilden die Spalten des
 Monatsrasters; die Kalendertage bilden dessen Zeilen. Solange die Version ein Entwurf ist, dürfen berechtigte Planer die
-Rasterzellen gemeinsam mit Mitarbeitern besetzen und vorhandene Schichten bearbeiten. Das Löschen einzelner Schichten und der
-vollständigen, nie veröffentlichten Entwurfsversion ist erlaubt.
+Rasterzellen per Drag-and-drop oder über die alternative Anlageaktion mit Mitarbeitern besetzen und vorhandene Schichten
+bearbeiten. Das Löschen einzelner Schichten und der vollständigen, nie veröffentlichten Entwurfsversion ist erlaubt.
 
 Die Veröffentlichung setzt eine vollständig geprüfte und konfliktfreie Entwurfsversion voraus. Sie setzt deren Status auf
 `veroeffentlicht`. Existiert bereits eine veröffentlichte Version, wird diese im selben konsistenten Schreibvorgang auf
@@ -744,9 +761,10 @@ selbst keine fachlichen Aktionen aus.
 
 Jede Dienstplanversion besitzt eine ganzzahlige `revision`. Eine neu angelegte Entwurfsversion beginnt mit Revision 0. Jede
 spätere Änderung einer Schicht und jeder Statuswechsel der Version erhöht die Revision genau um eins. Anlegen, Bearbeiten und
-Löschen einer Schicht erfolgen in einer Firestore-Transaktion, die zuerst das gemeinsame Versionsdokument liest. Die Transaktion
-schreibt nur, wenn die Version weiterhin den Status `entwurf` und die vom Frontend erwartete Revision besitzt. Zusammen mit der
-Schichtänderung aktualisiert sie Revision, Änderungszeitpunkt und ändernde Benutzer-UID im Versionsdokument.
+Löschen einer Schicht erfolgen in einer Firestore-Transaktion, die zuerst das gemeinsame Versionsdokument und die betroffenen
+Tagesdokumente des Belegungsindex liest. Die Transaktion schreibt nur, wenn die Version weiterhin den Status `entwurf`, die vom
+Frontend erwartete Revision und der Belegungsindex weiterhin einen konfliktfreien Stand besitzen. Zusammen mit der
+Schichtänderung aktualisiert sie Belegungsindex, Revision, Änderungszeitpunkt und ändernde Benutzer-UID.
 
 Da jede Schichtänderung dasselbe Versionsdokument einbezieht, werden auch gleichzeitige Änderungen an unterschiedlichen
 Schichten erkannt. Bei einer abweichenden Revision wird die veraltete Änderung nicht gespeichert. Das Frontend lädt den aktuellen
@@ -764,9 +782,10 @@ bleibt der bisherige Firestore-Stand erhalten. Offline-Schreibvorgänge sind wei
 benötigen eine aktive Firestore-Verbindung.
 
 Firestore Rules sollen für normale Clientänderungen insbesondere den Entwurfsstatus, die erlaubte Filiale, die ändernde
-Benutzer-UID und die Erhöhung der Revision um genau eins validieren. Sie können zeitliche Überschneidungen zwischen mehreren
-Schichtdokumenten nicht selbst berechnen. Die Konfliktprüfung bleibt daher eine Frontend-Fachprüfung und ist ohne vertrauenswürdige
-serverseitige Fachlogik nicht gegen einen absichtlich manipulierten Client absicherbar.
+Benutzer-UID, die Erhöhung der Revision um genau eins und die gemeinsame Änderung der betroffenen Belegungsdokumente validieren.
+Sie berechnen die fachliche Überschneidung nicht selbst; diese Prüfung führt der Client innerhalb der Firestore-Transaktion auf
+dem gemeinsam serialisierten Belegungsstand aus. Ohne vertrauenswürdige serverseitige Fachlogik bleibt eine absichtlich
+manipulierte Konfliktberechnung außerhalb der vollständigen Absicherung durch die Rules.
 
 ### Abgrenzung späterer Erweiterungen
 

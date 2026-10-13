@@ -17,6 +17,7 @@ import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
+import { createSchichtZeitstempelAusLokalzeiten } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
@@ -25,6 +26,7 @@ import { DienstplanAnlegenDialog } from '../dienstplan-anlegen-dialog/dienstplan
 import { SchichtBearbeitenDialog } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
 import {
   SchichtplanMonat,
+  TSchichtplanMitarbeiterAblage,
   TSchichtplanRasterauswahl,
 } from '../schichtplan-monat/schichtplan-monat';
 
@@ -125,6 +127,9 @@ export class DienstplanFilialabschnitt {
       .getMitarbeiter(pfad.unternehmerId, pfad.firmaId)
       .filter((eintrag) => eintrag.aktiv && eintrag.filialIds.includes(pfad.filialeId));
   });
+  readonly mitarbeiterIds = computed(() => {
+    return this.mitarbeiter().map((mitarbeiter) => mitarbeiter.id);
+  });
   readonly schichtMitarbeiter = computed<readonly IMitarbeiterEintrag[]>(() => {
     const pfad = this.pfad();
     return [...new Set(this.schichten().map((schicht) => schicht.mitarbeiterId))]
@@ -203,7 +208,93 @@ export class DienstplanFilialabschnitt {
     this.openSchichtDialogIntern({ datum: '', modellschichtId: schicht.modellschichtId }, schicht);
   }
 
+  /**
+   * Legt nach einer gültigen Mitarbeiterablage unmittelbar eine Schicht an.
+   *
+   * @param ablage - Mitarbeiter, Datum und Modellschicht des Ablageziels.
+   */
+  async createSchichtAusAblage(ablage: TSchichtplanMitarbeiterAblage): Promise<void> {
+    const dienstplan = this.dienstplan();
+    const version = this.entwurfVersion();
+    if (
+      !dienstplan ||
+      !version ||
+      !this.darfSchreiben() ||
+      this.dienstplanStore.inProgress() ||
+      !this.mitarbeiterIds().includes(ablage.mitarbeiterId)
+    ) {
+      return;
+    }
+    const modellschicht = this.modellschichten().find((eintrag) => {
+      return eintrag.id === ablage.modellschichtId;
+    });
+    if (!modellschicht) {
+      this.aktionsfehler.set('Die Modellschicht wurde im Monatsplan nicht gefunden.');
+      return;
+    }
+
+    this.aktionsfehler.set(null);
+    try {
+      const { beginn, ende } = createSchichtZeitstempelAusLokalzeiten(
+        ablage.datum,
+        modellschicht,
+        dienstplan.zeitzone,
+      );
+      const hatZeitkonflikt = this.hatGeladenenZeitkonflikt(
+        ablage.mitarbeiterId,
+        beginn.toMillis(),
+        ende.toMillis(),
+      );
+      if (hatZeitkonflikt) {
+        this.aktionsfehler.set(
+          'Der Mitarbeiter ist in diesem Entwurf im gewählten Zeitraum bereits eingeplant.',
+        );
+        return;
+      }
+      await this.dienstplanStore.createSchicht(
+        { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
+        {
+          mitarbeiterId: ablage.mitarbeiterId,
+          modellschichtId: modellschicht.id,
+          beginn,
+          ende,
+          pauseMinuten: modellschicht.standardpauseMinuten,
+        },
+      );
+    } catch (error) {
+      this.aktionsfehler.set(
+        error instanceof Error ? error.message : 'Die Schicht konnte nicht gespeichert werden.',
+      );
+    }
+  }
+
   // ===== Interne Helfer =======================
+
+  /**
+   * Prüft die aktiven Planungsstände aller bereits geladenen Filialkontexte auf eine Überschneidung.
+   */
+  private hatGeladenenZeitkonflikt(
+    mitarbeiterId: string,
+    beginnMillis: number,
+    endeMillis: number,
+  ): boolean {
+    return Object.values(this.dienstplanStore.kontexte()).some((kontext) => {
+      const aktiveVersionIds = new Set(
+        kontext.dienstplaene.flatMap((dienstplan) => {
+          const versionId = dienstplan.entwurfVersionId ?? dienstplan.veroeffentlichteVersionId;
+          return versionId ? [versionId] : [];
+        }),
+      );
+      return kontext.schichten.some((schicht) => {
+        return (
+          aktiveVersionIds.has(schicht.versionId) &&
+          schicht.mitarbeiterId === mitarbeiterId &&
+          beginnMillis < schicht.ende.toMillis() &&
+          endeMillis > schicht.beginn.toMillis()
+        );
+      });
+    });
+  }
 
   private openSchichtDialogIntern(
     auswahl: TSchichtplanRasterauswahl,

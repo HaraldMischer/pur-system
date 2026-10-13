@@ -54,7 +54,9 @@ describe('SchichtplanMonat', () => {
     ).toBe('rgb(18, 52, 86)');
     expect(dritteTageszeile.textContent).toContain('16:30–01:00 (Folgetag)');
     expect(dritteTageszeile.textContent).toContain('Arbeitszeit: 8 Std.');
+    expect(compiled.textContent).toContain('Version 1');
     expect(compiled.textContent).toContain('Entwurf');
+    expect(compiled.textContent).toContain('2. Revision');
   });
 
   it('should keep a published plan readonly', () => {
@@ -64,6 +66,37 @@ describe('SchichtplanMonat', () => {
     expect(fixture.nativeElement.textContent).toContain('Veröffentlicht');
     expect(fixture.nativeElement.querySelector('.schichtplan-monat__zelle-anlegen')).toBeNull();
     expect(fixture.nativeElement.querySelector('.schichtplan-monat__schicht button')).toBeNull();
+  });
+
+  it('should emit only valid employee drops into writable cells', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-1']);
+    const ablagen: unknown[] = [];
+    fixture.componentInstance.schichtAblegen.subscribe((ablage) => {
+      ablagen.push(ablage);
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.handleMitarbeiterDrop(
+      createDropEvent('m-1', '2026-02-03', 'frueh', []),
+    );
+    fixture.componentInstance.handleMitarbeiterDrop(
+      createDropEvent('m-fremd', '2026-02-03', 'frueh', []),
+    );
+    fixture.componentInstance.handleMitarbeiterDrop(
+      createDropEvent('m-1', '2026-02-03', 'frueh', ['m-1']),
+    );
+
+    expect(ablagen).toEqual([
+      { mitarbeiterId: 'm-1', datum: '2026-02-03', modellschichtId: 'frueh' },
+    ]);
+
+    fixture.componentRef.setInput('schreibvorgang', true);
+    fixture.detectChanges();
+    fixture.componentInstance.handleMitarbeiterDrop(
+      createDropEvent('m-1', '2026-02-04', 'frueh', []),
+    );
+    expect(ablagen).toHaveLength(1);
   });
 
   it('should show a fallback when a referenced employee is unavailable', () => {
@@ -173,5 +206,17 @@ describe('SchichtplanMonat', () => {
       aktiv: true,
       ...(farbkennung ? { farbkennung } : {}),
     };
+  }
+
+  function createDropEvent(
+    mitarbeiterId: string,
+    datum: string,
+    modellschichtId: string,
+    mitarbeiterIds: string[],
+  ): Parameters<SchichtplanMonat['handleMitarbeiterDrop']>[0] {
+    return {
+      item: { data: mitarbeiterId },
+      container: { data: { datum, modellschichtId, mitarbeiterIds } },
+    } as unknown as Parameters<SchichtplanMonat['handleMitarbeiterDrop']>[0];
   }
 });

@@ -3,6 +3,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { Timestamp } from 'firebase/firestore';
 
 import { IBenutzerProfilDokument } from '../../../commons/models/domain/benutzer';
 import {
@@ -112,9 +113,11 @@ describe('DienstplanFilialabschnitt', () => {
     zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
   });
   const kontext = signal<TDienstplanKontextBestand | null>(createKontext());
+  const weitereKontexte = signal<readonly TDienstplanKontextBestand[]>([]);
   const inProgress = signal(false);
   const dienstplanError = signal<string | null>(null);
   const loadDienstplanMonat = vi.fn().mockResolvedValue(undefined);
+  const createSchicht = vi.fn().mockResolvedValue(undefined);
   const loadSchichtmodelle = vi.fn().mockResolvedValue(undefined);
   const dialogOpen = vi.fn();
   const getMitarbeiter = vi.fn().mockReturnValue([]);
@@ -129,9 +132,11 @@ describe('DienstplanFilialabschnitt', () => {
       zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
     });
     kontext.set(createKontext());
+    weitereKontexte.set([]);
     inProgress.set(false);
     dienstplanError.set(null);
     loadDienstplanMonat.mockResolvedValue(undefined);
+    createSchicht.mockResolvedValue(undefined);
     loadSchichtmodelle.mockResolvedValue(undefined);
     getMitarbeiter.mockReturnValue([]);
     vi.clearAllMocks();
@@ -143,7 +148,14 @@ describe('DienstplanFilialabschnitt', () => {
           provide: DienstplanStore,
           useValue: {
             getDienstplanKontext: vi.fn(() => kontext()),
+            kontexte: vi.fn(() => {
+              const eintraege = [kontext(), ...weitereKontexte()].filter(
+                (eintrag): eintrag is TDienstplanKontextBestand => eintrag !== null,
+              );
+              return Object.fromEntries(eintraege.map((eintrag) => [eintrag.filialeId, eintrag]));
+            }),
             loadDienstplanMonat,
+            createSchicht,
             inProgress,
             error: dienstplanError,
           },
@@ -274,6 +286,171 @@ describe('DienstplanFilialabschnitt', () => {
           modellschicht: MODELLSCHICHT,
         }),
       }),
+    );
+  });
+
+  it('should create a shift directly for a valid employee drop', async () => {
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.createSchichtAusAblage({
+      mitarbeiterId: 'm-1',
+      datum: '2026-10-05',
+      modellschichtId: 'frueh',
+    });
+
+    expect(createSchicht).toHaveBeenCalledWith(
+      { ...PFAD, dienstplanId: '2026-10', versionId: 'v-1' },
+      expect.objectContaining({
+        mitarbeiterId: 'm-1',
+        modellschichtId: 'frueh',
+        pauseMinuten: 0,
+      }),
+    );
+    const anlage = createSchicht.mock.calls[0][1];
+    expect(anlage.beginn.toDate().toISOString()).toBe('2026-10-05T05:00:00.000Z');
+    expect(anlage.ende.toDate().toISOString()).toBe('2026-10-05T10:00:00.000Z');
+  });
+
+  it('should reject a drop for an employee without branch assignment', async () => {
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.createSchichtAusAblage({
+      mitarbeiterId: 'm-fremd',
+      datum: '2026-10-05',
+      modellschichtId: 'frueh',
+    });
+
+    expect(createSchicht).not.toHaveBeenCalled();
+  });
+
+  it('should reject an overlapping shift from the loaded draft', async () => {
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+        schichten: [
+          {
+            ...PFAD,
+            id: 's-1',
+            dienstplanId: '2026-10',
+            versionId: 'v-1',
+            mitarbeiterId: 'm-1',
+            modellschichtId: 'frueh',
+            beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+            ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+            pauseMinuten: 0,
+            erstelltVonUid: 'uid-1',
+            aktualisiertVonUid: 'uid-1',
+          },
+        ],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.createSchichtAusAblage({
+      mitarbeiterId: 'm-1',
+      datum: '2026-10-05',
+      modellschichtId: 'frueh',
+    });
+
+    expect(createSchicht).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.aktionsfehler()).toContain('bereits eingeplant');
+  });
+
+  it('should reject an overlapping shift from another loaded branch', async () => {
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    weitereKontexte.set([
+      {
+        ...createKontext(),
+        filialeId: 'b-2',
+        dienstplaene: [{ ...DIENSTPLAN, filialeId: 'b-2', entwurfVersionId: 'v-2' }],
+        versionen: [{ ...VERSION, filialeId: 'b-2', id: 'v-2' }],
+        schichten: [
+          {
+            ...PFAD,
+            filialeId: 'b-2',
+            id: 's-2',
+            dienstplanId: '2026-10',
+            versionId: 'v-2',
+            mitarbeiterId: 'm-1',
+            modellschichtId: 'frueh',
+            beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+            ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+            pauseMinuten: 0,
+            erstelltVonUid: 'uid-1',
+            aktualisiertVonUid: 'uid-1',
+          },
+        ],
+      },
+    ]);
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.createSchichtAusAblage({
+      mitarbeiterId: 'm-1',
+      datum: '2026-10-05',
+      modellschichtId: 'frueh',
+    });
+
+    expect(createSchicht).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.aktionsfehler()).toContain('bereits eingeplant');
+  });
+
+  it('should show an error when creating a dropped shift fails', async () => {
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    createSchicht.mockRejectedValueOnce(new Error('Speichern fehlgeschlagen.'));
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.createSchichtAusAblage({
+      mitarbeiterId: 'm-1',
+      datum: '2026-10-05',
+      modellschichtId: 'frueh',
+    });
+
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
+      'Speichern fehlgeschlagen.',
     );
   });
 

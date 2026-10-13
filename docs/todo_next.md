@@ -626,7 +626,7 @@ Neu hinzuzufügen:
 - [x] Firestore-Emulator-Tests für Schichtmodelle, Modell-Momentaufnahmen, Filialgrenzen und unerlaubte Schreibzugriffe
       ergänzen.
 - [x] Den beschlossenen Übergang vorhandener Entwicklungsdaten durchführen und das Ergebnis kontrollieren.
-- [ ] Modellverwaltung, Monatsanlage und Rasterbedienung mit mehreren Modellen und unterschiedlichen Schichtanzahlen manuell
+- [x] Modellverwaltung, Monatsanlage und Rasterbedienung mit mehreren Modellen und unterschiedlichen Schichtanzahlen manuell
       prüfen.
 - [x] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office`, `npm run build:filiale` und
       `npm run build:mitarbeiter` erfolgreich ausführen.
@@ -639,20 +639,80 @@ Neu hinzuzufügen:
 - [x] Mitarbeiterschichten können über eine eindeutige Rasterzelle angelegt, bearbeitet und gelöscht werden.
 - [x] Spätere Modelländerungen verändern keine bestehenden Entwürfe, veröffentlichten oder archivierten Dienstpläne.
 - [x] Die bisherige Schichtvorlagenstruktur wird nicht mehr für neue Dienstpläne verwendet.
-- [ ] Tests, Rules, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
+- [x] Tests, Rules, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
 
-### 20.7 Konfliktprüfung und Veröffentlichung umsetzen
+### 20.7 Mitarbeiter per Drag-and-drop im Schichtraster einplanen
 
 #### Ziel
 
-Ein Dienstplan kann erst nach nachvollziehbarer fachlicher Prüfung veröffentlicht werden. Mitarbeiterzugänge erhalten
-ausschließlich die für sie freigegebene veröffentlichte Ansicht; berechtigte Master-, Office- und Filialkonten arbeiten mit
-Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschlossenen Ablauf.
+Aktive Mitarbeiter aus allen ausgewählten Filialen werden in der Mitarbeiterübersicht ohne Duplikate zusammengeführt, mit ihren
+relevanten Monatswerten dargestellt und können direkt in eine zulässige Rasterzelle gezogen werden. Das Ablegen legt die
+konkrete Schicht ohne zusätzliche Auswahl von Datum, Modellschicht oder Zeitwerten an. Die bestehende Anlageaktion bleibt als
+gleichwertige Tastatur- und Mobilalternative erhalten.
 
 #### Betroffene Dateien
 
 Änderungen:
 
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.scss
+- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
+- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.ts
+- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.html
+- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.spec.ts
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
+- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- docs/components/schichtplan.md
+- docs/projekt-stand.md
+- docs/todo_next.md
+
+#### Schritt 1: Mitarbeiterübersicht vervollständigen
+
+- [x] Aktive Mitarbeiter aus allen ausgewählten Filialen ohne Duplikate zusammenführen und mit ihrer Farbkennung darstellen.
+- [ ] Je Mitarbeiter die insgesamt im ausgewählten Monat vergebenen Stunden und weitere für die Planung relevante Informationen
+      darstellen.
+
+#### Schritt 2: Drag-and-drop-Planung umsetzen
+
+- [x] Mitarbeiterkarten per Drag-and-drop als kopierbare Planungselemente bereitstellen.
+- [x] Rasterzellen als Ablageziele verwenden und beim Ablegen unmittelbar eine Schicht für Mitarbeiter, Datum und Modellschicht
+      anlegen.
+- [x] Ablageziele auf bearbeitbare Entwürfe und eine gültige Filialzuordnung des Mitarbeiters begrenzen.
+- [x] Laufende Schreibvorgänge, erfolgreiche Anlagen und Fehler für die direkte Ablage verständlich behandeln.
+- [x] Die bestehende Anlageaktion als gleichwertige Tastatur- und Mobilalternative beibehalten.
+
+#### Tests und Abschluss
+
+- [x] Component-Test für Gruppierung, Aktivstatus, Filialzuordnung und Farbkennung der Mitarbeiter ergänzen.
+- [x] Component-Tests für erlaubte Ablagen, unzulässige Ziele, laufende Schreibvorgänge und Fehler ergänzen.
+- [ ] Drag-and-drop sowie die alternative Anlageaktion auf Desktop und einem kleinen Touch-Viewport manuell prüfen.
+- [x] `npm test`, `npm run build:master`, `npm run build:office`, `npm run build:filiale` und
+      `npm run build:mitarbeiter` erfolgreich ausführen.
+
+#### Erledigt, wenn
+
+- [ ] Aktive Mitarbeiter aus den ausgewählten Filialen und ihre Planungswerte sind eindeutig sichtbar.
+- [x] Ein Mitarbeiter kann per Drag-and-drop unmittelbar in einer zulässigen Rasterzelle eingeplant werden.
+- [x] Unzulässige Ablagen verändern keine Dienstplandaten und werden verständlich behandelt.
+- [ ] Die Schichtanlage bleibt ohne Drag-and-drop per Tastatur und auf mobilen Geräten vollständig bedienbar.
+
+### 20.8 Konfliktprüfung und Veröffentlichung umsetzen
+
+#### Ziel
+
+Filialübergreifende Doppelbelegungen eines Mitarbeiters werden bereits beim Einplanen zuverlässig verhindert. Ein Dienstplan
+kann erst nach nachvollziehbarer fachlicher Prüfung veröffentlicht werden. Mitarbeiterzugänge erhalten ausschließlich die für
+sie freigegebene veröffentlichte Ansicht; berechtigte Master-, Office- und Filialkonten arbeiten mit Entwürfen und historischen
+Versionen. Spätere Änderungen folgen dem beschlossenen Ablauf.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/constants/firebase.constants.ts
 - src/app/commons/models/domain/dienstplan.ts
 - src/app/commons/models/domain/schicht.ts
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
@@ -666,6 +726,8 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
 - src/app/services/domain/dienstplan.service.ts
 - src/app/services/domain/dienstplan.service.spec.ts
+- src/app/services/firebase/firestore-db.service.ts
+- src/app/services/firebase/firestore-db.service.spec.ts
 - src/app/stores/domain/dienstplan.store.ts
 - src/app/stores/domain/dienstplan.store.spec.ts
 - firestore.rules
@@ -677,21 +739,57 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 - docs/projekt-stand.md
 - docs/todo_next.md
 
-#### Schritt 1: Konflikte berechnen und darstellen
+Neu hinzuzufügen:
 
-- [ ] In der Mitarbeiterübersicht je Mitarbeiter kompakte Karten mit den insgesamt im ausgewählten Monat vergebenen Stunden und
-      weiteren für die Planung relevanten Informationen darstellen.
+- src/app/commons/models/domain/mitarbeiterbelegung.ts
+- src/app/stores/domain/mitarbeiterbelegung.store.ts
+- src/app/stores/domain/mitarbeiterbelegung.store.spec.ts
+
+#### Schritt 1: Firmenweiten Belegungsindex aufbauen
+
+- [ ] Unterhalb der Firma einen Belegungsindex mit einem Dokument je Mitarbeiter und Kalendertag vorsehen, damit eine
+      Konfliktprüfung keine vollständigen Dienstpläne aller berechtigten Filialen laden muss.
+- [ ] Jede Belegung mit Filiale, Dienstplan, Version, Schicht, Planungsstatus sowie Beginn und Ende eindeutig auf ihren
+      filialbezogenen Dienstplan zurückführen können.
+- [ ] Beim Anlegen, Ändern und Löschen einer Schicht die filialbezogene Schicht und alle betroffenen Tagesdokumente des
+      Belegungsindex atomar aktualisieren.
+- [ ] Bei Schichten über Mitternacht jeden berührten Kalendertag in der Zeitzone des Dienstplans berücksichtigen und veraltete
+      Indexeinträge bei Zeitänderungen zuverlässig entfernen.
+- [ ] Statuswechsel, Versionswechsel und das Löschen eines Dienstplans so behandeln, dass der Belegungsindex ausschließlich
+      relevante Entwürfe und veröffentlichte Planungsstände enthält.
+- [ ] Parallele Einplanungen desselben Mitarbeiters durch transaktionales Lesen und Schreiben der betroffenen Tagesdokumente
+      verhindern.
+- [ ] Firestore Rules so absichern, dass Belegungseinträge nur gemeinsam mit einer berechtigten Dienstplanänderung angelegt,
+      geändert oder gelöscht werden können.
+
+#### Schritt 2: Belegungsindex live in die Planung übernehmen
+
+- [ ] Die für den ausgewählten Planungszeitraum und die sichtbaren Mitarbeiter relevanten Belegungstage mit begrenzten
+      Firestore-Snapshot-Listenern beobachten, ohne einen unbeschränkten firmenweiten Listener zu öffnen.
+- [ ] Initiale und nachfolgende Listener-Stände unmittelbar in einen fachlichen Belegungs-Store übernehmen, damit Änderungen
+      einer Filiale in anderen geöffneten Filialplanungen zeitnah sichtbar werden.
+- [ ] Listener beim Wechsel von Firma, Filialauswahl, Monat oder relevanter Mitarbeitermenge ersetzen und beim Verlassen der
+      Planung vollständig beenden.
+- [ ] Lade- und Listener-Fehler im Store abbilden und die Planung sperren, wenn der für eine Aktion erforderliche Belegungsstand
+      nicht zuverlässig verfügbar ist.
+- [ ] Live-Daten ausschließlich für aktuelle Darstellung und frühzeitige Konflikthinweise verwenden; vor jedem Schreibzugriff
+      weiterhin die transaktionale Prüfung der gemeinsamen Tagesdokumente als verbindliche Absicherung ausführen.
+
+#### Schritt 3: Konflikte berechnen und darstellen
+
 - [ ] Ungültige Zeitfolgen, Pausen und überlappende Schichten eines Mitarbeiters filialübergreifend erkennen.
-- [ ] Für die Veröffentlichung die relevanten Planungsstände aller Filialen des betroffenen Mitarbeiters berücksichtigen, auch
-      wenn die sichtbare Filialauswahl zuvor eingeschränkt wurde.
-- [ ] Die Veröffentlichung sperren, wenn ein relevanter Filialplan wegen fehlender Leseberechtigung oder eines Ladefehlers nicht
-      vollständig in die Konfliktprüfung einbezogen werden kann.
+- [ ] Für Anlage, Änderung und Veröffentlichung die relevanten Belegungen aller Filialen des betroffenen Mitarbeiters über den
+      firmenweiten Belegungsindex berücksichtigen, auch wenn die sichtbare Filialauswahl zuvor eingeschränkt wurde.
+- [ ] Überschneidungen mit einem veröffentlichten Plan und mit einem relevanten Entwurf fachlich eindeutig behandeln; den zu
+      ersetzenden veröffentlichten Stand desselben Filialdienstplans nicht fälschlich als Fremdkonflikt werten.
+- [ ] Anlage, Änderung und Veröffentlichung sperren, wenn relevante Belegungsdaten wegen fehlender Berechtigung oder eines
+      Ladefehlers nicht vollständig in die Konfliktprüfung einbezogen werden können.
 - [ ] Blockierende Konflikte von nicht blockierenden Hinweisen unterscheiden.
 - [ ] Konflikte an der betroffenen Rasterzelle und Mitarbeiterschicht verständlich anzeigen.
 - [ ] Veröffentlichung bei blockierenden Konflikten verhindern und zusätzlich im Schreibablauf absichern.
 - [ ] Konfliktberechnung mit Schichten über Mitternacht und an Zeitraumgrenzen prüfen.
 
-#### Schritt 2: Veröffentlichung umsetzen
+#### Schritt 4: Veröffentlichung umsetzen
 
 - [ ] Veröffentlichungsaktion nur für berechtigte Rollen und einen konfliktfreien aktuellen Entwurf anbieten.
 - [ ] Versionierung für jeden Filialdienstplan getrennt fortführen.
@@ -701,7 +799,7 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 - [ ] Zurückziehen oder nachträgliche Änderung ausschließlich nach dem beschlossenen Zustandsablauf erlauben.
 - [ ] Gleichzeitige Änderungen zwischen Prüfung und Veröffentlichung zuverlässig erkennen.
 
-#### Schritt 3: Veröffentlichte Mitarbeiteransicht bereitstellen
+#### Schritt 5: Veröffentlichte Mitarbeiteransicht bereitstellen
 
 - [ ] Veröffentlichte Dienstpläne für Mitarbeiter aus allen ausgewählten und fachlich erlaubten Filialen laden und gemeinsam
       darstellen.
@@ -714,6 +812,12 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 #### Tests und Abschluss
 
 - [ ] Unit-Tests für alle blockierenden Konflikte und Hinweise ergänzen.
+- [ ] Service- und Firestore-Emulator-Tests für Anlage, Änderung und Entfernung der täglichen Belegungseinträge einschließlich
+      Schichten über Mitternacht ergänzen.
+- [ ] Mit konkurrierenden Schreibzugriffen prüfen, dass ein Mitarbeiter nicht gleichzeitig in zwei Filialen eingeplant werden
+      kann.
+- [ ] Store- und Service-Tests für initiale Live-Daten, nachfolgende Änderungen, Kontextwechsel, Listener-Abmeldung und
+      Listener-Fehler ergänzen.
 - [ ] Service- und Store-Tests für Veröffentlichung, konkurrierende Änderung, Zurückziehen und Fehlerfälle ergänzen.
 - [ ] Component-Tests für Konfliktanzeige, deaktivierte Veröffentlichung und Bestätigungsablauf ergänzen.
 - [ ] Firestore-Emulator-Tests für Entwurfszugriff, Veröffentlichung und Mitarbeiteransicht ergänzen.
@@ -724,12 +828,17 @@ Entwürfen und historischen Versionen. Spätere Änderungen folgen dem beschloss
 #### Erledigt, wenn
 
 - [ ] Blockierende Konflikte verhindern zuverlässig eine Veröffentlichung und werden verständlich angezeigt.
+- [ ] Die filialübergreifende Prüfung benötigt keine vollständig geladenen Monatsdienstpläne aller Filialen.
+- [ ] Gleichzeitige Schreibzugriffe können für einen Mitarbeiter keine überlappenden Belegungen in verschiedenen Filialen
+      erzeugen.
+- [ ] Eine erfolgreich gespeicherte Belegung wird in einer parallel geöffneten berechtigten Filialplanung ohne manuelles
+      Neuladen zeitnah sichtbar.
 - [ ] Eine unvollständige filialübergreifende Konfliktprüfung verhindert die Veröffentlichung.
 - [ ] Ein berechtigter Benutzer kann einen konfliktfreien aktuellen Entwurf nachvollziehbar veröffentlichen.
 - [ ] Mitarbeiter sehen ausschließlich die für sie freigegebenen veröffentlichten Dienstplandaten.
 - [ ] Gleichzeitige und nachträgliche Änderungen folgen dem festgelegten konsistenten Ablauf.
 
-### 20.8 Erweiterungen nach der ersten Ausbaustufe bewerten
+### 20.9 Erweiterungen nach der ersten Ausbaustufe bewerten
 
 #### Ziel
 

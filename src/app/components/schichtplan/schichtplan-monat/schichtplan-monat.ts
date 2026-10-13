@@ -1,6 +1,7 @@
 // pur-system/src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
 
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -17,9 +18,18 @@ export type TSchichtplanRasterauswahl = {
   readonly modellschichtId: string;
 };
 
+export type TSchichtplanMitarbeiterAblage = TSchichtplanRasterauswahl & {
+  readonly mitarbeiterId: string;
+};
+
 type TSchichtplanZelle = {
   readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
   readonly schichten: readonly ISchichtEintrag[];
+  readonly mitarbeiterIds: readonly string[];
+};
+
+type TSchichtplanAblageziel = TSchichtplanRasterauswahl & {
+  readonly mitarbeiterIds: readonly string[];
 };
 
 type TSchichtplanTag = {
@@ -30,7 +40,7 @@ type TSchichtplanTag = {
 
 @Component({
   selector: 'app-schichtplan-monat',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [CdkDropList, MatButtonModule, MatIconModule],
   templateUrl: './schichtplan-monat.html',
   styleUrl: './schichtplan-monat.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,8 +53,11 @@ export class SchichtplanMonat {
   readonly schichten = input.required<readonly ISchichtEintrag[]>();
   readonly modellschichten = input.required<readonly IModellschichtMomentaufnahmeEintrag[]>();
   readonly mitarbeiter = input<readonly IMitarbeiterEintrag[]>([]);
+  readonly erlaubteMitarbeiterIds = input<readonly string[]>([]);
   readonly darfSchreiben = input(false);
+  readonly schreibvorgang = input(false);
   readonly schichtAnlegen = output<TSchichtplanRasterauswahl>();
+  readonly schichtAblegen = output<TSchichtplanMitarbeiterAblage>();
   readonly schichtBearbeiten = output<ISchichtEintrag>();
 
   // ===== Öffentliche Ableitungen ==============
@@ -74,6 +87,11 @@ export class SchichtplanMonat {
   readonly mitarbeiterNachId = computed(() => {
     return new Map(this.mitarbeiter().map((mitarbeiter) => [mitarbeiter.id, mitarbeiter]));
   });
+  readonly kannSchichtenAblegen = computed(() => {
+    return (
+      this.darfSchreiben() && this.aktiveVersion()?.status === 'entwurf' && !this.schreibvorgang()
+    );
+  });
   readonly tage = computed<readonly TSchichtplanTag[]>(() => {
     const dienstplan = this.dienstplan();
     const versionId = this.aktiveVersion()?.id;
@@ -90,6 +108,43 @@ export class SchichtplanMonat {
   });
 
   // ===== Öffentliche Aktionen =================
+
+  /**
+   * Prüft, ob der gezogene Mitarbeiter in das aktuelle Rasterziel abgelegt werden darf.
+   */
+  readonly darfMitarbeiterAblegen = (
+    drag: CdkDrag<string>,
+    drop: CdkDropList<TSchichtplanAblageziel>,
+  ): boolean => {
+    const mitarbeiterId = drag.data;
+    return (
+      this.kannSchichtenAblegen() &&
+      this.erlaubteMitarbeiterIds().includes(mitarbeiterId) &&
+      !drop.data.mitarbeiterIds.includes(mitarbeiterId)
+    );
+  };
+
+  /**
+   * Übergibt eine gültige Mitarbeiterablage an den Filialabschnitt.
+   *
+   * @param event - CDK-Ablageereignis mit der Mitarbeiter-ID.
+   */
+  handleMitarbeiterDrop(event: CdkDragDrop<TSchichtplanAblageziel, unknown, string>): void {
+    const mitarbeiterId = event.item.data;
+    const ziel = event.container.data;
+    if (
+      !this.kannSchichtenAblegen() ||
+      !this.erlaubteMitarbeiterIds().includes(mitarbeiterId) ||
+      ziel.mitarbeiterIds.includes(mitarbeiterId)
+    ) {
+      return;
+    }
+    this.schichtAblegen.emit({
+      mitarbeiterId,
+      datum: ziel.datum,
+      modellschichtId: ziel.modellschichtId,
+    });
+  }
 
   /**
    * Formatiert den Zeitraum einer Schicht in der Dienstplan-Zeitzone.
@@ -176,11 +231,15 @@ function createTage(
         month: '2-digit',
       }).format(datum),
       zellen: modellschichten.map((modellschicht) => {
+        const zellenschichten = (
+          schichtenNachZelle.get(getZellenschluessel(isoDatum, modellschicht.id)) ?? []
+        )
+          .slice()
+          .sort((a, b) => a.id.localeCompare(b.id));
         return {
           modellschicht,
-          schichten: (schichtenNachZelle.get(getZellenschluessel(isoDatum, modellschicht.id)) ?? [])
-            .slice()
-            .sort((a, b) => a.id.localeCompare(b.id)),
+          schichten: zellenschichten,
+          mitarbeiterIds: zellenschichten.map((schicht) => schicht.mitarbeiterId),
         };
       }),
     });

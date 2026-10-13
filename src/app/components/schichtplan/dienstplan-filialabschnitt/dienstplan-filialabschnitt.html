@@ -28,8 +28,11 @@
         [schichten]="schichten()"
         [modellschichten]="modellschichten()"
         [mitarbeiter]="schichtMitarbeiter()"
+        [erlaubteMitarbeiterIds]="mitarbeiterIds()"
         [darfSchreiben]="darfSchreiben()"
+        [schreibvorgang]="dienstplanStore.inProgress()"
         (schichtAnlegen)="openSchichtDialog($event)"
+        (schichtAblegen)="createSchichtAusAblage($event)"
         (schichtBearbeiten)="openSchichtBearbeitenDialog($event)"
       />
     } @else {

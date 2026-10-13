@@ -3,10 +3,12 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { CdkDrag } from '@angular/cdk/drag-drop';
 import { MatDialog } from '@angular/material/dialog';
 
 import { IBenutzerProfilDokument } from '../../../commons/models/domain/benutzer';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
@@ -44,12 +46,16 @@ describe('DienstplanArbeitsbereich', () => {
     zugriffe: { 'u-1': { 'f-1': ['b-1', 'b-2'] } },
   });
   const loadDienstplanMonat = vi.fn().mockResolvedValue(undefined);
+  const getMitarbeiter = vi.fn().mockReturnValue([]);
+  const getMitarbeiterNachFilialen = vi.fn().mockReturnValue([]);
 
   beforeEach(async () => {
     selectedUnternehmer.set({ id: 'u-1' });
     selectedFirma.set({ id: 'f-1' });
     selectedFilialen.set([FILIALE_1, FILIALE_2]);
     vi.clearAllMocks();
+    getMitarbeiter.mockReturnValue([]);
+    getMitarbeiterNachFilialen.mockReturnValue([]);
     await TestBed.configureTestingModule({
       imports: [DienstplanArbeitsbereich],
       providers: [
@@ -71,7 +77,8 @@ describe('DienstplanArbeitsbereich', () => {
         {
           provide: MitarbeiterStore,
           useValue: {
-            getMitarbeiter: vi.fn().mockReturnValue([]),
+            getMitarbeiter,
+            getMitarbeiterNachFilialen,
             getMitarbeiterById: vi.fn().mockReturnValue(null),
           },
         },
@@ -127,6 +134,66 @@ describe('DienstplanArbeitsbereich', () => {
     expect(loadDienstplanMonat.mock.calls.every((aufruf) => aufruf[1] === '2025-12')).toBe(true);
   });
 
+  it('should merge active employees from the selected branches without duplicates', async () => {
+    const mitarbeiter1 = createMitarbeiter('m-1', 'Anna', 'Alpha', ['b-1'], true, '#123456');
+    const mitarbeiter2 = createMitarbeiter('m-2', 'Berta', 'Beta', ['b-2'], true);
+    const inaktiverMitarbeiter = createMitarbeiter('m-3', 'Ingo', 'Inaktiv', ['b-1'], false);
+    const gemeinsamerMitarbeiter = createMitarbeiter(
+      'm-4',
+      'Georg',
+      'Gemeinsam',
+      ['b-1', 'b-2'],
+      true,
+    );
+    const fremderMitarbeiter = createMitarbeiter('m-5', 'Fred', 'Fremd', ['b-3'], true);
+    getMitarbeiter.mockReturnValue([
+      inaktiverMitarbeiter,
+      mitarbeiter1,
+      mitarbeiter2,
+      gemeinsamerMitarbeiter,
+      fremderMitarbeiter,
+    ]);
+    getMitarbeiterNachFilialen.mockReturnValue([gemeinsamerMitarbeiter]);
+    const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const eintraege = compiled.querySelectorAll<HTMLElement>('.mitarbeiter-karte');
+
+    expect(eintraege).toHaveLength(3);
+    expect(Array.from(eintraege).map((eintrag) => eintrag.textContent?.trim())).toEqual([
+      'Alpha, Anna',
+      'Beta, Berta',
+      'Gemeinsam, Georg',
+    ]);
+    expect(compiled.textContent).not.toContain('Inaktiv, Ingo');
+    expect(compiled.textContent).not.toContain('Fremd, Fred');
+    expect(
+      eintraege[0].querySelector<HTMLElement>('.mitarbeiter-farbe')?.style.backgroundColor,
+    ).toBe('rgb(18, 52, 86)');
+    expect(
+      eintraege[1].querySelector<HTMLElement>('.mitarbeiter-farbe')?.style.backgroundColor,
+    ).toBe('');
+  });
+
+  it('should provide employees as drag sources only in planning mode', async () => {
+    getMitarbeiter.mockReturnValue([createMitarbeiter('m-1', 'Anna', 'Alpha', ['b-1'], true)]);
+    const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    let drag = fixture.debugElement.query(By.directive(CdkDrag)).injector.get(CdkDrag);
+    expect(drag.data).toBe('m-1');
+    expect(drag.disabled).toBe(true);
+
+    fixture.componentRef.setInput('planungsmodus', true);
+    fixture.detectChanges();
+
+    drag = fixture.debugElement.query(By.directive(CdkDrag)).injector.get(CdkDrag);
+    expect(drag.disabled).toBe(false);
+  });
+
   it('should not load a plan without a selected branch', async () => {
     selectedFilialen.set([]);
     const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
@@ -139,4 +206,29 @@ describe('DienstplanArbeitsbereich', () => {
     expect(fixture.nativeElement.querySelector('[role="status"]')).not.toBeNull();
     expect(loadDienstplanMonat).not.toHaveBeenCalled();
   });
+
+  function createMitarbeiter(
+    id: string,
+    vorname: string,
+    nachname: string,
+    filialIds: string[],
+    aktiv: boolean,
+    farbkennung?: string,
+  ): IMitarbeiterEintrag {
+    return {
+      id,
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      person: {
+        vorname,
+        nachname,
+        adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
+        kontakt: {},
+      },
+      rollen: ['servicekraft'],
+      filialIds,
+      aktiv,
+      ...(farbkennung ? { farbkennung } : {}),
+    };
+  }
 });

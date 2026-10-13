@@ -88,8 +88,9 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Domainmodelle, Dienstplan- und Schichtmodell-Services, die zugehörigen Stores sowie die benötigten Firestore-Datenzugriffe
   sind umgesetzt. Die Dienstplan-Grundfunktion einschließlich Grundoberfläche, manueller Schichtverwaltung und Verwaltung
   filialbezogener Schichtmodelle ist umgesetzt.
-- Das Mitarbeiter-Domainmodell führt optional `farbkennung` im Firestore-Dokument und im Anwendungseintrag. Speicherung,
-  Laden, Pflege und Darstellung der Farbkennung sind noch nicht umgesetzt.
+- Das Mitarbeiter-Domainmodell führt optional `farbkennung` im Firestore-Dokument und im Anwendungseintrag. Vorhandene Werte
+  werden geladen und im Schichtraster sowie in der Mitarbeiterübersicht dargestellt. Eine Oberfläche zur Pflege der Farbkennung
+  ist noch nicht umgesetzt.
 - Eine Version besitzt den Status `entwurf`, `veroeffentlicht` oder `archiviert`. Veröffentlichte und archivierte Versionen
   bleiben unveränderlich. Änderungen werden als neue Entwurfsversion auf Basis des veröffentlichten Stands vorbereitet.
 - Aktive Master dürfen in allen Filialen planen. Aktive Office-Konten bleiben auf ausdrücklich freigegebene Filialen und
@@ -101,8 +102,8 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Filialkonten auf ihren Filialpfad, Mitarbeiterzugänge auf den aktuellen veröffentlichten Stand und Planungszugriffe auf
   erlaubte Filialen, gültige Entwürfe und kontrollierte Zustandswechsel. Die frühere rekursive Filialregel ist entfernt. Die
   zusätzliche Prüfung des im Filial-Frontend geführten Firma-Mitarbeiters und seiner Rolle ist clientseitig, bei einem
-  manipulierten Client umgehbar und noch nicht umgesetzt. Die Rules-Änderung ist lokal durch Emulator-Tests abgesichert, aber
-  nicht produktiv deployed.
+  manipulierten Client umgehbar und noch nicht umgesetzt. Die aktuellen Rules sind durch Emulator-Tests abgesichert und wurden
+  am 13.10.2026 produktiv deployed.
 - Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Master, Office und
   Mitarbeiter können mehrere erlaubte Filialen auswählen. Eine gemeinsame Monatsauswahl lädt deren filialbezogene Monatspläne
   über getrennte direkte Firestore-Pfade und stellt jede Filiale in einem eigenen Monatsplanabschnitt dar.
@@ -111,7 +112,7 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   mit `getAktuellerMonat()` für `Europe/Berlin` ermittelten aktuellen Monat zurück.
 - Jeder Monatsplanabschnitt besitzt einen eigenen Lade-, Fehler-, Leer- oder Planzustand. Fehlt ein Plan, bleiben die übrigen
   Filialpläne sichtbar; berechtigte Benutzer können den fehlenden Plan ausschließlich in dessen Abschnitt anlegen. Speicherung
-  und Versionierung bleiben je Filiale getrennt. Die Veröffentlichung folgt in Todo 20.7.
+  und Versionierung bleiben je Filiale getrennt. Die Veröffentlichung folgt in Todo 20.8.
 - Für die Filial-App ist die vollständige Startladung umgesetzt: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
   Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung geladen. Mitarbeiter verwenden weiterhin die
   bestehende Stammdatenstrategie `cacheFirst`; der vollständige Dienstplanbestand verwendet `networkFirst`. Online werden die
@@ -135,7 +136,7 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Fachaktionen sind für diesen Bereich ausgeschlossen. Das Anlegen eines Monatsplans mit Modellreferenz, vollständiger
   Modell-Momentaufnahme und erster Entwurfsversion erfolgt atomar. Anlegen, Bearbeiten und Löschen einer Schicht erhöhen die
   Versionsrevision in einer Firestore-Transaktion. Eine abweichende Revision verhindert veraltete Schreibzugriffe. Die
-  Transaktion für Veröffentlichung und Archivierung folgt in Todo 20.7.
+  Transaktion für Veröffentlichung und Archivierung folgt in Todo 20.8.
 - Die zeitliche Konfliktprüfung bleibt eine Frontend-Fachprüfung. Firestore Rules sollen Rollen, Filialgrenzen, Entwurfsstatus,
   Benutzer-UID und Revisionsfortschritt absichern, können Überschneidungen mehrerer Schichtdokumente aber nicht berechnen.
 - Die technische Planung aus Todo 20.3 ist abgeschlossen. Domainmodell, deutsche Firestore-Pfade, Abfrage- und Cache-Strategien,
@@ -147,10 +148,20 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Filiale wird ein eigener Abschnitt mit Schichtraster sowie Lade-, Leer- und Fehlerzuständen gerendert. Filialkonten verwenden
   unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Rasterzelle den
   Schichtdialog mit bereits gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende Konfliktprüfung und die
-  atomare Veröffentlichung folgen in Todo 20.7.
-- Der Dienstplan-Arbeitsbereich stellt Dienstpläne und die vorbereitete Mitarbeiterübersicht auf breiten Ansichten in zwei
-  unabhängig scrollbaren Spalten dar. Bei höchstens `900px` Containerbreite werden beide Bereiche untereinander angeordnet
-  und innerhalb der gemeinsamen Arbeitsfläche gescrollt.
+  atomare Veröffentlichung folgen in Todo 20.8.
+- Der Dienstplan-Arbeitsbereich stellt Dienstpläne und die Mitarbeiterübersicht auf breiten Ansichten in zwei unabhängig
+  scrollbaren Spalten dar. Die Mitarbeiterübersicht führt die aktiven Mitarbeiter aller ausgewählten Filialen ohne Duplikate
+  zusammen und zeigt ihre optionale Farbkennung. Fehlt eine Farbkennung, verwendet der Farbpunkt die normale Textfarbe mit
+  38 Prozent Deckkraft. Bei höchstens `900px` Containerbreite werden beide Bereiche untereinander angeordnet und innerhalb der
+  gemeinsamen Arbeitsfläche gescrollt.
+- Im Planungsmodus sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente umgesetzt.
+  Bearbeitbare Rasterzellen nehmen nur aktive, der jeweiligen Filiale zugeordnete Mitarbeiter an und legen beim Ablegen
+  unmittelbar eine Schicht mit Datum, Modellschicht, Zeitwerten und Standardpause der Modell-Momentaufnahme an. Laufende
+  Schreibvorgänge sperren weitere Ablagen; Fehler werden im betroffenen Filialabschnitt angezeigt. Die bisherige Anlageaktion
+  bleibt als Tastatur- und Mobilalternative erhalten.
+- Die direkte Ablage prüft bereits die aktiven Planungsstände aller im Dienstplan-Store geladenen Filialkontexte auf zeitliche
+  Überschneidungen. Nicht geladene Filialpläne und konkurrierende Schreibzugriffe sind damit noch nicht verbindlich abgedeckt.
+  Der firmenweite Belegungsindex, seine Live-Aktualisierung und die transaktionale Konfliktabsicherung folgen in Todo 20.8.
 - Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
   bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, lokale
   Uhrzeiten, Folgetag und Pause werden vor dem Schreiben validiert und in `Europe/Berlin` in Firestore-Zeitstempel umgewandelt.
@@ -175,6 +186,9 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 - Die bisherige Schichtvorlagenstruktur mit Page, Components, Dialog, Service, Store, Domainmodell, Pfaden und Firestore Rules ist
   vollständig entfernt. Neue und bearbeitete Schichten verwenden ausschließlich `modellschichtId` aus der Momentaufnahme des
   Monatsplans.
+- Die Modellverwaltung, die Monatsanlage und die Rasterbedienung wurden mit mehreren Modellen und unterschiedlichen
+  Schichtanzahlen manuell geprüft. Änderungen oder die Deaktivierung des Quellmodells verändern die gespeicherte
+  Modell-Momentaufnahme eines bestehenden Monatsplans nicht.
 - Die Dienstplan- und Schichtmodell-Services, ihre Stores sowie der Aufbau der Schichtplan-Komponenten sind unter `docs/services`,
   `docs/stores` und `docs/components` dokumentiert. Angular- und Rules-Tests sowie alle vier Varianten-Builds sind erfolgreich.
   Für die Varianten-Builds wurde der persistente Angular-Cache in der lokalen Umgebung mit `CI=1` deaktiviert, weil dessen
@@ -414,10 +428,8 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   werden die Duplikate innerhalb der atomaren Zusammenführung physisch entfernt. Eine eigenständige Löschfunktion stellen
   Service, Store und Oberfläche nicht bereit. Verknüpfte Mitarbeiter sind durch Rules vor dem Zusammenführen und Löschen
   geschützt. Der Aktivstatus beschreibt allein den Beschäftigungsstatus und begrenzt die Lese- und Bearbeitungsrechte nicht.
-  Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Die am 04.10.2026
-  deployten Rules erlauben die vereinbarten Mitarbeiterzugriffe. Die danach lokal ergänzten Regeln für Rollen-Arrays und das
-  Zusammenführen sind getestet, aber noch nicht
-  als produktiv deployed dokumentiert.
+  Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Die aktuellen Rules
+  einschließlich der Regeln für Rollen-Arrays und das Zusammenführen wurden am 13.10.2026 produktiv deployed.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
   `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
   passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
@@ -752,9 +764,8 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   Aktivstatus und Bereichen eines verknüpften Mitarbeiterprofils, verhindern aber Änderungen an `zugriffe` und
   `firmaMitarbeiterId` und gewähren Lesezugriff auf die zugeordnete Unternehmensstruktur sowie die Mitarbeiter der zugewiesenen
   Firma. Diese Rules-Änderung wurde am 28.09.2026 produktiv deployed und mit einem realen Mitarbeiterkonto geprüft.
-- Die danach ergänzte Leseberechtigung des Mitarbeiterzugangs für direkte Filialdokumente seiner Firma ist lokal umgesetzt und
-  durch Emulator-Tests abgesichert, aber noch nicht produktiv deployed. Filial-Untercollections und Schreibzugriffe bleiben
-  gesperrt.
+- Die ergänzte Leseberechtigung des Mitarbeiterzugangs für direkte Filialdokumente seiner Firma ist durch Emulator-Tests
+  abgesichert und wurde am 13.10.2026 produktiv deployed. Filial-Untercollections und Schreibzugriffe bleiben gesperrt.
 - Der Git-Push der aktuellen Änderungen ist kein Firebase-Deployment.
 
 ## Tests und Build

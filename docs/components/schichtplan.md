@@ -16,9 +16,14 @@ Der Arbeitsbereich bindet sein Signal über `[(selectedMonat)]`, bleibt Eigentü
 eigene Aktionen wie den Wechsel zum aktuellen Kalendermonat.
 
 Das Utility `getAktuellerMonat()` ermittelt den aktuellen Monat für die verbindliche Zeitzone `Europe/Berlin`. Auf breiten
-Ansichten stellt der Arbeitsbereich die Dienstpläne und die vorbereitete Mitarbeiterübersicht in zwei unabhängig scrollbaren
-Spalten dar. Bei höchstens `900px` Containerbreite werden die Bereiche untereinander angeordnet und innerhalb der gemeinsamen
-Arbeitsfläche gescrollt.
+Ansichten stellt der Arbeitsbereich die Dienstpläne und die Mitarbeiterübersicht in zwei unabhängig scrollbaren Spalten dar.
+Die Mitarbeiterübersicht führt die aktiven Mitarbeiter aller ausgewählten Filialen ohne Duplikate zusammen und zeigt die
+optionale `farbkennung`. Ohne gespeicherte Farbkennung verwendet der Farbpunkt die normale Textfarbe mit 38 Prozent Deckkraft.
+Im Planungsmodus sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente verfügbar. Die Liste
+bleibt dabei unverändert; ein Mitarbeiter kann nacheinander in mehrere zulässige Rasterzellen eingeplant werden. Im
+Ansichtsmodus sind die Karten nicht ziehbar.
+Bei höchstens `900px` Containerbreite werden die Bereiche untereinander angeordnet und innerhalb der gemeinsamen Arbeitsfläche
+gescrollt.
 
 Jeder `DienstplanFilialabschnitt` lädt seinen Monatsplan über den direkten Filialpfad und zeigt seinen eigenen Lade-, Fehler-,
 Leer- oder Planzustand. Ein fehlender Plan kann im Planungsmodus ausschließlich in diesem Filialabschnitt angelegt werden. Dazu
@@ -32,11 +37,19 @@ aus der gewählten Rasterzelle und begrenzt die Mitarbeiterwahl auf die aktiven 
 einer nach `reihenfolge` sortierten Modellschicht aus der unveränderlichen Momentaufnahme des Monatsplans. Jede Rasterzelle
 enthält alle konkreten Mitarbeiterschichten ihres Tages und ihrer Modellschicht und kann deshalb auch mehrfach besetzt sein.
 
-Jede Schicht löst Anzeigename und optionale `farbkennung` über die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf und
-zeigt Zeitspanne, Pause und Arbeitszeit. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher Ersatztext.
-Schreibaktionen werden nur für eine bearbeitbare Entwurfsversion angeboten. Dann besitzt jede Rasterzelle eine Anlageaktion mit
-bereits festgelegtem Datum und festgelegter Modellschicht. Auf kleinen Viewports bleibt die Tabelle horizontal scrollbar; die
-Tagesspalte bleibt beim horizontalen Scrollen sichtbar.
+Jede Schicht löst Anzeigename und optionale `farbkennung` über die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf
+und zeigt Zeitspanne, Pause und Arbeitszeit. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher
+Ersatztext.
+Schreibaktionen werden nur für eine bearbeitbare Entwurfsversion angeboten. Dann ist jede Rasterzelle ein Ablageziel und besitzt
+zusätzlich eine Anlageaktion als Tastatur- und Mobilalternative. Beide Wege verwenden das bereits festgelegte Datum und die
+festgelegte Modellschicht. Eine Ablage ist nur für einen aktiven, der Zielfiliale zugeordneten Mitarbeiter zulässig und wird
+während eines Schreibvorgangs gesperrt. Derselbe Mitarbeiter kann nicht erneut in dieselbe Rasterzelle abgelegt werden.
+
+Nach einer gültigen Ablage legt `DienstplanFilialabschnitt` die Schicht unmittelbar mit den Zeitwerten und der Standardpause aus
+der Modell-Momentaufnahme an. Vor dem Schreiben werden die aktiven Planungsstände aller bereits im Dienstplan-Store geladenen
+Filialkontexte auf zeitliche Überschneidungen geprüft. Diese Prüfung ist eine vorläufige Bedienabsicherung; die vollständige,
+filialübergreifend verbindliche Prüfung über einen firmenweiten Belegungsindex folgt in Todo 20.8. Auf kleinen Viewports bleibt
+die Tabelle horizontal scrollbar; die Tagesspalte bleibt beim horizontalen Scrollen sichtbar.
 
 ## Dialoge
 
