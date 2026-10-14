@@ -681,7 +681,7 @@ hier weder angelegt noch gelöscht werden.
 
 > **Historischer Stand:** Dieses Todo dokumentiert die damalige Trennung zwischen Office-Webanwendung und Filial-PWA. Der
 > aktuelle Stand umfasst vier getrennte PWA-Varianten für Master, Office, Filiale und Mitarbeiter und ist in den
-> [PWA-Konfigurationen](./matrix-pwa-konfigurationen.md) beschrieben.
+> [PWA-Konfigurationen](./matrizen/pwa-konfigurationen.md) beschrieben.
 
 ### Ziel
 
@@ -732,7 +732,7 @@ Neu hinzuzufügen:
 - public/manifests/pur-filiale/manifest.webmanifest
 - public/icons/
 - public/fonts/
-- docs/matrix-pwa-konfigurationen.md
+- docs/matrizen/pwa-konfigurationen.md
 - src/app/services/core/netzwerk-status.service.ts
 - src/app/services/core/pwa-update.service.ts
 - src/app/services/core/pwa-update.service.spec.ts
@@ -836,7 +836,7 @@ Todos. Sie werden später fachlich geplant und in eigenen Todos umgesetzt.
 
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/matrix-pwa-konfigurationen.md
+- docs/matrizen/pwa-konfigurationen.md
 
 #### Schritt 1: Rolle und Anmeldung festlegen
 
@@ -876,7 +876,7 @@ Todos. Sie werden später fachlich geplant und in eigenen Todos umgesetzt.
 - [x] Prüfen, dass aus Todo 7 keine vorgezogene Entscheidung zu Mitarbeiterdaten, Filialzuordnungen, Dienstplänen oder Push
       hervorgeht.
 - [x] Offene fachliche Folgethemen ausdrücklich festhalten und nicht als bereits entschieden darstellen.
-- [x] `projekt-stand.md` und `matrix-pwa-konfigurationen.md` an den entschiedenen Zielstand anpassen.
+- [x] `projekt-stand.md` und `matrizen/pwa-konfigurationen.md` an den entschiedenen Zielstand anpassen.
 
 #### Erledigt, wenn
 
@@ -967,7 +967,7 @@ bereits reservierte Hosting-Site wird erst veröffentlicht, wenn die Rollen- und
 - package.json
 - src/app/app.config.ts
 - docs/projekt-stand.md
-- docs/matrix-pwa-konfigurationen.md
+- docs/matrizen/pwa-konfigurationen.md
 
 Neu hinzuzufügen:
 
@@ -998,7 +998,7 @@ Neu hinzuzufügen:
 - [x] PWA auf einem unterstützten Desktop- und einem physischen Mobilgerät installieren und eigenständig starten.
 - [x] Office-, Filial- und Mitarbeiter-Builds sowie ihre getrennten Hosting-Ziele gemeinsam prüfen.
 - [x] Mitarbeiter-Site erst nach Abschluss von 7.2 deployen und anschließend Hosting-Header sowie Updateverhalten prüfen.
-- [x] `projekt-stand.md` und `matrix-pwa-konfigurationen.md` nach der Umsetzung aktualisieren.
+- [x] `projekt-stand.md` und `matrizen/pwa-konfigurationen.md` nach der Umsetzung aktualisieren.
 - [x] `npm test` und alle Produktionsbuilds erfolgreich ausführen.
 
 #### Erledigt, wenn
@@ -1619,7 +1619,7 @@ dieser Verknüpfung getrennt.
 - functions/src/index.ts
 - firestore.rules
 - rules-tests/firestore.rules.test.mjs
-- docs/matrix-berechtigungen.md
+- docs/matrizen/berechtigungen.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
 
@@ -1664,7 +1664,7 @@ dieser Verknüpfung getrennt.
 - [x] Benutzeranlage mit allen vier Auth-Rollen auf unverändertes beziehungsweise neues Verhalten prüfen.
 - [x] Nach Umsetzung der Mitarbeiteranlage aus Todo 13 einen Test-Firmenmitarbeiter anlegen und dessen Verknüpfung mit einem
       realen Testkonto kontrolliert prüfen, ohne einen produktiven Mitarbeiterzugang unbeabsichtigt zu verändern.
-- [x] `matrix-berechtigungen.md`, `projekt-plan.md` und `projekt-stand.md` nach der Umsetzung aktualisieren.
+- [x] `matrizen/berechtigungen.md`, `projekt-plan.md` und `projekt-stand.md` nach der Umsetzung aktualisieren.
 - [x] `npm test` und `npm run build` erfolgreich ausführen.
 
 ### Erledigt, wenn
@@ -1683,9 +1683,9 @@ dieser Verknüpfung getrennt.
 
 ## 16. Todo: Benutzerabhängige Firestore-Ladestrategie umsetzen
 
-Die in der [Datenladematrix](./matrix-datenladen.md) festgelegte Aufgabenteilung wird schrittweise umgesetzt. Der Sitzungsstart
+Die in der [Datenladematrix](./matrizen/datenladen.md) festgelegte Aufgabenteilung wird schrittweise umgesetzt. Der Sitzungsstart
 wird aus dem `BenutzerStore` herausgelöst, der Ladeumfang zentral aus Rolle und Zugriffen bestimmt und die Datenquelle abhängig
-von der Auslieferungsvariante gemäß der [Cache- und Betriebsartenmatrix](./matrix-cache-strategien.md) gewählt.
+von der Auslieferungsvariante gemäß der [Cache- und Betriebsartenmatrix](./matrizen/cache-strategien.md) gewählt.
 
 ### 16.1 AppSitzungsInitService einführen
 
@@ -1803,7 +1803,7 @@ Stores mit den für diese Sitzung zwingend benötigten Stammdaten.
 
 Änderungen:
 
-- docs/matrix-datenladen.md
+- docs/matrizen/datenladen.md
 - docs/projekt-stand.md
 - docs/todo_next.md
 - src/app/commons/utils/errors/firebase-error-message.ts
@@ -1958,7 +1958,7 @@ einer expliziten Datenquellenstrategie aus, ohne Benutzerrollen oder fachliche B
 - src/environments/environment.filiale-prod.ts
 - src/environments/environment.mitarbeiter-prod.ts
 - docs/projekt-stand.md
-- docs/matrix-cache-strategien.md
+- docs/matrizen/cache-strategien.md
 - docs/todo_next.md
 
 Neu hinzuzufügen:
@@ -2015,10 +2015,10 @@ werden erst nach erfolgreicher technischer und manueller Prüfung auf den tatsä
 
 Änderungen:
 
-- docs/matrix-datenladen.md
+- docs/matrizen/datenladen.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/matrix-cache-strategien.md
+- docs/matrizen/cache-strategien.md
 - docs/todo_next.md
 - docs/todo_done.md
 - src/app/services/core/debug-log.service.ts
@@ -2107,7 +2107,7 @@ Migrationsaktion an.
 - `src/app/services/firebase/firestore-db.service.spec.ts`
 - `firestore.rules`
 - `rules-tests/firestore.rules.test.mjs`
-- `docs/matrix-datenmigration.md`
+- `docs/matrizen/datenmigration.md`
 - `docs/projekt-stand.md`
 
 Neu hinzuzufügen:
@@ -2197,7 +2197,7 @@ die neue Unternehmerstruktur übernommen werden. Der Status gilt nur für die Fi
 - `src/app/pages/systemverwaltung-page/datenstruktur-page/firma-anlegen-dialog/firma-anlegen-dialog.spec.ts`
 - `src/app/pages/verwaltung-page/firma-bearbeiten-dialog/firma-bearbeiten-dialog.ts`
 - `src/app/pages/verwaltung-page/firma-bearbeiten-dialog/firma-bearbeiten-dialog.spec.ts`
-- `docs/matrix-datenmigration.md`
+- `docs/matrizen/datenmigration.md`
 - `docs/projekt-stand.md`
 
 Neu hinzuzufügen:
@@ -2265,7 +2265,7 @@ Nach erfolgreicher Firmenmigration können die Filialen aller Firmen des ausgew�
 - `src/app/pages/systemverwaltung-page/datenstruktur-page/filiale-anlegen-dialog/filiale-anlegen-dialog.spec.ts`
 - `src/app/pages/verwaltung-page/filiale-bearbeiten-dialog/filiale-bearbeiten-dialog.ts`
 - `src/app/pages/verwaltung-page/filiale-bearbeiten-dialog/filiale-bearbeiten-dialog.spec.ts`
-- `docs/matrix-datenmigration.md`
+- `docs/matrizen/datenmigration.md`
 - `docs/projekt-stand.md`
 
 Neu hinzuzufügen:
@@ -2337,7 +2337,7 @@ die spätere manuelle Bearbeitung erkennbar.
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.ts`
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.html`
 - `src/app/pages/systemverwaltung-page/datenmigration-page/datenmigration-page.spec.ts`
-- `docs/matrix-datenmigration.md`
+- `docs/matrizen/datenmigration.md`
 - `docs/projekt-plan.md`
 - `docs/projekt-stand.md`
 

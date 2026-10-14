@@ -48,6 +48,12 @@ export interface IDienstplanAnlageErgebnis {
   modellschichten: readonly IModellschichtMomentaufnahmeEintrag[];
 }
 
+export interface IDienstplanModellwechselErgebnis {
+  dienstplan: IDienstplanEintrag;
+  modellschichten: readonly IModellschichtMomentaufnahmeEintrag[];
+  versionRevision: number;
+}
+
 // ===== Firestore-Dokumente ==================
 
 export interface IDienstplanDokument extends IDienstplanAnlage, IDienstplanSchichtmodellReferenz {

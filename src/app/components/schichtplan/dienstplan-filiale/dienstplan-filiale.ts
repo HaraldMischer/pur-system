@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.ts
+// pur-system/src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
 
 import {
   ChangeDetectionStrategy,
@@ -17,6 +17,7 @@ import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
+import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { createSchichtZeitstempelAusLokalzeiten } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
@@ -31,13 +32,13 @@ import {
 } from '../schichtplan-monat/schichtplan-monat';
 
 @Component({
-  selector: 'app-dienstplan-filialabschnitt',
+  selector: 'app-dienstplan-filiale',
   imports: [MatButtonModule, SchichtplanMonat],
-  templateUrl: './dienstplan-filialabschnitt.html',
-  styleUrl: './dienstplan-filialabschnitt.scss',
+  templateUrl: './dienstplan-filiale.html',
+  styleUrl: './dienstplan-filiale.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DienstplanFilialabschnitt {
+export class DienstplanFiliale {
   // ===== Interne Dependency Injection =========
 
   readonly benutzerStore = inject(BenutzerStore);
@@ -101,6 +102,14 @@ export class DienstplanFilialabschnitt {
     const entwurfId = this.dienstplan()?.entwurfVersionId;
     return this.versionen().find((version) => version.id === entwurfId) ?? null;
   });
+  readonly entwurfSchichten = computed(() => {
+    const entwurfId = this.entwurfVersion()?.id;
+    return entwurfId
+      ? this.schichten().filter((schicht) => {
+          return schicht.versionId === entwurfId;
+        })
+      : [];
+  });
   readonly download = computed(() => {
     return this.kontext()?.download ?? false;
   });
@@ -120,6 +129,24 @@ export class DienstplanFilialabschnitt {
       profil.userRole === 'office' &&
       profil.zugriffe[pfad.unternehmerId]?.[pfad.firmaId]?.includes(pfad.filialeId) === true
     );
+  });
+  readonly darfSchichtmodellWechselnAnzeigen = computed(() => {
+    const dienstplan = this.dienstplan();
+    return Boolean(
+      this.darfSchreiben() &&
+      this.entwurfVersion() &&
+      dienstplan &&
+      !dienstplan.veroeffentlichteVersionId,
+    );
+  });
+  readonly schichtmodellwechselDeaktiviert = computed(() => {
+    return this.dienstplanStore.inProgress() || this.entwurfSchichten().length > 0;
+  });
+  readonly schichtmodellwechselHinweis = computed(() => {
+    if (this.entwurfSchichten().length > 0) {
+      return 'Lösche zuerst alle Schichten des Entwurfs.';
+    }
+    return 'Ein anderes Schichtmodell für diesen Monatsplan wählen.';
   });
   readonly mitarbeiter = computed(() => {
     const pfad = this.pfad();
@@ -161,32 +188,43 @@ export class DienstplanFilialabschnitt {
    */
   async openDienstplanDialog(): Promise<void> {
     if (!this.darfSchreiben()) return;
-    this.aktionsfehler.set(null);
-    try {
-      await this.schichtmodellStore.loadSchichtmodelle(this.pfad());
-    } catch {
-      this.aktionsfehler.set(
-        this.schichtmodellStore.getSchichtmodellKontext(this.pfad())?.error ??
-          this.schichtmodellStore.error() ??
-          'Die Schichtmodelle konnten nicht geladen werden.',
-      );
+    const schichtmodelle = await this.loadAktiveSchichtmodelle();
+    if (!schichtmodelle) return;
+    this.dialog.open(DienstplanAnlegenDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: { pfad: this.pfad(), monat: this.monat(), schichtmodelle },
+    });
+  }
+
+  /**
+   * Öffnet die Schichtmodellauswahl für den leeren, noch nie veröffentlichten Entwurf.
+   */
+  async openSchichtmodellwechselDialog(): Promise<void> {
+    const dienstplan = this.dienstplan();
+    const version = this.entwurfVersion();
+    if (!dienstplan || !version || !this.darfSchichtmodellWechselnAnzeigen()) return;
+    if (this.entwurfSchichten().length > 0 || this.dienstplanStore.inProgress()) {
+      this.aktionsfehler.set('Lösche zuerst alle Schichten des Entwurfs.');
       return;
     }
-    const schichtmodelle =
-      this.schichtmodellStore
-        .getSchichtmodellKontext(this.pfad())
-        ?.schichtmodelle.filter((bestand) => {
-          return bestand.schichtmodell.aktiv && bestand.modellschichten.length > 0;
-        }) ?? [];
+    const aktiveSchichtmodelle = await this.loadAktiveSchichtmodelle();
+    if (!aktiveSchichtmodelle) return;
+    const schichtmodelle = aktiveSchichtmodelle.filter((bestand) => {
+      return bestand.schichtmodell.id !== dienstplan.schichtmodellId;
+    });
     if (schichtmodelle.length === 0) {
-      this.aktionsfehler.set(
-        'Lege zuerst ein aktives Schichtmodell mit mindestens einer Schicht an.',
-      );
+      this.aktionsfehler.set('Es ist kein anderes aktives Schichtmodell verfügbar.');
       return;
     }
     this.dialog.open(DienstplanAnlegenDialog, {
       panelClass: ['pur-dialog__panel'],
-      data: { pfad: this.pfad(), monat: this.monat(), schichtmodelle },
+      data: {
+        modus: 'wechseln',
+        pfad: this.pfad(),
+        monat: this.monat(),
+        versionId: version.id,
+        schichtmodelle,
+      },
     });
   }
 
@@ -335,5 +373,32 @@ export class DienstplanFilialabschnitt {
     } catch {
       // Der DienstplanStore stellt die benutzerfreundliche Fehlermeldung bereit.
     }
+  }
+
+  private async loadAktiveSchichtmodelle(): Promise<readonly ISchichtmodellBestand[] | null> {
+    this.aktionsfehler.set(null);
+    try {
+      await this.schichtmodellStore.loadSchichtmodelle(this.pfad());
+    } catch {
+      this.aktionsfehler.set(
+        this.schichtmodellStore.getSchichtmodellKontext(this.pfad())?.error ??
+          this.schichtmodellStore.error() ??
+          'Die Schichtmodelle konnten nicht geladen werden.',
+      );
+      return null;
+    }
+    const schichtmodelle =
+      this.schichtmodellStore
+        .getSchichtmodellKontext(this.pfad())
+        ?.schichtmodelle.filter((bestand) => {
+          return bestand.schichtmodell.aktiv && bestand.modellschichten.length > 0;
+        }) ?? [];
+    if (schichtmodelle.length === 0) {
+      this.aktionsfehler.set(
+        'Lege zuerst ein aktives Schichtmodell mit mindestens einer Schicht an.',
+      );
+      return null;
+    }
+    return schichtmodelle;
   }
 }

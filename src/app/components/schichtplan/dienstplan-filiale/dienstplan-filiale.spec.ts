@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.spec.ts
+// pur-system/src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -25,7 +25,7 @@ import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { SchichtBearbeitenDialog } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
 import { DienstplanAnlegenDialog } from '../dienstplan-anlegen-dialog/dienstplan-anlegen-dialog';
-import { DienstplanFilialabschnitt } from './dienstplan-filialabschnitt';
+import { DienstplanFiliale } from './dienstplan-filiale';
 
 const PFAD = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' } as const;
 const FILIALE: IFilialeEintrag = {
@@ -78,7 +78,6 @@ const MODELLSCHICHT: IModellschichtMomentaufnahmeEintrag = {
   id: 'frueh',
   dienstplanId: '2026-10',
   bezeichnung: 'Früh',
-  reihenfolge: 0,
   beginnLokalzeit: '07:00',
   endeLokalzeit: '12:00',
   endetAmFolgetag: false,
@@ -103,7 +102,7 @@ function createKontext(
   };
 }
 
-describe('DienstplanFilialabschnitt', () => {
+describe('DienstplanFiliale', () => {
   const benutzerProfil = signal<IBenutzerProfilDokument>({
     email: 'office@example.com',
     anzeigename: 'Office',
@@ -121,6 +120,7 @@ describe('DienstplanFilialabschnitt', () => {
   const loadSchichtmodelle = vi.fn().mockResolvedValue(undefined);
   const dialogOpen = vi.fn();
   const getMitarbeiter = vi.fn().mockReturnValue([]);
+  const schichtmodelle = signal<readonly ISchichtmodellBestand[]>([createSchichtmodell()]);
 
   beforeEach(async () => {
     benutzerProfil.set({
@@ -139,9 +139,10 @@ describe('DienstplanFilialabschnitt', () => {
     createSchicht.mockResolvedValue(undefined);
     loadSchichtmodelle.mockResolvedValue(undefined);
     getMitarbeiter.mockReturnValue([]);
+    schichtmodelle.set([createSchichtmodell()]);
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
-      imports: [DienstplanFilialabschnitt],
+      imports: [DienstplanFiliale],
       providers: [
         { provide: BenutzerStore, useValue: { benutzerProfil } },
         {
@@ -168,7 +169,7 @@ describe('DienstplanFilialabschnitt', () => {
             getSchichtmodellKontext: vi.fn(() => {
               return {
                 ...PFAD,
-                schichtmodelle: [createSchichtmodell()],
+                schichtmodelle: schichtmodelle(),
                 download: false,
                 isLoaded: true,
                 error: null,
@@ -188,7 +189,7 @@ describe('DienstplanFilialabschnitt', () => {
     }).compileComponents();
   });
   function createComponent(planungsmodus = false) {
-    const fixture = TestBed.createComponent(DienstplanFilialabschnitt);
+    const fixture = TestBed.createComponent(DienstplanFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
     fixture.componentRef.setInput('pfad', PFAD);
     fixture.componentRef.setInput('monat', '2026-10');
@@ -252,6 +253,92 @@ describe('DienstplanFilialabschnitt', () => {
     await fixture.whenStable();
 
     expect(loadDienstplanMonat).toHaveBeenCalledWith(PFAD, '2026-10', true);
+  });
+
+  it('should offer a model switch for an empty never-published draft', async () => {
+    const anderesSchichtmodell = createSchichtmodell('modell-2', 'Winter');
+    schichtmodelle.set([createSchichtmodell(), anderesSchichtmodell]);
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find((element) => {
+      return element.textContent.includes('Schichtmodell wechseln');
+    });
+    expect(button?.disabled).toBe(false);
+    expect(button?.closest('.monatskopf')).not.toBeNull();
+    button?.click();
+    await fixture.whenStable();
+
+    expect(dialogOpen).toHaveBeenCalledWith(
+      DienstplanAnlegenDialog,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          modus: 'wechseln',
+          versionId: 'v-1',
+          schichtmodelle: [anderesSchichtmodell],
+        }),
+      }),
+    );
+  });
+
+  it('should disable the model switch while the draft contains a shift', async () => {
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+        schichten: [
+          {
+            ...PFAD,
+            id: 's-1',
+            dienstplanId: '2026-10',
+            versionId: 'v-1',
+            mitarbeiterId: 'm-1',
+            modellschichtId: 'frueh',
+            beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+            ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+            pauseMinuten: 0,
+            erstelltVonUid: 'uid-1',
+            aktualisiertVonUid: 'uid-1',
+          },
+        ],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find((element) => {
+      return element.textContent.includes('Schichtmodell wechseln');
+    });
+    expect(button?.disabled).toBe(true);
+    expect(button?.getAttribute('title')).toContain('Lösche zuerst alle Schichten');
+  });
+
+  it('should hide the model switch after the first publication', async () => {
+    kontext.set(
+      createKontext({
+        dienstplaene: [{ ...DIENSTPLAN, veroeffentlichteVersionId: 'v-0' }],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find((element) => {
+      return element.textContent.includes('Schichtmodell wechseln');
+    });
+    expect(button).toBeUndefined();
   });
 
   it('should open a shift dialog for the selected grid cell', async () => {
@@ -454,12 +541,12 @@ describe('DienstplanFilialabschnitt', () => {
     );
   });
 
-  function createSchichtmodell(): ISchichtmodellBestand {
+  function createSchichtmodell(id = 'modell-1', bezeichnung = 'Sommer'): ISchichtmodellBestand {
     return {
       schichtmodell: {
         ...PFAD,
-        id: 'modell-1',
-        bezeichnung: 'Sommer',
+        id,
+        bezeichnung,
         aktiv: true,
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
@@ -468,9 +555,8 @@ describe('DienstplanFilialabschnitt', () => {
         {
           ...PFAD,
           id: 'frueh',
-          schichtmodellId: 'modell-1',
+          schichtmodellId: id,
           bezeichnung: 'Früh',
-          reihenfolge: 0,
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,

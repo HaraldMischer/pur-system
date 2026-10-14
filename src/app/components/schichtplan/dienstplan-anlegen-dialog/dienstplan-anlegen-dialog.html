@@ -1,12 +1,12 @@
 <!-- pur-system/src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.html -->
 
-<h2 mat-dialog-title>Dienstplan anlegen</h2>
+<h2 mat-dialog-title>{{ istModellwechsel ? 'Schichtmodell wechseln' : 'Dienstplan anlegen' }}</h2>
 <mat-dialog-content>
   <form
-    id="dienstplan-anlegen-form"
+    id="dienstplan-schichtmodell-form"
     class="pur-form pur-form--flex"
     [formGroup]="dienstplanForm"
-    (ngSubmit)="createDienstplan()"
+    (ngSubmit)="saveDienstplan()"
   >
     <mat-form-field appearance="outline">
       <mat-label>Schichtmodell</mat-label>
@@ -32,9 +32,9 @@
   <button
     matButton="filled"
     type="submit"
-    form="dienstplan-anlegen-form"
+    form="dienstplan-schichtmodell-form"
     [disabled]="dienstplanForm.invalid || dienstplanStore.inProgress()"
   >
-    Anlegen
+    {{ istModellwechsel ? 'Wechseln' : 'Anlegen' }}
   </button>
 </mat-dialog-actions>

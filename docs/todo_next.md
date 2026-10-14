@@ -2,6 +2,12 @@
 
 # Offene Todos
 
+## Legende
+
+- `[x]` erledigt
+- `[ ]` offen
+- `[-]` zurückgestellt
+
 ## 20. Dienst- und Schichtplanung
 
 Der Schichtplan wird schrittweise aus filialbezogenen Monatsplänen aufgebaut, die in einer filialübergreifenden Arbeitsansicht
@@ -9,7 +15,7 @@ zusammengeführt werden können. Die erste Ausbaustufe konzentriert sich auf ein
 Veröffentlichungslogik. Automatische Planung, Urlaubsverwaltung, Zeiterfassung, Schichttausch und Benachrichtigungen bleiben
 zunächst außerhalb des vereinbarten Umfangs.
 
-### 20.1 Fachliches Modell und erste Ausbaustufe festlegen
+### [x] 20.1 Fachliches Modell und erste Ausbaustufe festlegen
 
 #### Ziel
 
@@ -62,7 +68,7 @@ Veröffentlichung abbilden.
 - [x] Pflichtangaben, Berechnungen, Konflikte und erlaubte Zustandswechsel sind festgelegt.
 - [x] Der Umfang der ersten Ausbaustufe ist gegenüber späteren Erweiterungen klar abgegrenzt.
 
-### 20.2 Rollen, Datenzugriff und Arbeitsablauf festlegen
+### [x] 20.2 Rollen, Datenzugriff und Arbeitsablauf festlegen
 
 #### Ziel
 
@@ -115,7 +121,7 @@ Der Ablauf vom Entwurf bis zur veröffentlichten Ansicht erhält klare Verantwor
 - [x] Der vollständige Arbeitsablauf vom Entwurf bis zur veröffentlichten Ansicht ist beschrieben.
 - [x] Spätere Funktionen sind ausdrücklich vom ersten Umsetzungsumfang abgegrenzt.
 
-### 20.3 Datenmodell, Firestore-Pfade und Sicherheitsregeln planen
+### [x] 20.3 Datenmodell, Firestore-Pfade und Sicherheitsregeln planen
 
 #### Ziel
 
@@ -133,7 +139,7 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 - src/app/commons/constants/app-kontext-selector.constants.spec.ts
 - firestore.rules
 - rules-tests/firestore.rules.test.mjs
-- docs/matrix-cache-strategien.md
+- docs/matrizen/cache-strategien.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
 - docs/todo_next.md
@@ -194,7 +200,7 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 - [x] Konsistenz- und Konfliktstrategie unterstützen den beschlossenen Veröffentlichungsablauf.
 - [x] Rollen- und Filialgrenzen können durch automatisierte Firestore-Emulator-Tests nachgewiesen werden.
 
-### 20.4 Dienstplan-Grundfunktion umsetzen
+### [x] 20.4 Dienstplan-Grundfunktion umsetzen
 
 #### Ziel
 
@@ -227,16 +233,16 @@ Entwurf anlegen, filialbezogene Schichtvorlagen verwalten und Mitarbeiter mithil
 - src/environments/environment.mitarbeiter-prod.ts
 - src/environments/environment.spec.ts
 - docs/projekt-stand.md
-- docs/matrix-berechtigungen.md
+- docs/matrizen/berechtigungen.md
 - docs/todo_next.md
 
 Neu hinzuzufügen:
 
-- docs/components/schichtplan.md
-- docs/services/dienstplan-service.md
-- docs/services/schichtvorlage-service.md
-- docs/stores/dienstplan-store.md
-- docs/stores/schichtvorlage-store.md
+- docs/architektur/components/schichtplan.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/services/schichtvorlage-service.md
+- docs/architektur/stores/dienstplan-store.md
+- docs/architektur/stores/schichtvorlage-store.md
 - src/app/commons/models/domain/schichtvorlage.ts
 - src/app/commons/utils/dienstplan/dienstplan-zeitraum.ts
 - src/app/commons/utils/dienstplan/dienstplan-zeitraum.spec.ts
@@ -357,7 +363,7 @@ Neu hinzuzufügen:
 - [x] Nicht berechtigte Rollen, fremde Filialen und unzulässige Zustände erlauben keine Änderung.
 - [x] Monatsansicht, Fehlerzustände und Formulare sind auf Desktop und kleinen Viewports bedienbar.
 
-### 20.5 Filialübergreifenden Arbeitskontext umsetzen
+### [x] 20.5 Filialübergreifenden Arbeitskontext umsetzen
 
 #### Ziel
 
@@ -398,7 +404,7 @@ gemeinsamen Planungsoberfläche bearbeitet werden. Jeder Filialdienstplan bleibt
 - src/assets/scss/base/_layout.scss
 - src/assets/scss/modules/_dialog.scss
 - src/assets/scss/modules/_form.scss
-- docs/components/schichtplan.md
+- docs/architektur/components/schichtplan.md
 - docs/projekt-stand.md
 - docs/todo_next.md
 
@@ -410,10 +416,10 @@ Neu hinzugefügt:
 - src/app/components/date-selectors/monat-selector/monat-selector.html
 - src/app/components/date-selectors/monat-selector/monat-selector.scss
 - src/app/components/date-selectors/monat-selector/monat-selector.spec.ts
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.ts
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.html
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.scss
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.spec.ts
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.scss
 - src/app/components/schichtplan/schichtvorlagen-filialabschnitt/schichtvorlagen-filialabschnitt.ts
 - src/app/components/schichtplan/schichtvorlagen-filialabschnitt/schichtvorlagen-filialabschnitt.html
 - src/app/components/schichtplan/schichtvorlagen-filialabschnitt/schichtvorlagen-filialabschnitt.scss
@@ -471,13 +477,17 @@ Neu hinzugefügt:
 - [x] Änderungen bleiben auf den jeweils betroffenen Filialdienstplan begrenzt.
 - [x] Die gemeinsame Planungsoberfläche ist auf Desktop und kleinen Viewports bedienbar.
 
-### 20.6 Schichtmodelle und rasterbasierte Monatsplanung umsetzen
+### [x] 20.6 Schichtmodelle und rasterbasierte Monatsplanung umsetzen
 
 #### Ziel
 
 Die bisherige Auswahl einzelner filialbezogener Schichtvorlagen wird durch vollständige filialbezogene Schichtmodelle ersetzt.
-Ein Schichtmodell enthält eine geordnete Liste eigener Modellschichten. Beim Anlegen eines Monatsdienstplans wird ein Modell als
-unveränderliche Momentaufnahme übernommen und bestimmt die Schichtspalten des gesamten Monatsrasters.
+Ein Schichtmodell enthält eigene, automatisch nach Beginnzeit geordnete Modellschichten. Beim Anlegen eines Monatsdienstplans
+wird ein Modell als unveränderliche Momentaufnahme übernommen und bestimmt die Schichtspalten des gesamten Monatsrasters.
+
+Hinweis zum abgeschlossenen Stand: Die Momentaufnahme bleibt am Monatsdienstplan und gilt für alle Versionen. 20.8 ergänzt nur
+den Modellwechsel im leeren, noch nie veröffentlichten Erstentwurf. Nach der ersten Veröffentlichung bleibt das Modell für den
+Monatsplan unveränderlich.
 
 #### Betroffene Dateien
 
@@ -493,9 +503,9 @@ unveränderliche Momentaufnahme übernommen und bestimmt die Schichtspalten des 
 - src/app/commons/models/domain/schichtvorlage.ts
 - src/app/commons/utils/dienstplan/schicht-lokalzeit.ts
 - src/app/commons/utils/dienstplan/schicht-lokalzeit.spec.ts
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.ts
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.html
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.spec.ts
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.ts
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.html
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.spec.ts
@@ -525,18 +535,20 @@ unveränderliche Momentaufnahme übernommen und bestimmt die Schichtspalten des 
 - src/app/stores/domain/schichtvorlage.store.spec.ts
 - firestore.rules
 - rules-tests/firestore.rules.test.mjs
-- docs/components/schichtplan.md
+- docs/architektur/components/schichtplan.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/services/dienstplan-service.md
-- docs/services/schichtvorlage-service.md
-- docs/stores/dienstplan-store.md
-- docs/stores/schichtvorlage-store.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/services/schichtvorlage-service.md
+- docs/architektur/stores/dienstplan-store.md
+- docs/architektur/stores/schichtvorlage-store.md
 - docs/todo_next.md
 
 Neu hinzuzufügen:
 
 - src/app/commons/models/domain/schichtmodell.ts
+- src/app/commons/utils/dienstplan/modellschicht-sortierung.ts
+- src/app/commons/utils/dienstplan/modellschicht-sortierung.spec.ts
 - src/app/services/domain/schichtmodell.service.ts
 - src/app/services/domain/schichtmodell.service.spec.ts
 - src/app/stores/domain/schichtmodell.store.ts
@@ -557,14 +569,14 @@ Neu hinzuzufügen:
 - src/app/pages/schichtplan/schichtmodelle-page/schichtmodelle-page.html
 - src/app/pages/schichtplan/schichtmodelle-page/schichtmodelle-page.scss
 - src/app/pages/schichtplan/schichtmodelle-page/schichtmodelle-page.spec.ts
-- docs/services/schichtmodell-service.md
-- docs/stores/schichtmodell-store.md
+- docs/architektur/services/schichtmodell-service.md
+- docs/architektur/stores/schichtmodell-store.md
 
 #### Schritt 1: Datenmodell und Übergang festlegen
 
 - [x] Ein filialbezogenes Schichtmodell mit Bezeichnung, Aktivstatus und geordneten eigenen Modellschichten modellieren.
-- [x] Modellschichten mit stabiler ID, Bezeichnung, Reihenfolge, lokaler Beginn- und Endzeit, abgeleitetem Folgetag und
-      automatisch berechneter Standardpause definieren.
+- [x] Modellschichten mit stabiler ID, Bezeichnung, lokaler Beginn- und Endzeit, abgeleitetem Folgetag, automatisch berechneter
+      Standardpause und einer aus der Beginnzeit abgeleiteten Reihenfolge definieren.
 - [x] Eine durch Firestore Rules prüfbare Speicherung der Modellschichten und der Dienstplan-Momentaufnahme festlegen, ohne die
       Anzahl der Schichten redundant zu speichern.
 - [x] Den Monatsdienstplan um Modell-ID, Modellbezeichnung und vollständige geordnete Modell-Momentaufnahme erweitern.
@@ -580,7 +592,7 @@ Neu hinzuzufügen:
 - [x] Eine Modellverwaltung je ausgewählter Filiale bereitstellen und firmenweite oder filialübergreifende Modelle
       ausschließen.
 - [x] Im Modelldialog Bezeichnung und eine dynamische geordnete Liste von mindestens einer Modellschicht bearbeiten können.
-- [x] Modellschichten hinzufügen, entfernen und in ihrer Spaltenreihenfolge anordnen können.
+- [x] Modellschichten hinzufügen und entfernen; ihre Spaltenreihenfolge automatisch nach der lokalen Beginnzeit bestimmen.
 - [x] Beginn, Ende, Folgetag, Schichtdauer und Standardpause jeder Modellschicht nach den bestehenden Zeitregeln validieren.
 - [x] Neue Modelle aktiv anlegen und verwendete Modelle bei Bedarf deaktivieren, ohne bestehende Monatspläne zu verändern.
 - [x] Navigation, Route und Seitentitel von Schichtvorlagen auf Schichtmodelle umstellen.
@@ -641,7 +653,7 @@ Neu hinzuzufügen:
 - [x] Die bisherige Schichtvorlagenstruktur wird nicht mehr für neue Dienstpläne verwendet.
 - [x] Tests, Rules, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
 
-### 20.7 Mitarbeiter per Drag-and-drop im Schichtraster einplanen
+### [x] 20.7 Mitarbeiter per Drag-and-drop im Schichtraster einplanen
 
 #### Ziel
 
@@ -658,21 +670,21 @@ gleichwertige Tastatur- und Mobilalternative erhalten.
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.scss
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.ts
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.html
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.spec.ts
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
-- docs/components/schichtplan.md
+- docs/architektur/components/schichtplan.md
 - docs/projekt-stand.md
 - docs/todo_next.md
 
 #### Schritt 1: Mitarbeiterübersicht vervollständigen
 
 - [x] Aktive Mitarbeiter aus allen ausgewählten Filialen ohne Duplikate zusammenführen und mit ihrer Farbkennung darstellen.
-- [ ] Je Mitarbeiter die insgesamt im ausgewählten Monat vergebenen Stunden und weitere für die Planung relevante Informationen
+- [x] Je Mitarbeiter die insgesamt im ausgewählten Monat vergebenen Stunden und weitere für die Planung relevante Informationen
       darstellen.
 
 #### Schritt 2: Drag-and-drop-Planung umsetzen
@@ -688,25 +700,26 @@ gleichwertige Tastatur- und Mobilalternative erhalten.
 
 - [x] Component-Test für Gruppierung, Aktivstatus, Filialzuordnung und Farbkennung der Mitarbeiter ergänzen.
 - [x] Component-Tests für erlaubte Ablagen, unzulässige Ziele, laufende Schreibvorgänge und Fehler ergänzen.
-- [ ] Drag-and-drop sowie die alternative Anlageaktion auf Desktop und einem kleinen Touch-Viewport manuell prüfen.
+- [x] Drag-and-drop sowie die alternative Anlageaktion auf Desktop und einem kleinen Touch-Viewport manuell prüfen.
 - [x] `npm test`, `npm run build:master`, `npm run build:office`, `npm run build:filiale` und
       `npm run build:mitarbeiter` erfolgreich ausführen.
 
 #### Erledigt, wenn
 
-- [ ] Aktive Mitarbeiter aus den ausgewählten Filialen und ihre Planungswerte sind eindeutig sichtbar.
+- [x] Aktive Mitarbeiter aus den ausgewählten Filialen und ihre Planungswerte sind eindeutig sichtbar.
 - [x] Ein Mitarbeiter kann per Drag-and-drop unmittelbar in einer zulässigen Rasterzelle eingeplant werden.
 - [x] Unzulässige Ablagen verändern keine Dienstplandaten und werden verständlich behandelt.
-- [ ] Die Schichtanlage bleibt ohne Drag-and-drop per Tastatur und auf mobilen Geräten vollständig bedienbar.
+- [x] Die Schichtanlage bleibt ohne Drag-and-drop per Tastatur und auf mobilen Geräten vollständig bedienbar.
 
-### 20.8 Konfliktprüfung und Veröffentlichung umsetzen
+### [ ] 20.8 Konfliktprüfung und Veröffentlichung umsetzen
 
 #### Ziel
 
 Filialübergreifende Doppelbelegungen eines Mitarbeiters werden bereits beim Einplanen zuverlässig verhindert. Ein Dienstplan
 kann erst nach nachvollziehbarer fachlicher Prüfung veröffentlicht werden. Mitarbeiterzugänge erhalten ausschließlich die für
 sie freigegebene veröffentlichte Ansicht; berechtigte Master-, Office- und Filialkonten arbeiten mit Entwürfen und historischen
-Versionen. Spätere Änderungen folgen dem beschlossenen Ablauf.
+Versionen. Die Schichtmodell-Momentaufnahme gehört weiterhin zum Monatsdienstplan und gilt für alle seine Versionen. Sie kann
+nur im leeren, noch nie veröffentlichten Erstentwurf gewechselt werden. Spätere Änderungen folgen dem beschlossenen Ablauf.
 
 #### Betroffene Dateien
 
@@ -715,10 +728,14 @@ Versionen. Spätere Änderungen folgen dem beschlossenen Ablauf.
 - src/app/commons/constants/firebase.constants.ts
 - src/app/commons/models/domain/dienstplan.ts
 - src/app/commons/models/domain/schicht.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.html
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.spec.ts
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
 - src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.ts
-- src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.html
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
+- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
@@ -732,9 +749,10 @@ Versionen. Spätere Änderungen folgen dem beschlossenen Ablauf.
 - src/app/stores/domain/dienstplan.store.spec.ts
 - firestore.rules
 - rules-tests/firestore.rules.test.mjs
-- docs/components/schichtplan.md
-- docs/services/dienstplan-service.md
-- docs/stores/dienstplan-store.md
+- docs/architektur/components/schichtplan.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/stores/dienstplan-store.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
 - docs/todo_next.md
@@ -745,7 +763,23 @@ Neu hinzuzufügen:
 - src/app/stores/domain/mitarbeiterbelegung.store.ts
 - src/app/stores/domain/mitarbeiterbelegung.store.spec.ts
 
-#### Schritt 1: Firmenweiten Belegungsindex aufbauen
+#### Schritt 1: Schichtmodell im leeren Erstentwurf wechseln
+
+- [x] Im noch nie veröffentlichten Entwurf die Aktion `Schichtmodell wechseln` anbieten und ausschließlich aktive
+      Schichtmodelle derselben Filiale zur Auswahl stellen.
+- [x] Die Aktion deaktivieren, sobald der aktuelle Entwurf mindestens eine Schicht enthält, und den Grund verständlich anzeigen.
+      Nach dem Löschen aller Schichten wird sie wieder verfügbar.
+- [x] Beim Wechsel Modell-ID, Modellbezeichnung und Modellschicht-Momentaufnahme des Monatsdienstplans vollständig durch das
+      gewählte Modell ersetzen und das Raster unmittelbar daraus neu aufbauen.
+- [x] Vor dem Wechsel Dienstplandokument und Entwurfsschichten verbindlich vom Server laden. Den Austausch gemeinsam mit der
+      nächsten Versionsrevision schreiben, damit eine gleichzeitige Schichtanlage den Wechsel verhindert.
+- [x] Die Aktion dauerhaft sperren, sobald `veroeffentlichteVersionId` gesetzt ist. Neue Versionen verwenden immer die bestehende
+      Modell-Momentaufnahme des Monatsplans.
+- [x] Firestore Rules auf einen berechtigten Entwurf ohne veröffentlichte Version und die erwartete Versionsrevision begrenzen.
+      Die Leerheitsprüfung der Schicht-Subcollection zusätzlich im Client-Service erzwingen, da Rules keine Collection-Abfrage
+      ausführen können.
+
+#### Schritt 2: Firmenweiten Belegungsindex aufbauen
 
 - [ ] Unterhalb der Firma einen Belegungsindex mit einem Dokument je Mitarbeiter und Kalendertag vorsehen, damit eine
       Konfliktprüfung keine vollständigen Dienstpläne aller berechtigten Filialen laden muss.
@@ -762,7 +796,7 @@ Neu hinzuzufügen:
 - [ ] Firestore Rules so absichern, dass Belegungseinträge nur gemeinsam mit einer berechtigten Dienstplanänderung angelegt,
       geändert oder gelöscht werden können.
 
-#### Schritt 2: Belegungsindex live in die Planung übernehmen
+#### Schritt 3: Belegungsindex live in die Planung übernehmen
 
 - [ ] Die für den ausgewählten Planungszeitraum und die sichtbaren Mitarbeiter relevanten Belegungstage mit begrenzten
       Firestore-Snapshot-Listenern beobachten, ohne einen unbeschränkten firmenweiten Listener zu öffnen.
@@ -775,7 +809,7 @@ Neu hinzuzufügen:
 - [ ] Live-Daten ausschließlich für aktuelle Darstellung und frühzeitige Konflikthinweise verwenden; vor jedem Schreibzugriff
       weiterhin die transaktionale Prüfung der gemeinsamen Tagesdokumente als verbindliche Absicherung ausführen.
 
-#### Schritt 3: Konflikte berechnen und darstellen
+#### Schritt 4: Konflikte berechnen und darstellen
 
 - [ ] Ungültige Zeitfolgen, Pausen und überlappende Schichten eines Mitarbeiters filialübergreifend erkennen.
 - [ ] Für Anlage, Änderung und Veröffentlichung die relevanten Belegungen aller Filialen des betroffenen Mitarbeiters über den
@@ -789,17 +823,19 @@ Neu hinzuzufügen:
 - [ ] Veröffentlichung bei blockierenden Konflikten verhindern und zusätzlich im Schreibablauf absichern.
 - [ ] Konfliktberechnung mit Schichten über Mitternacht und an Zeitraumgrenzen prüfen.
 
-#### Schritt 4: Veröffentlichung umsetzen
+#### Schritt 5: Veröffentlichung umsetzen
 
 - [ ] Veröffentlichungsaktion nur für berechtigte Rollen und einen konfliktfreien aktuellen Entwurf anbieten.
 - [ ] Versionierung für jeden Filialdienstplan getrennt fortführen.
 - [ ] Veröffentlichung einschließlich Benutzer, Zeitpunkt und Version ausschließlich für den betreffenden Filialdienstplan
       gemäß Datenkonzept atomar speichern.
+- [ ] Beim Erzeugen einer neuen Entwurfsversion die Schichten des veröffentlichten Stands kopieren und die bestehende
+      Modell-Momentaufnahme des Monatsplans unverändert weiterverwenden.
 - [ ] Bestätigung vor der Veröffentlichung und verständliche Rückmeldung bei Erfolg oder Fehler anzeigen.
 - [ ] Zurückziehen oder nachträgliche Änderung ausschließlich nach dem beschlossenen Zustandsablauf erlauben.
 - [ ] Gleichzeitige Änderungen zwischen Prüfung und Veröffentlichung zuverlässig erkennen.
 
-#### Schritt 5: Veröffentlichte Mitarbeiteransicht bereitstellen
+#### Schritt 6: Veröffentlichte Mitarbeiteransicht bereitstellen
 
 - [ ] Veröffentlichte Dienstpläne für Mitarbeiter aus allen ausgewählten und fachlich erlaubten Filialen laden und gemeinsam
       darstellen.
@@ -811,9 +847,15 @@ Neu hinzuzufügen:
 
 #### Tests und Abschluss
 
+- [x] Service-, Store-, Component- und Firestore-Emulator-Tests für den Modellwechsel im leeren, noch nie veröffentlichten
+      Entwurf und die Sperre bei vorhandenen Schichten ergänzen.
+- [x] Prüfen, dass die Aktion nach dem Löschen aller Entwurfsschichten wieder verfügbar ist und nach der ersten
+      Veröffentlichung dauerhaft gesperrt bleibt.
+- [ ] Das Erzeugen einer neuen Entwurfsversion als Kopie des veröffentlichten Stands mit unveränderter Modell-Momentaufnahme
+      testen.
 - [ ] Unit-Tests für alle blockierenden Konflikte und Hinweise ergänzen.
-- [ ] Service- und Firestore-Emulator-Tests für Anlage, Änderung und Entfernung der täglichen Belegungseinträge einschließlich
-      Schichten über Mitternacht ergänzen.
+- [ ] Service- und Firestore-Emulator-Tests für Anlage, Änderung und Entfernung der täglichen Belegungseinträge
+      einschließlich Schichten über Mitternacht ergänzen.
 - [ ] Mit konkurrierenden Schreibzugriffen prüfen, dass ein Mitarbeiter nicht gleichzeitig in zwei Filialen eingeplant werden
       kann.
 - [ ] Store- und Service-Tests für initiale Live-Daten, nachfolgende Änderungen, Kontextwechsel, Listener-Abmeldung und
@@ -827,6 +869,12 @@ Neu hinzuzufügen:
 
 #### Erledigt, wenn
 
+- [x] Ein leerer, noch nie veröffentlichter Entwurf kann auf ein anderes aktives Modell derselben Filiale wechseln; ein belegter
+      Entwurf verhindert den Modellwechsel.
+- [x] Nach dem Löschen aller Entwurfsschichten ist der Modellwechsel wieder möglich.
+- [ ] Nach der ersten Veröffentlichung bleibt die Modell-Momentaufnahme des Monatsplans unveränderlich und wird von allen
+      späteren Versionen verwendet.
+- [ ] Eine neue Entwurfsversion übernimmt die Schichten des veröffentlichten Stands, ohne das Schichtmodell zu wechseln.
 - [ ] Blockierende Konflikte verhindern zuverlässig eine Veröffentlichung und werden verständlich angezeigt.
 - [ ] Die filialübergreifende Prüfung benötigt keine vollständig geladenen Monatsdienstpläne aller Filialen.
 - [ ] Gleichzeitige Schreibzugriffe können für einen Mitarbeiter keine überlappenden Belegungen in verschiedenen Filialen
@@ -838,7 +886,7 @@ Neu hinzuzufügen:
 - [ ] Mitarbeiter sehen ausschließlich die für sie freigegebenen veröffentlichten Dienstplandaten.
 - [ ] Gleichzeitige und nachträgliche Änderungen folgen dem festgelegten konsistenten Ablauf.
 
-### 20.9 Erweiterungen nach der ersten Ausbaustufe bewerten
+### [-] 20.9 Erweiterungen nach der ersten Ausbaustufe bewerten
 
 #### Ziel
 
@@ -852,7 +900,7 @@ Komplexität belastet.
 
 - docs/todo_next.md
 - docs/todo_spaeter.md
-- docs/projekt-plan.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
 - docs/projekt-stand.md
 
 #### Schritt 1: Betriebserfahrungen auswerten

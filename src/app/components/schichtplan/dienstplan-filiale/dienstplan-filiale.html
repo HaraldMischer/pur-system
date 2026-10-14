@@ -1,6 +1,6 @@
-<!-- pur-system/src/app/components/schichtplan/dienstplan-filialabschnitt/dienstplan-filialabschnitt.html -->
+<!-- pur-system/src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html -->
 
-<section class="pur-page-section dienstplan-filialabschnitt">
+<section class="pur-page-section">
   <header class="pur-page-section__header">
     <h3 class="pur-page-section__title">{{ filiale().anzeigename }}</h3>
   </header>
@@ -31,9 +31,13 @@
         [erlaubteMitarbeiterIds]="mitarbeiterIds()"
         [darfSchreiben]="darfSchreiben()"
         [schreibvorgang]="dienstplanStore.inProgress()"
+        [schichtmodellwechselAnzeigen]="darfSchichtmodellWechselnAnzeigen()"
+        [schichtmodellwechselDeaktiviert]="schichtmodellwechselDeaktiviert()"
+        [schichtmodellwechselHinweis]="schichtmodellwechselHinweis()"
         (schichtAnlegen)="openSchichtDialog($event)"
         (schichtAblegen)="createSchichtAusAblage($event)"
         (schichtBearbeiten)="openSchichtBearbeitenDialog($event)"
+        (schichtmodellWechseln)="openSchichtmodellwechselDialog()"
       />
     } @else {
       <div class="pur-page-section__empty-state">

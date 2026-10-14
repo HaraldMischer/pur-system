@@ -18,11 +18,14 @@ import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 
-export type TDienstplanAnlegenDialogDaten = {
+type TDienstplanDialogBasisdaten = {
   readonly pfad: IFilialPfad;
   readonly monat: string;
   readonly schichtmodelle: readonly ISchichtmodellBestand[];
 };
+
+export type TDienstplanAnlegenDialogDaten = TDienstplanDialogBasisdaten &
+  ({ readonly modus?: 'anlegen' } | { readonly modus: 'wechseln'; readonly versionId: string });
 
 @Component({
   selector: 'app-dienstplan-anlegen-dialog',
@@ -50,6 +53,7 @@ export class DienstplanAnlegenDialog {
     schichtmodellId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   readonly error = signal<string | null>(null);
+  readonly istModellwechsel = this.daten.modus === 'wechseln';
 
   // ===== Interne Ableitungen ==================
 
@@ -64,9 +68,9 @@ export class DienstplanAnlegenDialog {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Legt den Monatsdienstplan mit dem ausgewählten Schichtmodell an.
+   * Legt den Monatsdienstplan an oder wechselt sein Schichtmodell.
    */
-  async createDienstplan(): Promise<void> {
+  async saveDienstplan(): Promise<void> {
     if (this.dienstplanStore.inProgress() || this.dienstplanForm.invalid) return;
     const schichtmodellId = this.dienstplanForm.controls.schichtmodellId.value;
     const schichtmodell = this.daten.schichtmodelle.find((bestand) => {
@@ -78,11 +82,29 @@ export class DienstplanAnlegenDialog {
     }
     this.error.set(null);
     try {
-      await this.dienstplanStore.createDienstplan(this.daten.pfad, this.daten.monat, schichtmodell);
+      if (this.daten.modus === 'wechseln') {
+        await this.dienstplanStore.updateDienstplanSchichtmodell(
+          {
+            ...this.daten.pfad,
+            dienstplanId: this.daten.monat,
+            versionId: this.daten.versionId,
+          },
+          schichtmodell,
+        );
+      } else {
+        await this.dienstplanStore.createDienstplan(
+          this.daten.pfad,
+          this.daten.monat,
+          schichtmodell,
+        );
+      }
       this.dialogRef.close(true);
     } catch {
       this.error.set(
-        this.dienstplanStore.error() ?? 'Der Dienstplan konnte nicht angelegt werden.',
+        this.dienstplanStore.error() ??
+          (this.istModellwechsel
+            ? 'Das Schichtmodell konnte nicht gewechselt werden.'
+            : 'Der Dienstplan konnte nicht angelegt werden.'),
       );
     }
   }

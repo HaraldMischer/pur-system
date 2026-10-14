@@ -346,7 +346,6 @@ service cloud.firestore {
     function hatGueltigeModellschichtFelder(daten) {
       return daten.keys().hasAll([
           'bezeichnung',
-          'reihenfolge',
           'beginnLokalzeit',
           'endeLokalzeit',
           'endetAmFolgetag',
@@ -354,7 +353,6 @@ service cloud.firestore {
         ])
         && daten.keys().hasOnly([
           'bezeichnung',
-          'reihenfolge',
           'beginnLokalzeit',
           'endeLokalzeit',
           'endetAmFolgetag',
@@ -363,8 +361,6 @@ service cloud.firestore {
         && daten.bezeichnung is string
         && daten.bezeichnung.size() > 0
         && daten.bezeichnung.size() <= 80
-        && daten.reihenfolge is int
-        && daten.reihenfolge >= 0
         && daten.beginnLokalzeit is string
         && daten.beginnLokalzeit.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
         && daten.endeLokalzeit is string
@@ -443,6 +439,65 @@ service cloud.firestore {
         && getAfter(pfad).data.revision == get(pfad).data.revision + 1
         && getAfter(pfad).data.aktualisiertAm == request.time
         && getAfter(pfad).data.aktualisiertVonUid == request.auth.uid;
+    }
+
+    function wirdDienstplanSchichtmodellGewechselt(unternehmerId, firmaId, filialId, monat) {
+      let pfad = dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat);
+      let vorher = get(pfad).data;
+      let nachher = getAfter(pfad).data;
+      let entwurfVersionId = vorher.get('entwurfVersionId', null);
+      let schichtmodell = get(
+        schichtmodellDokumentPfad(
+          unternehmerId,
+          firmaId,
+          filialId,
+          nachher.schichtmodellId
+        )
+      ).data;
+      return vorher.get('veroeffentlichteVersionId', null) == null
+        && nachher.get('veroeffentlichteVersionId', null) == null
+        && entwurfVersionId is string
+        && nachher.entwurfVersionId == entwurfVersionId
+        && nachher.schichtmodellId != vorher.schichtmodellId
+        && schichtmodell.aktiv == true
+        && nachher.schichtmodellBezeichnung == schichtmodell.bezeichnung
+        && wirdEntwurfRevisionErhoeht(
+          unternehmerId,
+          firmaId,
+          filialId,
+          monat,
+          entwurfVersionId
+        );
+    }
+
+    function entsprichtAusgewaehlterModellschicht(
+      unternehmerId,
+      firmaId,
+      filialId,
+      monat,
+      modellschichtId,
+      daten
+    ) {
+      let dienstplan = getAfter(
+        dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
+      ).data;
+      return get(
+        schichtmodellDokumentPfad(
+          unternehmerId,
+          firmaId,
+          filialId,
+          dienstplan.schichtmodellId
+        )
+      ).data.aktiv == true
+        && daten == get(
+          modellschichtDokumentPfad(
+            unternehmerId,
+            firmaId,
+            filialId,
+            dienstplan.schichtmodellId,
+            modellschichtId
+          )
+        ).data;
     }
 
     function hatGueltigenDienstplanWechsel(unternehmerId, firmaId, filialId, monat) {
@@ -567,6 +622,8 @@ service cloud.firestore {
             allow update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
               && hatGueltigeDienstplanFelder(request.resource.data)
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'schichtmodellId',
+                'schichtmodellBezeichnung',
                 'entwurfVersionId',
                 'veroeffentlichteVersionId',
                 'naechsteVersionsnummer',
@@ -575,6 +632,18 @@ service cloud.firestore {
               ])
               && request.resource.data.aktualisiertAm == request.time
               && request.resource.data.aktualisiertVonUid == request.auth.uid
+              && (
+                (
+                  request.resource.data.schichtmodellId == resource.data.schichtmodellId
+                  && request.resource.data.schichtmodellBezeichnung == resource.data.schichtmodellBezeichnung
+                )
+                || wirdDienstplanSchichtmodellGewechselt(
+                  unternehmerId,
+                  firmaId,
+                  filialId,
+                  monat
+                )
+              )
               && (
                 request.resource.data.get('entwurfVersionId', null) == null
                 || (
@@ -614,33 +683,50 @@ service cloud.firestore {
                   && hatVeroeffentlichteVersion(unternehmerId, firmaId, filialId, monat)
                 );
               allow create: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
-                && !exists(dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat))
-                && existsAfter(dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat))
                 && hatGueltigeModellschichtFelder(request.resource.data)
-                && getAfter(
-                  dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
-                ).data.schichtmodellId is string
-                && get(
-                  schichtmodellDokumentPfad(
+                && entsprichtAusgewaehlterModellschicht(
+                  unternehmerId,
+                  firmaId,
+                  filialId,
+                  monat,
+                  modellschichtId,
+                  request.resource.data
+                )
+                && (
+                  (
+                    !exists(dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat))
+                    && existsAfter(dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat))
+                  )
+                  || wirdDienstplanSchichtmodellGewechselt(
                     unternehmerId,
                     firmaId,
                     filialId,
-                    getAfter(
-                      dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
-                    ).data.schichtmodellId
+                    monat
                   )
-                ).data.aktiv == true
-                && request.resource.data == get(
-                  modellschichtDokumentPfad(
-                    unternehmerId,
-                    firmaId,
-                    filialId,
-                    getAfter(
-                      dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
-                    ).data.schichtmodellId,
-                    modellschichtId
-                  )
-                ).data;
+                );
+              allow update: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                && hatGueltigeModellschichtFelder(request.resource.data)
+                && entsprichtAusgewaehlterModellschicht(
+                  unternehmerId,
+                  firmaId,
+                  filialId,
+                  monat,
+                  modellschichtId,
+                  request.resource.data
+                )
+                && wirdDienstplanSchichtmodellGewechselt(
+                  unternehmerId,
+                  firmaId,
+                  filialId,
+                  monat
+                );
+              allow delete: if darfDienstplanPlanen(unternehmerId, firmaId, filialId)
+                && wirdDienstplanSchichtmodellGewechselt(
+                  unternehmerId,
+                  firmaId,
+                  filialId,
+                  monat
+                );
             }
 
             match /version/{versionId} {

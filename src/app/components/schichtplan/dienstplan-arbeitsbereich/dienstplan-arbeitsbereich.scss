@@ -79,6 +79,17 @@
     background-color: color-mix(in srgb, var(--mat-sys-on-surface) 38%, transparent);
   }
 
+  .mitarbeiter-daten {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .mitarbeiter-monatswerte {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-small);
+  }
+
   @container pur-page (max-width: 900px) {
     .pur-page-section__grid {
       grid-template-columns: 1fr;

@@ -6,7 +6,6 @@ import { Timestamp } from 'firebase/firestore';
 
 export interface IModellschichtDaten {
   bezeichnung: string;
-  reihenfolge: number;
   beginnLokalzeit: string;
   endeLokalzeit: string;
   endetAmFolgetag: boolean;

@@ -12,6 +12,7 @@ import {
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
+import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
 
 export type TSchichtplanRasterauswahl = {
   readonly datum: string;
@@ -56,9 +57,13 @@ export class SchichtplanMonat {
   readonly erlaubteMitarbeiterIds = input<readonly string[]>([]);
   readonly darfSchreiben = input(false);
   readonly schreibvorgang = input(false);
+  readonly schichtmodellwechselAnzeigen = input(false);
+  readonly schichtmodellwechselDeaktiviert = input(false);
+  readonly schichtmodellwechselHinweis = input('');
   readonly schichtAnlegen = output<TSchichtplanRasterauswahl>();
   readonly schichtAblegen = output<TSchichtplanMitarbeiterAblage>();
   readonly schichtBearbeiten = output<ISchichtEintrag>();
+  readonly schichtmodellWechseln = output<void>();
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -82,7 +87,7 @@ export class SchichtplanMonat {
     const dienstplanId = this.dienstplan().id;
     return this.modellschichten()
       .filter((modellschicht) => modellschicht.dienstplanId === dienstplanId)
-      .sort((a, b) => a.reihenfolge - b.reihenfolge || a.id.localeCompare(b.id));
+      .sort(compareModellschichtenNachBeginn);
   });
   readonly mitarbeiterNachId = computed(() => {
     return new Map(this.mitarbeiter().map((mitarbeiter) => [mitarbeiter.id, mitarbeiter]));

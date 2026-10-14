@@ -22,6 +22,7 @@ describe('DienstplanStore', () => {
   const loadDienstplanMonatMock = vi.fn();
   const loadDienstplanBestandMock = vi.fn();
   const createDienstplanMock = vi.fn();
+  const updateDienstplanSchichtmodellMock = vi.fn();
   const createSchichtMock = vi.fn();
   const updateSchichtMock = vi.fn();
   const deleteSchichtMock = vi.fn();
@@ -30,6 +31,7 @@ describe('DienstplanStore', () => {
     loadDienstplanMonat: loadDienstplanMonatMock,
     loadDienstplanBestand: loadDienstplanBestandMock,
     createDienstplan: createDienstplanMock,
+    updateDienstplanSchichtmodell: updateDienstplanSchichtmodellMock,
     createSchicht: createSchichtMock,
     updateSchicht: updateSchichtMock,
     deleteSchicht: deleteSchichtMock,
@@ -48,6 +50,25 @@ describe('DienstplanStore', () => {
       dienstplan: createBestand().dienstplaene[0],
       version: createBestand().versionen[0],
       modellschichten: createBestand().modellschichten,
+    });
+    updateDienstplanSchichtmodellMock.mockResolvedValue({
+      dienstplan: {
+        ...createBestand().dienstplaene[0],
+        schichtmodellId: 'modell-2',
+        schichtmodellBezeichnung: 'Winter',
+      },
+      modellschichten: [
+        {
+          ...createBestand().modellschichten[0],
+          id: 'spaet',
+          bezeichnung: 'Spät',
+          beginnLokalzeit: '16:00',
+          endeLokalzeit: '01:00',
+          endetAmFolgetag: true,
+          standardpauseMinuten: 30,
+        },
+      ],
+      versionRevision: 3,
     });
     createSchichtMock.mockResolvedValue({
       schicht: createBestand().schichten[0],
@@ -272,6 +293,39 @@ describe('DienstplanStore', () => {
     expect(store.getDienstplanKontext(pfad)?.versionen[0].revision).toBe(4);
   });
 
+  it('should replace the model of an empty never-published draft', async () => {
+    loadDienstplanMonatMock.mockResolvedValueOnce({ ...createBestand(), schichten: [] });
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+    const schichtmodell = createSchichtmodell('modell-2', 'Winter');
+
+    await store.updateDienstplanSchichtmodell(versionsPfad, schichtmodell);
+
+    expect(updateDienstplanSchichtmodellMock).toHaveBeenCalledWith(
+      versionsPfad,
+      2,
+      schichtmodell,
+      'uid-1',
+    );
+    expect(store.getDienstplanKontext(pfad)?.dienstplaene[0]).toEqual(
+      expect.objectContaining({ schichtmodellId: 'modell-2' }),
+    );
+    expect(store.getDienstplanKontext(pfad)?.versionen[0].revision).toBe(3);
+    expect(store.getDienstplanKontext(pfad)?.modellschichten).toEqual([
+      expect.objectContaining({ id: 'spaet' }),
+    ]);
+  });
+
+  it('should reject a model switch while the draft contains a shift', async () => {
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+
+    await expect(
+      store.updateDienstplanSchichtmodell(versionsPfad, createSchichtmodell('modell-2', 'Winter')),
+    ).rejects.toThrow('Lösche zuerst alle Schichten des Entwurfs.');
+    expect(updateDienstplanSchichtmodellMock).not.toHaveBeenCalled();
+  });
+
   it('should require a fully loaded planning month and an authenticated user for writes', async () => {
     const store = TestBed.inject(DienstplanStore);
 
@@ -348,7 +402,6 @@ describe('DienstplanStore', () => {
           dienstplanId: '2026-10',
           id: 'frueh',
           bezeichnung: 'Früh',
-          reihenfolge: 0,
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,
@@ -358,12 +411,12 @@ describe('DienstplanStore', () => {
     };
   }
 
-  function createSchichtmodell(): ISchichtmodellBestand {
+  function createSchichtmodell(id = 'modell-1', bezeichnung = 'Sommer'): ISchichtmodellBestand {
     return {
       schichtmodell: {
         ...pfad,
-        id: 'modell-1',
-        bezeichnung: 'Sommer',
+        id,
+        bezeichnung,
         aktiv: true,
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
@@ -372,9 +425,8 @@ describe('DienstplanStore', () => {
         {
           ...pfad,
           id: 'frueh',
-          schichtmodellId: 'modell-1',
+          schichtmodellId: id,
           bezeichnung: 'Früh',
-          reihenfolge: 0,
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,

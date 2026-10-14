@@ -1,123 +1,64 @@
 // pur-system/src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
 
-.schichtplan-monat {
+.monatsplan {
   display: grid;
-  gap: 16px;
+  //gap: 16px;
   min-width: 0;
+}
 
-  &__header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 16px;
-    align-items: center;
-    color: var(--mat-sys-on-surface-variant);
+.monatskopf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  min-height: 40px;
+}
+
+.status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-large);
+}
+
+.kopf-aktion {
+  margin-left: auto;
+}
+
+.anlegen {
+  margin-bottom: 8px;
+}
+
+.schicht {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+  overflow-wrap: anywhere;
+
+  & + & {
+    margin-top: 8px;
   }
 
-  &__status {
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--mat-sys-secondary-container);
-    color: var(--mat-sys-on-secondary-container);
-    font: var(--mat-sys-label-large);
-  }
-
-  &__raster {
-    max-width: 100%;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-
-    table {
-      width: max-content;
-      min-width: 100%;
-      border-spacing: 8px;
-      table-layout: fixed;
-    }
-
-    th,
-    td {
-      min-width: 220px;
-      padding: 12px;
-      border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 10px;
-      background: var(--mat-sys-surface-container-lowest);
-      text-align: left;
-      vertical-align: top;
-    }
-
-    thead th {
-      background: var(--mat-sys-surface-container-low);
-
-      strong,
-      span {
-        display: block;
-      }
-
-      span {
-        margin-top: 4px;
-        color: var(--mat-sys-on-surface-variant);
-        font: var(--mat-sys-body-medium);
-      }
-    }
-
-    td {
-      height: 96px;
-
-      &.cdk-drop-list-receiving {
-        border-color: var(--mat-sys-primary);
-        background: var(--mat-sys-primary-container);
-        box-shadow: inset 0 0 0 1px var(--mat-sys-primary);
-      }
-    }
-  }
-
-  &__tag-spalte {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    min-width: 120px !important;
-    width: 120px;
-    background: var(--mat-sys-surface-container-low) !important;
-    font: var(--mat-sys-title-small);
-    text-transform: capitalize;
-  }
-
-  thead &__tag-spalte {
-    z-index: 2;
-  }
-
-  &__zelle-anlegen {
-    margin-bottom: 8px;
-  }
-
-  &__schicht {
-    display: grid;
-    gap: 4px;
-    padding: 10px;
-    border-radius: 8px;
-    background: var(--mat-sys-surface-container);
-    overflow-wrap: anywhere;
-
-    & + & {
-      margin-top: 8px;
-    }
-
-    span {
-      color: var(--mat-sys-on-surface-variant);
-      font: var(--mat-sys-body-medium);
-    }
-  }
-
-  &__nicht-besetzt {
+  span {
     color: var(--mat-sys-on-surface-variant);
     font: var(--mat-sys-body-medium);
   }
+}
 
-  &__mitarbeiter-farbe {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    margin-right: 6px;
-    border-radius: 50%;
-    vertical-align: 1px;
-  }
+.nicht-besetzt {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.mitarbeiter-farbe {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 1px;
 }

@@ -1,10 +1,11 @@
-<!-- pur-system/docs/matrix-berechtigungen.md -->
+<!-- pur-system/docs/matrizen/berechtigungen.md -->
 
 # Matrix: Berechtigungen
 
-Diese Übersicht zeigt die zentralen Datenrechte und App-Bereichsfreigaben. Vollständige fachliche Bedingungen und Sonderfälle
-stehen im [Projektplan](./projekt-plan.md). Der aktuelle Implementierungs-, Test- und Deploymentstand steht im
-[Projektstand](./projekt-stand.md).
+Diese Übersicht zeigt die zentralen Datenrechte und App-Bereichsfreigaben. Übergreifende fachliche Bedingungen und Sonderfälle
+stehen im [Projektplan](../projekt-plan.md); die Regeln der Dienst- und Schichtplanung beschreibt das zugehörige
+[Fachkonzept](../fachkonzepte/dienst-und-schichtplanung.md). Der aktuelle Implementierungs-, Test- und Deploymentstand steht im
+[Projektstand](../projekt-stand.md).
 
 ## 1. Collection-Matrix
 

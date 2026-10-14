@@ -26,7 +26,7 @@
         } @else {
           <div class="filial-dienstplaene">
             @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
-              <app-dienstplan-filialabschnitt
+              <app-dienstplan-filiale
                 [filiale]="auswahl.filiale"
                 [pfad]="auswahl.pfad"
                 [monat]="selectedMonat()"
@@ -59,7 +59,14 @@
                   [style.background-color]="mitarbeiter.farbkennung ?? null"
                   aria-hidden="true"
                 ></span>
-                <strong>{{ mitarbeiter.anzeigename }}</strong>
+                <span class="mitarbeiter-daten">
+                  <strong>{{ mitarbeiter.anzeigename }}</strong>
+                  <span class="mitarbeiter-monatswerte">
+                    {{ mitarbeiter.arbeitszeit }} ·
+                    {{ mitarbeiter.schichtanzahl }}
+                    {{ mitarbeiter.schichtanzahl === 1 ? 'Schicht' : 'Schichten' }}
+                  </span>
+                </span>
               </li>
             }
           </ul>

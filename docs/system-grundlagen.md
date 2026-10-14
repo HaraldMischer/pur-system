@@ -117,7 +117,9 @@ Auth-Rolle, `zugriffe`, fachlichem Kontext und den Firestore Rules.
 ## Weiterführende Dokumente
 
 - `docs/projekt-plan.md` beschreibt das fachliche und architektonische Zielbild.
+- `docs/fachkonzepte/dienst-und-schichtplanung.md` beschreibt das vollständige Zielbild der Schichtverwaltung.
+- `docs/architektur` enthält die technische Dokumentation konkreter Components, Services und Stores.
 - `docs/projekt-stand.md` beschreibt den aktuellen Umsetzungsstand.
-- `docs/matrix-berechtigungen.md` enthält die detaillierten Datenrechte.
-- `docs/matrix-datenladen.md` beschreibt das rollenabhängige Laden.
-- `docs/matrix-cache-strategien.md` beschreibt Cache- und Netzwerkverhalten.
+- `docs/matrizen/berechtigungen.md` enthält die detaillierten Datenrechte.
+- `docs/matrizen/datenladen.md` beschreibt das rollenabhängige Laden.
+- `docs/matrizen/cache-strategien.md` beschreibt Cache- und Netzwerkverhalten.

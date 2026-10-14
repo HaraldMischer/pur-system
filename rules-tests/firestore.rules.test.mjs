@@ -116,6 +116,8 @@ const schichtmodellPath = `${filialePath}/schichtmodell/sommer`;
 const modellschichtPath = `${schichtmodellPath}/modellschicht/frueh`;
 const dienstplanSchichtmodellPath = `${filialePath}/schichtmodell/standard`;
 const dienstplanQuellModellschichtPath = `${dienstplanSchichtmodellPath}/modellschicht/frueh`;
+const wechselSchichtmodellPath = `${filialePath}/schichtmodell/winter`;
+const wechselQuellModellschichtPath = `${wechselSchichtmodellPath}/modellschicht/spaet`;
 const fremdesSchichtmodellPath = `${nichtZugeordneteFilialePath}/schichtmodell/sommer`;
 const dienstplanPath = `${filialePath}/dienstplan/2026-10`;
 const dienstplanModellschichtPath = `${dienstplanPath}/modellschicht/frueh`;
@@ -191,6 +193,24 @@ async function seedProfile(userRole, overrides = {}) {
       aktualisiertVonUid: 'scoped',
     });
     await setDoc(doc(db, dienstplanQuellModellschichtPath), modellschichtDaten());
+    await setDoc(doc(db, wechselSchichtmodellPath), {
+      bezeichnung: 'Winter',
+      aktiv: true,
+      erstelltAm: new Date('2026-01-01T00:00:00.000Z'),
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: new Date('2026-01-01T00:00:00.000Z'),
+      aktualisiertVonUid: 'scoped',
+    });
+    await setDoc(
+      doc(db, wechselQuellModellschichtPath),
+      modellschichtDaten({
+        bezeichnung: 'Spätschicht',
+        beginnLokalzeit: '16:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+        standardpauseMinuten: 30,
+      }),
+    );
   });
   return testEnvironment.authenticatedContext('scoped').firestore();
 }
@@ -263,6 +283,36 @@ async function seedDienstplan() {
   });
 }
 
+async function seedUnveroeffentlichtenDienstplan() {
+  const zeitpunkt = new Date('2026-10-01T08:00:00.000Z');
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, dienstplanPath), {
+      zeitraumStart: '2026-10-01',
+      zeitraumEnde: '2026-10-31',
+      zeitzone: 'Europe/Berlin',
+      schichtmodellId: 'standard',
+      schichtmodellBezeichnung: 'Standard',
+      entwurfVersionId: 'v2',
+      naechsteVersionsnummer: 3,
+      erstelltAm: zeitpunkt,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+    });
+    await setDoc(doc(db, entwurfVersionPath), {
+      nummer: 2,
+      revision: 0,
+      status: 'entwurf',
+      erstelltAm: zeitpunkt,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+    });
+    await setDoc(doc(db, dienstplanModellschichtPath), modellschichtDaten());
+  });
+}
+
 function setInitialenDienstplan(batch, db, basisPfad, monat) {
   const [jahr, monatsnummer] = monat.split('-').map(Number);
   const letzterTag = new Date(Date.UTC(jahr, monatsnummer, 0)).getUTCDate();
@@ -293,6 +343,33 @@ function setInitialenDienstplan(batch, db, basisPfad, monat) {
   batch.set(doc(db, `${basisPfad}/modellschicht/frueh`), modellschichtDaten());
 }
 
+function setDienstplanSchichtmodellwechsel(batch, db, mitRevision = true) {
+  batch.update(doc(db, dienstplanPath), {
+    schichtmodellId: 'winter',
+    schichtmodellBezeichnung: 'Winter',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  if (mitRevision) {
+    batch.update(doc(db, entwurfVersionPath), {
+      revision: 1,
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    });
+  }
+  batch.delete(doc(db, dienstplanModellschichtPath));
+  batch.set(
+    doc(db, `${dienstplanPath}/modellschicht/spaet`),
+    modellschichtDaten({
+      bezeichnung: 'Spätschicht',
+      beginnLokalzeit: '16:00',
+      endeLokalzeit: '01:00',
+      endetAmFolgetag: true,
+      standardpauseMinuten: 30,
+    }),
+  );
+}
+
 function schichtmodellDaten(overrides = {}) {
   return {
     bezeichnung: 'Sommer',
@@ -308,7 +385,6 @@ function schichtmodellDaten(overrides = {}) {
 function modellschichtDaten(overrides = {}) {
   return {
     bezeichnung: 'Frühschicht',
-    reihenfolge: 0,
     beginnLokalzeit: '07:00',
     endeLokalzeit: '12:00',
     endetAmFolgetag: false,
@@ -318,7 +394,7 @@ function modellschichtDaten(overrides = {}) {
 }
 
 for (const role of ['master', 'office', 'filiale']) {
-  test(`${role} manages shift models and ordered model shifts in an allowed branch`, async () => {
+  test(`${role} manages shift models and model shifts in an allowed branch`, async () => {
     const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
     const modell = doc(db, schichtmodellPath);
     const schicht = doc(db, modellschichtPath);
@@ -334,7 +410,7 @@ for (const role of ['master', 'office', 'filiale']) {
         aktualisiertVonUid: 'scoped',
       }),
     );
-    await assertSucceeds(updateDoc(schicht, { reihenfolge: 1 }));
+    await assertSucceeds(updateDoc(schicht, { bezeichnung: 'Früh' }));
     await assertSucceeds(deleteDoc(schicht));
     await assertFails(deleteDoc(modell));
   });
@@ -424,6 +500,34 @@ test('model snapshots of an existing service plan are immutable', async () => {
       bezeichnung: 'Spät',
     }),
   );
+});
+
+test('office switches the model snapshot of a never-published draft with its next revision', async () => {
+  const db = await seedProfile('office');
+  await seedUnveroeffentlichtenDienstplan();
+  const batch = writeBatch(db);
+  setDienstplanSchichtmodellwechsel(batch, db);
+
+  await assertSucceeds(batch.commit());
+  const dienstplan = await getDoc(doc(db, dienstplanPath));
+  const version = await getDoc(doc(db, entwurfVersionPath));
+  assert.equal(dienstplan.data().schichtmodellId, 'winter');
+  assert.equal(version.data().revision, 1);
+  assert.equal((await getDoc(doc(db, dienstplanModellschichtPath))).exists(), false);
+  await assertSucceeds(getDoc(doc(db, `${dienstplanPath}/modellschicht/spaet`)));
+});
+
+test('office cannot switch a model after publication or without advancing the draft revision', async () => {
+  const db = await seedProfile('office');
+  await seedUnveroeffentlichtenDienstplan();
+  let batch = writeBatch(db);
+  setDienstplanSchichtmodellwechsel(batch, db, false);
+  await assertFails(batch.commit());
+
+  await seedDienstplan();
+  batch = writeBatch(db);
+  setDienstplanSchichtmodellwechsel(batch, db);
+  await assertFails(batch.commit());
 });
 
 test('office cannot create service plans for malformed months or foreign branches', async () => {

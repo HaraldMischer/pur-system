@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
+import { ISchichtmodellAnlage } from '../../../commons/models/domain/schichtmodell';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
   SchichtmodellBearbeitenDialog,
@@ -57,7 +58,6 @@ describe('SchichtmodellBearbeitenDialog', () => {
       modellschichten: [
         expect.objectContaining({
           bezeichnung: 'Früh',
-          reihenfolge: 0,
           standardpauseMinuten: 30,
         }),
       ],
@@ -65,21 +65,38 @@ describe('SchichtmodellBearbeitenDialog', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
-  it('should add, reorder and remove model shifts while retaining one shift', async () => {
+  it('should add and remove model shifts while retaining one shift', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
 
     component.addModellschicht();
     component.schichtmodellForm.controls.modellschichten.at(0).controls.bezeichnung.setValue('A');
     component.schichtmodellForm.controls.modellschichten.at(1).controls.bezeichnung.setValue('B');
-    component.moveModellschichtDown(0);
-
-    expect(
-      component.schichtmodellForm.controls.modellschichten.at(0).controls.bezeichnung.value,
-    ).toBe('B');
     component.removeModellschicht(1);
     component.removeModellschicht(0);
     expect(component.schichtmodellForm.controls.modellschichten).toHaveLength(1);
+  });
+
+  it('should submit model shifts chronologically by start time', async () => {
+    const fixture = await createComponent({ pfad });
+    const component = fixture.componentInstance;
+    component.schichtmodellForm.controls.bezeichnung.setValue('Standard');
+    component.schichtmodellForm.controls.modellschichten.at(0).patchValue({
+      bezeichnung: 'Spät',
+      beginnLokalzeit: '16:00',
+      endeLokalzeit: '01:00',
+    });
+    component.addModellschicht();
+    component.schichtmodellForm.controls.modellschichten.at(1).patchValue({
+      bezeichnung: 'Früh',
+      beginnLokalzeit: '07:00',
+      endeLokalzeit: '16:00',
+    });
+
+    await component.saveSchichtmodell();
+
+    const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtmodellAnlage;
+    expect(anlage.modellschichten.map(({ bezeichnung }) => bezeichnung)).toEqual(['Früh', 'Spät']);
   });
 
   it('should reject equal times and infer a shift ending on the following day', async () => {

@@ -214,6 +214,81 @@ describe('DienstplanService', () => {
     expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
   });
 
+  it('should replace the model snapshot of an empty never-published draft', async () => {
+    loadDocumentMock.mockResolvedValue({
+      id: '2026-10',
+      daten: createDienstplanDokument({ entwurfVersionId: 'v-1' }),
+    });
+    loadCollectionMock.mockImplementation(async (path: string) => {
+      return path.endsWith('/schicht') ? [] : [{ id: 'frueh', daten: createModellschichtDaten() }];
+    });
+    const service = TestBed.inject(DienstplanService);
+    const schichtmodell = createSchichtmodell('modell-2', 'Winter', 'spaet');
+
+    const ergebnis = await service.updateDienstplanSchichtmodell(
+      versionsPfad,
+      2,
+      schichtmodell,
+      'uid-1',
+    );
+
+    expect(ergebnis).toEqual(
+      expect.objectContaining({
+        dienstplan: expect.objectContaining({
+          schichtmodellId: 'modell-2',
+          schichtmodellBezeichnung: 'Winter',
+        }),
+        modellschichten: [expect.objectContaining({ id: 'spaet' })],
+        versionRevision: 3,
+      }),
+    );
+    const transaktion = executeDocumentTransactionMock.mock.calls[0];
+    const operationen = transaktion[1]({
+      id: 'v-1',
+      daten: createVersionDokument(),
+    }).operationen;
+    expect(operationen).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ daten: expect.objectContaining({ revision: 3 }) }),
+        expect.objectContaining({
+          daten: expect.objectContaining({ schichtmodellId: 'modell-2' }),
+        }),
+        expect.objectContaining({
+          documentPath:
+            'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/modellschicht/frueh',
+          delete: true,
+        }),
+        expect.objectContaining({
+          documentPath:
+            'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/modellschicht/spaet',
+        }),
+      ]),
+    );
+  });
+
+  it('should reject a model switch when the server draft contains a shift', async () => {
+    loadDocumentMock.mockResolvedValue({
+      id: '2026-10',
+      daten: createDienstplanDokument({ entwurfVersionId: 'v-1' }),
+    });
+    loadCollectionMock.mockImplementation(async (path: string) => {
+      return path.endsWith('/schicht')
+        ? [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }]
+        : [{ id: 'frueh', daten: createModellschichtDaten() }];
+    });
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(
+      service.updateDienstplanSchichtmodell(
+        versionsPfad,
+        2,
+        createSchichtmodell('modell-2', 'Winter', 'spaet'),
+        'uid-1',
+      ),
+    ).rejects.toThrow('Lösche zuerst alle Schichten des Entwurfs.');
+    expect(executeDocumentTransactionMock).not.toHaveBeenCalled();
+  });
+
   it('should create a shift together with the next draft revision', async () => {
     const service = TestBed.inject(DienstplanService);
 
@@ -321,7 +396,6 @@ describe('DienstplanService', () => {
   function createModellschichtDaten() {
     return {
       bezeichnung: 'Früh',
-      reihenfolge: 0,
       beginnLokalzeit: '07:00',
       endeLokalzeit: '12:00',
       endetAmFolgetag: false,
@@ -329,12 +403,16 @@ describe('DienstplanService', () => {
     };
   }
 
-  function createSchichtmodell(): ISchichtmodellBestand {
+  function createSchichtmodell(
+    id = 'modell-1',
+    bezeichnung = 'Sommer',
+    modellschichtId = 'frueh',
+  ): ISchichtmodellBestand {
     return {
       schichtmodell: {
         ...pfad,
-        id: 'modell-1',
-        bezeichnung: 'Sommer',
+        id,
+        bezeichnung,
         aktiv: true,
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
@@ -342,8 +420,8 @@ describe('DienstplanService', () => {
       modellschichten: [
         {
           ...pfad,
-          id: 'frueh',
-          schichtmodellId: 'modell-1',
+          id: modellschichtId,
+          schichtmodellId: id,
           ...createModellschichtDaten(),
         },
       ],

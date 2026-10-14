@@ -17,6 +17,7 @@ describe('DienstplanAnlegenDialog', () => {
   const inProgress = signal(false);
   const error = signal<string | null>(null);
   const createDienstplan = vi.fn().mockResolvedValue(undefined);
+  const updateDienstplanSchichtmodell = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
   let fixture: ComponentFixture<DienstplanAnlegenDialog>;
 
@@ -25,25 +26,32 @@ describe('DienstplanAnlegenDialog', () => {
     inProgress.set(false);
     error.set(null);
     createDienstplan.mockResolvedValue(undefined);
-    const daten: TDienstplanAnlegenDialogDaten = {
+    updateDienstplanSchichtmodell.mockResolvedValue(undefined);
+    await setup({
       pfad,
       monat: '2026-10',
       schichtmodelle: [schichtmodell],
-    };
+    });
+  });
+
+  async function setup(daten: TDienstplanAnlegenDialogDaten): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [DienstplanAnlegenDialog],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: daten },
         { provide: MatDialogRef, useValue: { close } },
-        { provide: DienstplanStore, useValue: { createDienstplan, inProgress, error } },
+        {
+          provide: DienstplanStore,
+          useValue: { createDienstplan, updateDienstplanSchichtmodell, inProgress, error },
+        },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(DienstplanAnlegenDialog);
     fixture.detectChanges();
-  });
+  }
 
   it('should require a model before creating the monthly plan', async () => {
-    await fixture.componentInstance.createDienstplan();
+    await fixture.componentInstance.saveDienstplan();
 
     expect(createDienstplan).not.toHaveBeenCalled();
     expect(close).not.toHaveBeenCalled();
@@ -52,9 +60,30 @@ describe('DienstplanAnlegenDialog', () => {
   it('should create the monthly plan with the selected model', async () => {
     fixture.componentInstance.dienstplanForm.controls.schichtmodellId.setValue('modell-1');
 
-    await fixture.componentInstance.createDienstplan();
+    await fixture.componentInstance.saveDienstplan();
 
     expect(createDienstplan).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell);
+    expect(close).toHaveBeenCalledWith(true);
+  });
+
+  it('should switch the model of the selected draft', async () => {
+    TestBed.resetTestingModule();
+    await setup({
+      modus: 'wechseln',
+      pfad,
+      monat: '2026-10',
+      versionId: 'v-1',
+      schichtmodelle: [schichtmodell],
+    });
+    fixture.componentInstance.dienstplanForm.controls.schichtmodellId.setValue('modell-1');
+
+    await fixture.componentInstance.saveDienstplan();
+
+    expect(updateDienstplanSchichtmodell).toHaveBeenCalledWith(
+      { ...pfad, dienstplanId: '2026-10', versionId: 'v-1' },
+      schichtmodell,
+    );
+    expect(createDienstplan).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledWith(true);
   });
 
@@ -74,7 +103,6 @@ describe('DienstplanAnlegenDialog', () => {
           id: 'frueh',
           schichtmodellId: 'modell-1',
           bezeichnung: 'Früh',
-          reihenfolge: 0,
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,

@@ -1,4 +1,4 @@
-<!-- pur-system/docs/services/app-daten-init-service.md -->
+<!-- pur-system/docs/architektur/services/app-daten-init-service.md -->
 
 # App-Dateninitialisierung
 

@@ -1,4 +1,4 @@
-<!-- pur-system/docs/matrix-cache-strategien.md -->
+<!-- pur-system/docs/matrizen/cache-strategien.md -->
 
 # Matrix: Cache-Strategien und Betriebsarten
 
@@ -9,13 +9,13 @@ gewährt keine zusätzlichen Berechtigungen.
 
 ### Matrix
 
-| Auslieferungsvariante | Cache-Art              | Benutzerprofil | Stammdaten    | Dienstpläne   | Wiederholung  |
-| --------------------- | ---------------------- | -------------- | ------------- | ------------- | ------------- |
-| Pur Master            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` | `networkOnly` |
-| Pur Office            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` | `networkOnly` |
+| Auslieferungsvariante | Cache-Art              | Benutzerprofil | Stammdaten    | Dienstpläne    | Wiederholung  |
+| --------------------- | ---------------------- | -------------- | ------------- | -------------- | ------------- |
+| Pur Master            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly`  | `networkOnly` |
+| Pur Office            | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly`  | `networkOnly` |
 | Pur Filiale           | `persistentLocalCache` | `networkFirst` | `cacheFirst`  | `networkFirst` | `networkOnly` |
-| Pur Mitarbeiter       | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` | `networkOnly` |
-| Entwicklung           | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly` | `networkOnly` |
+| Pur Mitarbeiter       | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly`  | `networkOnly` |
+| Entwicklung           | `memoryLocalCache`     | `networkOnly`  | `networkOnly` | `networkOnly`  | `networkOnly` |
 
 ### Zusatzbedingungen
 
@@ -26,12 +26,12 @@ gewährt keine zusätzlichen Berechtigungen.
 
 ### Bedeutung der Lesestrategien
 
-| Strategie      | Tatsächliches Verhalten                                                                                          |
-| -------------- | --------------------------------------------------------------------------------------------------------------- |
-| `networkOnly`  | Liest ausschließlich vom Server und gibt dessen Ergebnis oder Fehler weiter.                                   |
-| `cacheOnly`    | Liest ausschließlich aus dem Firestore-Cache und führt keine Serveranfrage aus.                                |
-| `cacheFirst`   | Verwendet einen vorhandenen, nicht leeren Cache-Wert; andernfalls wird vom Server geladen.                      |
-| `networkFirst` | Liest zuerst vom Server und fällt nur bei einem technischen Serverfehler auf den Firestore-Cache zurück.        |
+| Strategie      | Tatsächliches Verhalten                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| `networkOnly`  | Liest ausschließlich vom Server und gibt dessen Ergebnis oder Fehler weiter.                             |
+| `cacheOnly`    | Liest ausschließlich aus dem Firestore-Cache und führt keine Serveranfrage aus.                          |
+| `cacheFirst`   | Verwendet einen vorhandenen, nicht leeren Cache-Wert; andernfalls wird vom Server geladen.               |
+| `networkFirst` | Liest zuerst vom Server und fällt nur bei einem technischen Serverfehler auf den Firestore-Cache zurück. |
 
 Für `cacheFirst` gilt eine leere Collection oder Query beziehungsweise ein nicht vorhandenes Dokument als fehlender Cache-Wert.
 In diesem Fall wird auch bei einem zuvor aufgebauten Cache eine Serveranfrage ausgeführt. Berechtigungs- und andere
@@ -47,7 +47,7 @@ nichttechnische Serverfehler lösen bei `networkFirst` keinen Cache-Rückfall au
 | Installation                 | als PWA vorgesehen                        | als PWA vorgesehen                        | als PWA vorgesehen und geprüft            | als PWA vorgesehen und geprüft            |
 | Offline-App-Shell            | ja                                        | ja                                        | ja                                        | ja                                        |
 | Fachliche Daten online       | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten |
-| Dauerhafte Offline-Fachdaten | nein                                      | nein                                      | vollständiger Filial-Lesebestand         | nein                                      |
+| Dauerhafte Offline-Fachdaten | nein                                      | nein                                      | vollständiger Filial-Lesebestand          | nein                                      |
 | Offline-Änderungen           | vorerst nein                              | vorerst nein                              | vorerst nein                              | vorerst nein                              |
 
 ### Zusatzbedingungen

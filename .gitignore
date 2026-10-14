@@ -46,7 +46,7 @@ testem.log
 __screenshots__/
 
 # Confidential documentation
-/docs/*Fernwirkungsschnittstelle*/
+/docs/schnittstellen/21_02_11 Fernwirkungsschnittstelle V4.pdf
 
 # System files
 .DS_Store

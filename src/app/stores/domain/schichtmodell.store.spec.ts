@@ -113,7 +113,6 @@ describe('SchichtmodellStore', () => {
 function createModellschicht() {
   return {
     bezeichnung: 'Früh',
-    reihenfolge: 0,
     beginnLokalzeit: '07:00',
     endeLokalzeit: '12:00',
     endetAmFolgetag: false,

@@ -1,4 +1,4 @@
-<!-- pur-system/docs/stores/dienstplan-store.md -->
+<!-- pur-system/docs/architektur/stores/dienstplan-store.md -->
 
 # Dienstplan-Store
 
@@ -8,8 +8,8 @@ Zusätzlich speichert er den aktuell ausgewählten Filial- und Monatskontext.
 ## Zustand und Ableitungen
 
 Jeder Filialkontext enthält den geladenen Bestand sowie `download`, `isLoaded`, `vollstaendigGeladen` und eine mögliche
-Fehlermeldung. App-weite Schreibvorgänge werden über `inProgress` und `error` abgebildet. Die öffentlichen Ableitungen liefern den
-ausgewählten Dienstplan, seine Versionen und deren Schichten.
+Fehlermeldung. App-weite Schreibvorgänge werden über `inProgress` und `error` abgebildet. Die öffentlichen Ableitungen liefern
+den ausgewählten Dienstplan, seine Versionen und deren Schichten.
 
 ## Öffentliche API
 
@@ -17,6 +17,8 @@ ausgewählten Dienstplan, seine Versionen und deren Schichten.
   lassen noch fehlende, durch Schichten referenzierte Mitarbeiter-IDs gezielt mit `networkOnly` nachladen.
 - `createDienstplan()` verlangt ein aktives, nicht leeres Schichtmodell derselben Filiale und übernimmt Plan, erste Version und
   Modell-Momentaufnahme aus dem bestätigten Service-Ergebnis in den lokalen Zustand.
+- `updateDienstplanSchichtmodell()` erlaubt den Wechsel nur für den leeren, noch nie veröffentlichten Entwurf und ersetzt Plan,
+  Momentaufnahme sowie Versionsrevision durch das bestätigte Service-Ergebnis.
 - `createSchicht()`, `updateSchicht()` und `deleteSchicht()` übernehmen bestätigte Service-Ergebnisse direkt in den lokalen
   Zustand und erhöhen die lokale Versionsrevision. Eine Schicht wird über ihre `modellschichtId` einer Zelle der geladenen
   Modell-Momentaufnahme zugeordnet.

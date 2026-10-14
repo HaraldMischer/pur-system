@@ -1,4 +1,4 @@
-<!-- pur-system/docs/stores/schichtmodell-store.md -->
+<!-- pur-system/docs/architektur/stores/schichtmodell-store.md -->
 
 # Schichtmodell-Store
 

@@ -1,4 +1,4 @@
-<!-- pur-system/docs/services/app-sitzungs-init-service.md -->
+<!-- pur-system/docs/architektur/services/app-sitzungs-init-service.md -->
 
 # App-Sitzungsinitialisierung
 

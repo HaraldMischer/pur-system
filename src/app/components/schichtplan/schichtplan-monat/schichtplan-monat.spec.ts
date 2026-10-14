@@ -31,9 +31,7 @@ describe('SchichtplanMonat', () => {
     const spaltenkoepfe = Array.from(compiled.querySelectorAll('thead th')).map((element) => {
       return element.textContent?.replace(/\s+/g, ' ').trim();
     });
-    const anlegenButtons = compiled.querySelectorAll<HTMLButtonElement>(
-      '.schichtplan-monat__zelle-anlegen',
-    );
+    const anlegenButtons = compiled.querySelectorAll<HTMLButtonElement>('.anlegen');
     const dritteTageszeile = compiled.querySelectorAll('tbody tr')[2];
 
     expect(compiled.querySelectorAll('tbody tr')).toHaveLength(28);
@@ -45,12 +43,13 @@ describe('SchichtplanMonat', () => {
     expect(anlegenButtons).toHaveLength(56);
     anlegenButtons[5].click();
     expect(auswahl).toEqual([{ datum: '2026-02-03', modellschichtId: 'spaet' }]);
-    expect(dritteTageszeile.querySelectorAll('.schichtplan-monat__schicht')).toHaveLength(2);
+    expect(compiled.querySelector('.pur-table.pur-table--schichtplan')).not.toBeNull();
+    expect(compiled.querySelector('table.pur-table__table')).not.toBeNull();
+    expect(dritteTageszeile.querySelectorAll('.schicht')).toHaveLength(2);
     expect(dritteTageszeile.textContent).toContain('Muster, Mia');
     expect(dritteTageszeile.textContent).toContain('Muster, Max');
     expect(
-      dritteTageszeile.querySelector<HTMLElement>('.schichtplan-monat__mitarbeiter-farbe')?.style
-        .backgroundColor,
+      dritteTageszeile.querySelector<HTMLElement>('.mitarbeiter-farbe')?.style.backgroundColor,
     ).toBe('rgb(18, 52, 86)');
     expect(dritteTageszeile.textContent).toContain('16:30–01:00 (Folgetag)');
     expect(dritteTageszeile.textContent).toContain('Arbeitszeit: 8 Std.');
@@ -64,8 +63,36 @@ describe('SchichtplanMonat', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Veröffentlicht');
-    expect(fixture.nativeElement.querySelector('.schichtplan-monat__zelle-anlegen')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.schichtplan-monat__schicht button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.anlegen')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.schicht button')).toBeNull();
+  });
+
+  it('should render and emit the model switch in the plan status row', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('schichtmodellwechselAnzeigen', true);
+    fixture.componentRef.setInput('schichtmodellwechselHinweis', 'Anderes Modell wählen.');
+    const wechsel = vi.fn();
+    fixture.componentInstance.schichtmodellWechseln.subscribe(wechsel);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const header = compiled.querySelector('.monatskopf');
+    const button = header?.querySelector<HTMLButtonElement>('.kopf-aktion');
+    expect(button?.disabled).toBe(false);
+    expect(button?.title).toBe('Anderes Modell wählen.');
+    button?.click();
+    expect(wechsel).toHaveBeenCalledOnce();
+  });
+
+  it('should disable the model switch in the plan status row when requested', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('schichtmodellwechselAnzeigen', true);
+    fixture.componentRef.setInput('schichtmodellwechselDeaktiviert', true);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const button = compiled.querySelector<HTMLButtonElement>('.kopf-aktion');
+    expect(button?.disabled).toBe(true);
   });
 
   it('should emit only valid employee drops into writable cells', () => {
@@ -146,7 +173,6 @@ describe('SchichtplanMonat', () => {
         firmaId: 'f-1',
         filialeId: 'b-1',
         bezeichnung: 'Spät',
-        reihenfolge: 2,
         beginnLokalzeit: '16:30',
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
@@ -159,7 +185,6 @@ describe('SchichtplanMonat', () => {
         firmaId: 'f-1',
         filialeId: 'b-1',
         bezeichnung: 'Früh',
-        reihenfolge: 1,
         beginnLokalzeit: '07:00',
         endeLokalzeit: '12:00',
         endetAmFolgetag: false,

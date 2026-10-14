@@ -1,4 +1,4 @@
-<!-- pur-system/docs/matrix-datenmigration.md -->
+<!-- pur-system/docs/matrizen/datenmigration.md -->
 
 # Matrix: Datenmigration
 
@@ -33,12 +33,12 @@ Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/
 
 ### Matrix
 
-| Reihenfolge | Legacy-Quelle                                           | Ziel                                                          |
-| ----------- | -------------------------------------------------------- | ------------------------------------------------------------- |
-| 1           | `purCustomers/{purCustomerId}`                          | `unternehmer/{unternehmerId}`                                 |
-| 2           | `…/company/{purCompanyId}`                              | `…/firma/{firmaId}`                                           |
-| 3           | `…/company/{purCompanyId}/branches/{purBranchId}`        | `…/firma/{firmaId}/filiale/{filialeId}`                        |
-| 4           | `…/branches/{purBranchId}/employee/{purEmployeeId}`       | `…/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`                |
+| Reihenfolge | Legacy-Quelle                                       | Ziel                                            |
+| ----------- | --------------------------------------------------- | ----------------------------------------------- |
+| 1           | `purCustomers/{purCustomerId}`                      | `unternehmer/{unternehmerId}`                   |
+| 2           | `…/company/{purCompanyId}`                          | `…/firma/{firmaId}`                             |
+| 3           | `…/company/{purCompanyId}/branches/{purBranchId}`   | `…/firma/{firmaId}/filiale/{filialeId}`         |
+| 4           | `…/branches/{purBranchId}/employee/{purEmployeeId}` | `…/firma/{firmaId}/mitarbeiter/{mitarbeiterId}` |
 
 ### Zusatzbedingungen
 
@@ -62,13 +62,13 @@ Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/
 
 ### Matrix
 
-| Situation                              | Regel                                                          |
-| -------------------------------------- | -------------------------------------------------------------- |
-| Gültiges Quelldokument                 | Gemappte Felder unter der gespeicherten Ziel-ID schreiben.      |
-| Zieldokument ist bereits vorhanden     | Gemappte Felder aktualisieren.                                  |
-| Dokument existiert ausschließlich dort | Unverändert im Ziel erhalten.                                   |
-| Pflichtdaten fehlen oder sind ungültig | Nicht migrieren und Fehler melden.                              |
-| Unbekanntes Legacy-Feld                | Nicht ungeprüft übernehmen.                                    |
+| Situation                              | Regel                                                      |
+| -------------------------------------- | ---------------------------------------------------------- |
+| Gültiges Quelldokument                 | Gemappte Felder unter der gespeicherten Ziel-ID schreiben. |
+| Zieldokument ist bereits vorhanden     | Gemappte Felder aktualisieren.                             |
+| Dokument existiert ausschließlich dort | Unverändert im Ziel erhalten.                              |
+| Pflichtdaten fehlen oder sind ungültig | Nicht migrieren und Fehler melden.                         |
+| Unbekanntes Legacy-Feld                | Nicht ungeprüft übernehmen.                                |
 
 ### Zusatzbedingungen
 
@@ -124,25 +124,25 @@ Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/
 
 ### Matrix
 
-| Merkmal             | Regel                                                                         |
-| ------------------- | ----------------------------------------------------------------------------- |
-| Übernahme           | Jeder Filialmitarbeiter wird zunächst als eigener Firmenmitarbeiter angelegt. |
-| Ziel-ID             | Einmalige Firestore-Auto-ID mit dauerhaft gespeicherter Zuordnung.            |
-| Filialzuordnung     | `filialIds` enthält zunächst genau die zugeordnete neue Filial-ID.            |
+| Merkmal             | Regel                                                                           |
+| ------------------- | ------------------------------------------------------------------------------- |
+| Übernahme           | Jeder Filialmitarbeiter wird zunächst als eigener Firmenmitarbeiter angelegt.   |
+| Ziel-ID             | Einmalige Firestore-Auto-ID mit dauerhaft gespeicherter Zuordnung.              |
+| Filialzuordnung     | `filialIds` enthält zunächst genau die zugeordnete neue Filial-ID.              |
 | Dubletten           | Bleiben zunächst getrennt und können durch einen Master zusammengeführt werden. |
-| Persönlicher Zugang | `benutzerUid` wird nicht gesetzt.                                             |
-| Anzeigename         | Wird aus `firstName` und `lastName` gebildet.                                 |
-| Rollen              | Werden als eindeutiges Array unter `rollen` gespeichert.                       |
-| `Service`           | Wird als `servicekraft` übernommen.                                            |
-| `Servicekraft`      | Wird als `servicekraft` übernommen.                                            |
-| `Filialkasse`       | Wird als `filialkasse` übernommen.                                             |
-| `Administrator`     | Wird als `administrator` übernommen.                                           |
-| `Einstellungen`     | Wird als `administrator` übernommen.                                           |
-| `Kassierer`         | Wird als `kassierer` übernommen.                                               |
-| `Kassieren`         | Wird als `kassierer` übernommen.                                               |
-| `Techniker`         | Wird als `techniker` übernommen.                                               |
-| `Gerätetechnik`     | Wird als `techniker` übernommen.                                               |
-| `Geraetetechnik`    | Wird als `techniker` übernommen.                                               |
+| Persönlicher Zugang | `benutzerUid` wird nicht gesetzt.                                               |
+| Anzeigename         | Wird aus `firstName` und `lastName` gebildet.                                   |
+| Rollen              | Werden als eindeutiges Array unter `rollen` gespeichert.                        |
+| `Service`           | Wird als `servicekraft` übernommen.                                             |
+| `Servicekraft`      | Wird als `servicekraft` übernommen.                                             |
+| `Filialkasse`       | Wird als `filialkasse` übernommen.                                              |
+| `Administrator`     | Wird als `administrator` übernommen.                                            |
+| `Einstellungen`     | Wird als `administrator` übernommen.                                            |
+| `Kassierer`         | Wird als `kassierer` übernommen.                                                |
+| `Kassieren`         | Wird als `kassierer` übernommen.                                                |
+| `Techniker`         | Wird als `techniker` übernommen.                                                |
+| `Gerätetechnik`     | Wird als `techniker` übernommen.                                                |
+| `Geraetetechnik`    | Wird als `techniker` übernommen.                                                |
 
 ### Zusatzbedingungen
 
@@ -172,7 +172,7 @@ Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/
 | Status         | Zustand des letzten Migrationslaufs.                                       |
 | Quelle         | Aktuelle Anzahl der Dokumente in der Legacy-Collection.                    |
 | Migriert       | Im letzten Lauf erfolgreich verarbeitete Quelldokumente.                   |
-| Fehler         | Anzahl der im letzten Lauf erkannten Migrationsprobleme.                    |
+| Fehler         | Anzahl der im letzten Lauf erkannten Migrationsprobleme.                   |
 | Offen          | Aktuelle Quelle abzüglich der zuletzt erfolgreich migrierten Dokumente.    |
 | Ziel           | Aktuelle Gesamtzahl der Dokumente in der Ziel-Collection.                  |
 | Wiederholung   | Abgebrochene oder unvollständige Läufe müssen sicher wiederholbar sein.    |

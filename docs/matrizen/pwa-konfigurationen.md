@@ -1,26 +1,26 @@
-<!-- pur-system/docs/matrix-pwa-konfigurationen.md -->
+<!-- pur-system/docs/matrizen/pwa-konfigurationen.md -->
 
 # Matrix: PWA-Konfigurationen
 
 Diese Übersicht enthält die technischen Build-, Vorschau-, Service-Worker- und Hosting-Konfigurationen der
 Auslieferungsvarianten. Fachliche Cache- und Offline-Entscheidungen stehen in der
-[Cache- und Betriebsartenmatrix](./matrix-cache-strategien.md).
+[Cache- und Betriebsartenmatrix](./cache-strategien.md).
 
 ## 1. Build- und Auslieferungsmatrix
 
 ### Matrix
 
-| Variante               | Adresse oder Ziel                 | Befehl                           | Angular-Konfiguration    | Ausgabe                        | Service Worker | Manifest        | Offline-App-Shell |
-| ---------------------- | --------------------------------- | -------------------------------- | ------------------------ | ------------------------------ | -------------- | --------------- | ----------------- |
-| Entwicklung            | `http://localhost:4200`           | `npm run web:pur-system`         | `development`            | Angular Dev Server             | aus            | Pur Office      | nein              |
-| Lokale Master-PWA      | `http://localhost:8080`           | `npm run pwa:pur-master`         | `office,master`      | `dist/pur-master/browser`      | an             | Pur Master      | ja                |
-| Lokale Office-PWA      | `http://localhost:8081`           | `npm run pwa:pur-office`         | `office`             | `dist/pur-office/browser`      | an             | Pur Office      | ja                |
-| Lokale Filial-PWA      | `http://localhost:8082`           | `npm run pwa:pur-filiale`        | `office,filiale`     | `dist/pur-filiale/browser`     | an             | Pur Filiale     | ja                |
-| Lokale Mitarbeiter-PWA | `http://localhost:8083`           | `npm run pwa:pur-mitarbeiter`    | `office,mitarbeiter` | `dist/pur-mitarbeiter/browser` | an             | Pur Mitarbeiter | ja                |
-| Master-Produktion      | `https://pur-master.web.app`      | `npm run deploy:pur-master`      | `office,master`      | `dist/pur-master/browser`      | an             | Pur Master      | ja                |
-| Office-Produktion      | `https://pur-office.web.app`      | `npm run deploy:pur-office`      | `office`             | `dist/pur-office/browser`      | an             | Pur Office      | ja                |
-| Filial-Produktion      | `https://pur-filiale.web.app`     | `npm run deploy:pur-filiale`     | `office,filiale`     | `dist/pur-filiale/browser`     | an             | Pur Filiale     | ja                |
-| Mitarbeiter-Produktion | `https://pur-mitarbeiter.web.app` | `npm run deploy:pur-mitarbeiter` | `office,mitarbeiter` | `dist/pur-mitarbeiter/browser` | an             | Pur Mitarbeiter | ja                |
+| Variante               | Adresse oder Ziel                 | Befehl                           | Angular-Konfiguration | Ausgabe                        | Service Worker | Manifest        | Offline-App-Shell |
+| ---------------------- | --------------------------------- | -------------------------------- | --------------------- | ------------------------------ | -------------- | --------------- | ----------------- |
+| Entwicklung            | `http://localhost:4200`           | `npm run web:pur-system`         | `development`         | Angular Dev Server             | aus            | Pur Office      | nein              |
+| Lokale Master-PWA      | `http://localhost:8080`           | `npm run pwa:pur-master`         | `office,master`       | `dist/pur-master/browser`      | an             | Pur Master      | ja                |
+| Lokale Office-PWA      | `http://localhost:8081`           | `npm run pwa:pur-office`         | `office`              | `dist/pur-office/browser`      | an             | Pur Office      | ja                |
+| Lokale Filial-PWA      | `http://localhost:8082`           | `npm run pwa:pur-filiale`        | `office,filiale`      | `dist/pur-filiale/browser`     | an             | Pur Filiale     | ja                |
+| Lokale Mitarbeiter-PWA | `http://localhost:8083`           | `npm run pwa:pur-mitarbeiter`    | `office,mitarbeiter`  | `dist/pur-mitarbeiter/browser` | an             | Pur Mitarbeiter | ja                |
+| Master-Produktion      | `https://pur-master.web.app`      | `npm run deploy:pur-master`      | `office,master`       | `dist/pur-master/browser`      | an             | Pur Master      | ja                |
+| Office-Produktion      | `https://pur-office.web.app`      | `npm run deploy:pur-office`      | `office`              | `dist/pur-office/browser`      | an             | Pur Office      | ja                |
+| Filial-Produktion      | `https://pur-filiale.web.app`     | `npm run deploy:pur-filiale`     | `office,filiale`      | `dist/pur-filiale/browser`     | an             | Pur Filiale     | ja                |
+| Mitarbeiter-Produktion | `https://pur-mitarbeiter.web.app` | `npm run deploy:pur-mitarbeiter` | `office,mitarbeiter`  | `dist/pur-mitarbeiter/browser` | an             | Pur Mitarbeiter | ja                |
 
 ### Zusatzbedingungen
 

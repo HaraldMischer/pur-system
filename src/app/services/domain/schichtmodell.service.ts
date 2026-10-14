@@ -20,6 +20,7 @@ import {
   ISchichtmodellDokument,
   ISchichtmodellEintrag,
 } from '../../commons/models/domain/schichtmodell';
+import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
 
 // ===== Top-Level Helper =====================
@@ -29,13 +30,12 @@ function sortSchichtmodelle(a: ISchichtmodellBestand, b: ISchichtmodellBestand):
 }
 
 function sortModellschichten(a: IModellschichtEintrag, b: IModellschichtEintrag): number {
-  return a.reihenfolge - b.reihenfolge || a.bezeichnung.localeCompare(b.bezeichnung, 'de');
+  return compareModellschichtenNachBeginn(a, b);
 }
 
 function normalizeModellschicht(
   modellschicht: IModellschichtSchreibdaten,
-  reihenfolge: number,
-): IModellschichtDaten {
+): IModellschichtSchreibdaten {
   const dauerMinuten = calculateSchichtdauerMinuten(
     modellschicht.beginnLokalzeit,
     modellschicht.endeLokalzeit,
@@ -44,12 +44,22 @@ function normalizeModellschicht(
     throw new Error('Die Modellschicht enthält keine gültige Bezeichnung oder Zeitfolge.');
   }
   return {
+    ...(modellschicht.id ? { id: modellschicht.id } : {}),
     bezeichnung: modellschicht.bezeichnung.trim(),
-    reihenfolge,
     beginnLokalzeit: modellschicht.beginnLokalzeit,
     endeLokalzeit: modellschicht.endeLokalzeit,
     endetAmFolgetag: modellschicht.endeLokalzeit < modellschicht.beginnLokalzeit,
     standardpauseMinuten: calculateStandardpauseMinuten(dauerMinuten),
+  };
+}
+
+function mapModellschichtDokument(daten: IModellschichtDaten): IModellschichtDokument {
+  return {
+    bezeichnung: daten.bezeichnung,
+    beginnLokalzeit: daten.beginnLokalzeit,
+    endeLokalzeit: daten.endeLokalzeit,
+    endetAmFolgetag: daten.endetAmFolgetag,
+    standardpauseMinuten: daten.standardpauseMinuten,
   };
 }
 
@@ -86,7 +96,7 @@ export class SchichtmodellService {
    *
    * @param pfad - Vollständiger Filialpfad.
    * @param strategie - Datenquellenstrategie für den Ladevorgang.
-   * @returns Nach Bezeichnung sortierte Schichtmodelle mit geordneten Modellschichten.
+   * @returns Nach Bezeichnung sortierte Schichtmodelle mit chronologisch geordneten Modellschichten.
    */
   async loadSchichtmodelle(
     pfad: IFilialPfad,
@@ -114,10 +124,10 @@ export class SchichtmodellService {
         const modellschichten = modellschichtDokumente
           .map((modellschicht) => {
             return {
-              ...modellschicht.daten,
               ...pfad,
               id: modellschicht.id,
               schichtmodellId: dokument.id,
+              ...mapModellschichtDokument(modellschicht.daten),
             };
           })
           .sort(sortModellschichten);
@@ -131,7 +141,7 @@ export class SchichtmodellService {
    * Legt ein aktives Schichtmodell mit mindestens einer Modellschicht atomar an.
    *
    * @param pfad - Vollständiger Filialpfad.
-   * @param anlage - Bezeichnung und geordnete Modellschichten.
+   * @param anlage - Bezeichnung und fachliche Modellschichten.
    * @param benutzerUid - UID des anlegenden Benutzers.
    * @returns Lokal abbildbarer Bestand des neuen Schichtmodells.
    */
@@ -153,17 +163,20 @@ export class SchichtmodellService {
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
-    const modellschichten = anlage.modellschichten.map((modellschicht, index) => {
-      const id = this.firestoreDbService.createDocumentId(
-        FIRESTORE_COLLECTION_PATHS.modellschichten({ ...pfad, schichtmodellId }),
-      );
-      return {
-        ...normalizeModellschicht(modellschicht, index),
-        ...pfad,
-        id,
-        schichtmodellId,
-      };
-    });
+    const modellschichten = anlage.modellschichten
+      .map((modellschicht) => normalizeModellschicht(modellschicht))
+      .map((modellschicht) => {
+        const id = this.firestoreDbService.createDocumentId(
+          FIRESTORE_COLLECTION_PATHS.modellschichten({ ...pfad, schichtmodellId }),
+        );
+        return {
+          ...modellschicht,
+          ...pfad,
+          id,
+          schichtmodellId,
+        };
+      })
+      .sort(compareModellschichtenNachBeginn);
     const operationen: TFirestoreBatchOperation[] = [
       {
         documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
@@ -183,7 +196,7 @@ export class SchichtmodellService {
             schichtmodellId,
             modellschichtId: modellschicht.id,
           }),
-          daten: normalizeModellschicht(modellschicht, modellschicht.reihenfolge),
+          daten: mapModellschichtDokument(modellschicht),
         };
       }),
     ];
@@ -210,23 +223,26 @@ export class SchichtmodellService {
     const schichtmodellId = bestand.schichtmodell.id;
     const bekannteIds = new Set(bestand.modellschichten.map((modellschicht) => modellschicht.id));
     const verwendeteIds = new Set<string>();
-    const modellschichten = aktualisierung.modellschichten.map((modellschicht, index) => {
-      const id =
-        modellschicht.id &&
-        bekannteIds.has(modellschicht.id) &&
-        !verwendeteIds.has(modellschicht.id)
-          ? modellschicht.id
-          : this.firestoreDbService.createDocumentId(
-              FIRESTORE_COLLECTION_PATHS.modellschichten({ ...pfad, schichtmodellId }),
-            );
-      verwendeteIds.add(id);
-      return {
-        ...normalizeModellschicht(modellschicht, index),
-        ...pfad,
-        id,
-        schichtmodellId,
-      };
-    });
+    const modellschichten = aktualisierung.modellschichten
+      .map((modellschicht) => normalizeModellschicht(modellschicht))
+      .map((modellschicht) => {
+        const id =
+          modellschicht.id &&
+          bekannteIds.has(modellschicht.id) &&
+          !verwendeteIds.has(modellschicht.id)
+            ? modellschicht.id
+            : this.firestoreDbService.createDocumentId(
+                FIRESTORE_COLLECTION_PATHS.modellschichten({ ...pfad, schichtmodellId }),
+              );
+        verwendeteIds.add(id);
+        return {
+          ...modellschicht,
+          ...pfad,
+          id,
+          schichtmodellId,
+        };
+      })
+      .sort(compareModellschichtenNachBeginn);
     const operationen: TFirestoreBatchOperation[] = [
       {
         documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
@@ -244,7 +260,12 @@ export class SchichtmodellService {
             schichtmodellId,
             modellschichtId: modellschicht.id,
           }),
-          daten: normalizeModellschicht(modellschicht, modellschicht.reihenfolge),
+          daten: {
+            ...mapModellschichtDokument(modellschicht),
+            ...(bekannteIds.has(modellschicht.id)
+              ? { reihenfolge: this.firestoreDbService.createDeleteField() }
+              : {}),
+          },
         };
       }),
       ...bestand.modellschichten

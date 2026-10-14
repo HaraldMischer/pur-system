@@ -1,9 +1,9 @@
-<!-- pur-system/docs/matrix-datenladen.md -->
+<!-- pur-system/docs/matrizen/datenladen.md -->
 
 # Matrix: Datenladen
 
 Diese Übersicht zeigt die Verantwortlichkeiten, den benutzerabhängigen Ladeumfang und die Zustände des Sitzungsstarts.
-Architektur und Datenfluss stehen im [Projektplan](./projekt-plan.md).
+Architektur und Datenfluss stehen im [Projektplan](../projekt-plan.md).
 
 ## 1. Verantwortungsmatrix
 
@@ -27,11 +27,11 @@ Architektur und Datenfluss stehen im [Projektplan](./projekt-plan.md).
 
 ### Matrix
 
-| Benutzerrolle | Unternehmer | Firmen     | Filialen             | Benutzerprofile | Geladene Mitarbeiter                              |
-| ------------- | ----------- | ---------- | -------------------- | --------------- | ------------------------------------------------- |
-| `master`      | alle        | alle       | alle                 | alle            | Mitarbeiter aller Firmen                          |
-| `office`      | zugeordnet  | zugeordnet | zugeordnet           | –               | Mitarbeiter der zugeordneten Firmen               |
-| `filiale`     | genau einer | genau eine | genau eine           | –               | Mitarbeiter der zugeordneten Filiale              |
+| Benutzerrolle | Unternehmer | Firmen     | Filialen             | Benutzerprofile | Geladene Mitarbeiter                               |
+| ------------- | ----------- | ---------- | -------------------- | --------------- | -------------------------------------------------- |
+| `master`      | alle        | alle       | alle                 | alle            | Mitarbeiter aller Firmen                           |
+| `office`      | zugeordnet  | zugeordnet | zugeordnet           | –               | Mitarbeiter der zugeordneten Firmen                |
+| `filiale`     | genau einer | genau eine | genau eine           | –               | Mitarbeiter der zugeordneten Filiale               |
 | `mitarbeiter` | genau einer | genau eine | zugeordnete Filialen | –               | eigener Mitarbeiter, weitere bei fachlichem Bedarf |
 
 ### Zusatzbedingungen

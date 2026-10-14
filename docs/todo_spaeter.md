@@ -20,7 +20,7 @@ zurückgestellt.
 - docs/todo_spaeter.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/matrix-cache-strategien.md
+- docs/matrizen/cache-strategien.md
 
 ### Schritt 1: Grenzen des geplanten Lesecaches festhalten
 

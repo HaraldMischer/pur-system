@@ -1,11 +1,11 @@
-<!-- pur-system/docs/matrix-kontextselektor.md -->
+<!-- pur-system/docs/matrizen/kontextselektor.md -->
 
 # Matrix: Kontextselektor
 
 Diese Übersicht zeigt die grundsätzliche Verfügbarkeit und Bedienbarkeit der Selektoren für den globalen Arbeitskontext. Ob
 ein grundsätzlich verfügbarer Selektor tatsächlich dargestellt wird, richtet sich zusätzlich nach der Anzahl der im aktuellen
-Kontext wählbaren Einträge. Architektur und Verantwortlichkeiten stehen im [Projektplan](./projekt-plan.md). Der aktuelle
-Implementierungsstand steht im [Projektstand](./projekt-stand.md).
+Kontext wählbaren Einträge. Architektur und Verantwortlichkeiten stehen im [Projektplan](../projekt-plan.md). Der aktuelle
+Implementierungsstand steht im [Projektstand](../projekt-stand.md).
 
 ## 1. Selektormodus-Legende
 

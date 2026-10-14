@@ -186,7 +186,6 @@ describe('SchichtBearbeitenDialog', () => {
         firmaId: 'f-1',
         filialeId: 'b-1',
         bezeichnung: 'Spät',
-        reihenfolge: 1,
         beginnLokalzeit: '16:30',
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,

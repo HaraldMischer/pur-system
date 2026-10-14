@@ -52,24 +52,6 @@
               <button
                 matIconButton
                 type="button"
-                aria-label="Schicht nach oben verschieben"
-                [disabled]="index === 0"
-                (click)="moveModellschichtUp(index)"
-              >
-                <mat-icon>arrow_upward</mat-icon>
-              </button>
-              <button
-                matIconButton
-                type="button"
-                aria-label="Schicht nach unten verschieben"
-                [disabled]="index === schichtmodellForm.controls.modellschichten.length - 1"
-                (click)="moveModellschichtDown(index)"
-              >
-                <mat-icon>arrow_downward</mat-icon>
-              </button>
-              <button
-                matIconButton
-                type="button"
                 aria-label="Schicht entfernen"
                 [disabled]="schichtmodellForm.controls.modellschichten.length === 1"
                 (click)="removeModellschicht(index)"

@@ -1,4 +1,4 @@
-<!-- pur-system/docs/services/dienstplan-service.md -->
+<!-- pur-system/docs/architektur/services/dienstplan-service.md -->
 
 # Dienstplan-Service
 
@@ -14,15 +14,18 @@ Abfragen führt der Service nicht aus.
 - `loadDienstplanBestand()` lädt für die Filial-App den vollständigen Bestand einer Filiale mit allen Monaten, Versionen und
   Schichten einschließlich ihrer Modell-Momentaufnahmen.
 
-Die Lesestrategie wird vom Aufrufer vorgegeben. Geladene Dokumente werden um ihre IDs und vollständigen Pfadinformationen ergänzt
-und anschließend fachlich sortiert.
+Die Lesestrategie wird vom Aufrufer vorgegeben. Geladene Dokumente werden um ihre IDs und vollständigen Pfadinformationen
+ergänzt und anschließend fachlich sortiert.
 
 ## Schreiben
 
 - `createDienstplan()` prüft ein aktives, nicht leeres Schichtmodell derselben Filiale und legt den Monatsplan, seine erste
   Entwurfsversion und die vollständige Modell-Momentaufnahme atomar an.
-- `createSchicht()`, `updateSchicht()` und `deleteSchicht()` schreiben eine Schicht gemeinsam mit der nächsten Versionsrevision in
-  einer Firestore-Transaktion.
+- `updateDienstplanSchichtmodell()` lädt Dienstplan, Entwurfsschichten und bisherige Momentaufnahme verbindlich vom Server. Nur
+  bei einem leeren, noch nie veröffentlichten Entwurf ersetzt die Methode Modellreferenz und Momentaufnahme gemeinsam mit der
+  nächsten Versionsrevision.
+- `createSchicht()`, `updateSchicht()` und `deleteSchicht()` schreiben eine Schicht gemeinsam mit der nächsten Versionsrevision
+  in einer Firestore-Transaktion.
 
 Schichten enthalten die Mitarbeiter-ID sowie die ID ihrer Modellschicht aus der Momentaufnahme des Monatsplans. Beginn und Ende
 sind absolute Firestore-Zeitstempel; die Standardpause der Modellschicht wird in Minuten gespeichert. Die Anwendung leitet diese
@@ -30,6 +33,7 @@ Werte beim Anlegen aus der gewählten Rasterzelle ab. Beim Bearbeiten kann nur d
 Firestore Rules prüfen die Modellschichtreferenz und schützen Rasterzelle, Zeitwerte und Pause vor nachträglicher Änderung.
 Nicht zum aktuellen Schichtmodell gehörende Felder werden weder geschrieben noch in das Domainmodell übernommen. Vor jedem
 Schreiben prüft der Service die anrechenbare Arbeitszeit. Eine abweichende Entwurfsrevision verhindert veraltete Schreibzugriffe.
+Nach der ersten Veröffentlichung verhindern Service und Firestore Rules jeden weiteren Modellwechsel.
 
 ## Beteiligte Dateien
 

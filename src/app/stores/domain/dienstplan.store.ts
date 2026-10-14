@@ -21,6 +21,7 @@ import {
   ISchichtEintrag,
 } from '../../commons/models/domain/schicht';
 import { ISchichtmodellBestand } from '../../commons/models/domain/schichtmodell';
+import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { BenutzerStore } from '../app/benutzer.store';
 import { StammdatenStore } from '../app/stammdaten.store';
@@ -253,6 +254,70 @@ export const DienstplanStore = signalStore(
             versionen: [...kontext.versionen, ergebnis.version].sort(sortVersionen),
             modellschichten: [...kontext.modellschichten, ...ergebnis.modellschichten],
             monatsmodi: { ...kontext.monatsmodi, [monat]: 'vollstaendig' },
+          });
+        });
+      }
+
+      /**
+       * Wechselt das Schichtmodell eines leeren, noch nie veröffentlichten Entwurfs.
+       *
+       * @param pfad - Vollständiger Pfad der Entwurfsversion.
+       * @param schichtmodell - Neues aktives Schichtmodell derselben Filiale.
+       */
+      async function updateDienstplanSchichtmodell(
+        pfad: IDienstplanVersionPfad,
+        schichtmodell: ISchichtmodellBestand,
+      ): Promise<void> {
+        const { kontext, version } = requireEntwurf(pfad);
+        const dienstplan = kontext.dienstplaene.find((eintrag) => {
+          return eintrag.id === pfad.dienstplanId;
+        });
+        if (
+          !dienstplan ||
+          dienstplan.entwurfVersionId !== version.id ||
+          dienstplan.veroeffentlichteVersionId
+        ) {
+          throw new Error(
+            'Das Schichtmodell kann nach einer Veröffentlichung nicht mehr gewechselt werden.',
+          );
+        }
+        if (
+          kontext.schichten.some((schicht) => {
+            return schicht.versionId === version.id;
+          })
+        ) {
+          throw new Error('Lösche zuerst alle Schichten des Entwurfs.');
+        }
+        validateSchichtmodell(pfad, schichtmodell);
+        const benutzerUid = requireBenutzerUid();
+        await executeWrite(async () => {
+          const ergebnis = await dienstplanService.updateDienstplanSchichtmodell(
+            pfad,
+            version.revision,
+            schichtmodell,
+            benutzerUid,
+          );
+          setKontext(pfad, {
+            ...kontext,
+            dienstplaene: kontext.dienstplaene.map((eintrag) => {
+              return eintrag.id === pfad.dienstplanId ? ergebnis.dienstplan : eintrag;
+            }),
+            versionen: updateVersionRevision(
+              kontext.versionen,
+              version.id,
+              ergebnis.versionRevision,
+            ),
+            modellschichten: [
+              ...kontext.modellschichten.filter((modellschicht) => {
+                return modellschicht.dienstplanId !== pfad.dienstplanId;
+              }),
+              ...ergebnis.modellschichten,
+            ].sort((a, b) => {
+              return (
+                a.dienstplanId.localeCompare(b.dienstplanId) ||
+                compareModellschichtenNachBeginn(a, b)
+              );
+            }),
           });
         });
       }
@@ -617,6 +682,7 @@ export const DienstplanStore = signalStore(
         loadDienstplanMonat,
         loadDienstplanBestand,
         createDienstplan,
+        updateDienstplanSchichtmodell,
         createSchicht,
         updateSchicht,
         deleteSchicht,
@@ -670,11 +736,7 @@ function mergeMonatBestand(
       ...kontext.modellschichten.filter((modellschicht) => modellschicht.dienstplanId !== monat),
       ...bestand.modellschichten,
     ].sort((a, b) => {
-      return (
-        a.dienstplanId.localeCompare(b.dienstplanId) ||
-        a.reihenfolge - b.reihenfolge ||
-        a.id.localeCompare(b.id)
-      );
+      return a.dienstplanId.localeCompare(b.dienstplanId) || compareModellschichtenNachBeginn(a, b);
     }),
   };
 }

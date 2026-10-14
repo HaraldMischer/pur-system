@@ -16,25 +16,24 @@ describe('SchichtmodellService', () => {
     bezeichnung: ' Sommer ',
     modellschichten: [
       {
-        bezeichnung: ' Früh ',
-        reihenfolge: 4,
-        beginnLokalzeit: '07:00',
-        endeLokalzeit: '12:00',
-        endetAmFolgetag: false,
-        standardpauseMinuten: 0,
-      },
-      {
         bezeichnung: 'Spät',
-        reihenfolge: 9,
         beginnLokalzeit: '16:00',
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
         standardpauseMinuten: 30,
       },
+      {
+        bezeichnung: ' Früh ',
+        beginnLokalzeit: '07:00',
+        endeLokalzeit: '12:00',
+        endetAmFolgetag: false,
+        standardpauseMinuten: 0,
+      },
     ],
   };
   const loadCollection = vi.fn();
   const createDocumentId = vi.fn();
+  const createDeleteField = vi.fn();
   const createServerTimestamp = vi.fn();
   const updateDocumentsAtomically = vi.fn();
   const updateDocument = vi.fn();
@@ -46,6 +45,7 @@ describe('SchichtmodellService', () => {
       .mockReturnValueOnce('modell-1')
       .mockReturnValueOnce('schicht-1')
       .mockReturnValueOnce('schicht-2');
+    createDeleteField.mockReturnValue('feld-loeschen');
     createServerTimestamp.mockReturnValue('server-zeit');
     updateDocumentsAtomically.mockResolvedValue(undefined);
     updateDocument.mockResolvedValue(undefined);
@@ -57,6 +57,7 @@ describe('SchichtmodellService', () => {
           useValue: {
             loadCollection,
             createDocumentId,
+            createDeleteField,
             createServerTimestamp,
             updateDocumentsAtomically,
             updateDocument,
@@ -66,7 +67,7 @@ describe('SchichtmodellService', () => {
     });
   });
 
-  it('should load branch models with independently ordered model shifts', async () => {
+  it('should load branch models with chronologically ordered model shifts', async () => {
     loadCollection.mockImplementation((collectionPath: string) => {
       if (collectionPath.endsWith('/schichtmodell')) {
         return Promise.resolve([
@@ -75,8 +76,8 @@ describe('SchichtmodellService', () => {
         ]);
       }
       const daten: IModellschichtDokument[] = [
-        createModellschichtDokument('Spät', 1),
-        createModellschichtDokument('Früh', 0),
+        createModellschichtDokument('Spät', '16:00', '01:00'),
+        createModellschichtDokument('Früh', '07:00', '12:00'),
       ];
       return Promise.resolve(daten.map((wert, index) => ({ id: `s-${index}`, daten: wert })));
     });
@@ -89,13 +90,14 @@ describe('SchichtmodellService', () => {
       'Früh',
       'Spät',
     ]);
+    expect(ergebnis[0].modellschichten[0]).not.toHaveProperty('reihenfolge');
     expect(loadCollection).toHaveBeenCalledWith(
       'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/sommer/modellschicht',
       'networkOnly',
     );
   });
 
-  it('should create a model and its normalized ordered shifts atomically', async () => {
+  it('should create a model and its normalized chronologically ordered shifts atomically', async () => {
     const service = TestBed.inject(SchichtmodellService);
 
     const ergebnis = await service.createSchichtmodell(pfad, anlage, 'uid-1');
@@ -103,16 +105,20 @@ describe('SchichtmodellService', () => {
     expect(ergebnis.schichtmodell).toEqual(
       expect.objectContaining({ id: 'modell-1', bezeichnung: 'Sommer', aktiv: true }),
     );
-    expect(ergebnis.modellschichten.map((schicht) => schicht.reihenfolge)).toEqual([0, 1]);
+    expect(ergebnis.modellschichten.map((schicht) => schicht.bezeichnung)).toEqual([
+      'Früh',
+      'Spät',
+    ]);
     expect(updateDocumentsAtomically).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           documentPath:
-            'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1/modellschicht/schicht-1',
-          daten: expect.objectContaining({ bezeichnung: 'Früh', reihenfolge: 0 }),
+            'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1/modellschicht/schicht-2',
+          daten: expect.objectContaining({ bezeichnung: 'Früh' }),
         }),
       ]),
     );
+    expect(updateDocumentsAtomically.mock.calls[0][0][1].daten).not.toHaveProperty('reihenfolge');
   });
 
   it('should retain known shift ids and delete removed shifts while updating', async () => {
@@ -128,13 +134,13 @@ describe('SchichtmodellService', () => {
           ...pfad,
           schichtmodellId: 'modell-1',
           id: 'alt-1',
-          ...createModellschichtDokument('Früh', 0),
+          ...createModellschichtDokument('Früh', '07:00', '12:00'),
         },
         {
           ...pfad,
           schichtmodellId: 'modell-1',
           id: 'alt-2',
-          ...createModellschichtDokument('Spät', 1),
+          ...createModellschichtDokument('Spät', '16:00', '01:00'),
         },
       ],
     };
@@ -152,7 +158,10 @@ describe('SchichtmodellService', () => {
 
     expect(updateDocumentsAtomically).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({ documentPath: expect.stringMatching(/\/alt-1$/) }),
+        expect.objectContaining({
+          documentPath: expect.stringMatching(/\/alt-1$/),
+          daten: expect.objectContaining({ reihenfolge: 'feld-loeschen' }),
+        }),
         {
           documentPath:
             'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1/modellschicht/alt-2',
@@ -226,14 +235,14 @@ function createSchichtmodellDokument(bezeichnung: string): ISchichtmodellDokumen
 
 function createModellschichtDokument(
   bezeichnung: string,
-  reihenfolge: number,
+  beginnLokalzeit: string,
+  endeLokalzeit: string,
 ): IModellschichtDokument {
   return {
     bezeichnung,
-    reihenfolge,
-    beginnLokalzeit: reihenfolge === 0 ? '07:00' : '16:00',
-    endeLokalzeit: reihenfolge === 0 ? '12:00' : '01:00',
-    endetAmFolgetag: reihenfolge !== 0,
-    standardpauseMinuten: reihenfolge === 0 ? 0 : 30,
+    beginnLokalzeit,
+    endeLokalzeit,
+    endetAmFolgetag: endeLokalzeit < beginnLokalzeit,
+    standardpauseMinuten: beginnLokalzeit === '07:00' ? 0 : 30,
   };
 }

@@ -34,6 +34,7 @@ import {
   ISchichtmodellAnlage,
   ISchichtmodellBestand,
 } from '../../../commons/models/domain/schichtmodell';
+import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 
@@ -170,24 +171,6 @@ export class SchichtmodellBearbeitenDialog {
   }
 
   /**
-   * Verschiebt eine Modellschicht um eine Position nach oben.
-   *
-   * @param index - Aktuelle Position der Modellschicht.
-   */
-  moveModellschichtUp(index: number): void {
-    this.moveModellschicht(index, index - 1);
-  }
-
-  /**
-   * Verschiebt eine Modellschicht um eine Position nach unten.
-   *
-   * @param index - Aktuelle Position der Modellschicht.
-   */
-  moveModellschichtDown(index: number): void {
-    this.moveModellschicht(index, index + 1);
-  }
-
-  /**
    * Liefert die formatierte Dauer einer Modellschicht.
    *
    * @param index - Position der Modellschicht.
@@ -269,29 +252,20 @@ export class SchichtmodellBearbeitenDialog {
     return form;
   }
 
-  private moveModellschicht(von: number, nach: number): void {
-    const forms = this.schichtmodellForm.controls.modellschichten;
-    if (nach < 0 || nach >= forms.length) return;
-    const form = forms.at(von);
-    forms.removeAt(von, { emitEvent: false });
-    forms.insert(nach, form);
-    forms.markAsDirty();
-    forms.updateValueAndValidity();
-  }
-
   private getModellschichten(): IModellschichtSchreibdaten[] {
-    return this.schichtmodellForm.controls.modellschichten.controls.map((form, index) => {
-      const wert = form.getRawValue();
-      return {
-        ...(wert.id ? { id: wert.id } : {}),
-        bezeichnung: wert.bezeichnung.trim(),
-        reihenfolge: index,
-        beginnLokalzeit: wert.beginnLokalzeit,
-        endeLokalzeit: wert.endeLokalzeit,
-        endetAmFolgetag: wert.endeLokalzeit < wert.beginnLokalzeit,
-        standardpauseMinuten: wert.standardpauseMinuten,
-      };
-    });
+    return this.schichtmodellForm.controls.modellschichten.controls
+      .map((form) => {
+        const wert = form.getRawValue();
+        return {
+          ...(wert.id ? { id: wert.id } : {}),
+          bezeichnung: wert.bezeichnung.trim(),
+          beginnLokalzeit: wert.beginnLokalzeit,
+          endeLokalzeit: wert.endeLokalzeit,
+          endetAmFolgetag: wert.endeLokalzeit < wert.beginnLokalzeit,
+          standardpauseMinuten: wert.standardpauseMinuten,
+        };
+      })
+      .sort(compareModellschichtenNachBeginn);
   }
 
   private getAnlage(): ISchichtmodellAnlage {

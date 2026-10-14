@@ -6,12 +6,21 @@ import { MatButtonModule } from '@angular/material/button';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { calculateSchichtArbeitszeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 import { getAktuellerMonat } from '../../../commons/utils/datum/monat';
 import { sortMitarbeiter } from '../../../commons/utils/mitarbeiter/mitarbeiter-dokument';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
+import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { MonatSelector } from '../../date-selectors/monat-selector/monat-selector';
-import { DienstplanFilialabschnitt } from '../dienstplan-filialabschnitt/dienstplan-filialabschnitt';
+import { DienstplanFiliale } from '../dienstplan-filiale/dienstplan-filiale';
+
+// ===== Top-Level Helper =====================
+function formatArbeitszeit(arbeitszeitMinuten: number): string {
+  const stunden = Math.floor(arbeitszeitMinuten / 60);
+  const minuten = arbeitszeitMinuten % 60;
+  return minuten > 0 ? `${stunden} Std. ${minuten} Min.` : `${stunden} Std.`;
+}
 
 // ===== Konstanten & Typen ===================
 type TDienstplanFilialauswahl = {
@@ -23,7 +32,14 @@ type TMitarbeiterAnzeige = {
   readonly id: string;
   readonly anzeigename: string;
   readonly filialIds: readonly string[];
+  readonly arbeitszeit: string;
+  readonly schichtanzahl: number;
   readonly farbkennung?: string;
+};
+
+type TMitarbeiterMonatswerte = {
+  readonly arbeitszeitMinuten: number;
+  readonly schichtanzahl: number;
 };
 
 @Component({
@@ -34,7 +50,7 @@ type TMitarbeiterAnzeige = {
     CdkDropListGroup,
     MatButtonModule,
     MonatSelector,
-    DienstplanFilialabschnitt,
+    DienstplanFiliale,
   ],
   templateUrl: './dienstplan-arbeitsbereich.html',
   styleUrl: './dienstplan-arbeitsbereich.scss',
@@ -43,6 +59,7 @@ type TMitarbeiterAnzeige = {
 export class DienstplanArbeitsbereich {
   // ===== Interne Dependency Injection =========
   readonly appKontextStore = inject(AppKontextStore);
+  private readonly dienstplanStore = inject(DienstplanStore);
   private readonly mitarbeiterStore = inject(MitarbeiterStore);
 
   // ===== Öffentliche API ======================
@@ -87,6 +104,7 @@ export class DienstplanArbeitsbereich {
         eintrag,
       ]),
     );
+    const monatswerteNachMitarbeiterId = this.getMitarbeiterMonatswerte();
     return sortMitarbeiter(
       [...mitarbeiterNachId.values()].filter((eintrag) => {
         return (
@@ -95,10 +113,16 @@ export class DienstplanArbeitsbereich {
       }),
     ).map((eintrag) => {
       const anzeigename = `${eintrag.person.nachname}, ${eintrag.person.vorname}`.trim();
+      const monatswerte = monatswerteNachMitarbeiterId.get(eintrag.id) ?? {
+        arbeitszeitMinuten: 0,
+        schichtanzahl: 0,
+      };
       return {
         id: eintrag.id,
         anzeigename,
         filialIds: eintrag.filialIds,
+        arbeitszeit: formatArbeitszeit(monatswerte.arbeitszeitMinuten),
+        schichtanzahl: monatswerte.schichtanzahl,
         ...(eintrag.farbkennung ? { farbkennung: eintrag.farbkennung } : {}),
       };
     });
@@ -110,5 +134,37 @@ export class DienstplanArbeitsbereich {
    */
   setAktuellerMonat(): void {
     this.selectedMonat.set(getAktuellerMonat());
+  }
+
+  // ===== Interne Helfer =======================
+  /**
+   * Summiert die Schichten der aktiven Planungsstände aller ausgewählten Filialen.
+   *
+   * @returns Monatswerte nach Mitarbeiter-ID.
+   */
+  private getMitarbeiterMonatswerte(): ReadonlyMap<string, TMitarbeiterMonatswerte> {
+    const monatswerte = new Map<string, TMitarbeiterMonatswerte>();
+    for (const auswahl of this.filialauswahl()) {
+      const kontext = this.dienstplanStore.getDienstplanKontext(auswahl.pfad);
+      const dienstplan = kontext?.dienstplaene.find((eintrag) => {
+        return eintrag.id === this.selectedMonat();
+      });
+      const aktiveVersionId = dienstplan?.entwurfVersionId ?? dienstplan?.veroeffentlichteVersionId;
+      if (!kontext || !aktiveVersionId) continue;
+
+      for (const schicht of kontext.schichten) {
+        if (schicht.versionId !== aktiveVersionId) continue;
+        const bisherigeMonatswerte = monatswerte.get(schicht.mitarbeiterId) ?? {
+          arbeitszeitMinuten: 0,
+          schichtanzahl: 0,
+        };
+        monatswerte.set(schicht.mitarbeiterId, {
+          arbeitszeitMinuten:
+            bisherigeMonatswerte.arbeitszeitMinuten + calculateSchichtArbeitszeitMinuten(schicht),
+          schichtanzahl: bisherigeMonatswerte.schichtanzahl + 1,
+        });
+      }
+    }
+    return monatswerte;
   }
 }

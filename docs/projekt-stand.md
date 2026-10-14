@@ -84,6 +84,9 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
 
 ## Dienst- und Schichtplanung
 
+Das vollständige fachliche und architektonische Zielbild steht im
+[Fachkonzept Dienst- und Schichtplanung](./fachkonzepte/dienst-und-schichtplanung.md).
+
 - Die fachliche erste Ausbaustufe ist als filialbezogene Monatsplanung mit versionierten Bearbeitungsständen geplant.
   Domainmodelle, Dienstplan- und Schichtmodell-Services, die zugehörigen Stores sowie die benötigten Firestore-Datenzugriffe
   sind umgesetzt. Die Dienstplan-Grundfunktion einschließlich Grundoberfläche, manueller Schichtverwaltung und Verwaltung
@@ -147,13 +150,14 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   verwenden einen gemeinsamen Dienstplan-Arbeitsbereich mit einer Monatsnavigation für alle ausgewählten Filialen. Für jede
   Filiale wird ein eigener Abschnitt mit Schichtraster sowie Lade-, Leer- und Fehlerzuständen gerendert. Filialkonten verwenden
   unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Rasterzelle den
-  Schichtdialog mit bereits gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende Konfliktprüfung und die
-  atomare Veröffentlichung folgen in Todo 20.8.
+  Schichtdialog mit bereits gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende Konfliktprüfung und
+  die atomare Veröffentlichung folgen in Todo 20.8.
 - Der Dienstplan-Arbeitsbereich stellt Dienstpläne und die Mitarbeiterübersicht auf breiten Ansichten in zwei unabhängig
   scrollbaren Spalten dar. Die Mitarbeiterübersicht führt die aktiven Mitarbeiter aller ausgewählten Filialen ohne Duplikate
-  zusammen und zeigt ihre optionale Farbkennung. Fehlt eine Farbkennung, verwendet der Farbpunkt die normale Textfarbe mit
-  38 Prozent Deckkraft. Bei höchstens `900px` Containerbreite werden beide Bereiche untereinander angeordnet und innerhalb der
-  gemeinsamen Arbeitsfläche gescrollt.
+  zusammen und zeigt ihre optionale Farbkennung sowie die filialübergreifend summierte Arbeitszeit und Schichtanzahl des
+  ausgewählten Monats. Die Monatswerte berücksichtigen je Filiale den Entwurf oder ersatzweise die veröffentlichte Version.
+  Fehlt eine Farbkennung, verwendet der Farbpunkt die normale Textfarbe mit 38 Prozent Deckkraft. Bei höchstens `900px`
+  Containerbreite werden beide Bereiche untereinander angeordnet und innerhalb der gemeinsamen Arbeitsfläche gescrollt.
 - Im Planungsmodus sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente umgesetzt.
   Bearbeitbare Rasterzellen nehmen nur aktive, der jeweiligen Filiale zugeordnete Mitarbeiter an und legen beim Ablegen
   unmittelbar eine Schicht mit Datum, Modellschicht, Zeitwerten und Standardpause der Modell-Momentaufnahme an. Laufende
@@ -169,28 +173,36 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser Sitzungszustand einen aktiven Firma-Mitarbeiter mit
   `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
 - Die Route und Navigation für die Schichtplaneinstellungen führen auf die neue filialbezogene Schichtmodellverwaltung. Ein
-  Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer geordneten eigenen Modellschicht. Modellschichten können
-  ergänzt, entfernt und umsortiert werden; Beginn, Ende, Folgetag, Dauer und automatische Standardpause folgen den bestehenden
-  Zeitregeln. Modell und Modellschichten werden atomar gespeichert. Vorhandene Modelle werden nicht gelöscht, sondern bei Bedarf
+  Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer eigenen Modellschicht. Modellschichten können ergänzt und
+  entfernt werden; Beginn, Ende, Folgetag, Dauer und automatische Standardpause folgen den bestehenden Zeitregeln. Ihre
+  Reihenfolge wird automatisch nach der lokalen Beginnzeit bestimmt. Modell und Modellschichten werden atomar gespeichert.
+  Vorhandene Modelle werden nicht gelöscht, sondern bei Bedarf
   deaktiviert. Beim Anlegen eines Monatsplans stehen ausschließlich aktive, nicht leere Modelle der konkreten Filiale zur
   Auswahl. Modell-ID, Modellbezeichnung und alle geordneten Modellschichten werden gemeinsam mit der ersten Entwurfsversion als
-  unveränderliche Momentaufnahme gespeichert und bei Monats- sowie Bestandsladungen mitgeführt. Spätere Änderungen oder die
-  Deaktivierung des Quellmodells verändern bestehende Pläne nicht.
+  Momentaufnahme gespeichert und bei Monats- sowie Bestandsladungen mitgeführt. Im leeren, noch nie veröffentlichten Entwurf
+  kann ein anderes aktives Modell derselben Filiale gewählt werden. Sobald eine Schicht vorhanden ist, bleibt die Aktion bis
+  zum Löschen aller Schichten deaktiviert; nach der ersten Veröffentlichung ist der Modellwechsel dauerhaft gesperrt. Spätere
+  Änderungen oder die Deaktivierung des Quellmodells verändern bestehende Pläne nicht.
 - Die Monatsplanung wird als horizontal bedienbares Schichtraster dargestellt: Kalendertage bilden die Zeilen, die geordneten
   Modellschichten der Momentaufnahme bilden die Spalten. Jede Zelle kann mehrere Mitarbeiterschichten enthalten. Beim Anlegen
   stehen Datum, Modellschicht, lokale Zeiten und Standardpause bereits fest; nur der Mitarbeiter wird ausgewählt. Beim Bearbeiten
-  bleibt die Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden.
+  bleibt die Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Das für Desktop und Tablet
+  ausgelegte Raster scrollt horizontal und behält dabei die Tagesspalte im sichtbaren Bereich. Das vertikale Scrollen bleibt beim
+  umgebenden Dienstplanbereich.
 - Firestore Rules verlangen bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben Monatsplans.
   Beim Bearbeiten sind Modellschicht, Beginn, Ende und Pause unveränderlich; nur die Mitarbeiterzuordnung darf zusammen mit den
   technischen Aktualisierungsfeldern geändert werden.
+- Ein Modellwechsel ersetzt Modellreferenz und Modellschicht-Momentaufnahme gemeinsam mit der nächsten Entwurfsrevision. Der
+  Service lädt Dienstplan und Entwurfsschichten zuvor mit `networkOnly`; Firestore Rules verlangen einen noch nie
+  veröffentlichten Entwurf und den Revisionsfortschritt.
 - Die bisherige Schichtvorlagenstruktur mit Page, Components, Dialog, Service, Store, Domainmodell, Pfaden und Firestore Rules ist
   vollständig entfernt. Neue und bearbeitete Schichten verwenden ausschließlich `modellschichtId` aus der Momentaufnahme des
   Monatsplans.
 - Die Modellverwaltung, die Monatsanlage und die Rasterbedienung wurden mit mehreren Modellen und unterschiedlichen
   Schichtanzahlen manuell geprüft. Änderungen oder die Deaktivierung des Quellmodells verändern die gespeicherte
   Modell-Momentaufnahme eines bestehenden Monatsplans nicht.
-- Die Dienstplan- und Schichtmodell-Services, ihre Stores sowie der Aufbau der Schichtplan-Komponenten sind unter `docs/services`,
-  `docs/stores` und `docs/components` dokumentiert. Angular- und Rules-Tests sowie alle vier Varianten-Builds sind erfolgreich.
+- Die Dienstplan- und Schichtmodell-Services, ihre Stores sowie der Aufbau der Schichtplan-Komponenten sind unter
+  `docs/architektur` dokumentiert. Angular- und Rules-Tests sowie alle vier Varianten-Builds sind erfolgreich.
   Für die Varianten-Builds wurde der persistente Angular-Cache in der lokalen Umgebung mit `CI=1` deaktiviert, weil dessen
   native LMDB-Anbindung den Buildprozess mit Exit-Code 134 beendet hat.
 - Erfolgreiche Monats- und Gesamtladungen protokollieren im lokalen Entwicklungslog unter `3. FILIALDATEN` die Anzahl geladener
@@ -609,7 +621,7 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   verändern; die Filialauswahl ist im Schichtplan und Mitarbeiterbereich bearbeitbar und in den übrigen Bereichen deaktiviert.
   Office verwendet denselben bereichsabhängigen Filialmodus ohne Unternehmerauswahl. Filialkonten verwenden ihren eindeutigen
   Kontext ohne Selektoren; Mitarbeiter erhalten im Schichtplan nur bei mehreren erlaubten Filialen die Filialmehrfachauswahl.
-  Die vollständige Zuordnung steht in der [Kontextselektor-Matrix](./matrix-kontextselektor.md).
+  Die vollständige Zuordnung steht in der [Kontextselektor-Matrix](./matrizen/kontextselektor.md).
 - Der `MitarbeiterFilter` liegt unter `src/app/components/data-filters/mitarbeiter-filter`. Er zeigt Vor- und Nachname an, gibt
   den ausgewählten vollständigen Mitarbeiter zurück, ist vollständig getestet und noch nicht in eine Fachseite eingebunden.
 - Die Systemverwaltungsseite lädt Unternehmer aus `unternehmer`, Firmen aus `firma` und Filialen aus `filiale`. Die produktiven
@@ -722,8 +734,8 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   produktiven Header wurden nach dem Mitarbeiter-Deployment für `/`, `/login`, Manifest, `ngsw.json`, `ngsw-worker.js` und eine
   gehashte Hauptdatei geprüft.
 - Eine Übersicht der tatsächlich eingerichteten lokalen und produktiven Varianten steht in den
-  [PWA-Konfigurationen](./matrix-pwa-konfigurationen.md). Die vorgesehene Verwendung und das fachliche
-  Online-/Offline-Verhalten stehen in der [Cache- und Betriebsartenmatrix](./matrix-cache-strategien.md).
+  [PWA-Konfigurationen](./matrizen/pwa-konfigurationen.md). Die vorgesehene Verwendung und das fachliche
+  Online-/Offline-Verhalten stehen in der [Cache- und Betriebsartenmatrix](./matrizen/cache-strategien.md).
 - Bei einer fehlerhaften PWA-Version wird ausschließlich die betroffene Hosting-Site in der Firebase Console auf die letzte
   funktionierende Veröffentlichung zurückgesetzt. Hilft dieses Rollback wegen eines fehlerhaften Service Workers nicht, wird als
   letzte Notfallmaßnahme für die betroffene Site der von Angular erzeugte `safety-worker.js` unter der bisherigen URL

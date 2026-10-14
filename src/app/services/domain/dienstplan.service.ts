@@ -18,6 +18,7 @@ import {
   IDienstplanBestand,
   IDienstplanDokument,
   IDienstplanEintrag,
+  IDienstplanModellwechselErgebnis,
   IDienstplanVersionDokument,
   IDienstplanVersionEintrag,
 } from '../../commons/models/domain/dienstplan';
@@ -34,6 +35,7 @@ import {
   ISchichtmodellBestand,
 } from '../../commons/models/domain/schichtmodell';
 import { createDienstplanZeitraum } from '../../commons/utils/dienstplan/dienstplan-zeitraum';
+import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { calculateSchichtArbeitszeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 
@@ -162,9 +164,12 @@ export class DienstplanService {
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
-    const modellschichten = schichtmodell.modellschichten.map((modellschicht) => {
-      return mapModellschichtMomentaufnahme(dienstplanPfad, modellschicht.id, modellschicht);
-    });
+    const modellschichten = schichtmodell.modellschichten
+      .slice()
+      .sort(compareModellschichtenNachBeginn)
+      .map((modellschicht) => {
+        return mapModellschichtMomentaufnahme(dienstplanPfad, modellschicht.id, modellschicht);
+      });
     await this.firestoreDbService.updateDocumentsAtomically([
       {
         documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
@@ -185,7 +190,6 @@ export class DienstplanService {
           }),
           daten: {
             bezeichnung: modellschicht.bezeichnung,
-            reihenfolge: modellschicht.reihenfolge,
             beginnLokalzeit: modellschicht.beginnLokalzeit,
             endeLokalzeit: modellschicht.endeLokalzeit,
             endetAmFolgetag: modellschicht.endetAmFolgetag,
@@ -200,6 +204,129 @@ export class DienstplanService {
       version: mapVersion({ ...dienstplanPfad, versionId }, versionId, versionDaten),
       modellschichten,
     };
+  }
+
+  /**
+   * Ersetzt das Schichtmodell eines leeren, noch nie veröffentlichten Entwurfs.
+   *
+   * @param pfad - Vollständiger Pfad der Entwurfsversion.
+   * @param erwarteteRevision - Vom Client zuletzt geladene Revision.
+   * @param schichtmodell - Neues aktives Schichtmodell derselben Filiale.
+   * @param benutzerUid - UID des ändernden Benutzers.
+   * @returns Aktualisierter Dienstplan, neue Momentaufnahme und bestätigte Versionsrevision.
+   */
+  async updateDienstplanSchichtmodell(
+    pfad: IDienstplanVersionPfad,
+    erwarteteRevision: number,
+    schichtmodell: ISchichtmodellBestand,
+    benutzerUid: string,
+  ): Promise<IDienstplanModellwechselErgebnis> {
+    validateSchichtmodell(pfad, schichtmodell);
+    const dienstplanPfad: IDienstplanPfad = {
+      unternehmerId: pfad.unternehmerId,
+      firmaId: pfad.firmaId,
+      filialeId: pfad.filialeId,
+      dienstplanId: pfad.dienstplanId,
+    };
+    const [dienstplanDokument, schichten, bisherigeModellschichten] = await Promise.all([
+      this.firestoreDbService.loadDocument<IDienstplanDokument>(
+        FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
+        'networkOnly',
+      ),
+      this.loadSchichten(pfad, 'networkOnly'),
+      this.loadModellschichten(dienstplanPfad, 'networkOnly'),
+    ]);
+    if (!dienstplanDokument) {
+      throw new Error('Der Dienstplan wurde nicht gefunden.');
+    }
+    const dienstplan = mapDienstplan(
+      dienstplanPfad,
+      dienstplanDokument.id,
+      dienstplanDokument.daten,
+    );
+    if (dienstplan.entwurfVersionId !== pfad.versionId || dienstplan.veroeffentlichteVersionId) {
+      throw new Error(
+        'Das Schichtmodell kann nach einer Veröffentlichung nicht mehr gewechselt werden.',
+      );
+    }
+    if (schichten.length > 0) {
+      throw new Error('Lösche zuerst alle Schichten des Entwurfs.');
+    }
+    if (dienstplan.schichtmodellId === schichtmodell.schichtmodell.id) {
+      throw new Error('Der Dienstplan verwendet dieses Schichtmodell bereits.');
+    }
+
+    const zeitstempel = this.firestoreDbService.createServerTimestamp();
+    const modellschichten = schichtmodell.modellschichten
+      .slice()
+      .sort(compareModellschichtenNachBeginn)
+      .map((modellschicht) => {
+        return mapModellschichtMomentaufnahme(dienstplanPfad, modellschicht.id, modellschicht);
+      });
+    const neueModellschichtIds = new Set(modellschichten.map((modellschicht) => modellschicht.id));
+    return this.firestoreDbService.executeDocumentTransaction<
+      IDienstplanVersionDokument,
+      IDienstplanModellwechselErgebnis
+    >(FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad), (version) => {
+      const versionRevision = getNaechsteRevision(version?.daten, erwarteteRevision);
+      return {
+        ergebnis: {
+          dienstplan: {
+            ...dienstplan,
+            schichtmodellId: schichtmodell.schichtmodell.id,
+            schichtmodellBezeichnung: schichtmodell.schichtmodell.bezeichnung,
+            aktualisiertVonUid: benutzerUid,
+          },
+          modellschichten,
+          versionRevision,
+        },
+        operationen: [
+          {
+            documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad),
+            daten: {
+              revision: versionRevision,
+              aktualisiertAm: zeitstempel,
+              aktualisiertVonUid: benutzerUid,
+            },
+          },
+          {
+            documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
+            daten: {
+              schichtmodellId: schichtmodell.schichtmodell.id,
+              schichtmodellBezeichnung: schichtmodell.schichtmodell.bezeichnung,
+              aktualisiertAm: zeitstempel,
+              aktualisiertVonUid: benutzerUid,
+            },
+          },
+          ...bisherigeModellschichten
+            .filter((modellschicht) => !neueModellschichtIds.has(modellschicht.id))
+            .map((modellschicht) => {
+              return {
+                documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
+                  ...dienstplanPfad,
+                  modellschichtId: modellschicht.id,
+                }),
+                delete: true as const,
+              };
+            }),
+          ...modellschichten.map((modellschicht) => {
+            return {
+              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
+                ...dienstplanPfad,
+                modellschichtId: modellschicht.id,
+              }),
+              daten: {
+                bezeichnung: modellschicht.bezeichnung,
+                beginnLokalzeit: modellschicht.beginnLokalzeit,
+                endeLokalzeit: modellschicht.endeLokalzeit,
+                endetAmFolgetag: modellschicht.endetAmFolgetag,
+                standardpauseMinuten: modellschicht.standardpauseMinuten,
+              },
+            };
+          }),
+        ],
+      };
+    });
   }
 
   /**
@@ -385,7 +512,7 @@ export class DienstplanService {
       .map((dokument) => {
         return mapModellschichtMomentaufnahme(pfad, dokument.id, dokument.daten);
       })
-      .sort((a, b) => a.reihenfolge - b.reihenfolge || a.id.localeCompare(b.id));
+      .sort(compareModellschichtenNachBeginn);
   }
 
   private writeSchicht(
@@ -469,7 +596,15 @@ function mapModellschichtMomentaufnahme(
   id: string,
   daten: IModellschichtMomentaufnahmeDokument,
 ): IModellschichtMomentaufnahmeEintrag {
-  return { ...daten, ...pfad, id };
+  return {
+    ...pfad,
+    id,
+    bezeichnung: daten.bezeichnung,
+    beginnLokalzeit: daten.beginnLokalzeit,
+    endeLokalzeit: daten.endeLokalzeit,
+    endetAmFolgetag: daten.endetAmFolgetag,
+    standardpauseMinuten: daten.standardpauseMinuten,
+  };
 }
 
 function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtmodellBestand): void {
