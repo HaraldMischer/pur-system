@@ -237,6 +237,9 @@ export class SchichtmodellBearbeitenDialog {
         standardpauseMinuten: new FormControl(modellschicht?.standardpauseMinuten ?? 0, {
           nonNullable: true,
         }),
+        mehrfachbelegungErlaubt: new FormControl(modellschicht?.mehrfachbelegungErlaubt ?? false, {
+          nonNullable: true,
+        }),
       },
       { validators: [zeitfolgeValidator()] },
     );
@@ -263,6 +266,7 @@ export class SchichtmodellBearbeitenDialog {
           endeLokalzeit: wert.endeLokalzeit,
           endetAmFolgetag: wert.endeLokalzeit < wert.beginnLokalzeit,
           standardpauseMinuten: wert.standardpauseMinuten,
+          mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
         };
       })
       .sort(compareModellschichtenNachBeginn);

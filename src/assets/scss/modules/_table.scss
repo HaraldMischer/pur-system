@@ -46,7 +46,7 @@
       min-width: 220px;
 
       &--inhalt {
-        height: 96px;
+        height: auto;
 
         &.cdk-drop-list-receiving {
           border-color: var(--mat-sys-primary);

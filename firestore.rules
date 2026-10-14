@@ -349,14 +349,16 @@ service cloud.firestore {
           'beginnLokalzeit',
           'endeLokalzeit',
           'endetAmFolgetag',
-          'standardpauseMinuten'
+          'standardpauseMinuten',
+          'mehrfachbelegungErlaubt'
         ])
         && daten.keys().hasOnly([
           'bezeichnung',
           'beginnLokalzeit',
           'endeLokalzeit',
           'endetAmFolgetag',
-          'standardpauseMinuten'
+          'standardpauseMinuten',
+          'mehrfachbelegungErlaubt'
         ])
         && daten.bezeichnung is string
         && daten.bezeichnung.size() > 0
@@ -367,7 +369,8 @@ service cloud.firestore {
         && daten.endeLokalzeit.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
         && daten.beginnLokalzeit != daten.endeLokalzeit
         && daten.endetAmFolgetag is bool
-        && daten.standardpauseMinuten in [0, 30, 45];
+        && daten.standardpauseMinuten in [0, 30, 45]
+        && daten.mehrfachbelegungErlaubt is bool;
     }
 
     function hatAktiveSchichtmodellreferenz(unternehmerId, firmaId, filialId) {
@@ -481,6 +484,15 @@ service cloud.firestore {
       let dienstplan = getAfter(
         dienstplanDokumentPfad(unternehmerId, firmaId, filialId, monat)
       ).data;
+      let modellschicht = get(
+        modellschichtDokumentPfad(
+          unternehmerId,
+          firmaId,
+          filialId,
+          dienstplan.schichtmodellId,
+          modellschichtId
+        )
+      ).data;
       return get(
         schichtmodellDokumentPfad(
           unternehmerId,
@@ -489,15 +501,13 @@ service cloud.firestore {
           dienstplan.schichtmodellId
         )
       ).data.aktiv == true
-        && daten == get(
-          modellschichtDokumentPfad(
-            unternehmerId,
-            firmaId,
-            filialId,
-            dienstplan.schichtmodellId,
-            modellschichtId
-          )
-        ).data;
+        && daten.bezeichnung == modellschicht.bezeichnung
+        && daten.beginnLokalzeit == modellschicht.beginnLokalzeit
+        && daten.endeLokalzeit == modellschicht.endeLokalzeit
+        && daten.endetAmFolgetag == modellschicht.endetAmFolgetag
+        && daten.standardpauseMinuten == modellschicht.standardpauseMinuten
+        && daten.mehrfachbelegungErlaubt
+          == modellschicht.get('mehrfachbelegungErlaubt', false);
     }
 
     function hatGueltigenDienstplanWechsel(unternehmerId, firmaId, filialId, monat) {

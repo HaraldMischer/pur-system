@@ -45,7 +45,8 @@ Veröffentlichung abbilden.
 - [x] Entscheiden, ob eine Schicht optional eine Tätigkeit, einen Bereich oder eine kurze interne Notiz enthalten darf.
 - [x] Festlegen, ob eine Schicht in der ersten Ausbaustufe genau einem Mitarbeiter oder mehreren Mitarbeitern zugeordnet wird.
 - [x] Regeln für Schichten ohne Mitarbeiter sowie für inaktive oder nicht mehr der Filiale zugeordnete Mitarbeiter bestimmen.
-- [x] Definieren, wie Dauer und anrechenbare Arbeitszeit aus Beginn, Ende und Pause berechnet werden.
+- [x] Definieren, dass die Lohnzeit der vollständigen Zeitspanne von Beginn bis Ende entspricht und die bezahlte Pause
+      einschließt.
 
 #### Schritt 3: Zustände und fachliche Regeln festlegen
 
@@ -302,7 +303,7 @@ Neu hinzuzufügen:
 - [x] Zeitraumsteuerung für vorherigen, aktuellen und nächsten Monat ergänzen.
 - [x] Tage, Schichten und Mitarbeiter in einer auf Desktop und kleinen Viewports bedienbaren Monatsansicht darstellen.
 - [x] Ladezustand, leeren Dienstplan, Ladefehler und erneutes Laden sichtbar behandeln.
-- [x] Schichtbeginn, Schichtende, Pause und berechnete Arbeitszeit verständlich anzeigen.
+- [x] Schichtbeginn, Schichtende, Pause und berechnete Lohnzeit verständlich anzeigen.
 - [x] Den aktuellen Entwurfs- oder Veröffentlichungszustand eindeutig darstellen.
 
 #### Schritt 3: Schichten manuell verwalten
@@ -728,6 +729,7 @@ nur im leeren, noch nie veröffentlichten Erstentwurf gewechselt werden. Später
 - src/app/commons/constants/firebase.constants.ts
 - src/app/commons/models/domain/dienstplan.ts
 - src/app/commons/models/domain/schicht.ts
+- src/app/commons/models/domain/schichtmodell.ts
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.ts
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.html
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.spec.ts
@@ -739,10 +741,15 @@ nur im leeren, noch nie veröffentlichten Erstentwurf gewechselt werden. Später
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.ts
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.html
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
 - src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.ts
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
 - src/app/services/domain/dienstplan.service.ts
 - src/app/services/domain/dienstplan.service.spec.ts
+- src/app/services/domain/schichtmodell.service.ts
+- src/app/services/domain/schichtmodell.service.spec.ts
 - src/app/services/firebase/firestore-db.service.ts
 - src/app/services/firebase/firestore-db.service.spec.ts
 - src/app/stores/domain/dienstplan.store.ts
@@ -779,7 +786,17 @@ Neu hinzuzufügen:
       Die Leerheitsprüfung der Schicht-Subcollection zusätzlich im Client-Service erzwingen, da Rules keine Collection-Abfrage
       ausführen können.
 
-#### Schritt 2: Firmenweiten Belegungsindex aufbauen
+#### Schritt 2: Mehrfachbelegung je Modellschicht begrenzen
+
+- [x] Jede Modellschicht um die standardmäßig deaktivierte Option `mehrfachbelegungErlaubt` ergänzen und sie in die
+      Dienstplan-Momentaufnahme übernehmen.
+- [x] Die Checkbox `Mehrfachbelegung` im Kopf der Modellschicht direkt vor der Löschaktion anzeigen.
+- [x] Weitere Anlagen und Ablagen in einer belegten Rasterzelle sperren, solange die Modellschicht keine Mehrfachbelegung erlaubt.
+- [x] Die Begrenzung vor dem Schreiben servernah im Dienstplan-Service erneut prüfen und parallele Anlagen über die vorhandene
+      Versionsrevision absichern.
+- [x] Domain-, Dialog-, Raster-, Service- und Firestore-Regeltests ergänzen.
+
+#### Schritt 3: Firmenweiten Belegungsindex aufbauen
 
 - [ ] Unterhalb der Firma einen Belegungsindex mit einem Dokument je Mitarbeiter und Kalendertag vorsehen, damit eine
       Konfliktprüfung keine vollständigen Dienstpläne aller berechtigten Filialen laden muss.
@@ -796,7 +813,7 @@ Neu hinzuzufügen:
 - [ ] Firestore Rules so absichern, dass Belegungseinträge nur gemeinsam mit einer berechtigten Dienstplanänderung angelegt,
       geändert oder gelöscht werden können.
 
-#### Schritt 3: Belegungsindex live in die Planung übernehmen
+#### Schritt 4: Belegungsindex live in die Planung übernehmen
 
 - [ ] Die für den ausgewählten Planungszeitraum und die sichtbaren Mitarbeiter relevanten Belegungstage mit begrenzten
       Firestore-Snapshot-Listenern beobachten, ohne einen unbeschränkten firmenweiten Listener zu öffnen.
@@ -809,7 +826,7 @@ Neu hinzuzufügen:
 - [ ] Live-Daten ausschließlich für aktuelle Darstellung und frühzeitige Konflikthinweise verwenden; vor jedem Schreibzugriff
       weiterhin die transaktionale Prüfung der gemeinsamen Tagesdokumente als verbindliche Absicherung ausführen.
 
-#### Schritt 4: Konflikte berechnen und darstellen
+#### Schritt 5: Konflikte berechnen und darstellen
 
 - [ ] Ungültige Zeitfolgen, Pausen und überlappende Schichten eines Mitarbeiters filialübergreifend erkennen.
 - [ ] Für Anlage, Änderung und Veröffentlichung die relevanten Belegungen aller Filialen des betroffenen Mitarbeiters über den
@@ -823,7 +840,29 @@ Neu hinzuzufügen:
 - [ ] Veröffentlichung bei blockierenden Konflikten verhindern und zusätzlich im Schreibablauf absichern.
 - [ ] Konfliktberechnung mit Schichten über Mitternacht und an Zeitraumgrenzen prüfen.
 
-#### Schritt 5: Veröffentlichung umsetzen
+#### Schritt 6: Bestehende Schichten verschieben
+
+- [ ] Schichtkarten in einem bearbeitbaren Entwurf als eigene Drag-Quellen kennzeichnen und beim Ablegen in einer anderen
+      Rasterzelle Mitarbeiterzuordnung und Schicht-ID beibehalten.
+- [ ] Den Zieltag und die Zielmodellschicht ausschließlich aus der Rasterzelle übernehmen und Beginn, Ende, Folgetag sowie
+      Standardpause aus der Modellschicht-Momentaufnahme neu ableiten. Eine freie Eingabe dieser Werte bleibt ausgeschlossen.
+- [ ] Das Ablegen in der bisherigen Rasterzelle ohne Schreibzugriff beenden und Schichten veröffentlichter oder archivierter
+      Versionen nicht als verschiebbar anbieten.
+- [ ] Vor dem Verschieben die Zielzelle auf Einfach- oder Mehrfachbelegung sowie den Mitarbeiter auf zeitliche Konflikte prüfen.
+      Eine unzulässige Zielzelle darf weder per Drag-and-drop noch über die alternative Aktion übernommen werden.
+- [ ] Das Verschieben im Dienstplan-Service als eine Firestore-Transaktion umsetzen, die den aktuellen Versionsstand und die
+      Zielbelegung verbindlich liest, die Schicht aktualisiert und die Revision genau einmal erhöht.
+- [ ] Die Belegungstage des bisherigen und des neuen Zeitraums innerhalb derselben Transaktion aus dem firmenweiten
+      Belegungsindex entfernen beziehungsweise ergänzen. Schichten über Mitternacht müssen alle berührten Tage
+      berücksichtigen.
+- [ ] Firestore Rules so erweitern, dass Datum, Modellschicht und daraus abgeleitete Zeitwerte nur bei einem vollständigen,
+      berechtigten Verschiebevorgang in einem Entwurf geändert werden können.
+- [ ] Im Bearbeitungsdialog eine gleichwertige, tastatur- und touchbedienbare Aktion `Schicht verschieben` anbieten, über die
+      Zieltag und Zielmodellschicht gewählt werden, ohne reguläre Schichtzeiten frei bearbeiten zu können.
+- [ ] Zulässige und unzulässige Ablageziele während des Ziehens verständlich darstellen und Fehler am bisherigen
+      Filialdienstplan anzeigen, ohne die bestehende Schicht bei einem fehlgeschlagenen Vorgang zu verändern.
+
+#### Schritt 7: Veröffentlichung umsetzen
 
 - [ ] Veröffentlichungsaktion nur für berechtigte Rollen und einen konfliktfreien aktuellen Entwurf anbieten.
 - [ ] Versionierung für jeden Filialdienstplan getrennt fortführen.
@@ -835,7 +874,7 @@ Neu hinzuzufügen:
 - [ ] Zurückziehen oder nachträgliche Änderung ausschließlich nach dem beschlossenen Zustandsablauf erlauben.
 - [ ] Gleichzeitige Änderungen zwischen Prüfung und Veröffentlichung zuverlässig erkennen.
 
-#### Schritt 6: Veröffentlichte Mitarbeiteransicht bereitstellen
+#### Schritt 8: Veröffentlichte Mitarbeiteransicht bereitstellen
 
 - [ ] Veröffentlichte Dienstpläne für Mitarbeiter aus allen ausgewählten und fachlich erlaubten Filialen laden und gemeinsam
       darstellen.
@@ -851,6 +890,8 @@ Neu hinzuzufügen:
       Entwurf und die Sperre bei vorhandenen Schichten ergänzen.
 - [x] Prüfen, dass die Aktion nach dem Löschen aller Entwurfsschichten wieder verfügbar ist und nach der ersten
       Veröffentlichung dauerhaft gesperrt bleibt.
+- [x] Dialog-, Raster- und Service-Tests für die standardmäßige Einfachbelegung und die freigegebene Mehrfachbelegung ergänzen.
+- [x] Firestore-Emulator-Tests für das neue Modellschichtfeld ausführen und den Office-Build erfolgreich prüfen.
 - [ ] Das Erzeugen einer neuen Entwurfsversion als Kopie des veröffentlichten Stands mit unveränderter Modell-Momentaufnahme
       testen.
 - [ ] Unit-Tests für alle blockierenden Konflikte und Hinweise ergänzen.
@@ -860,6 +901,11 @@ Neu hinzuzufügen:
       kann.
 - [ ] Store- und Service-Tests für initiale Live-Daten, nachfolgende Änderungen, Kontextwechsel, Listener-Abmeldung und
       Listener-Fehler ergänzen.
+- [ ] Component-, Service- und Firestore-Emulator-Tests für das Verschieben innerhalb eines Tages und auf einen anderen Tag,
+      belegte Einfachschichten, erlaubte Mehrfachbelegung, Zeitkonflikte und Schichten über Mitternacht ergänzen.
+- [ ] Prüfen, dass ein Verschieben die vorhandene Schicht-ID und Mitarbeiterzuordnung erhält, die Revision genau einmal erhöht
+      und bei einem Fehler weder die Schicht noch den Belegungsindex teilweise verändert.
+- [ ] Drag-and-drop und die alternative Verschiebeaktion auf Desktop sowie einem kleinen Touch-Viewport manuell prüfen.
 - [ ] Service- und Store-Tests für Veröffentlichung, konkurrierende Änderung, Zurückziehen und Fehlerfälle ergänzen.
 - [ ] Component-Tests für Konfliktanzeige, deaktivierte Veröffentlichung und Bestätigungsablauf ergänzen.
 - [ ] Firestore-Emulator-Tests für Entwurfszugriff, Veröffentlichung und Mitarbeiteransicht ergänzen.
@@ -872,6 +918,8 @@ Neu hinzuzufügen:
 - [x] Ein leerer, noch nie veröffentlichter Entwurf kann auf ein anderes aktives Modell derselben Filiale wechseln; ein belegter
       Entwurf verhindert den Modellwechsel.
 - [x] Nach dem Löschen aller Entwurfsschichten ist der Modellwechsel wieder möglich.
+- [x] Eine Modellschicht erlaubt standardmäßig nur einen Mitarbeiter je Rasterzelle; eine aktivierte Mehrfachbelegung lässt
+      weitere Mitarbeiter in derselben Rasterzelle zu.
 - [ ] Nach der ersten Veröffentlichung bleibt die Modell-Momentaufnahme des Monatsplans unveränderlich und wird von allen
       späteren Versionen verwendet.
 - [ ] Eine neue Entwurfsversion übernimmt die Schichten des veröffentlichten Stands, ohne das Schichtmodell zu wechseln.
@@ -881,6 +929,9 @@ Neu hinzuzufügen:
       erzeugen.
 - [ ] Eine erfolgreich gespeicherte Belegung wird in einer parallel geöffneten berechtigten Filialplanung ohne manuelles
       Neuladen zeitnah sichtbar.
+- [ ] Eine bestehende Entwurfsschicht kann per Drag-and-drop oder über die alternative Aktion in eine zulässige Rasterzelle
+      verschoben werden; Mitarbeiterzuordnung und Schicht-ID bleiben dabei erhalten.
+- [ ] Ein unzulässiges Verschieben verändert weder die bestehende Schicht noch Version oder Belegungsindex.
 - [ ] Eine unvollständige filialübergreifende Konfliktprüfung verhindert die Veröffentlichung.
 - [ ] Ein berechtigter Benutzer kann einen konfliktfreien aktuellen Entwurf nachvollziehbar veröffentlichen.
 - [ ] Mitarbeiter sehen ausschließlich die für sie freigegebenen veröffentlichten Dienstplandaten.
@@ -917,6 +968,7 @@ Komplexität belastet.
       die einen Dienstplan nicht unmittelbar verändern.
 - [ ] Bedarf für Änderungsbenachrichtigungen und Push-Nachrichten bewerten.
 - [ ] Bedarf für Schichtkopien, automatische Planung oder Optimierung bewerten.
+- [ ] Bedarf für Nacht-, Sonntags- und Feiertagszuschläge sowie die Ableitung von Lohnstunden aus der Lohnzeit bewerten.
 - [ ] Bedarf für Zeiterfassung, Exporte und Anbindungen an Lohnabrechnung getrennt bewerten.
 
 #### Schritt 3: Abgegrenzte Folgetodos anlegen

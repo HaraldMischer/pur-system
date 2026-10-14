@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
-import { calculateSchichtArbeitszeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
+import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 import { getAktuellerMonat } from '../../../commons/utils/datum/monat';
 import { sortMitarbeiter } from '../../../commons/utils/mitarbeiter/mitarbeiter-dokument';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
@@ -16,9 +16,9 @@ import { MonatSelector } from '../../date-selectors/monat-selector/monat-selecto
 import { DienstplanFiliale } from '../dienstplan-filiale/dienstplan-filiale';
 
 // ===== Top-Level Helper =====================
-function formatArbeitszeit(arbeitszeitMinuten: number): string {
-  const stunden = Math.floor(arbeitszeitMinuten / 60);
-  const minuten = arbeitszeitMinuten % 60;
+function formatLohnzeit(lohnzeitMinuten: number): string {
+  const stunden = Math.floor(lohnzeitMinuten / 60);
+  const minuten = lohnzeitMinuten % 60;
   return minuten > 0 ? `${stunden} Std. ${minuten} Min.` : `${stunden} Std.`;
 }
 
@@ -32,13 +32,13 @@ type TMitarbeiterAnzeige = {
   readonly id: string;
   readonly anzeigename: string;
   readonly filialIds: readonly string[];
-  readonly arbeitszeit: string;
+  readonly lohnzeit: string;
   readonly schichtanzahl: number;
   readonly farbkennung?: string;
 };
 
 type TMitarbeiterMonatswerte = {
-  readonly arbeitszeitMinuten: number;
+  readonly lohnzeitMinuten: number;
   readonly schichtanzahl: number;
 };
 
@@ -114,14 +114,14 @@ export class DienstplanArbeitsbereich {
     ).map((eintrag) => {
       const anzeigename = `${eintrag.person.nachname}, ${eintrag.person.vorname}`.trim();
       const monatswerte = monatswerteNachMitarbeiterId.get(eintrag.id) ?? {
-        arbeitszeitMinuten: 0,
+        lohnzeitMinuten: 0,
         schichtanzahl: 0,
       };
       return {
         id: eintrag.id,
         anzeigename,
         filialIds: eintrag.filialIds,
-        arbeitszeit: formatArbeitszeit(monatswerte.arbeitszeitMinuten),
+        lohnzeit: formatLohnzeit(monatswerte.lohnzeitMinuten),
         schichtanzahl: monatswerte.schichtanzahl,
         ...(eintrag.farbkennung ? { farbkennung: eintrag.farbkennung } : {}),
       };
@@ -155,12 +155,12 @@ export class DienstplanArbeitsbereich {
       for (const schicht of kontext.schichten) {
         if (schicht.versionId !== aktiveVersionId) continue;
         const bisherigeMonatswerte = monatswerte.get(schicht.mitarbeiterId) ?? {
-          arbeitszeitMinuten: 0,
+          lohnzeitMinuten: 0,
           schichtanzahl: 0,
         };
         monatswerte.set(schicht.mitarbeiterId, {
-          arbeitszeitMinuten:
-            bisherigeMonatswerte.arbeitszeitMinuten + calculateSchichtArbeitszeitMinuten(schicht),
+          lohnzeitMinuten:
+            bisherigeMonatswerte.lohnzeitMinuten + calculateSchichtLohnzeitMinuten(schicht),
           schichtanzahl: bisherigeMonatswerte.schichtanzahl + 1,
         });
       }

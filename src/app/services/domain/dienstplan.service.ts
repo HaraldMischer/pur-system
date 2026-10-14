@@ -36,7 +36,7 @@ import {
 } from '../../commons/models/domain/schichtmodell';
 import { createDienstplanZeitraum } from '../../commons/utils/dienstplan/dienstplan-zeitraum';
 import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
-import { calculateSchichtArbeitszeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
+import { calculateSchichtLohnzeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 
 @Injectable({ providedIn: 'root' })
@@ -194,6 +194,7 @@ export class DienstplanService {
             endeLokalzeit: modellschicht.endeLokalzeit,
             endetAmFolgetag: modellschicht.endetAmFolgetag,
             standardpauseMinuten: modellschicht.standardpauseMinuten,
+            mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
           },
         };
       }),
@@ -321,6 +322,7 @@ export class DienstplanService {
                 endeLokalzeit: modellschicht.endeLokalzeit,
                 endetAmFolgetag: modellschicht.endetAmFolgetag,
                 standardpauseMinuten: modellschicht.standardpauseMinuten,
+                mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
               },
             };
           }),
@@ -344,7 +346,8 @@ export class DienstplanService {
     anlage: ISchichtAnlage,
     benutzerUid: string,
   ): Promise<ISchichtSchreibergebnis> {
-    calculateSchichtArbeitszeitMinuten(anlage);
+    calculateSchichtLohnzeitMinuten(anlage);
+    await this.assertWeitereBelegungErlaubt(pfad, anlage);
     const schichtId = this.firestoreDbService.createDocumentId(
       FIRESTORE_COLLECTION_PATHS.schichten(pfad),
     );
@@ -386,7 +389,8 @@ export class DienstplanService {
     aktualisierung: ISchichtAktualisierung,
     benutzerUid: string,
   ): Promise<ISchichtSchreibergebnis> {
-    calculateSchichtArbeitszeitMinuten(aktualisierung);
+    calculateSchichtLohnzeitMinuten(aktualisierung);
+    await this.assertWeitereBelegungErlaubt(pfad, aktualisierung, schicht.id);
     const aktualisierteSchicht: ISchichtEintrag = {
       ...schicht,
       ...aktualisierung,
@@ -553,6 +557,41 @@ export class DienstplanService {
       };
     });
   }
+
+  /**
+   * Verhindert eine weitere Belegung derselben Rasterzelle, wenn die Modellschicht sie nicht erlaubt.
+   */
+  private async assertWeitereBelegungErlaubt(
+    pfad: IDienstplanVersionPfad,
+    schicht: ISchichtAnlage,
+    ausgenommeneSchichtId?: string,
+  ): Promise<void> {
+    const dienstplanPfad: IDienstplanPfad = pfad;
+    const [modellschichtDokument, schichten] = await Promise.all([
+      this.firestoreDbService.loadDocument<IModellschichtMomentaufnahmeDokument>(
+        FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
+          ...dienstplanPfad,
+          modellschichtId: schicht.modellschichtId,
+        }),
+        environment.firestoreLesestrategien.dienstplaene,
+      ),
+      this.loadSchichten(pfad, environment.firestoreLesestrategien.dienstplaene),
+    ]);
+    if (!modellschichtDokument) {
+      throw new Error('Die Modellschicht wurde im Monatsplan nicht gefunden.');
+    }
+    if (modellschichtDokument.daten.mehrfachbelegungErlaubt === true) return;
+    const istBereitsBelegt = schichten.some((eintrag) => {
+      return (
+        eintrag.id !== ausgenommeneSchichtId &&
+        eintrag.modellschichtId === schicht.modellschichtId &&
+        eintrag.beginn.toMillis() === schicht.beginn.toMillis()
+      );
+    });
+    if (istBereitsBelegt) {
+      throw new Error('Diese Schicht ist bereits belegt.');
+    }
+  }
 }
 
 function mapDienstplan(
@@ -604,6 +643,7 @@ function mapModellschichtMomentaufnahme(
     endeLokalzeit: daten.endeLokalzeit,
     endetAmFolgetag: daten.endetAmFolgetag,
     standardpauseMinuten: daten.standardpauseMinuten,
+    mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt ?? false,
   };
 }
 

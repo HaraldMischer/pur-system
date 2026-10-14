@@ -17,8 +17,9 @@ Der `SchichtmodellService` verwaltet die Schichtmodelle einer konkreten Filiale.
 
 Bezeichnungen werden vor dem Schreiben normalisiert. Der Service prüft die lokale Zeitfolge, leitet Folgetag sowie
 Standardpause nach den verbindlichen Zeitregeln erneut ab und sortiert die Modellschichten chronologisch. Bei gleicher
-Beginnzeit dienen Endzeit, Bezeichnung und ID als stabile Sortiermerkmale. Das frühere Feld `reihenfolge` wird nicht mehr
-geschrieben und beim nächsten Speichern eines vorhandenen Modells entfernt.
+Beginnzeit dienen Endzeit, Bezeichnung und ID als stabile Sortiermerkmale. Jede Modellschicht speichert außerdem, ob eine
+Mehrfachbelegung erlaubt ist; für ältere Dokumente ohne dieses Feld wird `false` angenommen. Das frühere Feld `reihenfolge` wird
+nicht mehr geschrieben und beim nächsten Speichern eines vorhandenen Modells entfernt.
 
 ## Beteiligte Dateien
 

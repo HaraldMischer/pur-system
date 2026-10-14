@@ -10,6 +10,7 @@ export interface IModellschichtDaten {
   endeLokalzeit: string;
   endetAmFolgetag: boolean;
   standardpauseMinuten: number;
+  mehrfachbelegungErlaubt: boolean;
 }
 
 export interface IModellschichtEintrag extends IModellschichtDaten {

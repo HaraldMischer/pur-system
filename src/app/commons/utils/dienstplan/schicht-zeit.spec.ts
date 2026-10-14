@@ -3,19 +3,19 @@
 import { Timestamp } from 'firebase/firestore';
 
 import { ISchichtAnlage } from '../../models/domain/schicht';
-import { calculateSchichtArbeitszeitMinuten } from './schicht-zeit';
+import { calculateSchichtLohnzeitMinuten } from './schicht-zeit';
 
-describe('calculateSchichtArbeitszeitMinuten', () => {
+describe('calculateSchichtLohnzeitMinuten', () => {
   it('should calculate a same-day shift', () => {
     expect(
-      calculateSchichtArbeitszeitMinuten(createSchicht('2026-10-05T08:00', '2026-10-05T16:00', 30)),
-    ).toBe(450);
+      calculateSchichtLohnzeitMinuten(createSchicht('2026-10-05T08:00', '2026-10-05T16:00', 30)),
+    ).toBe(480);
   });
 
   it('should calculate a shift across midnight', () => {
     expect(
-      calculateSchichtArbeitszeitMinuten(createSchicht('2026-10-06T22:00', '2026-10-07T06:00', 30)),
-    ).toBe(450);
+      calculateSchichtLohnzeitMinuten(createSchicht('2026-10-06T22:00', '2026-10-07T06:00', 30)),
+    ).toBe(480);
   });
 
   it.each([
@@ -26,7 +26,7 @@ describe('calculateSchichtArbeitszeitMinuten', () => {
     ['2026-10-05T08:00', '2026-10-05T09:00', 60.5],
   ])('should reject invalid shift values', (beginn, ende, pauseMinuten) => {
     expect(() =>
-      calculateSchichtArbeitszeitMinuten(createSchicht(beginn, ende, pauseMinuten)),
+      calculateSchichtLohnzeitMinuten(createSchicht(beginn, ende, pauseMinuten)),
     ).toThrow('Beginn, Ende und Pause ergeben keine gültige Schicht.');
   });
 });

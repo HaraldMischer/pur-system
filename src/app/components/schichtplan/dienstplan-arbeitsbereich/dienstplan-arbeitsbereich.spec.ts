@@ -211,7 +211,9 @@ describe('DienstplanArbeitsbereich', () => {
 
     const monatswerte = fixture.nativeElement.querySelector('.mitarbeiter-monatswerte');
 
-    expect(monatswerte.textContent.replace(/\s+/g, ' ').trim()).toBe('12 Std. · 2 Schichten');
+    expect(monatswerte.textContent.replace(/\s+/g, ' ').trim()).toBe(
+      'Lohnzeit: 13 Std. · 2 Schichten',
+    );
   });
 
   it('should provide employees as drag sources only in planning mode', async () => {

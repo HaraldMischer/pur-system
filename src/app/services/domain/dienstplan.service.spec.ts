@@ -30,7 +30,11 @@ describe('DienstplanService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    loadDocumentMock.mockResolvedValue(null);
+    loadDocumentMock.mockImplementation(async (path: string) => {
+      return path.endsWith('/modellschicht/frueh')
+        ? { id: 'frueh', daten: createModellschichtDaten() }
+        : null;
+    });
     loadCollectionMock.mockResolvedValue([]);
     createDocumentIdMock.mockReturnValue('neu-1');
     createServerTimestampMock.mockReturnValue('server-zeitstempel');
@@ -325,6 +329,43 @@ describe('DienstplanService', () => {
     ).rejects.toThrow('Der Dienstplan wurde zwischenzeitlich geändert. Bitte lade ihn erneut.');
   });
 
+  it('should reject another employee in a model shift without multiple occupancy', async () => {
+    loadCollectionMock.mockResolvedValue([
+      { id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') },
+    ]);
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(
+      service.createSchicht(
+        versionsPfad,
+        2,
+        { ...createSchichtAnlage(), mitarbeiterId: 'm-2' },
+        'uid-1',
+      ),
+    ).rejects.toThrow('Diese Schicht ist bereits belegt.');
+    expect(executeDocumentTransactionMock).not.toHaveBeenCalled();
+  });
+
+  it('should allow another employee when the model shift permits multiple occupancy', async () => {
+    loadDocumentMock.mockResolvedValue({
+      id: 'frueh',
+      daten: { ...createModellschichtDaten(), mehrfachbelegungErlaubt: true },
+    });
+    loadCollectionMock.mockResolvedValue([
+      { id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') },
+    ]);
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(
+      service.createSchicht(
+        versionsPfad,
+        2,
+        { ...createSchichtAnlage(), mitarbeiterId: 'm-2' },
+        'uid-1',
+      ),
+    ).resolves.toEqual(expect.objectContaining({ versionRevision: 3 }));
+  });
+
   it('should update and delete shifts with their current draft revision', async () => {
     const service = TestBed.inject(DienstplanService);
     const schicht = createSchichtEintrag();
@@ -400,6 +441,7 @@ describe('DienstplanService', () => {
       endeLokalzeit: '12:00',
       endetAmFolgetag: false,
       standardpauseMinuten: 0,
+      mehrfachbelegungErlaubt: false,
     };
   }
 

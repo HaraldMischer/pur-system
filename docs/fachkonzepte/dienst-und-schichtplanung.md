@@ -42,8 +42,10 @@ Standardpause wird bei Änderungen der Modellschichtzeiten anhand der vollständ
 0 Minuten bis einschließlich 6 Stunden, 30 Minuten bei mehr als 6 bis einschließlich 9 Stunden und 45 Minuten bei mehr als
 9 Stunden. Der berechnete Wert ist innerhalb der Modellschicht nicht manuell anpassbar. Die Reihenfolge der Modellschichten
 ergibt sich automatisch aus ihrer lokalen Beginnzeit; bei identischem Beginn werden Ende, Bezeichnung und ID als stabile
-Sortiermerkmale verwendet. Weder Reihenfolge noch Anzahl werden redundant gespeichert. Nicht mehr verwendete Schichtmodelle
-werden deaktiviert und nicht physisch gelöscht.
+Sortiermerkmale verwendet. Zusätzlich bestimmt `mehrfachbelegungErlaubt`, ob eine Rasterzelle dieser Modellschicht mit mehreren
+Mitarbeitern besetzt werden darf. Der Standardwert ist `false`; ohne aktivierte Mehrfachbelegung ist höchstens eine konkrete
+Mitarbeiterschicht je Kalendertag und Modellschicht zulässig. Weder Reihenfolge noch Anzahl werden redundant gespeichert. Nicht
+mehr verwendete Schichtmodelle werden deaktiviert und nicht physisch gelöscht.
 
 Beim Anlegen eines Monatsdienstplans wählt der Planer ein aktives Schichtmodell der konkreten Filiale. Der Monatsdienstplan
 speichert die Modell-ID, die Modellbezeichnung und die vollständige chronologisch geordnete Liste ihrer Modellschichten als
@@ -56,7 +58,16 @@ Spätere Änderungen oder die Deaktivierung des ursprünglichen Schichtmodells v
 Im grundlegenden Planungsablauf zieht der Planer einen aktiven Mitarbeiter in eine Rasterzelle aus Modellschicht und Kalendertag
 oder verwendet die gleichwertige Anlageaktion als Tastatur- und Mobilalternative. Datum und Modellschicht stehen dadurch bereits
 fest; eine freie Auswahl oder Eingabe regulärer Schichtzeiten ist beim Anlegen der konkreten Schicht nicht vorgesehen. Beginn und
-Ende werden aus dem gewählten Datum und der Modellschicht der Dienstplan-Momentaufnahme als absolute Zeitpunkte gespeichert.
+Ende werden aus dem gewählten Datum und der Modellschicht der Dienstplan-Momentaufnahme als absolute Zeitpunkte gespeichert. Ist
+die Mehrfachbelegung der Modellschicht deaktiviert und die Rasterzelle bereits besetzt, sind Anlageaktion und Drag-and-drop
+gesperrt. Der Schreibservice prüft die Begrenzung zusätzlich vor dem Speichern; die Versionsrevision verhindert dabei, dass zwei
+gleichzeitige Anlagen eine Einfachbelegung umgehen.
+
+Eine bereits angelegte Schicht kann in einem bearbeitbaren Entwurf per Drag-and-drop oder über eine gleichwertige Tastatur- und
+Touch-Aktion in eine andere Rasterzelle verschoben werden. Mitarbeiterzuordnung und Schicht-ID bleiben erhalten; Zieltag und
+Zielmodellschicht sowie die daraus abgeleiteten Zeitwerte und die Standardpause werden vollständig aus der Zielzelle übernommen.
+Die bisherige Rasterzelle bewirkt keinen Schreibzugriff. Belegung und zeitliche Konflikte werden für die Zielzelle nach denselben
+Regeln wie bei einer Neuanlage geprüft. Veröffentlichte und archivierte Schichten sind nicht verschiebbar.
 
 Schichtmodelle dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. In der Filial-App gilt
 zusätzlich die clientseitige Bedienbegrenzung auf einen aktiven Firma-Mitarbeiter mit `dienstplaner`. Mitarbeiterzugänge lesen
@@ -124,7 +135,8 @@ Anzahl der Jahre, Versionen oder Schichten; lediglich die Anzahl der Dokumente u
 Lesezugriffe nimmt mit der Historie zu. Eine spätere Aufbewahrungs- oder Löschregel wird erst bei einem konkreten betrieblichen
 Bedarf geplant.
 
-Eine Version darf an einem Tag beliebig viele Schichten enthalten. Jede Schicht gehört in der ersten Ausbaustufe genau einem
+Eine Version darf an einem Tag beliebig viele Schichten enthalten, soweit die jeweilige Modellschicht eine Mehrfachbelegung
+erlaubt oder unterschiedliche Rasterzellen betroffen sind. Jede Schicht gehört in der ersten Ausbaustufe genau einem
 aktiven Mitarbeiter, der beim Anlegen oder Bearbeiten der betroffenen Filiale zugeordnet sein muss. Schichten ohne Mitarbeiter
 und eine gemeinsame Schicht für mehrere Mitarbeiter sind nicht vorgesehen. Derselbe Mitarbeiter darf auch in verschiedenen
 Filialen mehrere nicht überlappende Schichten an einem Tag besitzen. Die Schicht speichert ausschließlich die `mitarbeiterId`
@@ -136,10 +148,10 @@ bevor sie in Dienstplänen referenziert werden.
 
 Eine Schicht speichert die ID ihrer Modellschicht aus der Schichtmodell-Momentaufnahme ihres Monatsplans. Beginn und Ende
 werden aus dem gewählten Datum und den Zeitwerten dieser Modellschicht als absolute Zeitpunkte gespeichert; die Pause wird in
-ganzen Minuten übernommen. Dadurch können auch Schichten über Mitternacht eindeutig abgebildet werden. Die anrechenbare
-Arbeitszeit wird aus Ende minus Beginn minus Pause berechnet und nicht redundant gespeichert. Ende vor oder gleich Beginn,
-negative Pausen und Pausen ab der vollständigen Schichtdauer sind ungültig. Überlappende Schichten desselben Mitarbeiters sind
-ein blockierender Konflikt.
+ganzen Minuten übernommen. Dadurch können auch Schichten über Mitternacht eindeutig abgebildet werden. Pausen sind immer
+bezahlt. Die Lohnzeit entspricht deshalb der vollständigen Zeitspanne von Beginn bis Ende und wird nicht redundant gespeichert.
+Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen Schichtdauer sind ungültig. Überlappende Schichten
+desselben Mitarbeiters sind ein blockierender Konflikt.
 
 Während einer Pause genügt eine durchgängige Aufsicht durch eine Person. Ist nur ein Mitarbeiter im Dienst, übernimmt der
 Techniker während dessen Pause die Aufsicht. Sind zwei Mitarbeiter im Dienst, vertreten sie sich während ihrer Pausen
@@ -193,10 +205,11 @@ Existiert für einen Monat noch kein Dienstplan, wählt ein berechtigter Planer 
 Dienstplan mit seiner Modell-Momentaufnahme sowie Version 1 im Status `entwurf` an. Die Modellschichten bilden die Spalten des
 Monatsrasters; die Kalendertage bilden dessen Zeilen. Solange die Version ein Entwurf ist, dürfen berechtigte Planer die
 Rasterzellen per Drag-and-drop oder über die alternative Anlageaktion mit Mitarbeitern besetzen und vorhandene Schichten
-bearbeiten. Wurde der Monatsplan noch nie veröffentlicht und enthält sein aktueller Entwurf keine Schichten, darf seine
-Modell-Momentaufnahme durch ein anderes aktives Schichtmodell derselben Filiale ersetzt werden. Sobald eine Schicht vorhanden
-ist, ist dieser direkte Modellwechsel gesperrt. Nach dem Löschen aller Schichten ist er wieder möglich. Das Löschen einzelner
-Schichten und der vollständigen, nie veröffentlichten Entwurfsversion ist erlaubt.
+bearbeiten oder in eine andere zulässige Rasterzelle verschieben. Wurde der Monatsplan noch nie veröffentlicht und enthält sein
+aktueller Entwurf keine Schichten, darf seine Modell-Momentaufnahme durch ein anderes aktives Schichtmodell derselben Filiale
+ersetzt werden. Sobald eine Schicht vorhanden ist, ist dieser direkte Modellwechsel gesperrt. Nach dem Löschen aller Schichten
+ist er wieder möglich. Das Löschen einzelner Schichten und der vollständigen, nie veröffentlichten Entwurfsversion ist
+erlaubt.
 
 Die Veröffentlichung setzt eine vollständig geprüfte und konfliktfreie Entwurfsversion voraus. Sie setzt deren Status auf
 `veroeffentlicht`. Existiert bereits eine veröffentlichte Version, wird diese im selben konsistenten Schreibvorgang auf
@@ -228,15 +241,16 @@ Die Modelltests werden mit den fachlichen Hilfsfunktionen der Grundfunktion umge
 
 - Ein Monatsbezeichner im Format `YYYY-MM` wird auf den ersten und letzten Kalendertag normalisiert. Dabei werden Monate mit 28,
   29, 30 und 31 Tagen sowie ungültige Monatsbezeichner geprüft.
-- Die Arbeitszeit ergibt sich aus Ende minus Beginn minus Pause. Schichten am selben Tag und über Mitternacht werden geprüft;
-  Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen Schichtdauer sind ungültig.
+- Die Lohnzeit entspricht der vollständigen Zeitspanne von Beginn bis Ende und schließt die bezahlte Pause ein. Schichten am
+  selben Tag und über Mitternacht werden geprüft; Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen
+  Schichtdauer sind ungültig.
 - Eine Frühschicht von 08:00 bis 16:30 Uhr bleibt am gewählten Kalendertag. Eine Spätschicht von 16:30 bis 01:00 Uhr endet am
   Folgetag. Änderungen am ursprünglichen Schichtmodell verändern die im Monatsplan gespeicherte
   Schichtmodell-Momentaufnahme nicht.
 - Neue Versionen beginnen als `entwurf` mit Revision 0. Zulässig sind nur die Übergänge von `entwurf` zu `veroeffentlicht` und
   bei einer Ersatzveröffentlichung von `veroeffentlicht` zu `archiviert`; historische Stände bleiben unveränderlich.
 - Normalisierte Dienstplan-, Versions- und Schichtdaten behalten ihre IDs, Referenzen und Metadaten, speichern aber keine
-  berechnete Arbeitszeit redundant.
+  berechnete Lohnzeit redundant.
 
 Als Probeablauf dient der Monatsplan `2026-10` einer Filiale mit dem Schichtmodell `Standard`. Das Modell enthält die geordneten
 Modellschichten `Frühschicht` von 08:00 bis 16:30 Uhr und `Spätschicht` von 16:30 bis 01:00 Uhr des Folgetags. Beim Anlegen des
@@ -253,15 +267,15 @@ Schreibvorgang archiviert.
 ## Frontend-Transaktionen und parallele Bearbeitung
 
 Sämtliche fachlichen Dienstplanaktionen werden durch das Angular-Frontend über den Firestore Client ausgeführt. Für das
-Anlegen, Kopieren, Bearbeiten, Löschen, Archivieren und Veröffentlichen von Dienstplandaten werden keine Cloud Functions oder
-anderen serverseitigen Fachaktionen eingesetzt. Firestore Rules bleiben die verbindliche serverseitige Zugriffskontrolle,
-führen aber
-selbst keine fachlichen Aktionen aus.
+Anlegen, Kopieren, Bearbeiten, Verschieben, Löschen, Archivieren und Veröffentlichen von Dienstplandaten werden keine Cloud
+Functions oder anderen serverseitigen Fachaktionen eingesetzt. Firestore Rules bleiben die verbindliche serverseitige
+Zugriffskontrolle, führen aber selbst keine fachlichen Aktionen aus.
 
 Jede Dienstplanversion besitzt eine ganzzahlige `revision`. Eine neu angelegte Entwurfsversion beginnt mit Revision 0. Jede
-spätere Änderung einer Schicht und jeder Statuswechsel der Version erhöht die Revision genau um eins. Anlegen, Bearbeiten und
-Löschen einer Schicht erfolgen in einer Firestore-Transaktion, die zuerst das gemeinsame Versionsdokument und die betroffenen
-Tagesdokumente des Belegungsindex liest. Die Transaktion schreibt nur, wenn die Version weiterhin den Status `entwurf`, die vom
+spätere Änderung einer Schicht und jeder Statuswechsel der Version erhöht die Revision genau um eins. Anlegen, Bearbeiten,
+Verschieben und Löschen einer Schicht erfolgen in einer Firestore-Transaktion, die zuerst das gemeinsame Versionsdokument und
+die betroffenen Tagesdokumente des Belegungsindex liest. Beim Verschieben werden die Belegungstage des bisherigen und des neuen
+Zeitraums gemeinsam aktualisiert. Die Transaktion schreibt nur, wenn die Version weiterhin den Status `entwurf`, die vom
 Frontend erwartete Revision und der Belegungsindex weiterhin einen konfliktfreien Stand besitzen. Zusammen mit der
 Schichtänderung aktualisiert sie Belegungsindex, Revision, Änderungszeitpunkt und ändernde Benutzer-UID.
 
@@ -297,7 +311,9 @@ manipulierte Konfliktberechnung außerhalb der vollständigen Absicherung durch 
 
 Automatische Planung und Optimierung, Urlaubs-, Krankheits- und sonstige Abwesenheitsverwaltung, Sollstunden,
 Arbeitszeitkonten, gesetzliche Gesamtprüfungen, Schichttausch, Freigabewünsche, Mitarbeiterbestätigungen,
-Push-Benachrichtigungen, Zeiterfassung, Exporte und Lohnabrechnungsanbindungen sind nicht Teil der ersten Ausbaustufe.
+Push-Benachrichtigungen, Zeiterfassung, Exporte, Lohnabrechnungsanbindungen sowie die Ermittlung von Lohnstunden mit Nacht-,
+Sonntags- und Feiertagszuschlägen sind nicht Teil der ersten Ausbaustufe. Die Lohnzeit bildet dafür später den zeitlichen
+Ausgangswert.
 Offline-Schreibvorgänge werden nur bei einem konkreten fachlichen Bedarf gemeinsam mit dem zurückgestellten Todo 9 geplant.
 Ein späterer Änderungs- oder Tauschwunsch eines Mitarbeiters wird als eigener Antrag mit nachvollziehbarem Bearbeitungsstatus
 wie `offen`, `angenommen`, `abgelehnt` oder `zurueckgezogen` modelliert. Er verändert keinen Dienstplan unmittelbar; erst ein

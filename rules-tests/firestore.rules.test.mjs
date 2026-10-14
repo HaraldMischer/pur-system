@@ -389,6 +389,7 @@ function modellschichtDaten(overrides = {}) {
     endeLokalzeit: '12:00',
     endetAmFolgetag: false,
     standardpauseMinuten: 0,
+    mehrfachbelegungErlaubt: false,
     ...overrides,
   };
 }
@@ -430,6 +431,9 @@ test('shift models reject foreign branches, employee accounts and invalid model 
   );
   await assertFails(
     setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ standardpauseMinuten: 15 })),
+  );
+  await assertFails(
+    setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ mehrfachbelegungErlaubt: 'ja' })),
   );
 
   const mitarbeiterDb = await seedProfile('mitarbeiter', {

@@ -25,15 +25,17 @@ ergänzt und anschließend fachlich sortiert.
   bei einem leeren, noch nie veröffentlichten Entwurf ersetzt die Methode Modellreferenz und Momentaufnahme gemeinsam mit der
   nächsten Versionsrevision.
 - `createSchicht()`, `updateSchicht()` und `deleteSchicht()` schreiben eine Schicht gemeinsam mit der nächsten Versionsrevision
-  in einer Firestore-Transaktion.
+  in einer Firestore-Transaktion. Vor Anlage und Änderung prüft der Service anhand der Modell-Momentaufnahme und der vorhandenen
+  Schichten, ob die betroffene Rasterzelle eine weitere Belegung erlaubt.
 
 Schichten enthalten die Mitarbeiter-ID sowie die ID ihrer Modellschicht aus der Momentaufnahme des Monatsplans. Beginn und Ende
 sind absolute Firestore-Zeitstempel; die Standardpause der Modellschicht wird in Minuten gespeichert. Die Anwendung leitet diese
 Werte beim Anlegen aus der gewählten Rasterzelle ab. Beim Bearbeiten kann nur die Mitarbeiterzuordnung geändert werden. Die
 Firestore Rules prüfen die Modellschichtreferenz und schützen Rasterzelle, Zeitwerte und Pause vor nachträglicher Änderung.
 Nicht zum aktuellen Schichtmodell gehörende Felder werden weder geschrieben noch in das Domainmodell übernommen. Vor jedem
-Schreiben prüft der Service die anrechenbare Arbeitszeit. Eine abweichende Entwurfsrevision verhindert veraltete Schreibzugriffe.
-Nach der ersten Veröffentlichung verhindern Service und Firestore Rules jeden weiteren Modellwechsel.
+Schreiben prüft der Service die Lohnzeit einschließlich bezahlter Pause. Eine abweichende Entwurfsrevision verhindert
+veraltete Schreibzugriffe. Dadurch kann auch eine parallele Anlage die Begrenzung einer Einfachbelegung nicht umgehen. Nach der
+ersten Veröffentlichung verhindern Service und Firestore Rules jeden weiteren Modellwechsel.
 
 ## Beteiligte Dateien
 

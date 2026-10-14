@@ -31,9 +31,6 @@
               <strong>{{ modellschicht.bezeichnung }}</strong>
               <span>
                 {{ modellschicht.beginnLokalzeit }}–{{ modellschicht.endeLokalzeit }} Uhr
-                @if (modellschicht.endetAmFolgetag) {
-                  (Folgetag)
-                }
               </span>
             </th>
           }
@@ -53,8 +50,12 @@
                   datum: tag.datum,
                   modellschichtId: zelle.modellschicht.id,
                   mitarbeiterIds: zelle.mitarbeiterIds,
+                  mehrfachbelegungErlaubt: zelle.modellschicht.mehrfachbelegungErlaubt,
                 }"
-                [cdkDropListDisabled]="!kannSchichtenAblegen()"
+                [cdkDropListDisabled]="
+                  !kannSchichtenAblegen() ||
+                  (!zelle.modellschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
+                "
                 [cdkDropListEnterPredicate]="darfMitarbeiterAblegen"
                 [cdkDropListSortingDisabled]="true"
                 (cdkDropListDropped)="handleMitarbeiterDrop($event)"
@@ -64,7 +65,10 @@
                     matButton
                     type="button"
                     class="anlegen"
-                    [disabled]="schreibvorgang()"
+                    [disabled]="
+                      schreibvorgang() ||
+                      (!zelle.modellschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
+                    "
                     [attr.aria-label]="
                       zelle.modellschicht.bezeichnung + ' am ' + tag.bezeichnung + ' anlegen'
                     "
@@ -92,7 +96,7 @@
                     </strong>
                     <span>{{ formatSchichtzeit(schicht) }}</span>
                     <span>Pause: {{ schicht.pauseMinuten }} Min.</span>
-                    <span>Arbeitszeit: {{ formatArbeitszeit(schicht) }}</span>
+                    <span>Lohnzeit: {{ formatLohnzeit(schicht) }}</span>
                     @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                       <button matButton type="button" (click)="schichtBearbeiten.emit(schicht)">
                         Bearbeiten
@@ -109,5 +113,4 @@
       </tbody>
     </table>
   </div>
-
 </section>

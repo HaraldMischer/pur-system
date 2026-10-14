@@ -50,6 +50,7 @@ function normalizeModellschicht(
     endeLokalzeit: modellschicht.endeLokalzeit,
     endetAmFolgetag: modellschicht.endeLokalzeit < modellschicht.beginnLokalzeit,
     standardpauseMinuten: calculateStandardpauseMinuten(dauerMinuten),
+    mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
   };
 }
 
@@ -60,6 +61,7 @@ function mapModellschichtDokument(daten: IModellschichtDaten): IModellschichtDok
     endeLokalzeit: daten.endeLokalzeit,
     endetAmFolgetag: daten.endetAmFolgetag,
     standardpauseMinuten: daten.standardpauseMinuten,
+    mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt ?? false,
   };
 }
 

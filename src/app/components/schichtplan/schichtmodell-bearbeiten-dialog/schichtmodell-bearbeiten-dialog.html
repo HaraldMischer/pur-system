@@ -28,27 +28,27 @@
       </div>
     </div>
 
-    <div
-      class="pur-form__group schichtmodell-form__modellschichten"
-      formArrayName="modellschichten"
-    >
-      <div class="schichtmodell-form__kopf">
+    <div class="pur-form__group pur-form__group-list">
+      <header class="pur-form__group-header">
         <h3 class="pur-form__group-titel">Modellschichten</h3>
         <button matButton type="button" (click)="addModellschicht()">
           <mat-icon>add</mat-icon>
           Schicht hinzufügen
         </button>
-      </div>
+      </header>
 
       @for (
         modellschicht of schichtmodellForm.controls.modellschichten.controls;
         track modellschicht;
         let index = $index
       ) {
-        <section class="schichtmodell-form__modellschicht" [formGroupName]="index">
-          <header class="schichtmodell-form__modellschicht-kopf">
-            <strong>Schicht {{ index + 1 }}</strong>
-            <div>
+        <section class="pur-form__group pur-form__group--outlined">
+          <header class="pur-form__group-header">
+            <strong class="pur-form__group-titel">Schicht {{ index + 1 }}</strong>
+            <div class="pur-form__group-actions">
+              <mat-checkbox [formControl]="modellschicht.controls.mehrfachbelegungErlaubt">
+                Mehrfachbelegung
+              </mat-checkbox>
               <button
                 matIconButton
                 type="button"
@@ -63,7 +63,7 @@
 
           <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
             <mat-label>Bezeichnung</mat-label>
-            <input matInput formControlName="bezeichnung" maxlength="80" />
+            <input matInput [formControl]="modellschicht.controls.bezeichnung" maxlength="80" />
             @if (modellschicht.controls.bezeichnung.hasError('maxlength')) {
               <mat-error>Die Bezeichnung darf höchstens 80 Zeichen lang sein.</mat-error>
             }
@@ -75,7 +75,7 @@
               class="pur-form__item pur-form__item--field pur-form__item--50"
             >
               <mat-label>Beginn</mat-label>
-              <input matInput type="time" formControlName="beginnLokalzeit" />
+              <input matInput type="time" [formControl]="modellschicht.controls.beginnLokalzeit" />
               <span matTextSuffix>Uhr</span>
             </mat-form-field>
             <mat-form-field
@@ -83,7 +83,7 @@
               class="pur-form__item pur-form__item--field pur-form__item--50"
             >
               <mat-label>Ende</mat-label>
-              <input matInput type="time" formControlName="endeLokalzeit" />
+              <input matInput type="time" [formControl]="modellschicht.controls.endeLokalzeit" />
               <span matTextSuffix>Uhr</span>
             </mat-form-field>
           </div>
@@ -102,7 +102,12 @@
               class="pur-form__item pur-form__item--field pur-form__item--50"
             >
               <mat-label>Pause</mat-label>
-              <input matInput readonly type="number" formControlName="standardpauseMinuten" />
+              <input
+                matInput
+                readonly
+                type="number"
+                [formControl]="modellschicht.controls.standardpauseMinuten"
+              />
               <span matTextSuffix>Min.</span>
             </mat-form-field>
           </div>

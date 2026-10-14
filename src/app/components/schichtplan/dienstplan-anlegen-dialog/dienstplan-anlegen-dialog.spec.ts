@@ -107,6 +107,7 @@ describe('DienstplanAnlegenDialog', () => {
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,
           standardpauseMinuten: 0,
+          mehrfachbelegungErlaubt: false,
         },
       ],
     };

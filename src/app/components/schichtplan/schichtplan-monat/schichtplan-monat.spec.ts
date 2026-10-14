@@ -38,7 +38,7 @@ describe('SchichtplanMonat', () => {
     expect(spaltenkoepfe).toEqual([
       'Tag',
       'Früh 07:00–12:00 Uhr',
-      'Spät 16:30–01:00 Uhr (Folgetag)',
+      'Spät 16:30–01:00 Uhr',
     ]);
     expect(anlegenButtons).toHaveLength(56);
     anlegenButtons[5].click();
@@ -51,8 +51,8 @@ describe('SchichtplanMonat', () => {
     expect(
       dritteTageszeile.querySelector<HTMLElement>('.mitarbeiter-farbe')?.style.backgroundColor,
     ).toBe('rgb(18, 52, 86)');
-    expect(dritteTageszeile.textContent).toContain('16:30–01:00 (Folgetag)');
-    expect(dritteTageszeile.textContent).toContain('Arbeitszeit: 8 Std.');
+    expect(dritteTageszeile.textContent).toContain('16:30–01:00');
+    expect(dritteTageszeile.textContent).toContain('Lohnzeit: 8 Std. 30 Min.');
     expect(compiled.textContent).toContain('Version 1');
     expect(compiled.textContent).toContain('Entwurf');
     expect(compiled.textContent).toContain('2. Revision');
@@ -126,6 +126,33 @@ describe('SchichtplanMonat', () => {
     expect(ablagen).toHaveLength(1);
   });
 
+  it('should block occupied single cells and keep multiple cells assignable', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-2']);
+    fixture.componentRef.setInput('schichten', [createSchicht('s-1', 'm-1')]);
+    const ablagen: unknown[] = [];
+    fixture.componentInstance.schichtAblegen.subscribe((ablage) => {
+      ablagen.push(ablage);
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.handleMitarbeiterDrop(
+      createDropEvent('m-2', '2026-02-03', 'frueh', ['m-1']),
+    );
+    fixture.componentInstance.handleMitarbeiterDrop(
+      createDropEvent('m-2', '2026-02-03', 'spaet', ['m-1'], true),
+    );
+
+    expect(ablagen).toEqual([
+      { mitarbeiterId: 'm-2', datum: '2026-02-03', modellschichtId: 'spaet' },
+    ]);
+    const compiled = fixture.nativeElement as HTMLElement;
+    const belegteSpaetschicht = compiled.querySelector<HTMLButtonElement>(
+      '[aria-label="Spät am Di., 03.02. anlegen"]',
+    );
+    expect(belegteSpaetschicht?.disabled).toBe(false);
+  });
+
   it('should show a fallback when a referenced employee is unavailable', () => {
     const fixture = createFixture();
     fixture.componentRef.setInput('schichten', [createSchicht('s-1', 'm-fehlt')]);
@@ -177,6 +204,7 @@ describe('SchichtplanMonat', () => {
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
         standardpauseMinuten: 30,
+        mehrfachbelegungErlaubt: true,
       },
       {
         id: 'frueh',
@@ -189,6 +217,7 @@ describe('SchichtplanMonat', () => {
         endeLokalzeit: '12:00',
         endetAmFolgetag: false,
         standardpauseMinuten: 0,
+        mehrfachbelegungErlaubt: false,
       },
     ]);
     fixture.componentRef.setInput('schichten', []);
@@ -238,10 +267,13 @@ describe('SchichtplanMonat', () => {
     datum: string,
     modellschichtId: string,
     mitarbeiterIds: string[],
+    mehrfachbelegungErlaubt = false,
   ): Parameters<SchichtplanMonat['handleMitarbeiterDrop']>[0] {
     return {
       item: { data: mitarbeiterId },
-      container: { data: { datum, modellschichtId, mitarbeiterIds } },
+      container: {
+        data: { datum, modellschichtId, mitarbeiterIds, mehrfachbelegungErlaubt },
+      },
     } as unknown as Parameters<SchichtplanMonat['handleMitarbeiterDrop']>[0];
   }
 });

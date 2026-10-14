@@ -190,6 +190,7 @@ describe('SchichtBearbeitenDialog', () => {
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
         standardpauseMinuten: 30,
+        mehrfachbelegungErlaubt: false,
       },
       ...overrides,
     };

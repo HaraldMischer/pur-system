@@ -21,6 +21,7 @@ describe('SchichtmodellService', () => {
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
         standardpauseMinuten: 30,
+        mehrfachbelegungErlaubt: true,
       },
       {
         bezeichnung: ' Früh ',
@@ -28,6 +29,7 @@ describe('SchichtmodellService', () => {
         endeLokalzeit: '12:00',
         endetAmFolgetag: false,
         standardpauseMinuten: 0,
+        mehrfachbelegungErlaubt: false,
       },
     ],
   };
@@ -244,5 +246,6 @@ function createModellschichtDokument(
     endeLokalzeit,
     endetAmFolgetag: endeLokalzeit < beginnLokalzeit,
     standardpauseMinuten: beginnLokalzeit === '07:00' ? 0 : 30,
+    mehrfachbelegungErlaubt: false,
   };
 }

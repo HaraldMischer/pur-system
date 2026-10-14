@@ -13,6 +13,7 @@ import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter'
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
+import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 
 export type TSchichtplanRasterauswahl = {
   readonly datum: string;
@@ -31,6 +32,7 @@ type TSchichtplanZelle = {
 
 type TSchichtplanAblageziel = TSchichtplanRasterauswahl & {
   readonly mitarbeiterIds: readonly string[];
+  readonly mehrfachbelegungErlaubt: boolean;
 };
 
 type TSchichtplanTag = {
@@ -125,6 +127,7 @@ export class SchichtplanMonat {
     return (
       this.kannSchichtenAblegen() &&
       this.erlaubteMitarbeiterIds().includes(mitarbeiterId) &&
+      (drop.data.mehrfachbelegungErlaubt || drop.data.mitarbeiterIds.length === 0) &&
       !drop.data.mitarbeiterIds.includes(mitarbeiterId)
     );
   };
@@ -140,6 +143,7 @@ export class SchichtplanMonat {
     if (
       !this.kannSchichtenAblegen() ||
       !this.erlaubteMitarbeiterIds().includes(mitarbeiterId) ||
+      (!ziel.mehrfachbelegungErlaubt && ziel.mitarbeiterIds.length > 0) ||
       ziel.mitarbeiterIds.includes(mitarbeiterId)
     ) {
       return;
@@ -164,21 +168,17 @@ export class SchichtplanMonat {
       hour: '2-digit',
       minute: '2-digit',
     });
-    const folgetag =
-      formatIsoDatum(schicht.beginn.toDate(), zeitzone) !==
-      formatIsoDatum(schicht.ende.toDate(), zeitzone);
-    return `${formatter.format(schicht.beginn.toDate())}–${formatter.format(schicht.ende.toDate())}${folgetag ? ' (Folgetag)' : ''}`;
+    return `${formatter.format(schicht.beginn.toDate())}–${formatter.format(schicht.ende.toDate())}`;
   }
 
   /**
-   * Berechnet die Nettoarbeitszeit einer Schicht für die Anzeige.
+   * Formatiert die Lohnzeit einer Schicht für die Anzeige.
    *
    * @param schicht - Darzustellende Schicht.
-   * @returns Arbeitszeit in Stunden und Minuten.
+   * @returns Lohnzeit in Stunden und Minuten.
    */
-  formatArbeitszeit(schicht: ISchichtEintrag): string {
-    const minuten =
-      (schicht.ende.toMillis() - schicht.beginn.toMillis()) / 60_000 - schicht.pauseMinuten;
+  formatLohnzeit(schicht: ISchichtEintrag): string {
+    const minuten = calculateSchichtLohnzeitMinuten(schicht);
     const stunden = Math.floor(minuten / 60);
     const restMinuten = minuten % 60;
     return restMinuten === 0 ? `${stunden} Std.` : `${stunden} Std. ${restMinuten} Min.`;

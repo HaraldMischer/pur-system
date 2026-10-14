@@ -154,8 +154,9 @@ Das vollständige fachliche und architektonische Zielbild steht im
   die atomare Veröffentlichung folgen in Todo 20.8.
 - Der Dienstplan-Arbeitsbereich stellt Dienstpläne und die Mitarbeiterübersicht auf breiten Ansichten in zwei unabhängig
   scrollbaren Spalten dar. Die Mitarbeiterübersicht führt die aktiven Mitarbeiter aller ausgewählten Filialen ohne Duplikate
-  zusammen und zeigt ihre optionale Farbkennung sowie die filialübergreifend summierte Arbeitszeit und Schichtanzahl des
-  ausgewählten Monats. Die Monatswerte berücksichtigen je Filiale den Entwurf oder ersatzweise die veröffentlichte Version.
+  zusammen und zeigt ihre optionale Farbkennung sowie die filialübergreifend summierte Lohnzeit und Schichtanzahl des
+  ausgewählten Monats. Pausen sind vollständig bezahlt und werden deshalb nicht von der angezeigten Einzel- oder
+  Monatslohnzeit abgezogen. Die Monatswerte berücksichtigen je Filiale den Entwurf oder ersatzweise die veröffentlichte Version.
   Fehlt eine Farbkennung, verwendet der Farbpunkt die normale Textfarbe mit 38 Prozent Deckkraft. Bei höchstens `900px`
   Containerbreite werden beide Bereiche untereinander angeordnet und innerhalb der gemeinsamen Arbeitsfläche gescrollt.
 - Im Planungsmodus sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente umgesetzt.
@@ -174,8 +175,9 @@ Das vollständige fachliche und architektonische Zielbild steht im
   `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
 - Die Route und Navigation für die Schichtplaneinstellungen führen auf die neue filialbezogene Schichtmodellverwaltung. Ein
   Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer eigenen Modellschicht. Modellschichten können ergänzt und
-  entfernt werden; Beginn, Ende, Folgetag, Dauer und automatische Standardpause folgen den bestehenden Zeitregeln. Ihre
-  Reihenfolge wird automatisch nach der lokalen Beginnzeit bestimmt. Modell und Modellschichten werden atomar gespeichert.
+  entfernt werden; Beginn, Ende, Folgetag, Dauer und automatische Standardpause folgen den bestehenden Zeitregeln. Pro
+  Modellschicht kann eine standardmäßig deaktivierte Mehrfachbelegung freigegeben werden. Ihre Reihenfolge wird automatisch nach
+  der lokalen Beginnzeit bestimmt. Modell und Modellschichten werden atomar gespeichert.
   Vorhandene Modelle werden nicht gelöscht, sondern bei Bedarf
   deaktiviert. Beim Anlegen eines Monatsplans stehen ausschließlich aktive, nicht leere Modelle der konkreten Filiale zur
   Auswahl. Modell-ID, Modellbezeichnung und alle geordneten Modellschichten werden gemeinsam mit der ersten Entwurfsversion als
@@ -184,9 +186,11 @@ Das vollständige fachliche und architektonische Zielbild steht im
   zum Löschen aller Schichten deaktiviert; nach der ersten Veröffentlichung ist der Modellwechsel dauerhaft gesperrt. Spätere
   Änderungen oder die Deaktivierung des Quellmodells verändern bestehende Pläne nicht.
 - Die Monatsplanung wird als horizontal bedienbares Schichtraster dargestellt: Kalendertage bilden die Zeilen, die geordneten
-  Modellschichten der Momentaufnahme bilden die Spalten. Jede Zelle kann mehrere Mitarbeiterschichten enthalten. Beim Anlegen
-  stehen Datum, Modellschicht, lokale Zeiten und Standardpause bereits fest; nur der Mitarbeiter wird ausgewählt. Beim Bearbeiten
-  bleibt die Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Das für Desktop und Tablet
+  Modellschichten der Momentaufnahme bilden die Spalten. Ohne freigegebene Mehrfachbelegung kann jede Zelle höchstens eine
+  Mitarbeiterschicht enthalten; bei freigegebener Mehrfachbelegung sind mehrere erlaubt. Die Oberfläche sperrt weitere Anlagen
+  und Ablagen einer belegten Einfachschicht, der Service prüft dies zusätzlich vor dem Schreiben. Beim Anlegen stehen Datum,
+  Modellschicht, lokale Zeiten und Standardpause bereits fest; nur der Mitarbeiter wird ausgewählt. Beim Bearbeiten bleibt die
+  Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Das für Desktop und Tablet
   ausgelegte Raster scrollt horizontal und behält dabei die Tagesspalte im sichtbaren Bereich. Das vertikale Scrollen bleibt beim
   umgebenden Dienstplanbereich.
 - Firestore Rules verlangen bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben Monatsplans.

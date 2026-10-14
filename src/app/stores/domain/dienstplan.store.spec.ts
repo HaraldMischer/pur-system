@@ -66,6 +66,7 @@ describe('DienstplanStore', () => {
           endeLokalzeit: '01:00',
           endetAmFolgetag: true,
           standardpauseMinuten: 30,
+          mehrfachbelegungErlaubt: false,
         },
       ],
       versionRevision: 3,
@@ -406,6 +407,7 @@ describe('DienstplanStore', () => {
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,
           standardpauseMinuten: 0,
+          mehrfachbelegungErlaubt: false,
         },
       ],
     };
@@ -431,6 +433,7 @@ describe('DienstplanStore', () => {
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,
           standardpauseMinuten: 0,
+          mehrfachbelegungErlaubt: false,
         },
       ],
     };

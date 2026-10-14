@@ -59,6 +59,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
         expect.objectContaining({
           bezeichnung: 'Früh',
           standardpauseMinuten: 30,
+          mehrfachbelegungErlaubt: false,
         }),
       ],
     });
@@ -97,6 +98,24 @@ describe('SchichtmodellBearbeitenDialog', () => {
 
     const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtmodellAnlage;
     expect(anlage.modellschichten.map(({ bezeichnung }) => bezeichnung)).toEqual(['Früh', 'Spät']);
+  });
+
+  it('should submit the selected multiple occupancy for a model shift', async () => {
+    const fixture = await createComponent({ pfad });
+    const component = fixture.componentInstance;
+    const schicht = component.schichtmodellForm.controls.modellschichten.at(0);
+    component.schichtmodellForm.controls.bezeichnung.setValue('Standard');
+    schicht.patchValue({
+      bezeichnung: 'Früh',
+      beginnLokalzeit: '07:00',
+      endeLokalzeit: '14:00',
+      mehrfachbelegungErlaubt: true,
+    });
+
+    await component.saveSchichtmodell();
+
+    const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtmodellAnlage;
+    expect(anlage.modellschichten[0].mehrfachbelegungErlaubt).toBe(true);
   });
 
   it('should reject equal times and infer a shift ending on the following day', async () => {
