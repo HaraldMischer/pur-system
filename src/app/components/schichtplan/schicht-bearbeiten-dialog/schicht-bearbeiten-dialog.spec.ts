@@ -82,7 +82,6 @@ describe('SchichtBearbeitenDialog', () => {
       'Spät',
       '16:30',
       '01:00',
-      '30',
     ]);
   });
 

@@ -71,7 +71,33 @@
     </button>
   }
 
-  <!-- Theme -->
+  <!-- Farbschema -->
+  <button
+    matIconButton
+    type="button"
+    aria-label="Farbschema auswählen"
+    [matMenuTriggerFor]="farbschemaMenu"
+  >
+    <mat-icon aria-hidden="true">palette</mat-icon>
+  </button>
+  <mat-menu #farbschemaMenu="matMenu">
+    @for (farbschema of farbschemata; track farbschema.value) {
+      <button
+        mat-menu-item
+        type="button"
+        role="menuitemradio"
+        [attr.aria-checked]="selectedFarbschema() === farbschema.value"
+        (click)="setFarbschema(farbschema.value)"
+      >
+        <mat-icon aria-hidden="true">
+          {{ selectedFarbschema() === farbschema.value ? 'check' : '' }}
+        </mat-icon>
+        <span>{{ farbschema.label }}</span>
+      </button>
+    }
+  </mat-menu>
+
+  <!-- Hell-/Dunkelmodus -->
   <button matIconButton type="button" aria-label="Theme umschalten" (click)="toggleThemeMode()">
     <mat-icon aria-hidden="true">{{ themeIcon() }}</mat-icon>
   </button>

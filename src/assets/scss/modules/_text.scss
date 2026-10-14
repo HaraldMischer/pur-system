@@ -1,0 +1,35 @@
+// pur-system/src/assets/scss/modules/_text.scss
+
+.pur-text {
+  margin: 0;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+
+  &--large {
+    font: var(--mat-sys-body-large);
+  }
+
+  &--small {
+    font: var(--mat-sys-body-small);
+  }
+
+  &--secondary {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &--primary {
+    color: var(--mat-sys-primary);
+  }
+
+  &--tertiary {
+    color: var(--mat-sys-tertiary);
+  }
+
+  &--label {
+    font: var(--mat-sys-label-large);
+  }
+
+  &--error {
+    color: var(--mat-sys-error);
+  }
+}

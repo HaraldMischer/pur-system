@@ -10,7 +10,7 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
+        primary: mat.$cyan-palette,
         tertiary: mat.$orange-palette,
       ),
       typography: Roboto,
@@ -36,6 +36,49 @@ body.theme-dark {
   color-scheme: dark;
 }
 
+body.pur-theme-color-cyan-orange {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$cyan-palette,
+        tertiary: mat.$orange-palette,
+      ),
+    )
+  );
+}
+
+body.pur-theme-color-azure-blue {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+    )
+  );
+}
+
+body.pur-theme-color-rose-red {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$rose-palette,
+        tertiary: mat.$red-palette,
+      ),
+    )
+  );
+}
+
+body.pur-theme-color-magenta-violet {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$magenta-palette,
+        tertiary: mat.$violet-palette,
+      ),
+    )
+  );
+}
 
 //mat.$red-palette
 //mat.$green-palette

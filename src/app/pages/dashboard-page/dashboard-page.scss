@@ -1,11 +1,5 @@
 // pur-system/src/app/pages/dashboard-page/dashboard-page.scss
 
-.page-shell {
-  display: grid;
-  gap: 12px;
-}
-
-h1,
-p {
-  margin: 0;
+.pur-page-section {
+  justify-items: start;
 }

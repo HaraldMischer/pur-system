@@ -7,7 +7,7 @@ import { LoadingService } from '../../../services/core/loading.service';
 import { NetzwerkStatusService } from '../../../services/core/netzwerk-status.service';
 import { PwaUpdateService } from '../../../services/core/pwa-update.service';
 import { StoreSnapshotService } from '../../../services/core/store-snapshot.service';
-import { ThemeService } from '../../../services/core/theme.service';
+import { ThemeService, TThemeFarbschema } from '../../../services/core/theme.service';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { AppToolbar } from './app-toolbar';
 
@@ -16,6 +16,9 @@ describe('AppToolbar', () => {
     logout: ReturnType<typeof vi.fn>;
   };
   let themeServiceMock: {
+    farbschemata: readonly { value: TThemeFarbschema; label: string }[];
+    selectedFarbschema: ReturnType<typeof signal<TThemeFarbschema>>;
+    setFarbschema: ReturnType<typeof vi.fn>;
     themeIcon: ReturnType<typeof vi.fn>;
     toggleThemeMode: ReturnType<typeof vi.fn>;
   };
@@ -37,6 +40,12 @@ describe('AppToolbar', () => {
       logout: vi.fn().mockResolvedValue(undefined),
     };
     themeServiceMock = {
+      farbschemata: [
+        { value: 'cyan-orange', label: 'Cyan & Orange' },
+        { value: 'azure-blue', label: 'Azure & Blue' },
+      ],
+      selectedFarbschema: signal<TThemeFarbschema>('cyan-orange'),
+      setFarbschema: vi.fn(),
       themeIcon: vi.fn().mockReturnValue('dark_mode'),
       toggleThemeMode: vi.fn(),
     };
@@ -137,6 +146,29 @@ describe('AppToolbar', () => {
     themeButton?.click();
 
     expect(themeServiceMock.toggleThemeMode).toHaveBeenCalledOnce();
+  });
+
+  it('should offer and select the available color schemes', async () => {
+    const fixture = TestBed.createComponent(AppToolbar);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    const farbschemaButton = compiled.querySelector<HTMLButtonElement>(
+      '[aria-label="Farbschema auswählen"]',
+    );
+
+    farbschemaButton?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const optionen = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'),
+    );
+    const cyanOption = optionen.find((option) => option.textContent?.includes('Cyan & Orange'));
+    const azureOption = optionen.find((option) => option.textContent?.includes('Azure & Blue'));
+
+    expect(cyanOption?.getAttribute('aria-checked')).toBe('true');
+    azureOption?.click();
+    expect(themeServiceMock.setFarbschema).toHaveBeenCalledWith('azure-blue');
   });
 
   it('should show the offline network state accessibly', () => {

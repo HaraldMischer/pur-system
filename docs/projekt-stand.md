@@ -31,7 +31,9 @@ Stand: 13.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im C
   `Benutzer verwalten`, `Datenstruktur` und `Datenmigration` dar. Office und Filiale erhalten bei gültigem Datenzugriff die
   Gruppe `Mitarbeiter` mit dem Unterpunkt `Mitarbeiterliste`; Master erhält sie bei optionaler Zuweisung des App-Bereichs.
 - Die Toolbar zeigt den Titel der aktiven Route und den Menübutton.
-- Die Toolbar bietet einen Dark-/Light-Mode-Umschalter und im Entwicklungsmodus einen Button für die Snapshots der aktiven Stores.
+- Die Toolbar bietet einen Dark-/Light-Mode-Umschalter und eine davon unabhängige Auswahl der Material-Farbschemata
+  `Cyan & Orange`, `Azure & Blue`, `Rose & Red` und `Magenta & Violet`. Beide Darstellungsentscheidungen werden lokal
+  gespeichert. Im Entwicklungsmodus steht zusätzlich ein Button für die Snapshots der aktiven Stores bereit.
 - Die Toolbar zeigt während zentral registrierter Lese- und Schreibvorgänge eine globale unbestimmte Progress-Bar.
 - Die Loginseite verwendet eine reduzierte App-Shell ohne Sidebar und Navigationstaste. Die Toolbar zeigt abhängig von der
   Auslieferungsvariante `Pur Master`, `Pur Office`, `Pur Filiale` oder `Pur Mitarbeiter`; die Entwicklungsumgebung verwendet
@@ -168,11 +170,12 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Überschneidungen. Nicht geladene Filialpläne und konkurrierende Schreibzugriffe sind damit noch nicht verbindlich abgedeckt.
   Der firmenweite Belegungsindex, seine Live-Aktualisierung und die transaktionale Konfliktabsicherung folgen in Todo 20.8.
 - Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
-  bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, lokale
-  Uhrzeiten, Folgetag und Pause werden vor dem Schreiben validiert und in `Europe/Berlin` in Firestore-Zeitstempel umgewandelt.
-  Während eines Schreibvorgangs ist das vollständige Formular deaktiviert. Filialkonten bleiben bis zur Umsetzung des
-  betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser Sitzungszustand einen aktiven Firma-Mitarbeiter mit
-  `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
+  bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, Modellschicht
+  und lokale Uhrzeiten werden schreibgeschützt angezeigt; die Standardpause wird ohne eigenes Dialogfeld aus der
+  Modellschicht übernommen. Datum, lokale Uhrzeiten, Folgetag und Pause werden vor dem Schreiben validiert und in
+  `Europe/Berlin` in Firestore-Zeitstempel umgewandelt. Während eines Schreibvorgangs ist das vollständige Formular deaktiviert.
+  Filialkonten bleiben bis zur Umsetzung des betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser
+  Sitzungszustand einen aktiven Firma-Mitarbeiter mit `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
 - Die Route und Navigation für die Schichtplaneinstellungen führen auf die neue filialbezogene Schichtmodellverwaltung. Ein
   Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer eigenen Modellschicht. Modellschichten können ergänzt und
   entfernt werden; Beginn, Ende, Folgetag, Dauer und automatische Standardpause folgen den bestehenden Zeitregeln. Pro

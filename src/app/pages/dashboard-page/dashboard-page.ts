@@ -1,9 +1,11 @@
 // pur-system/src/app/pages/dashboard-page/dashboard-page.ts
 
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-dashboard-page',
+  imports: [MatButtonModule],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -615,8 +615,8 @@ Neu hinzuzufügen:
 - [x] In jeder Rasterzelle die einem Kalendertag und einer Modellschicht zugeordneten Mitarbeiterschichten darstellen.
 - [x] In einem bearbeitbaren Entwurf pro Rasterzelle eine Anlageaktion anbieten und Datum sowie Modellschicht automatisch an den
       Schichtdialog übergeben.
-- [x] Im Schichtdialog nur den Mitarbeiter auswählen beziehungsweise ändern; Zeitwerte und Pause schreibgeschützt aus der
-      Modellschicht ableiten.
+- [x] Im Schichtdialog nur den Mitarbeiter auswählen beziehungsweise ändern, Datum, Modellschicht und lokale Uhrzeiten
+      schreibgeschützt anzeigen sowie die Pause ohne eigenes Dialogfeld aus der Modellschicht übernehmen.
 - [x] Mehrere Mitarbeiter in derselben Modellschicht eines Tages weiterhin als getrennte konkrete Schichten unterstützen.
 - [x] Das Raster auf kleinen Viewports horizontal bedienbar halten und Datums- sowie Schichtzuordnung eindeutig darstellen.
 

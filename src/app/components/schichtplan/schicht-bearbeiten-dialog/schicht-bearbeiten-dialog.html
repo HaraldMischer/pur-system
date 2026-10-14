@@ -55,11 +55,6 @@
         <span matTextSuffix>Uhr</span>
       </mat-form-field>
     </div>
-    <mat-form-field appearance="outline">
-      <mat-label>Pause</mat-label>
-      <input matInput readonly [value]="daten.modellschicht.standardpauseMinuten" />
-      <span matTextSuffix>Min.</span>
-    </mat-form-field>
     @if (error() || dienstplanStore.error(); as fehlermeldung) {
       <p class="pur-form__item pur-form__item--error" role="alert">
         {{ error() ?? fehlermeldung }}

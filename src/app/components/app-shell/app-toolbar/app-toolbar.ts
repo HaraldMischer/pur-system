@@ -19,7 +19,7 @@ import { LoadingService } from '../../../services/core/loading.service';
 import { NetzwerkStatusService } from '../../../services/core/netzwerk-status.service';
 import { PwaUpdateService } from '../../../services/core/pwa-update.service';
 import { StoreSnapshotService } from '../../../services/core/store-snapshot.service';
-import { ThemeService } from '../../../services/core/theme.service';
+import { ThemeService, TThemeFarbschema } from '../../../services/core/theme.service';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 
 @Component({
@@ -59,9 +59,11 @@ export class AppToolbar {
     return this._loadingService.isWriting() ? 'Daten werden gespeichert' : 'Daten werden geladen';
   });
   readonly isOnline = this._netzwerkStatusService.isOnline;
+  readonly farbschemata = this._themeService.farbschemata;
   readonly navigationToggle = output<void>();
   readonly neuladenErforderlich = this._pwaUpdateService.neuladenErforderlich;
   readonly themeIcon = this._themeService.themeIcon;
+  readonly selectedFarbschema = this._themeService.selectedFarbschema;
   readonly title = input('Pur Office');
   readonly updateFehler = this._pwaUpdateService.updateFehler;
   readonly updateVerfuegbar = this._pwaUpdateService.updateVerfuegbar;
@@ -72,6 +74,15 @@ export class AppToolbar {
    */
   toggleThemeMode(): void {
     this._themeService.toggleThemeMode();
+  }
+
+  /**
+   * Wählt ein Material-Farbschema aus.
+   *
+   * @param farbschema - Auszuwählendes Farbschema.
+   */
+  setFarbschema(farbschema: TThemeFarbschema): void {
+    this._themeService.setFarbschema(farbschema);
   }
 
   /**
