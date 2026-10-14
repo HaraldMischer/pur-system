@@ -11,6 +11,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 
 import {
   IBenutzerDatenzuordnung,
@@ -24,7 +25,7 @@ import { BenutzerMitarbeiterzuordnung } from '../benutzer-mitarbeiterzuordnung/b
 
 @Component({
   selector: 'app-benutzer-datenzuordnung',
-  imports: [BenutzerMitarbeiterzuordnung, DatenzugriffSelector],
+  imports: [MatButtonModule, BenutzerMitarbeiterzuordnung, DatenzugriffSelector],
   templateUrl: './benutzer-datenzuordnung.html',
   styleUrl: './benutzer-datenzuordnung.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +48,7 @@ export class BenutzerDatenzuordnung {
   readonly unternehmerIds = signal<readonly string[]>([]);
   readonly firmaIds = signal<readonly string[]>([]);
   readonly filialen = signal<Readonly<Partial<Record<string, readonly string[]>>>>({});
+  readonly entfernungNichtVerfuegbarerZuordnungenVorgemerkt = signal(false);
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -67,6 +69,12 @@ export class BenutzerDatenzuordnung {
     if (this.inProgress()) return true;
     if (this.profil().userRole === 'mitarbeiter') {
       return this.mitarbeiterZuordnung()?.speichernDeaktiviert() ?? true;
+    }
+    if (
+      this.nichtVerfuegbareReferenzen().length > 0 &&
+      !this.entfernungNichtVerfuegbarerZuordnungenVorgemerkt()
+    ) {
+      return true;
     }
     return !this.datenAuswahlGueltig() || !this.hatAenderungen();
   });
@@ -100,6 +108,14 @@ export class BenutzerDatenzuordnung {
   // ===== Öffentliche Aktionen =================
 
   /**
+   * Merkt nicht mehr verfügbare gespeicherte Zuordnungen zur Entfernung vor.
+   */
+  handleNichtVerfuegbareZuordnungenEntfernen(): void {
+    if (this.inProgress() || this.nichtVerfuegbareReferenzen().length === 0) return;
+    this.entfernungNichtVerfuegbarerZuordnungenVorgemerkt.set(true);
+  }
+
+  /**
    * Gibt eine gültige, geänderte Datenzuordnung an den Bearbeitungsdialog weiter.
    */
   saveZuordnung(): void {
@@ -107,7 +123,15 @@ export class BenutzerDatenzuordnung {
       this.mitarbeiterZuordnung()?.saveZuordnung();
       return;
     }
-    if (!this.datenAuswahlGueltig() || !this.hatAenderungen() || this.inProgress()) return;
+    if (
+      !this.datenAuswahlGueltig() ||
+      !this.hatAenderungen() ||
+      this.inProgress() ||
+      (this.nichtVerfuegbareReferenzen().length > 0 &&
+        !this.entfernungNichtVerfuegbarerZuordnungenVorgemerkt())
+    ) {
+      return;
+    }
     this.zuordnungSpeichern.emit({ zugriffe: this.getZugriffe() });
   }
 
@@ -118,6 +142,7 @@ export class BenutzerDatenzuordnung {
     this.unternehmerIds.set(Object.keys(zugriffe));
     this.firmaIds.set(this.getFirmaIds(zugriffe));
     this.filialen.set(this.getFilialen(zugriffe));
+    this.entfernungNichtVerfuegbarerZuordnungenVorgemerkt.set(false);
   }
 
   private getZugriffe(): TBenutzerZugriffe {

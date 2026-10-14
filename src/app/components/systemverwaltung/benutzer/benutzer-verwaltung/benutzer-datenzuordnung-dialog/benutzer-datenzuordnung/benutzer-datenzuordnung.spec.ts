@@ -120,6 +120,46 @@ describe('BenutzerDatenzuordnung', () => {
     );
   });
 
+  it('should require explicit confirmation before removing an unavailable branch assignment', () => {
+    const fixture = createComponent({
+      ...profil,
+      zugriffe: { u: { f: ['b', 'b-fehlt'] } },
+    });
+    const component = fixture.componentInstance;
+    const zuordnungSpeichern = vi.fn();
+    component.zuordnungSpeichern.subscribe(zuordnungSpeichern);
+
+    expect(component.speichernDeaktiviert()).toBe(true);
+    component.saveZuordnung();
+    expect(zuordnungSpeichern).not.toHaveBeenCalled();
+
+    component.handleNichtVerfuegbareZuordnungenEntfernen();
+    fixture.detectChanges();
+    component.saveZuordnung();
+
+    expect(component.entfernungNichtVerfuegbarerZuordnungenVorgemerkt()).toBe(true);
+    expect(component.speichernDeaktiviert()).toBe(false);
+    expect(zuordnungSpeichern).toHaveBeenCalledWith({ zugriffe: { u: { f: ['b'] } } });
+    expect(fixture.nativeElement.textContent).toContain(
+      'Die Zuordnung wird beim Speichern entfernt.',
+    );
+  });
+
+  it('should not stage unavailable assignment removal while saving', () => {
+    const fixture = createComponent({
+      ...profil,
+      zugriffe: { u: { f: ['b', 'b-fehlt'] } },
+    });
+    const component = fixture.componentInstance;
+    fixture.componentRef.setInput('inProgress', true);
+    fixture.detectChanges();
+
+    component.handleNichtVerfuegbareZuordnungenEntfernen();
+
+    expect(component.entfernungNichtVerfuegbarerZuordnungenVorgemerkt()).toBe(false);
+    expect(component.speichernDeaktiviert()).toBe(true);
+  });
+
   it('should encapsulate and forward the employee assignment', () => {
     const fixture = createComponent({
       ...profil,

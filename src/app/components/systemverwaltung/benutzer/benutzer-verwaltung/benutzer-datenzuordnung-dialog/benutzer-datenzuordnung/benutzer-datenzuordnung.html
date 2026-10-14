@@ -27,6 +27,18 @@
       <p class="pur-form__item pur-form__item--error" role="alert">
         Nicht verfügbare gespeicherte Zuordnung:
         {{ nichtVerfuegbareReferenzen().join(', ') }}.
+        @if (entfernungNichtVerfuegbarerZuordnungenVorgemerkt()) {
+          Die Zuordnung wird beim Speichern entfernt.
+        } @else {
+          <button
+            matButton
+            type="button"
+            [disabled]="inProgress()"
+            (click)="handleNichtVerfuegbareZuordnungenEntfernen()"
+          >
+            Unbekannte Zuordnung entfernen
+          </button>
+        }
       </p>
     }
 
