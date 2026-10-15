@@ -71,7 +71,7 @@ describe('BenutzerService', () => {
     const service = TestBed.inject(BenutzerService);
 
     await expect(service.getBenutzerProfil('alt')).resolves.toMatchObject({
-      erlaubteBereiche: ['dashboard', 'systemverwaltung'],
+      erlaubteBereiche: ['dashboard', 'system'],
       zugriffe: {},
     });
   });
@@ -84,7 +84,7 @@ describe('BenutzerService', () => {
         anzeigename: 'Test',
         aktiv: true,
         userRole: 'office',
-        erlaubteBereiche: ['systemverwaltung'],
+        erlaubteBereiche: ['system'],
         zugriffe: { u: { leer: [], falsch: 'b', gueltig: ['b'] } },
       },
     });
@@ -142,7 +142,7 @@ describe('BenutzerService', () => {
         email: 'test@example.com',
         aktiv: false,
         userRole: 'office',
-        erlaubteBereiche: ['systemverwaltung'],
+        erlaubteBereiche: ['system'],
         zugriffe: [],
       },
     });

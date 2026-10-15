@@ -72,19 +72,27 @@ const MITARBEITER_NAVIGATION: INavigationGruppe = {
   ],
 };
 
-const VERWALTUNG_NAVIGATION: INavigationLink = {
-  typ: 'link',
-  id: 'verwaltung',
-  label: 'Verwaltung',
+const EINSTELLUNGEN_NAVIGATION: INavigationGruppe = {
+  typ: 'gruppe',
+  id: 'einstellungen',
+  label: 'Einstellungen',
   icon: 'settings',
-  route: '/verwaltung',
-  bereich: 'verwaltung',
+  kinder: [
+    {
+      typ: 'link',
+      id: 'oeffnungszeiten',
+      label: 'Öffnungszeiten',
+      icon: 'schedule',
+      route: '/einstellungen/oeffnungszeiten',
+      bereich: 'einstellungen',
+    },
+  ],
 };
 
-const SYSTEMVERWALTUNG_NAVIGATION: INavigationGruppe = {
+const SYSTEM_NAVIGATION: INavigationGruppe = {
   typ: 'gruppe',
-  id: 'systemverwaltung',
-  label: 'Systemverwaltung',
+  id: 'system',
+  label: 'System',
   icon: 'admin_panel_settings',
   kinder: [
     {
@@ -92,32 +100,40 @@ const SYSTEMVERWALTUNG_NAVIGATION: INavigationGruppe = {
       id: 'benutzeranlage',
       label: 'Benutzer anlegen',
       icon: 'person_add',
-      route: '/systemverwaltung/benutzer/anlegen',
-      bereich: 'systemverwaltung',
+      route: '/system/benutzer/anlegen',
+      bereich: 'system',
     },
     {
       typ: 'link',
       id: 'benutzerverwaltung',
       label: 'Benutzer verwalten',
       icon: 'manage_accounts',
-      route: '/systemverwaltung/benutzer/verwalten',
-      bereich: 'systemverwaltung',
+      route: '/system/benutzer/verwalten',
+      bereich: 'system',
     },
     {
       typ: 'link',
-      id: 'datenstruktur',
-      label: 'Datenstruktur',
+      id: 'strukturanlage',
+      label: 'Struktur anlegen',
       icon: 'account_tree',
-      route: '/systemverwaltung/datenstruktur',
-      bereich: 'systemverwaltung',
+      route: '/system/struktur/anlegen',
+      bereich: 'system',
+    },
+    {
+      typ: 'link',
+      id: 'strukturverwaltung',
+      label: 'Struktur verwalten',
+      icon: 'edit_note',
+      route: '/system/struktur/bearbeiten',
+      bereich: 'system',
     },
     {
       typ: 'link',
       id: 'datenmigration',
       label: 'Datenmigration',
       icon: 'sync_alt',
-      route: '/systemverwaltung/datenmigration',
-      bereich: 'systemverwaltung',
+      route: '/system/datenmigration',
+      bereich: 'system',
     },
   ],
 };
@@ -129,8 +145,8 @@ export const NAVIGATION_NACH_ROLLE = {
       DASHBOARD_NAVIGATION,
       SCHICHTPLAN_NAVIGATION,
       MITARBEITER_NAVIGATION,
-      VERWALTUNG_NAVIGATION,
-      SYSTEMVERWALTUNG_NAVIGATION,
+      EINSTELLUNGEN_NAVIGATION,
+      SYSTEM_NAVIGATION,
     ],
   },
   office: {
@@ -139,12 +155,17 @@ export const NAVIGATION_NACH_ROLLE = {
       DASHBOARD_NAVIGATION,
       SCHICHTPLAN_NAVIGATION,
       MITARBEITER_NAVIGATION,
-      VERWALTUNG_NAVIGATION,
+      EINSTELLUNGEN_NAVIGATION,
     ],
   },
   filiale: {
     darstellung: 'nested',
-    eintraege: [DASHBOARD_NAVIGATION, SCHICHTPLAN_ANSICHT_NAVIGATION, MITARBEITER_NAVIGATION],
+    eintraege: [
+      DASHBOARD_NAVIGATION,
+      SCHICHTPLAN_ANSICHT_NAVIGATION,
+      MITARBEITER_NAVIGATION,
+      EINSTELLUNGEN_NAVIGATION,
+    ],
   },
   mitarbeiter: {
     darstellung: 'flat',

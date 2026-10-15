@@ -21,7 +21,7 @@ function createProfil(userRole: TUserRole): IBenutzerProfilDokument {
     anzeigename: 'Test',
     aktiv: true,
     userRole,
-    erlaubteBereiche: ['dashboard', 'schichtplan', 'mitarbeiter', 'verwaltung', 'systemverwaltung'],
+    erlaubteBereiche: ['dashboard', 'schichtplan', 'mitarbeiter', 'system'],
     zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
   };
 }
@@ -88,11 +88,10 @@ describe('AppSidenav', () => {
             ],
           },
           { path: 'mitarbeiter', component: AppSidenavHost, data: { bereich: 'mitarbeiter' } },
-          { path: 'verwaltung', component: AppSidenavHost, data: { bereich: 'verwaltung' } },
           {
-            path: 'systemverwaltung',
+            path: 'system',
             component: AppSidenavHost,
-            data: { bereich: 'systemverwaltung' },
+            data: { bereich: 'system' },
           },
           { path: 'passwort', component: AppSidenavHost },
         ]),
@@ -156,8 +155,7 @@ describe('AppSidenav', () => {
     expect(navigationText).toContain('Dashboard');
     expect(navigationText).toContain('Schichtplan');
     expect(navigationText).toContain('Mitarbeiter');
-    expect(navigationText).toContain('Verwaltung');
-    expect(navigationText).toContain('Systemverwaltung');
+    expect(navigationText).toContain('System');
   });
 
   it('should render the app context selector for a master', async () => {
@@ -201,23 +199,24 @@ describe('AppSidenav', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     const toggle = Array.from(
       compiled.querySelectorAll<HTMLButtonElement>('button[mat-list-item]'),
-    ).find((button) => button.textContent?.includes('Systemverwaltung'));
+    ).find((button) => button.textContent?.includes('System'));
     const children = toggle?.parentElement?.querySelector(
       '.app-sidenav-nested-navigation__children',
     );
 
-    expect(toggle?.textContent).toContain('Systemverwaltung');
-    expect(toggle?.getAttribute('aria-label')).toBe('Systemverwaltung ausklappen');
+    expect(toggle?.textContent).toContain('System');
+    expect(toggle?.getAttribute('aria-label')).toBe('System ausklappen');
     expect(children?.classList).toContain('app-sidenav-nested-navigation__children--hidden');
 
     toggle?.click();
     fixture.detectChanges();
 
-    expect(toggle?.getAttribute('aria-label')).toBe('Systemverwaltung einklappen');
+    expect(toggle?.getAttribute('aria-label')).toBe('System einklappen');
     expect(children?.classList).not.toContain('app-sidenav-nested-navigation__children--hidden');
     expect(children?.textContent).toContain('Benutzer anlegen');
     expect(children?.textContent).toContain('Benutzer verwalten');
-    expect(children?.textContent).toContain('Datenstruktur');
+    expect(children?.textContent).toContain('Struktur anlegen');
+    expect(children?.textContent).toContain('Struktur verwalten');
     expect(children?.textContent).toContain('Datenmigration');
   });
 
@@ -234,7 +233,7 @@ describe('AppSidenav', () => {
     expect(navigationText).toContain('Dashboard');
     expect(navigationText).not.toContain('Schichtplan');
     expect(navigationText).not.toContain('Mitarbeiter');
-    expect(navigationText).not.toContain('Verwaltung');
+    expect(navigationText).not.toContain('System');
   });
 
   it('should hide administration and show the configured context for office users', async () => {
@@ -249,8 +248,7 @@ describe('AppSidenav', () => {
 
     expect(navigationText).toContain('Dashboard');
     expect(navigationText).toContain('Mitarbeiter');
-    expect(navigationText).toContain('Verwaltung');
-    expect(navigationText).not.toContain('Systemverwaltung');
+    expect(navigationText).not.toContain('System');
     expect(compiled.querySelector('app-kontext-selector')).not.toBeNull();
   });
 

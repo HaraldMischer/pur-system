@@ -1,0 +1,65 @@
+// pur-system/src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.scss
+
+.oeffnungszeiten-filiale {
+  &__grundlagen,
+  &__wochentag,
+  &__listen-kopf,
+  &__eintrag,
+  &__eintrag-aktionen {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  &__grundlagen,
+  &__wochentage,
+  &__liste {
+    margin-top: 24px;
+  }
+
+  &__wochentage {
+    display: grid;
+    gap: 12px;
+  }
+
+  &__wochentag {
+    flex-wrap: wrap;
+    padding: 12px;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 12px;
+
+    h3 {
+      width: 112px;
+      margin: 0;
+    }
+
+    mat-form-field {
+      width: 140px;
+    }
+  }
+
+  &__folgetag {
+    color: var(--mat-sys-primary);
+  }
+
+  &__formular-aktionen {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+
+  &__listen-kopf,
+  &__eintrag {
+    justify-content: space-between;
+  }
+
+  &__eintrag {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+    span {
+      display: block;
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+}

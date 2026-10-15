@@ -8,14 +8,198 @@
 - `[ ]` offen
 - `[-]` zurückgestellt
 
-## 20. Dienst- und Schichtplanung
+## 20. Filialeinstellungen und Öffnungszeiten verwalten
+
+#### Ziel
+
+Filialbezogene Einstellungen werden unabhängig von einzelnen Fachbereichen als gemeinsame Grundlage je Filiale verwaltet. In der
+Hauptnavigation entsteht dafür die ausklappbare Gruppe `Einstellungen`. Ihr erster Unterpunkt `Öffnungszeiten` ist unter
+`/einstellungen/oeffnungszeiten` erreichbar; weitere Einstellungsseiten können später als gleichrangige Unterpunkte ergänzt
+werden. Die gesamte Gruppe wird über den App-Bereich `einstellungen` freigegeben.
+
+Der erste Ausbau umfasst die allgemeinen Standortdaten für Zeitzone und Feiertagsauflösung sowie die Kundenöffnungszeiten. Die
+Konfiguration wird unterhalb der jeweiligen Filiale in der Collection `einstellung` gespeichert. Das Dokument `allgemein`
+enthält die dafür benötigten Grundlagen. Das Dokument `oeffnungszeiten` enthält die regelmäßigen Wochenregeln.
+Wiederkehrende oder berechnete besondere Tage werden mit sichtbarer Bezeichnung in der Subcollection `sondertag` verwaltet.
+Konkrete Abweichungen für ein einzelnes Datum liegen in der Subcollection `ausnahme`, damit die Listen nicht im zentralen
+Einstellungsdokument wachsen.
+
+Die Öffnungszeiten beschreiben ausschließlich den Kundenbetrieb der Filiale. Sie werden nicht mit den Arbeitszeiten eines
+Schichtmodells vermischt und begrenzen Mitarbeiterschichten nicht automatisch. Dadurch bleiben Vor- und Nachbereitung sowie
+Arbeiten an geschlossenen Tagen grundsätzlich fachlich abbildbar.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- functions/src/create-benutzer.ts
+- functions/src/create-benutzer.spec.ts
+- functions/src/update-benutzer-profil.ts
+- functions/src/update-benutzer-profil.spec.ts
+- src/app/app.routes.ts
+- src/app/app.routes.spec.ts
+- src/app/commons/constants/app-kontext-selector.constants.ts
+- src/app/commons/constants/app-kontext-selector.constants.spec.ts
+- src/app/commons/constants/firebase.constants.ts
+- src/app/commons/constants/firebase.constants.spec.ts
+- src/app/commons/constants/navigation.constants.ts
+- src/app/commons/constants/navigation.constants.spec.ts
+- src/app/commons/models/app/app-bereich.ts
+- src/app/commons/models/app/firestore-pfad.types.ts
+- src/app/commons/utils/benutzer/erlaubte-bereiche.ts
+- src/app/commons/utils/benutzer/erlaubte-bereiche.spec.ts
+- src/app/components/system/benutzer/benutzer-anlage/benutzer-anlage.ts
+- src/app/components/system/benutzer/benutzer-anlage/benutzer-anlage.spec.ts
+- src/app/components/system/benutzer/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.ts
+- src/app/components/system/benutzer/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.spec.ts
+- firestore.rules
+- rules-tests/firestore.rules.test.mjs
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/matrizen/berechtigungen.md
+- docs/matrizen/kontextselektor.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_next.md
+
+Neu hinzuzufügen:
+
+- src/app/commons/models/domain/filialeinstellung.ts
+- src/app/commons/utils/filialeinstellung/feiertag.ts
+- src/app/commons/utils/filialeinstellung/feiertag.spec.ts
+- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.ts
+- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.spec.ts
+- src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.ts
+- src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.html
+- src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.scss
+- src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.spec.ts
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.ts
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.html
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.scss
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.spec.ts
+- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.ts
+- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.html
+- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.scss
+- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.spec.ts
+- src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.ts
+- src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.html
+- src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.scss
+- src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.spec.ts
+- docs/architektur/components/einstellungen.md
+- docs/architektur/services/filialeinstellung-service.md
+- docs/architektur/stores/filialeinstellung-store.md
+- src/app/services/domain/filialeinstellung.service.ts
+- src/app/services/domain/filialeinstellung.service.spec.ts
+- src/app/stores/domain/filialeinstellung.store.ts
+- src/app/stores/domain/filialeinstellung.store.spec.ts
+
+#### Schritt 1: Firestore-Struktur und Einstellungsmodell festlegen
+
+- [x] Die Collection `filiale/{filialeId}/einstellung` als gemeinsamen Ablageort für filialbezogene Konfiguration einführen.
+- [x] Im Dokument `einstellung/allgemein` mindestens `bundesland` und `zeitzone` speichern. Beide Werte besitzen nur dort ihre
+      verbindliche Quelle und werden nicht zusätzlich im Filialdokument dupliziert.
+- [x] Im Dokument `einstellung/oeffnungszeiten` die festen Einträge `montag`, `dienstag`, `mittwoch`, `donnerstag`, `freitag`,
+      `samstag` und `sonntag` als regelmäßige Wochenregeln speichern.
+- [x] Jede geöffnete Öffnungsregel mit `beginnLokalzeit`, `endeLokalzeit` und `endetAmFolgetag` als genau einen durchgehenden
+      Zeitraum modellieren. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht vorgesehen. Geschlossene
+      Regeln enthalten ausschließlich `geoeffnet: false`.
+- [x] Besondere Tage unter `einstellung/oeffnungszeiten/sondertag/{sondertagId}` speichern. Jeder Eintrag enthält mindestens
+      `bezeichnung`, `aktiv`, eine diskriminierte `datumsregel` und eine eigene `oeffnungsregel`.
+- [x] Für `datumsregel` mindestens `jaehrlichFestesDatum` mit Monat und Tag sowie `gesetzlicherFeiertag` mit einem zentral
+      definierten Feiertagsschlüssel unterstützen. Dadurch lassen sich beispielsweise Heiligabend und Silvester ebenso wie
+      Karfreitag oder Ostermontag eindeutig benennen und auflösen.
+- [x] Datumsbezogene Abweichungen unter `einstellung/oeffnungszeiten/ausnahme/{YYYY-MM-DD}` speichern. Ein Ausnahmedokument
+      enthält Datum, Bezeichnung und eine vollständige Öffnungsregel für genau dieses Datum.
+
+#### Schritt 2: Auflösungsreihenfolge verbindlich definieren
+
+- [x] Einen zentralen Katalog und eine lokal ausführbare Berechnung für bundeslandspezifische feste und bewegliche gesetzliche
+      Feiertage bereitstellen. Feiertagsschlüssel, Bezeichnung und Datum dürfen keine unkontrollierte externe
+      Laufzeitabhängigkeit haben.
+- [x] Die bekannten gesetzlichen Feiertage sowie übliche feste Sondertage bei der Initialisierung einer Filiale als
+      erweiterbare Liste anlegen. Benutzer bearbeiten deren Öffnungsregel und Aktivstatus; berechnete Feiertagsdaten werden
+      nicht manuell gepflegt. Weitere feste jährliche Sondertage können ergänzt werden.
+- [x] Für ein konkretes Datum zuerst eine datumsbezogene Ausnahme, danach einen passenden aktiven Sondertag und zuletzt die
+      regelmäßige Wochenregel auswerten: `Ausnahme → Sondertag → Wochentag`.
+- [x] Kollisionen mehrerer aktiver Sondertage für dasselbe Datum als Konfigurationsfehler behandeln. Eine Datumsausnahme darf
+      eine solche Kollision bewusst überschreiben; ohne Ausnahme wird keine beliebige Reihenfolge verwendet.
+- [x] Eine über Mitternacht reichende Öffnungsregel vollständig dem Datum zuordnen, an dem sie beginnt. Die Regel des Folgetags
+      greift erst nach dem Ende dieses Zeitraums.
+- [x] Bei einem Bundeslandwechsel gemeinsame systemdefinierte Feiertage mit ihrer angepassten Öffnungsregel erhalten, nicht mehr
+      landesweit geltende entfernen und neu geltende aktiv sowie geschlossen ergänzen. Benutzerdefinierte Sondertage bleiben
+      unverändert.
+- [x] Fehlende oder unvollständige Einstellungen nicht stillschweigend als geöffnet interpretieren. Für Laden, Bearbeiten und
+      Dienstplananlage einen verständlichen Fehler- beziehungsweise Initialisierungszustand festlegen.
+- [x] Öffnungszeiten als Information behandeln. Ob eine konkrete Mitarbeiterschicht außerhalb der Öffnungszeit fachlich
+      zulässig ist, wird nicht allein aus der Öffnungsregel abgeleitet.
+
+#### Schritt 3: Service, Store und Sicherheit umsetzen
+
+- [x] Einen `FilialeinstellungService` für das Laden und Speichern der allgemeinen Einstellungen, Wochenregeln, Sondertage und
+      datumsbezogenen Ausnahmen einer konkreten Filiale bereitstellen.
+- [x] Einen `FilialeinstellungStore` mit getrennten Filialkontexten, Lade- und Schreibzuständen sowie einer öffentlichen
+      Auflösung der für ein Datum gültigen Öffnungsregel bereitstellen.
+- [x] Schreibvorgänge für die begrenzten Einstellungsdokumente atomar ausführen und Sondertage sowie Ausnahmen als einzelne
+      Dokumente unabhängig verwalten.
+- [x] Firestore Rules auf berechtigte Rollen und Filialzugriffe, bekannte Dokument-IDs, gültige Feldmengen, Datumsregeltypen,
+      lokale Zeitwerte und gültige Ausnahme-IDs im Format `YYYY-MM-DD` begrenzen.
+- [x] Bestehende Filialen ohne Einstellungsdokumente kontrolliert initialisieren; Bundesland und Öffnungszeiten dürfen nicht aus
+      Postleitzahl oder Ortsname geraten werden.
+
+#### Schritt 4: Einstellungsoberfläche einordnen und umsetzen
+
+- [x] Die komponentenlose Elternroute `/einstellungen` mit dem App-Bereich `einstellungen` und die direkt routbare Page
+      `/einstellungen/oeffnungszeiten` anlegen. Die Sidebar zeigt `Einstellungen` als ausklappbare Gruppe und darunter zunächst
+      ausschließlich `Öffnungszeiten`.
+- [x] Allgemeine Grundlagen und Öffnungszeiten je ausgewählter Filiale getrennt laden und bearbeiten; Änderungen einer Filiale
+      dürfen keine andere ausgewählte Filiale beeinflussen. Bundesland und Zeitzone dürfen im ersten Ausbau als eigener Bereich
+      auf der Öffnungszeitenseite erscheinen.
+- [x] Alle sieben Wochentage vollständig darstellen. Geschlossene Tage benötigen keine Zeitfelder; geöffnete Tage verlangen
+      genau eine gültige Beginn- und Endzeit und können ausdrücklich am Folgetag enden.
+- [x] Sondertage mit Bezeichnung, Aktivstatus, Datumsregel und Öffnungsregel anlegen, bearbeiten und deaktivieren können.
+      Gesetzliche Feiertage werden aus dem zentralen Katalog angeboten; ihre Berechnungsregel ist nicht frei editierbar.
+- [x] Datumsbezogene Ausnahmen mit Datum, Bezeichnung, Öffnungsstatus und gegebenenfalls abweichenden Zeiten anlegen, bearbeiten
+      und löschen können.
+- [x] Die wirksame Priorität `Ausnahme → Sondertag → Wochentag` in der Oberfläche verständlich erläutern.
+
+#### Tests und Abschluss
+
+- [x] Modell- und Validierungstests für alle Wochentage, über Mitternacht reichende Zeiten, geschlossene Regeln, beide
+      Datumsregeltypen, ungültige Zeiten, Sondertage und Ausnahmen ergänzen.
+- [x] Service- und Store-Tests für getrennte Filialkontexte, Initialisierung, Sondertagspflege, Speichern und Löschen von
+      Ausnahmen sowie die Datumsauflösung ergänzen.
+- [x] Component-Tests für allgemeine Grundlagen, vollständige Wochenöffnung, Sondertage und datumsbezogene Ausnahmen ergänzen.
+- [x] Navigation, Route Guard, Benutzeranlage und Profilbearbeitung für den App-Bereich `einstellungen` testen.
+- [x] Firestore-Emulator-Tests für erlaubte Filialzugriffe, bekannte Einstellungsdokumente und abgewiesene Fremd- oder
+      Fehlschreibzugriffe ergänzen.
+- [ ] Manuell unterschiedliche Öffnungszeiten für jeden Wochentag, eine Öffnung bis zum Folgetag, einen festen Sondertag,
+      einen berechneten Feiertag und eine überschreibende datumsbezogene Ausnahme prüfen.
+- [x] Fachkonzept, Architektur, Projektstand und Datenübergang aktualisieren.
+- [x] Firestore Rules und Functions mit dem App-Bereich `einstellungen` produktiv deployen und die Profilbearbeitung mit einem
+      realen Masterkonto prüfen.
+- [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich
+      ausführen.
+
+#### Erledigt, wenn
+
+- [ ] Jede Filiale besitzt genau eine verbindliche allgemeine Einstellung mit Bundesland und Zeitzone.
+- [ ] Jede Filiale besitzt eine Öffnungsregel für jeden Wochentag und eine erweiterbare, bezeichnete Liste besonderer Tage.
+- [ ] Feste jährliche Sondertage und zentral berechnete gesetzliche Feiertage können unterschiedliche Öffnungsregeln besitzen.
+- [ ] Datumsbezogene Ausnahmen überschreiben Sondertags- und Wochentagsregeln nachvollziehbar.
+- [ ] Geschlossene und geöffnete Tage werden vollständig validiert und verständlich bearbeitet.
+- [ ] Der berechtigte Benutzer erreicht die Öffnungszeiten über `Einstellungen → Öffnungszeiten`; der App-Bereich
+      `einstellungen` schützt die gesamte Gruppe.
+- [ ] Öffnungszeiten bleiben von den Arbeitszeiten der Schichtmodelle fachlich und technisch getrennt.
+- [ ] Service, Store, UI und Firestore Rules arbeiten ausschließlich im konkreten Filialpfad.
+- [ ] Tests, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
+
+## 21. Dienst- und Schichtplanung
 
 Der Schichtplan wird schrittweise aus filialbezogenen Monatsplänen aufgebaut, die in einer filialübergreifenden Arbeitsansicht
 zusammengeführt werden können. Die erste Ausbaustufe konzentriert sich auf eine manuelle Planung mit klarer Entwurfs- und
 Veröffentlichungslogik. Automatische Planung, Urlaubsverwaltung, Zeiterfassung, Schichttausch und Benachrichtigungen bleiben
 zunächst außerhalb des vereinbarten Umfangs.
 
-### [x] 20.1 Fachliches Modell und erste Ausbaustufe festlegen
+### [x] 21.1 Fachliches Modell und erste Ausbaustufe festlegen
 
 #### Ziel
 
@@ -61,7 +245,7 @@ Veröffentlichung abbilden.
 
 - [x] Begriffe, Zustände, Zeitregeln und Abgrenzung der ersten Ausbaustufe in `docs/projekt-plan.md` dokumentieren.
 - [x] Die Entscheidungen mit den vorhandenen Filial- und Mitarbeiterdatenmodellen abgleichen.
-- [x] Offene fachliche Entscheidungen ausdrücklich markieren und vor Beginn von 20.2 abschließen.
+- [x] Offene fachliche Entscheidungen ausdrücklich markieren und vor Beginn von 21.2 abschließen.
 
 #### Erledigt, wenn
 
@@ -69,7 +253,7 @@ Veröffentlichung abbilden.
 - [x] Pflichtangaben, Berechnungen, Konflikte und erlaubte Zustandswechsel sind festgelegt.
 - [x] Der Umfang der ersten Ausbaustufe ist gegenüber späteren Erweiterungen klar abgegrenzt.
 
-### [x] 20.2 Rollen, Datenzugriff und Arbeitsablauf festlegen
+### [x] 21.2 Rollen, Datenzugriff und Arbeitsablauf festlegen
 
 #### Ziel
 
@@ -122,7 +306,7 @@ Der Ablauf vom Entwurf bis zur veröffentlichten Ansicht erhält klare Verantwor
 - [x] Der vollständige Arbeitsablauf vom Entwurf bis zur veröffentlichten Ansicht ist beschrieben.
 - [x] Spätere Funktionen sind ausdrücklich vom ersten Umsetzungsumfang abgegrenzt.
 
-### [x] 20.3 Datenmodell, Firestore-Pfade und Sicherheitsregeln planen
+### [x] 21.3 Datenmodell, Firestore-Pfade und Sicherheitsregeln planen
 
 #### Ziel
 
@@ -201,7 +385,7 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 - [x] Konsistenz- und Konfliktstrategie unterstützen den beschlossenen Veröffentlichungsablauf.
 - [x] Rollen- und Filialgrenzen können durch automatisierte Firestore-Emulator-Tests nachgewiesen werden.
 
-### [x] 20.4 Dienstplan-Grundfunktion umsetzen
+### [x] 21.4 Dienstplan-Grundfunktion umsetzen
 
 #### Ziel
 
@@ -251,10 +435,10 @@ Neu hinzuzufügen:
 - src/app/commons/utils/dienstplan/schicht-zeit.spec.ts
 - src/app/commons/utils/dienstplan/schicht-lokalzeit.ts
 - src/app/commons/utils/dienstplan/schicht-lokalzeit.spec.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.html
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.scss
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.ts
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.html
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.scss
@@ -361,7 +545,7 @@ Neu hinzuzufügen:
 - [x] Nicht berechtigte Rollen, fremde Filialen und unzulässige Zustände erlauben keine Änderung.
 - [x] Monatsansicht, Fehlerzustände und Formulare sind auf Desktop und kleinen Viewports bedienbar.
 
-### [x] 20.5 Filialübergreifenden Arbeitskontext umsetzen
+### [x] 21.5 Filialübergreifenden Arbeitskontext umsetzen
 
 #### Ziel
 
@@ -382,10 +566,10 @@ gemeinsamen Planungsoberfläche bearbeitet werden. Jeder Filialdienstplan bleibt
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.scss
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.html
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.scss
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
 - src/app/commons/constants/app-kontext-selector.constants.ts
 - src/app/commons/constants/app-kontext-selector.constants.spec.ts
 - src/app/stores/app/app-kontext.store.ts
@@ -414,10 +598,10 @@ Neu hinzugefügt:
 - src/app/components/date-selectors/monat-selector/monat-selector.html
 - src/app/components/date-selectors/monat-selector/monat-selector.scss
 - src/app/components/date-selectors/monat-selector/monat-selector.spec.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.scss
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.html
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.spec.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.scss
 - src/app/components/schichtplan/schichtvorlagen-filialabschnitt/schichtvorlagen-filialabschnitt.ts
 - src/app/components/schichtplan/schichtvorlagen-filialabschnitt/schichtvorlagen-filialabschnitt.html
 - src/app/components/schichtplan/schichtvorlagen-filialabschnitt/schichtvorlagen-filialabschnitt.scss
@@ -475,7 +659,7 @@ Neu hinzugefügt:
 - [x] Änderungen bleiben auf den jeweils betroffenen Filialdienstplan begrenzt.
 - [x] Die gemeinsame Planungsoberfläche ist auf Desktop und kleinen Viewports bedienbar.
 
-### [x] 20.6 Schichtmodelle und rasterbasierte Monatsplanung umsetzen
+### [x] 21.6 Schichtmodelle und rasterbasierte Monatsplanung umsetzen
 
 #### Ziel
 
@@ -483,9 +667,9 @@ Die bisherige Auswahl einzelner filialbezogener Schichtvorlagen wird durch volls
 Ein Schichtmodell enthält eigene, automatisch nach Beginnzeit geordnete Modellschichten. Beim Anlegen eines Monatsdienstplans
 wird ein Modell als unveränderliche Momentaufnahme übernommen und bestimmt die Schichtspalten des gesamten Monatsrasters.
 
-Hinweis zum abgeschlossenen Stand: Die Momentaufnahme bleibt am Monatsdienstplan und gilt für alle Versionen. 20.8 ergänzt nur
-den Modellwechsel im leeren, noch nie veröffentlichten Erstentwurf. Nach der ersten Veröffentlichung bleibt das Modell für den
-Monatsplan unveränderlich.
+Hinweis zum abgeschlossenen Stand: Die Momentaufnahme bleibt am Monatsdienstplan und gilt für alle Versionen. 21.8 ergänzt das
+Löschen und erneute Anlegen eines leeren, noch nie veröffentlichten Erstentwurfs. Nach der ersten Veröffentlichung bleibt das
+Modell für den Monatsplan unveränderlich.
 
 #### Betroffene Dateien
 
@@ -501,16 +685,16 @@ Monatsplan unveränderlich.
 - src/app/commons/models/domain/schichtvorlage.ts
 - src/app/commons/utils/dienstplan/schicht-lokalzeit.ts
 - src/app/commons/utils/dienstplan/schicht-lokalzeit.spec.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.html
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.spec.ts
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.ts
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.html
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.spec.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.html
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.scss
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
 - src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog/schichtvorlage-bearbeiten-dialog.ts
 - src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog/schichtvorlage-bearbeiten-dialog.html
 - src/app/components/schichtplan/schichtvorlage-bearbeiten-dialog/schichtvorlage-bearbeiten-dialog.scss
@@ -559,10 +743,10 @@ Neu hinzuzufügen:
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.html
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.scss
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
-- src/app/components/schichtplan/schichtmodelle-filialabschnitt/schichtmodelle-filialabschnitt.ts
-- src/app/components/schichtplan/schichtmodelle-filialabschnitt/schichtmodelle-filialabschnitt.html
-- src/app/components/schichtplan/schichtmodelle-filialabschnitt/schichtmodelle-filialabschnitt.scss
-- src/app/components/schichtplan/schichtmodelle-filialabschnitt/schichtmodelle-filialabschnitt.spec.ts
+- src/app/components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale.ts
+- src/app/components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale.html
+- src/app/components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale.scss
+- src/app/components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale.spec.ts
 - src/app/pages/schichtplan/schichtmodelle-page/schichtmodelle-page.ts
 - src/app/pages/schichtplan/schichtmodelle-page/schichtmodelle-page.html
 - src/app/pages/schichtplan/schichtmodelle-page/schichtmodelle-page.scss
@@ -651,7 +835,7 @@ Neu hinzuzufügen:
 - [x] Die bisherige Schichtvorlagenstruktur wird nicht mehr für neue Dienstpläne verwendet.
 - [x] Tests, Rules, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
 
-### [x] 20.7 Mitarbeiter per Drag-and-drop im Schichtraster einplanen
+### [x] 21.7 Mitarbeiter per Drag-and-drop im Schichtraster einplanen
 
 #### Ziel
 
@@ -668,13 +852,13 @@ gleichwertige Tastatur- und Mobilalternative erhalten.
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.scss
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.html
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.spec.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.html
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.scss
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
 - docs/architektur/components/schichtplan.md
 - docs/projekt-stand.md
 - docs/todo_next.md
@@ -709,15 +893,243 @@ gleichwertige Tastatur- und Mobilalternative erhalten.
 - [x] Unzulässige Ablagen verändern keine Dienstplandaten und werden verständlich behandelt.
 - [x] Die Schichtanlage bleibt ohne Drag-and-drop per Tastatur und auf mobilen Geräten vollständig bedienbar.
 
-### [ ] 20.8 Konfliktprüfung und Veröffentlichung umsetzen
+### [x] 21.8 Planungsgrundlagen vervollständigen
 
 #### Ziel
 
-Filialübergreifende Doppelbelegungen eines Mitarbeiters werden bereits beim Einplanen zuverlässig verhindert. Ein Dienstplan
-kann erst nach nachvollziehbarer fachlicher Prüfung veröffentlicht werden. Mitarbeiterzugänge erhalten ausschließlich die für
-sie freigegebene veröffentlichte Ansicht; berechtigte Master-, Office- und Filialkonten arbeiten mit Entwürfen und historischen
-Versionen. Die Schichtmodell-Momentaufnahme gehört weiterhin zum Monatsdienstplan und gilt für alle seine Versionen. Sie kann
-nur im leeren, noch nie veröffentlichten Erstentwurf gewechselt werden. Spätere Änderungen folgen dem beschlossenen Ablauf.
+Ein leerer, noch nie veröffentlichter Monatsdienstplan kann kontrolliert gelöscht und mit einem anderen aktiven Schichtmodell
+neu angelegt werden. Modellschichten begrenzen die Belegung einer Rasterzelle standardmäßig auf einen Mitarbeiter und können
+bei fachlichem Bedarf ausdrücklich für Mehrfachbelegungen freigegeben werden.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/models/domain/dienstplan.ts
+- src/app/commons/models/domain/schichtmodell.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.html
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.spec.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.html
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.spec.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.html
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.ts
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.html
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
+- src/app/services/domain/dienstplan.service.ts
+- src/app/services/domain/dienstplan.service.spec.ts
+- src/app/services/domain/schichtmodell.service.ts
+- src/app/services/domain/schichtmodell.service.spec.ts
+- src/app/services/firebase/firestore-db.service.ts
+- src/app/services/firebase/firestore-db.service.spec.ts
+- src/app/stores/domain/dienstplan.store.ts
+- src/app/stores/domain/dienstplan.store.spec.ts
+- firestore.rules
+- rules-tests/firestore.rules.test.mjs
+- docs/architektur/components/schichtplan.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/stores/dienstplan-store.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_next.md
+
+#### Schritt 1: Leeren Erstentwurf löschen und neu anlegen
+
+- [x] Im noch nie veröffentlichten Entwurf die Aktion `Dienstplan löschen` anbieten und vor der Löschung den allgemeinen
+      Bestätigungsdialog anzeigen.
+- [x] Die Aktion deaktivieren, sobald der aktuelle Entwurf mindestens eine Schicht enthält, und den Grund verständlich anzeigen.
+      Nach dem Löschen aller Schichten wird sie wieder verfügbar.
+- [x] Dienstplan, Entwurfsversion und Modellschicht-Momentaufnahme gemeinsam löschen und anschließend wieder `Plan erstellen`
+      anbieten, damit ein anderes aktives Schichtmodell gewählt werden kann.
+- [x] Vor dem Löschen Dienstplandokument und Entwurfsschichten verbindlich vom Server laden. Die erwartete Versionsrevision
+      prüfen, damit eine gleichzeitige Schichtanlage die Löschung verhindert.
+- [x] Die Aktion dauerhaft ausblenden, sobald `veroeffentlichteVersionId` gesetzt ist. Neue Versionen verwenden immer die
+      bestehende Modell-Momentaufnahme des Monatsplans.
+- [x] Firestore Rules auf einen berechtigten Entwurf ohne veröffentlichte Version und die gemeinsame Löschung begrenzen. Die
+      Leerheitsprüfung der Schicht-Subcollection zusätzlich im Client-Service erzwingen, da Rules keine Collection-Abfrage
+      ausführen können.
+
+#### Schritt 2: Mehrfachbelegung je Modellschicht begrenzen
+
+- [x] Jede Modellschicht um die standardmäßig deaktivierte Option `mehrfachbelegungErlaubt` ergänzen und sie in die
+      Dienstplan-Momentaufnahme übernehmen.
+- [x] Die Checkbox `Mehrfachbelegung` im Kopf der Modellschicht direkt vor der Löschaktion anzeigen.
+- [x] Weitere Anlagen und Ablagen in einer belegten Rasterzelle sperren, solange die Modellschicht keine Mehrfachbelegung erlaubt.
+- [x] Die Begrenzung vor dem Schreiben servernah im Dienstplan-Service erneut prüfen und parallele Anlagen über die vorhandene
+      Versionsrevision absichern.
+- [x] Domain-, Dialog-, Raster-, Service- und Firestore-Regeltests ergänzen.
+
+#### Tests und Abschluss
+
+- [x] Service-, Store-, Component- und Firestore-Emulator-Tests für die Löschung des leeren, noch nie veröffentlichten
+      Dienstplans und die Sperre bei vorhandenen Schichten ergänzen.
+- [x] Prüfen, dass die Löschaktion nach dem Löschen aller Entwurfsschichten wieder verfügbar ist und nach der ersten
+      Veröffentlichung dauerhaft ausgeblendet bleibt.
+- [x] Dialog-, Raster- und Service-Tests für die standardmäßige Einfachbelegung und die freigegebene Mehrfachbelegung ergänzen.
+- [x] Firestore-Emulator-Tests für das neue Modellschichtfeld ausführen und den Office-Build erfolgreich prüfen.
+
+#### Erledigt, wenn
+
+- [x] Ein leerer, noch nie veröffentlichter Dienstplan kann nach Bestätigung gelöscht und mit einem anderen aktiven Modell
+      derselben Filiale neu angelegt werden; ein belegter Entwurf verhindert die Löschung.
+- [x] Nach dem Löschen aller Entwurfsschichten ist die vollständige Löschung wieder möglich.
+- [x] Eine Modellschicht erlaubt standardmäßig nur einen Mitarbeiter je Rasterzelle; eine aktivierte Mehrfachbelegung lässt
+      weitere Mitarbeiter in derselben Rasterzelle zu.
+
+### [ ] 21.9 Tagesabhängige Öffnungs- und Schichtzeiten abbilden
+
+#### Ziel
+
+Ein Schichtmodell bildet neben dem regulären Betrieb auch abweichende Schichtzeiten für Sonntage und gesetzliche Feiertage ab.
+Für jeden Kalendertag wird nachvollziehbar das zutreffende Schicht-Tagesprofil ermittelt. Die wirksamen Öffnungszeiten stammen
+aus den Filialeinstellungen nach Todo 20 und bleiben von den Mitarbeiterschichten getrennt, damit Vor- und Nachbereitungszeiten
+außerhalb der Kundenöffnungszeiten weiterhin möglich sind.
+
+Die tagesabhängigen Daten werden beim Anlegen des Monatsdienstplans als unveränderliche Momentaufnahme übernommen. Dadurch
+bleiben Entwürfe, veröffentlichte Versionen und historische Ansichten auch dann stabil, wenn das zugrunde liegende
+Schichtmodell, Feiertagsregeln oder Filialeinstellungen später geändert werden.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/constants/firebase.constants.ts
+- src/app/commons/models/domain/dienstplan.ts
+- src/app/commons/models/domain/schichtmodell.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.html
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.ts
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.html
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
+- src/app/services/domain/dienstplan.service.ts
+- src/app/services/domain/dienstplan.service.spec.ts
+- src/app/services/domain/schichtmodell.service.ts
+- src/app/services/domain/schichtmodell.service.spec.ts
+- src/app/stores/domain/filialeinstellung.store.ts
+- src/app/stores/domain/filialeinstellung.store.spec.ts
+- src/app/stores/domain/dienstplan.store.ts
+- src/app/stores/domain/dienstplan.store.spec.ts
+- src/app/stores/domain/schichtmodell.store.ts
+- src/app/stores/domain/schichtmodell.store.spec.ts
+- firestore.rules
+- rules-tests/firestore.rules.test.mjs
+- docs/architektur/components/schichtplan.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/services/schichtmodell-service.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_next.md
+
+Neu hinzuzufügen:
+
+- src/app/commons/models/domain/tagesprofil.ts
+
+#### Schritt 1: Fachliche Schicht-Tagesarten und Prioritäten festlegen
+
+- [ ] Mindestens die Tagesarten `Standard`, `Sonntag` und `Feiertag` definieren und entscheiden, ob Samstag als eigenes
+      Tagesprofil benötigt wird.
+- [ ] Festlegen, dass ein gesetzlicher Feiertag gegenüber dem Sonntags- und Standardprofil Vorrang hat. Das Verhalten eines
+      Feiertags, der auf einen Sonntag fällt, ausdrücklich dokumentieren.
+- [ ] Die nach Todo 20 aufgelösten Ausnahmen und Sondertage einschließlich ihrer Priorität gegenüber der Wochenregel
+      übernehmen.
+- [ ] Klären, ob alle gesetzlichen Feiertage und sonstigen Sondertage einem gemeinsamen Schicht-Tagesprofil zugeordnet werden
+      oder einzelne Sondertage ein eigenes beziehungsweise ausdrücklich zugewiesenes Profil verwenden können müssen.
+- [ ] Die nach Todo 20 aufgelösten Öffnungszeiten ausschließlich als Betriebsinformation übernehmen. Schichtzeiten dürfen
+      für Vor- und Nachbereitung außerhalb der Öffnungszeiten liegen und werden deshalb nicht automatisch auf diese begrenzt.
+
+#### Schritt 2: Datumsauflösung aus den Filialeinstellungen übernehmen
+
+- [ ] Bundesland, Zeitzone und Öffnungsregeln ausschließlich über die nach Todo 20 bereitgestellte Filialeinstellung laden.
+- [ ] Die dort festgelegte Berechnungsregel für bundeslandspezifische feste und bewegliche Feiertage wiederverwenden und keine
+      zweite unabhängige Feiertagsauflösung im Dienstplan einführen.
+- [ ] Feiertage immer in der verbindlichen Filial- beziehungsweise Dienstplan-Zeitzone auflösen und Jahres- sowie Monatsgrenzen
+      eindeutig behandeln.
+- [ ] Den aufgelösten Tagestyp, eine vorhandene Sondertags-ID und deren Bezeichnung in die Monatsplan-Momentaufnahme übernehmen,
+      damit spätere Regeländerungen bestehende Dienstpläne nicht verändern.
+
+#### Schritt 3: Schicht-Tagesprofile im Schichtmodell und in der Momentaufnahme abbilden
+
+- [ ] Jedes Schicht-Tagesprofil mit eigenen Modellschichten modellieren. Öffnungsstatus und Öffnungszeiten werden nicht im
+      Schichtmodell dupliziert.
+- [ ] Entscheiden, ob Modellschichten über Tagesprofile hinweg stabile fachliche Plätze teilen oder je Profil eigenständig sind.
+      Die Entscheidung muss unterschiedliche Zeiten, eine unterschiedliche Schichtanzahl und Mehrfachbelegung unterstützen.
+- [ ] Die Darstellung variabler Modellschichten im Monatsraster festlegen. Globale Spaltenzeiten dürfen nicht verwendet werden,
+      wenn die tatsächlichen Zeiten vom Tagestyp abhängen.
+- [ ] Beim Anlegen eines Monatsdienstplans alle benötigten Schicht-Tagesprofile, die Zuordnung der Kalendertage und die jeweils
+      aufgelöste Öffnungsregel vollständig als Momentaufnahme speichern.
+- [ ] Spätere Änderungen an Öffnungszeiten, Tagesprofilen oder Feiertagsregeln dürfen einen bestehenden Monatsdienstplan nicht
+      nachträglich verändern.
+
+#### Schritt 4: Verwaltung und Monatsplanung erweitern
+
+- [ ] Im Schichtmodelldialog das Standard-, Sonntags- und Feiertagsprofil verständlich getrennt bearbeiten können. Nicht
+      benötigte optionale Schichtprofile dürfen deaktiviert werden.
+- [ ] Die wirksamen Öffnungszeiten aus den Filialeinstellungen neben den Modellschichten anzeigen. Die Bedienung muss deutlich
+      machen, dass Öffnungszeiten keine automatische Grenze für Arbeitszeiten sind.
+- [ ] Im Monatsraster je Datum den ermittelten Tagestyp, eine vorhandene Sondertags- oder Feiertagsbezeichnung, die
+      Öffnungszeiten und ausschließlich die an diesem Tag gültigen Modellschichten darstellen.
+- [ ] Anlage, Drag-and-drop, Bearbeitung und spätere Verschiebung einer Schicht auf die für das konkrete Datum gültige
+      Modellschicht-Momentaufnahme begrenzen.
+- [ ] Geschlossene Tage eindeutig darstellen. Eine Schichtanlage wird dort nur durch das gültige Schicht-Tagesprofil bestimmt
+      und nicht allein wegen der geschlossenen Kundenöffnung verhindert.
+
+#### Schritt 5: Services, Stores und Firestore Rules absichern
+
+- [ ] Schichtmodell- und Dienstplan-Service um die neuen Daten ergänzen, die Filialeinstellungen verbindlich laden und alle
+      Schicht-Tagesprofile vor dem Schreiben erneut fachlich validieren.
+- [ ] Die konkrete Schichtzeit ausschließlich aus Datum und der für diesen Tag gültigen Modellschicht-Momentaufnahme ableiten.
+- [ ] Stores so erweitern, dass Tagesprofile, Tageszuordnungen und Feiertagsinformationen ohne erneute Berechnung aus dem
+      geladenen Monatsplan bereitgestellt werden.
+- [ ] Firestore Rules auf gültige Felder, zulässige Tagesprofile und die zum konkreten Datum gehörende Modellschichtreferenz
+      begrenzen. Direkte Client-Schreibzugriffe dürfen Tagestyp oder Momentaufnahme nicht nachträglich verändern.
+- [ ] Bestehende Schichtmodelle ohne Schicht-Tagesprofile kontrolliert migrieren oder bis zur erneuten Speicherung als reines
+      Standardprofil interpretieren; den gewählten Übergang verbindlich dokumentieren.
+
+#### Tests und Abschluss
+
+- [ ] Unit-Tests für feste und bewegliche Feiertage, unterschiedliche Bundesländer, Jahresgrenzen und einen Feiertag am Sonntag
+      ergänzen.
+- [ ] Model-, Service- und Store-Tests für Standard-, Sonntags- und Feiertagsprofile sowie unterschiedliche Öffnungs- und
+      Schichtzeiten ergänzen.
+- [ ] Component-Tests für Profilverwaltung, tagesabhängige Rasterdarstellung und Schichtanlagen bei geöffneter sowie
+      geschlossener Kundenöffnung ergänzen.
+- [ ] Firestore-Emulator-Tests für Tagesprofil-Momentaufnahmen und datumsgültige Modellschichtreferenzen ergänzen.
+- [ ] Manuell einen Monat mit Werktagen, Sonntagen, einem Feiertag am Werktag und einem Feiertag am Sonntag prüfen.
+- [ ] Fachkonzept, Architektur, Projektstand und Datenübergang nach der Umsetzungsentscheidung aktualisieren.
+- [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich
+      ausführen.
+
+#### Erledigt, wenn
+
+- [ ] Jeder Kalendertag eines Monatsplans verwendet nachvollziehbar das fachlich richtige Tagesprofil.
+- [ ] Sonntage, gesetzliche Feiertage und sonstige Sondertage können andere Öffnungszeiten und andere Modellschichten als
+      Standardtage besitzen.
+- [ ] Ein Feiertag am Sonntag verwendet eindeutig die festgelegte Priorität und erzeugt keine widersprüchliche Zuordnung.
+- [ ] Öffnungszeiten und Arbeitszeiten bleiben getrennt; zulässige Vor- und Nachbereitungszeiten werden nicht abgeschnitten.
+- [ ] Geschlossene Kundenöffnungen und vorhandene Mitarbeiterschichten können unabhängig voneinander abgebildet werden.
+- [ ] Bundesland, Feiertagsauflösung und Monatsplan-Momentaufnahme führen auch nach späteren Stammdatenänderungen zu stabilen
+      historischen Dienstplänen.
+- [ ] UI, Services, Stores und Firestore Rules akzeptieren nur Modellschichten des für das konkrete Datum gültigen Tagesprofils.
+- [ ] Tests, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
+
+### [ ] 21.10 Konfliktprüfung, Verschieben und Veröffentlichung umsetzen
+
+#### Ziel
+
+Auf Grundlage der Filialeinstellungen und der tagesabhängigen Monatsplan-Momentaufnahme aus Todo 20 und 21.9 werden
+filialübergreifende Doppelbelegungen eines Mitarbeiters bereits beim Einplanen zuverlässig verhindert. Ein Dienstplan kann erst
+nach nachvollziehbarer fachlicher Prüfung veröffentlicht werden. Mitarbeiterzugänge erhalten ausschließlich die für sie
+freigegebene veröffentlichte Ansicht; berechtigte Master-, Office- und Filialkonten arbeiten mit Entwürfen und historischen
+Versionen.
 
 #### Betroffene Dateien
 
@@ -730,12 +1142,12 @@ nur im leeren, noch nie veröffentlichten Erstentwurf gewechselt werden. Später
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.ts
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.html
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.spec.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
-- src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
-- src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.ts
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.html
+- src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.spec.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.ts
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.html
+- src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.ts
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.html
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
@@ -771,33 +1183,7 @@ Neu hinzuzufügen:
 - src/app/stores/domain/mitarbeiterbelegung.store.ts
 - src/app/stores/domain/mitarbeiterbelegung.store.spec.ts
 
-#### Schritt 1: Schichtmodell im leeren Erstentwurf wechseln
-
-- [x] Im noch nie veröffentlichten Entwurf die Aktion `Schichtmodell wechseln` anbieten und ausschließlich aktive
-      Schichtmodelle derselben Filiale zur Auswahl stellen.
-- [x] Die Aktion deaktivieren, sobald der aktuelle Entwurf mindestens eine Schicht enthält, und den Grund verständlich anzeigen.
-      Nach dem Löschen aller Schichten wird sie wieder verfügbar.
-- [x] Beim Wechsel Modell-ID, Modellbezeichnung und Modellschicht-Momentaufnahme des Monatsdienstplans vollständig durch das
-      gewählte Modell ersetzen und das Raster unmittelbar daraus neu aufbauen.
-- [x] Vor dem Wechsel Dienstplandokument und Entwurfsschichten verbindlich vom Server laden. Den Austausch gemeinsam mit der
-      nächsten Versionsrevision schreiben, damit eine gleichzeitige Schichtanlage den Wechsel verhindert.
-- [x] Die Aktion dauerhaft sperren, sobald `veroeffentlichteVersionId` gesetzt ist. Neue Versionen verwenden immer die bestehende
-      Modell-Momentaufnahme des Monatsplans.
-- [x] Firestore Rules auf einen berechtigten Entwurf ohne veröffentlichte Version und die erwartete Versionsrevision begrenzen.
-      Die Leerheitsprüfung der Schicht-Subcollection zusätzlich im Client-Service erzwingen, da Rules keine Collection-Abfrage
-      ausführen können.
-
-#### Schritt 2: Mehrfachbelegung je Modellschicht begrenzen
-
-- [x] Jede Modellschicht um die standardmäßig deaktivierte Option `mehrfachbelegungErlaubt` ergänzen und sie in die
-      Dienstplan-Momentaufnahme übernehmen.
-- [x] Die Checkbox `Mehrfachbelegung` im Kopf der Modellschicht direkt vor der Löschaktion anzeigen.
-- [x] Weitere Anlagen und Ablagen in einer belegten Rasterzelle sperren, solange die Modellschicht keine Mehrfachbelegung erlaubt.
-- [x] Die Begrenzung vor dem Schreiben servernah im Dienstplan-Service erneut prüfen und parallele Anlagen über die vorhandene
-      Versionsrevision absichern.
-- [x] Domain-, Dialog-, Raster-, Service- und Firestore-Regeltests ergänzen.
-
-#### Schritt 3: Firmenweiten Belegungsindex aufbauen
+#### Schritt 1: Firmenweiten Belegungsindex aufbauen
 
 - [ ] Unterhalb der Firma einen Belegungsindex mit einem Dokument je Mitarbeiter und Kalendertag vorsehen, damit eine
       Konfliktprüfung keine vollständigen Dienstpläne aller berechtigten Filialen laden muss.
@@ -814,7 +1200,7 @@ Neu hinzuzufügen:
 - [ ] Firestore Rules so absichern, dass Belegungseinträge nur gemeinsam mit einer berechtigten Dienstplanänderung angelegt,
       geändert oder gelöscht werden können.
 
-#### Schritt 4: Belegungsindex live in die Planung übernehmen
+#### Schritt 2: Belegungsindex live in die Planung übernehmen
 
 - [ ] Die für den ausgewählten Planungszeitraum und die sichtbaren Mitarbeiter relevanten Belegungstage mit begrenzten
       Firestore-Snapshot-Listenern beobachten, ohne einen unbeschränkten firmenweiten Listener zu öffnen.
@@ -827,7 +1213,7 @@ Neu hinzuzufügen:
 - [ ] Live-Daten ausschließlich für aktuelle Darstellung und frühzeitige Konflikthinweise verwenden; vor jedem Schreibzugriff
       weiterhin die transaktionale Prüfung der gemeinsamen Tagesdokumente als verbindliche Absicherung ausführen.
 
-#### Schritt 5: Konflikte berechnen und darstellen
+#### Schritt 3: Konflikte berechnen und darstellen
 
 - [ ] Ungültige Zeitfolgen, Pausen und überlappende Schichten eines Mitarbeiters filialübergreifend erkennen.
 - [ ] Für Anlage, Änderung und Veröffentlichung die relevanten Belegungen aller Filialen des betroffenen Mitarbeiters über den
@@ -841,7 +1227,7 @@ Neu hinzuzufügen:
 - [ ] Veröffentlichung bei blockierenden Konflikten verhindern und zusätzlich im Schreibablauf absichern.
 - [ ] Konfliktberechnung mit Schichten über Mitternacht und an Zeitraumgrenzen prüfen.
 
-#### Schritt 6: Bestehende Schichten verschieben
+#### Schritt 4: Bestehende Schichten verschieben
 
 - [ ] Schichtkarten in einem bearbeitbaren Entwurf als eigene Drag-Quellen kennzeichnen und beim Ablegen in einer anderen
       Rasterzelle Mitarbeiterzuordnung und Schicht-ID beibehalten.
@@ -863,7 +1249,7 @@ Neu hinzuzufügen:
 - [ ] Zulässige und unzulässige Ablageziele während des Ziehens verständlich darstellen und Fehler am bisherigen
       Filialdienstplan anzeigen, ohne die bestehende Schicht bei einem fehlgeschlagenen Vorgang zu verändern.
 
-#### Schritt 7: Veröffentlichung umsetzen
+#### Schritt 5: Veröffentlichung umsetzen
 
 - [ ] Veröffentlichungsaktion nur für berechtigte Rollen und einen konfliktfreien aktuellen Entwurf anbieten.
 - [ ] Versionierung für jeden Filialdienstplan getrennt fortführen.
@@ -875,7 +1261,7 @@ Neu hinzuzufügen:
 - [ ] Zurückziehen oder nachträgliche Änderung ausschließlich nach dem beschlossenen Zustandsablauf erlauben.
 - [ ] Gleichzeitige Änderungen zwischen Prüfung und Veröffentlichung zuverlässig erkennen.
 
-#### Schritt 8: Veröffentlichte Mitarbeiteransicht bereitstellen
+#### Schritt 6: Veröffentlichte Mitarbeiteransicht bereitstellen
 
 - [ ] Veröffentlichte Dienstpläne für Mitarbeiter aus allen ausgewählten und fachlich erlaubten Filialen laden und gemeinsam
       darstellen.
@@ -887,12 +1273,6 @@ Neu hinzuzufügen:
 
 #### Tests und Abschluss
 
-- [x] Service-, Store-, Component- und Firestore-Emulator-Tests für den Modellwechsel im leeren, noch nie veröffentlichten
-      Entwurf und die Sperre bei vorhandenen Schichten ergänzen.
-- [x] Prüfen, dass die Aktion nach dem Löschen aller Entwurfsschichten wieder verfügbar ist und nach der ersten
-      Veröffentlichung dauerhaft gesperrt bleibt.
-- [x] Dialog-, Raster- und Service-Tests für die standardmäßige Einfachbelegung und die freigegebene Mehrfachbelegung ergänzen.
-- [x] Firestore-Emulator-Tests für das neue Modellschichtfeld ausführen und den Office-Build erfolgreich prüfen.
 - [ ] Das Erzeugen einer neuen Entwurfsversion als Kopie des veröffentlichten Stands mit unveränderter Modell-Momentaufnahme
       testen.
 - [ ] Unit-Tests für alle blockierenden Konflikte und Hinweise ergänzen.
@@ -916,11 +1296,6 @@ Neu hinzuzufügen:
 
 #### Erledigt, wenn
 
-- [x] Ein leerer, noch nie veröffentlichter Entwurf kann auf ein anderes aktives Modell derselben Filiale wechseln; ein belegter
-      Entwurf verhindert den Modellwechsel.
-- [x] Nach dem Löschen aller Entwurfsschichten ist der Modellwechsel wieder möglich.
-- [x] Eine Modellschicht erlaubt standardmäßig nur einen Mitarbeiter je Rasterzelle; eine aktivierte Mehrfachbelegung lässt
-      weitere Mitarbeiter in derselben Rasterzelle zu.
 - [ ] Nach der ersten Veröffentlichung bleibt die Modell-Momentaufnahme des Monatsplans unveränderlich und wird von allen
       späteren Versionen verwendet.
 - [ ] Eine neue Entwurfsversion übernimmt die Schichten des veröffentlichten Stands, ohne das Schichtmodell zu wechseln.
@@ -938,7 +1313,7 @@ Neu hinzuzufügen:
 - [ ] Mitarbeiter sehen ausschließlich die für sie freigegebenen veröffentlichten Dienstplandaten.
 - [ ] Gleichzeitige und nachträgliche Änderungen folgen dem festgelegten konsistenten Ablauf.
 
-### [-] 20.9 Erweiterungen nach der ersten Ausbaustufe bewerten
+### [-] 21.11 Erweiterungen nach der ersten Ausbaustufe bewerten
 
 #### Ziel
 

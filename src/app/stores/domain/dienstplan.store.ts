@@ -259,15 +259,11 @@ export const DienstplanStore = signalStore(
       }
 
       /**
-       * Wechselt das Schichtmodell eines leeren, noch nie veröffentlichten Entwurfs.
+       * Löscht einen leeren, noch nie veröffentlichten Dienstplan.
        *
        * @param pfad - Vollständiger Pfad der Entwurfsversion.
-       * @param schichtmodell - Neues aktives Schichtmodell derselben Filiale.
        */
-      async function updateDienstplanSchichtmodell(
-        pfad: IDienstplanVersionPfad,
-        schichtmodell: ISchichtmodellBestand,
-      ): Promise<void> {
+      async function deleteDienstplan(pfad: IDienstplanVersionPfad): Promise<void> {
         const { kontext, version } = requireEntwurf(pfad);
         const dienstplan = kontext.dienstplaene.find((eintrag) => {
           return eintrag.id === pfad.dienstplanId;
@@ -277,9 +273,7 @@ export const DienstplanStore = signalStore(
           dienstplan.entwurfVersionId !== version.id ||
           dienstplan.veroeffentlichteVersionId
         ) {
-          throw new Error(
-            'Das Schichtmodell kann nach einer Veröffentlichung nicht mehr gewechselt werden.',
-          );
+          throw new Error('Ein bereits veröffentlichter Dienstplan kann nicht gelöscht werden.');
         }
         if (
           kontext.schichten.some((schicht) => {
@@ -288,35 +282,21 @@ export const DienstplanStore = signalStore(
         ) {
           throw new Error('Lösche zuerst alle Schichten des Entwurfs.');
         }
-        validateSchichtmodell(pfad, schichtmodell);
-        const benutzerUid = requireBenutzerUid();
         await executeWrite(async () => {
-          const ergebnis = await dienstplanService.updateDienstplanSchichtmodell(
-            pfad,
-            version.revision,
-            schichtmodell,
-            benutzerUid,
-          );
+          await dienstplanService.deleteDienstplan(pfad, version.revision);
           setKontext(pfad, {
             ...kontext,
-            dienstplaene: kontext.dienstplaene.map((eintrag) => {
-              return eintrag.id === pfad.dienstplanId ? ergebnis.dienstplan : eintrag;
+            dienstplaene: kontext.dienstplaene.filter((eintrag) => {
+              return eintrag.id !== pfad.dienstplanId;
             }),
-            versionen: updateVersionRevision(
-              kontext.versionen,
-              version.id,
-              ergebnis.versionRevision,
-            ),
-            modellschichten: [
-              ...kontext.modellschichten.filter((modellschicht) => {
-                return modellschicht.dienstplanId !== pfad.dienstplanId;
-              }),
-              ...ergebnis.modellschichten,
-            ].sort((a, b) => {
-              return (
-                a.dienstplanId.localeCompare(b.dienstplanId) ||
-                compareModellschichtenNachBeginn(a, b)
-              );
+            versionen: kontext.versionen.filter((eintrag) => {
+              return eintrag.dienstplanId !== pfad.dienstplanId;
+            }),
+            schichten: kontext.schichten.filter((eintrag) => {
+              return eintrag.dienstplanId !== pfad.dienstplanId;
+            }),
+            modellschichten: kontext.modellschichten.filter((eintrag) => {
+              return eintrag.dienstplanId !== pfad.dienstplanId;
             }),
           });
         });
@@ -682,7 +662,7 @@ export const DienstplanStore = signalStore(
         loadDienstplanMonat,
         loadDienstplanBestand,
         createDienstplan,
-        updateDienstplanSchichtmodell,
+        deleteDienstplan,
         createSchicht,
         updateSchicht,
         deleteSchicht,

@@ -24,11 +24,52 @@ unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/dienstplan/{monat
   /modellschicht/{modellschichtId}
   /version/{versionId}
     /schicht/{schichtId}
+unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/einstellung/allgemein
+unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/einstellung/oeffnungszeiten
+  /sondertag/{sondertagId}
+  /ausnahme/{YYYY-MM-DD}
 unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiterbelegung/{mitarbeiterId}_{datum}
 ```
 
 Die filialbezogenen Dienstpläne bleiben die fachliche Quelle der einzelnen Schichten. Der Belegungsindex ist eine gemeinsam mit
 den Schichten atomar gepflegte Prüfstruktur und ersetzt weder die Dienstplandokumente noch deren getrennte Versionierung.
+
+Die allgemeinen Filialeinstellungen speichern Bundesland und Zeitzone. Die regelmäßigen Öffnungszeiten enthalten genau eine
+Regel für jeden Wochentag. Eine geöffnete Regel besitzt eine lokale Beginn- und Endzeit sowie `endetAmFolgetag`; damit wird
+beispielsweise eine Montagsöffnung von 07:00 Uhr bis Dienstag 01:00 Uhr eindeutig dem Montag zugeordnet. Eine Öffnungsregel
+beschreibt immer einen durchgehenden Zeitraum. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht Teil des
+Modells. Eine geschlossene Regel enthält keine Zeitwerte.
+
+Wiederkehrende Sondertage besitzen eine sichtbare Bezeichnung, einen Aktivstatus, eine Herkunft, eine eigene Öffnungsregel und
+entweder ein jährlich festes Datum oder einen zentral definierten gesetzlichen Feiertagsschlüssel. Systemdefinierte gesetzliche
+Feiertage werden aus einem lokalen Katalog bundeslandspezifisch berechnet. Lokal oder kommunal begrenzte Feiertage werden nicht
+allein aus dem Bundesland abgeleitet und müssen als eigener fester Sondertag gepflegt werden. Heiligabend und Silvester werden
+wie die landesweit geltenden gesetzlichen Feiertage bei der Initialisierung aktiv und geschlossen angelegt.
+
+Bei einem Bundeslandwechsel bleiben gemeinsame systemdefinierte Feiertage mit ihrer angepassten Öffnungsregel erhalten. Nicht
+mehr landesweit geltende Feiertage werden entfernt, neu geltende aktiv und geschlossen ergänzt. Benutzerdefinierte Sondertage
+bleiben unverändert. Schlüssel, Bezeichnung und Datumsberechnung gesetzlicher Feiertage sind systemdefiniert; Benutzer ändern
+nur Aktivstatus und Öffnungsregel. Bei eigenen festen Sondertagen sind Bezeichnung, Monat, Tag, Aktivstatus und Öffnungsregel
+bearbeitbar.
+
+Konkrete Datumsausnahmen besitzen eine Dokument-ID im Format `YYYY-MM-DD`, eine Bezeichnung und eine vollständige
+Öffnungsregel. Die wirksame Regel wird in der Reihenfolge `Ausnahme → Sondertag → Wochentag` aufgelöst. Treffen mehrere
+aktive Sondertage auf dasselbe Datum, liegt ein Konfigurationsfehler vor; nur eine konkrete Datumsausnahme darf diese Kollision
+bewusst überschreiben. Fehlende Wochenregeln werden nicht als geöffnet interpretiert. Eine über Mitternacht reichende
+Öffnungsregel gehört vollständig zu ihrem Startdatum, auch wenn der Folgetag ein Feiertag oder Sondertag ist.
+
+Der `FilialeinstellungService` behandelt vollständig fehlende Einstellungsdokumente als noch nicht initialisierten Zustand.
+Existiert dagegen nur ein Teil der beiden verbindlichen Hauptdokumente, wird ein Initialisierungsfehler gemeldet. Die erstmalige
+Anlage verlangt Bundesland, Zeitzone und alle sieben Wochenregeln ausdrücklich; Werte werden nicht aus Anschrift oder
+Postleitzahl abgeleitet. Der `FilialeinstellungStore` hält vollständige Bestände sowie Lade-, Schreib- und Fehlerzustände für
+jeden Filialpfad getrennt und stellt die Datumsauflösung bereit.
+
+Allgemeine Einstellungen, Wochenregeln und der automatische Sondertagsabgleich eines Bundeslandwechsels werden atomar
+geschrieben. Benutzerdefinierte Sondertage und Datumsausnahmen bleiben einzeln anleg-, änder- und löschbar. Systemdefinierte
+Sondertage können nur in Aktivstatus und Öffnungsregel verändert werden. Die Firestore Rules gewähren Masterkonten aufgrund
+ihrer Rolle sowie zugeordneten Office- und Filialkonten mit dem Bereich `einstellungen` Zugriff. Mitarbeiterkonten und nicht
+zugeordnete Filialen bleiben ausgeschlossen; Dokument-IDs, Feldmengen, Datumsregeltypen und lokale Zeitwerte werden serverseitig
+begrenzt.
 
 Jede Filiale besitzt eigene vorkonfigurierte Schichtmodelle, damit unterschiedliche Öffnungs- und Betriebszeiten unabhängig
 voneinander abgebildet werden können. Ein Schichtmodell enthält eine Bezeichnung, einen Aktivstatus und eine chronologisch nach
@@ -50,10 +91,17 @@ mehr verwendete Schichtmodelle werden deaktiviert und nicht physisch gelöscht.
 Beim Anlegen eines Monatsdienstplans wählt der Planer ein aktives Schichtmodell der konkreten Filiale. Der Monatsdienstplan
 speichert die Modell-ID, die Modellbezeichnung und die vollständige chronologisch geordnete Liste ihrer Modellschichten als
 Momentaufnahme. Diese eine Momentaufnahme bestimmt das Schichtraster aller Versionen des Monatsplans. Solange der Monatsplan
-noch nie veröffentlicht wurde und sein aktueller Entwurf keine Schichten enthält, darf die Momentaufnahme durch ein anderes
-aktives Modell ersetzt werden. Sobald eine Schicht vorhanden ist, ist der Wechsel gesperrt; nach dem Löschen aller Schichten ist
-er wieder möglich. Nach der ersten Veröffentlichung bleibt die Momentaufnahme für diesen Monatsplan dauerhaft unveränderlich.
-Spätere Änderungen oder die Deaktivierung des ursprünglichen Schichtmodells verändern bestehende Monatspläne nicht.
+noch nie veröffentlicht wurde und sein aktueller Entwurf keine Schichten enthält, darf der vollständige Dienstplan gelöscht und
+anschließend mit einem anderen aktiven Modell neu angelegt werden. Sobald eine Schicht vorhanden ist, ist die Löschung gesperrt;
+nach dem Löschen aller Schichten ist sie wieder möglich. Nach der ersten Veröffentlichung bleibt die Momentaufnahme für diesen
+Monatsplan dauerhaft unveränderlich. Spätere Änderungen oder die Deaktivierung des ursprünglichen Schichtmodells verändern
+bestehende Monatspläne nicht.
+
+Ein Schichtmodell kann mehrere getrennte Modellschichten mit gleichen Zeiten enthalten, wenn eigenständige Arbeitsplätze oder
+Aufgaben unterschieden werden sollen. Alternativ kann eine einzelne Modellschicht mit aktivierter Mehrfachbelegung verwendet
+werden, wenn mehrere Mitarbeiter dieselbe Schichtart mit identischen Zeiten und Pausen besetzen. In beiden Varianten erhält
+jeder Mitarbeiter eine eigene konkrete Schicht. Die Mehrfachbelegung fasst diese Schichten lediglich in derselben Rasterzelle
+zusammen.
 
 Im grundlegenden Planungsablauf zieht der Planer einen aktiven Mitarbeiter in eine Rasterzelle aus Modellschicht und Kalendertag
 oder verwendet die gleichwertige Anlageaktion als Tastatur- und Mobilalternative. Datum und Modellschicht stehen dadurch bereits
@@ -206,10 +254,9 @@ Dienstplan mit seiner Modell-Momentaufnahme sowie Version 1 im Status `entwurf` 
 Monatsrasters; die Kalendertage bilden dessen Zeilen. Solange die Version ein Entwurf ist, dürfen berechtigte Planer die
 Rasterzellen per Drag-and-drop oder über die alternative Anlageaktion mit Mitarbeitern besetzen und vorhandene Schichten
 bearbeiten oder in eine andere zulässige Rasterzelle verschieben. Wurde der Monatsplan noch nie veröffentlicht und enthält sein
-aktueller Entwurf keine Schichten, darf seine Modell-Momentaufnahme durch ein anderes aktives Schichtmodell derselben Filiale
-ersetzt werden. Sobald eine Schicht vorhanden ist, ist dieser direkte Modellwechsel gesperrt. Nach dem Löschen aller Schichten
-ist er wieder möglich. Das Löschen einzelner Schichten und der vollständigen, nie veröffentlichten Entwurfsversion ist
-erlaubt.
+aktueller Entwurf keine Schichten, darf der vollständige Dienstplan nach Bestätigung gelöscht werden. Danach kann er mit einem
+anderen aktiven Schichtmodell derselben Filiale neu angelegt werden. Sobald eine Schicht vorhanden ist, ist die Löschaktion
+gesperrt. Nach dem Löschen aller Schichten ist sie wieder möglich. Das Löschen einzelner Schichten bleibt erlaubt.
 
 Die Veröffentlichung setzt eine vollständig geprüfte und konfliktfreie Entwurfsversion voraus. Sie setzt deren Status auf
 `veroeffentlicht`. Existiert bereits eine veröffentlichte Version, wird diese im selben konsistenten Schreibvorgang auf
@@ -219,7 +266,7 @@ ersten Ausbaustufe nicht vorgesehen.
 Eine nachträgliche Änderung beginnt immer mit einer neuen Entwurfsversion. Die Schichten der veröffentlichten Version werden
 als bearbeitbare Kopien übernommen; die neue Version verwendet weiterhin die unveränderliche Modell-Momentaufnahme des
 Monatsplans.
-Ein Modellwechsel ist nach der ersten Veröffentlichung nicht mehr möglich. Der bisher veröffentlichte Stand bleibt für
+Das Löschen des Monatsplans ist nach der ersten Veröffentlichung nicht mehr möglich. Der bisher veröffentlichte Stand bleibt für
 Mitarbeiter sichtbar, bis der neue Entwurf erfolgreich veröffentlicht wurde. Veröffentlichte und archivierte Versionen bleiben
 unveränderliche historische Stände.
 
@@ -279,12 +326,11 @@ Zeitraums gemeinsam aktualisiert. Die Transaktion schreibt nur, wenn die Version
 Frontend erwartete Revision und der Belegungsindex weiterhin einen konfliktfreien Stand besitzen. Zusammen mit der
 Schichtänderung aktualisiert sie Belegungsindex, Revision, Änderungszeitpunkt und ändernde Benutzer-UID.
 
-Vor einem Modellwechsel lädt das Frontend das Dienstplandokument und die Schichten des aktuellen Entwurfs verbindlich vom
-Server. Der Wechsel ist nur zulässig, wenn der Dienstplan keine veröffentlichte Version referenziert und das Ergebnis leer ist.
-Dann ersetzt das Frontend die vollständige Modell-Momentaufnahme und erhöht gemeinsam damit die Versionsrevision. Da eine
-parallele Schichtanlage dasselbe Versionsdokument mit der erwarteten Revision schreiben muss, kann nur einer der beiden
-konkurrierenden Vorgänge erfolgreich sein. Nach der ersten Veröffentlichung verhindern Dienstplanstatus und Firestore Rules
-jeden weiteren Modellwechsel.
+Vor dem Löschen lädt das Frontend das Dienstplandokument und die Schichten des aktuellen Entwurfs verbindlich vom Server. Die
+Löschung ist nur zulässig, wenn der Dienstplan keine veröffentlichte Version referenziert und der Entwurf leer ist. Dienstplan,
+Entwurfsversion und Modell-Momentaufnahme werden gemeinsam entfernt. Da eine parallele Schichtanlage dasselbe Versionsdokument
+mit der erwarteten Revision schreiben muss, kann nur einer der beiden konkurrierenden Vorgänge erfolgreich sein. Nach der
+ersten Veröffentlichung verhindern Dienstplanstatus und Firestore Rules die Löschung.
 
 Da jede Schichtänderung dasselbe Versionsdokument einbezieht, werden auch gleichzeitige Änderungen an unterschiedlichen
 Schichten erkannt. Bei einer abweichenden Revision wird die veraltete Änderung nicht gespeichert. Das Frontend lädt den

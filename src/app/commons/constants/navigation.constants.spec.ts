@@ -70,37 +70,49 @@ describe('NAVIGATION_NACH_ROLLE', () => {
     );
   });
 
-  it('should provide verwaltung only for master and office', () => {
-    expect(getNavigationIds('master')).toContain('verwaltung');
-    expect(getNavigationIds('office')).toContain('verwaltung');
-    expect(getNavigationIds('filiale')).not.toContain('verwaltung');
-    expect(getNavigationIds('mitarbeiter')).not.toContain('verwaltung');
+  it('should provide system only for master', () => {
+    expect(getNavigationIds('master')).toContain('system');
+    expect(getNavigationIds('office')).not.toContain('system');
+    expect(getNavigationIds('filiale')).not.toContain('system');
+    expect(getNavigationIds('mitarbeiter')).not.toContain('system');
   });
 
-  it('should provide systemverwaltung only for master', () => {
-    expect(getNavigationIds('master')).toContain('systemverwaltung');
-    expect(getNavigationIds('office')).not.toContain('systemverwaltung');
-    expect(getNavigationIds('filiale')).not.toContain('systemverwaltung');
-    expect(getNavigationIds('mitarbeiter')).not.toContain('systemverwaltung');
+  it('should provide settings with opening hours for management roles', () => {
+    for (const userRole of ['master', 'office', 'filiale'] as const) {
+      const einstellungen = NAVIGATION_NACH_ROLLE[userRole].eintraege.find(
+        (eintrag) => eintrag.id === 'einstellungen',
+      );
+      expect(einstellungen?.typ).toBe('gruppe');
+      if (einstellungen?.typ !== 'gruppe') continue;
+      expect(einstellungen.kinder).toEqual([
+        expect.objectContaining({
+          id: 'oeffnungszeiten',
+          route: '/einstellungen/oeffnungszeiten',
+          bereich: 'einstellungen',
+        }),
+      ]);
+    }
+    expect(getNavigationIds('mitarbeiter')).not.toContain('einstellungen');
   });
 
   it('should provide administration as a group with separate child routes', () => {
-    const systemverwaltung = NAVIGATION_NACH_ROLLE.master.eintraege.find(
-      (eintrag) => eintrag.id === 'systemverwaltung',
+    const system = NAVIGATION_NACH_ROLLE.master.eintraege.find(
+      (eintrag) => eintrag.id === 'system',
     );
 
-    expect(systemverwaltung?.typ).toBe('gruppe');
-    if (systemverwaltung?.typ !== 'gruppe') return;
+    expect(system?.typ).toBe('gruppe');
+    if (system?.typ !== 'gruppe') return;
 
-    const kinder = getNavigationLinks(systemverwaltung.kinder).map((eintrag) => ({
+    const kinder = getNavigationLinks(system.kinder).map((eintrag) => ({
       id: eintrag.id,
       route: eintrag.route,
     }));
     expect(kinder).toEqual([
-      { id: 'benutzeranlage', route: '/systemverwaltung/benutzer/anlegen' },
-      { id: 'benutzerverwaltung', route: '/systemverwaltung/benutzer/verwalten' },
-      { id: 'datenstruktur', route: '/systemverwaltung/datenstruktur' },
-      { id: 'datenmigration', route: '/systemverwaltung/datenmigration' },
+      { id: 'benutzeranlage', route: '/system/benutzer/anlegen' },
+      { id: 'benutzerverwaltung', route: '/system/benutzer/verwalten' },
+      { id: 'strukturanlage', route: '/system/struktur/anlegen' },
+      { id: 'strukturverwaltung', route: '/system/struktur/bearbeiten' },
+      { id: 'datenmigration', route: '/system/datenmigration' },
     ]);
   });
 

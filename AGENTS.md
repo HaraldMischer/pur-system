@@ -44,7 +44,7 @@
 - Unter `src/app/pages` liegen ausschließlich echte, über eine Angular-Route direkt routbare Seiten.
 - Jede Page wird in `app.routes.ts` direkt per `loadComponent` geladen. Komponentenlose Elternrouten erhalten keine eigene Page,
   keine Page-Klasse und keinen Ordner mit dem Suffix `-page`.
-- Fachliche Gruppierungsordner unter `src/app/pages`, z. B. `src/app/pages/systemverwaltung`, enthalten ausschließlich Ordner
+- Fachliche Gruppierungsordner unter `src/app/pages`, z. B. `src/app/pages/system`, enthalten ausschließlich Ordner
   direkt routbarer Pages.
 - Wiederverwendbare Components liegen unter `src/app/components`.
 - Nicht routbare UI-Bestandteile liegen unter `src/app/components`, auch wenn sie nur von einer einzelnen Page verwendet werden.

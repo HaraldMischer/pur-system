@@ -33,12 +33,12 @@ export const APP_KONTEXT_SELECTOR_MATRIX: TAppKontextSelectorMatrix = {
       firma: 'editable',
       filiale: 'editable',
     },
-    verwaltung: {
+    einstellungen: {
       unternehmer: 'editable',
       firma: 'editable',
-      filiale: 'readonly',
+      filiale: 'editable',
     },
-    systemverwaltung: {
+    system: {
       unternehmer: 'editable',
       firma: 'editable',
       filiale: 'readonly',
@@ -60,10 +60,10 @@ export const APP_KONTEXT_SELECTOR_MATRIX: TAppKontextSelectorMatrix = {
       firma: 'editable',
       filiale: 'editable',
     },
-    verwaltung: {
+    einstellungen: {
       unternehmer: 'hidden',
       firma: 'editable',
-      filiale: 'readonly',
+      filiale: 'editable',
     },
   },
   mitarbeiter: {

@@ -23,8 +23,8 @@ const EINTRAEGE: readonly TNavigationEintrag[] = [
   },
   {
     typ: 'gruppe',
-    id: 'systemverwaltung',
-    label: 'Systemverwaltung',
+    id: 'system',
+    label: 'System',
     icon: 'admin_panel_settings',
     kinder: [
       {
@@ -32,24 +32,32 @@ const EINTRAEGE: readonly TNavigationEintrag[] = [
         id: 'benutzeranlage',
         label: 'Benutzer anlegen',
         icon: 'person_add',
-        route: '/systemverwaltung/benutzer/anlegen',
-        bereich: 'systemverwaltung',
+        route: '/system/benutzer/anlegen',
+        bereich: 'system',
       },
       {
         typ: 'link',
         id: 'benutzerverwaltung',
         label: 'Benutzer verwalten',
         icon: 'manage_accounts',
-        route: '/systemverwaltung/benutzer/verwalten',
-        bereich: 'systemverwaltung',
+        route: '/system/benutzer/verwalten',
+        bereich: 'system',
       },
       {
         typ: 'link',
-        id: 'datenstruktur',
-        label: 'Datenstruktur',
+        id: 'strukturanlage',
+        label: 'Struktur anlegen',
         icon: 'account_tree',
-        route: '/systemverwaltung/datenstruktur',
-        bereich: 'systemverwaltung',
+        route: '/system/struktur/anlegen',
+        bereich: 'system',
+      },
+      {
+        typ: 'link',
+        id: 'strukturverwaltung',
+        label: 'Struktur verwalten',
+        icon: 'edit_note',
+        route: '/system/struktur/bearbeiten',
+        bereich: 'system',
       },
     ],
   },
@@ -64,9 +72,10 @@ describe('AppSidenavNestedNavigation', () => {
       providers: [
         provideRouter([
           { path: 'dashboard', component: TestRouteComponent },
-          { path: 'systemverwaltung/datenstruktur', component: TestRouteComponent },
-          { path: 'systemverwaltung/benutzer/anlegen', component: TestRouteComponent },
-          { path: 'systemverwaltung/benutzer/verwalten', component: TestRouteComponent },
+          { path: 'system/struktur/anlegen', component: TestRouteComponent },
+          { path: 'system/struktur/bearbeiten', component: TestRouteComponent },
+          { path: 'system/benutzer/anlegen', component: TestRouteComponent },
+          { path: 'system/benutzer/verwalten', component: TestRouteComponent },
         ]),
       ],
     }).compileComponents();
@@ -82,7 +91,7 @@ describe('AppSidenavNestedNavigation', () => {
 
     expect(compiled.querySelector('a[mat-list-item]')?.textContent).toContain('Dashboard');
     expect(compiled.querySelector('button[mat-list-item]')?.textContent).toContain(
-      'Systemverwaltung',
+      'System',
     );
   });
 
@@ -124,8 +133,10 @@ describe('AppSidenavNestedNavigation', () => {
   });
 
   it.each([
-    ['/systemverwaltung/benutzer/anlegen', 'Benutzer anlegen'],
-    ['/systemverwaltung/benutzer/verwalten', 'Benutzer verwalten'],
+    ['/system/benutzer/anlegen', 'Benutzer anlegen'],
+    ['/system/benutzer/verwalten', 'Benutzer verwalten'],
+    ['/system/struktur/anlegen', 'Struktur anlegen'],
+    ['/system/struktur/bearbeiten', 'Struktur verwalten'],
   ])('should expand the group for the active child route %s', async (route, label) => {
     const router = TestBed.inject(Router);
 

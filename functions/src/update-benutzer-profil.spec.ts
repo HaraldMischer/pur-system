@@ -29,7 +29,7 @@ describe('handleUpdateBenutzerProfil', () => {
           uid: 'office-1',
           anzeigename: ' Office Neu ',
           aktiv: true,
-          erlaubteBereiche: ['verwaltung', 'systemverwaltung'],
+          erlaubteBereiche: ['mitarbeiter', 'einstellungen', 'system'],
         },
       },
       dependencies,
@@ -38,7 +38,7 @@ describe('handleUpdateBenutzerProfil', () => {
     expect(dependencies.updateBenutzerProfil).toHaveBeenCalledWith('office-1', {
       anzeigename: 'Office Neu',
       aktiv: true,
-      erlaubteBereiche: ['dashboard', 'verwaltung'],
+      erlaubteBereiche: ['dashboard', 'mitarbeiter', 'einstellungen'],
     });
   });
 

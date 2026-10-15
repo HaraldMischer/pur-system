@@ -38,7 +38,7 @@ describe('initialisierungGuard', () => {
   });
 
   it('should wait during idle and loading before allowing a ready session', async () => {
-    const resultPromise = runGuard('/verwaltung');
+    const resultPromise = runGuard('/system/struktur/bearbeiten');
     let abgeschlossen = false;
     void resultPromise.then(() => {
       abgeschlossen = true;

@@ -17,7 +17,6 @@ describe('DienstplanAnlegenDialog', () => {
   const inProgress = signal(false);
   const error = signal<string | null>(null);
   const createDienstplan = vi.fn().mockResolvedValue(undefined);
-  const updateDienstplanSchichtmodell = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
   let fixture: ComponentFixture<DienstplanAnlegenDialog>;
 
@@ -26,7 +25,6 @@ describe('DienstplanAnlegenDialog', () => {
     inProgress.set(false);
     error.set(null);
     createDienstplan.mockResolvedValue(undefined);
-    updateDienstplanSchichtmodell.mockResolvedValue(undefined);
     await setup({
       pfad,
       monat: '2026-10',
@@ -42,7 +40,7 @@ describe('DienstplanAnlegenDialog', () => {
         { provide: MatDialogRef, useValue: { close } },
         {
           provide: DienstplanStore,
-          useValue: { createDienstplan, updateDienstplanSchichtmodell, inProgress, error },
+          useValue: { createDienstplan, inProgress, error },
         },
       ],
     }).compileComponents();
@@ -63,27 +61,6 @@ describe('DienstplanAnlegenDialog', () => {
     await fixture.componentInstance.saveDienstplan();
 
     expect(createDienstplan).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell);
-    expect(close).toHaveBeenCalledWith(true);
-  });
-
-  it('should switch the model of the selected draft', async () => {
-    TestBed.resetTestingModule();
-    await setup({
-      modus: 'wechseln',
-      pfad,
-      monat: '2026-10',
-      versionId: 'v-1',
-      schichtmodelle: [schichtmodell],
-    });
-    fixture.componentInstance.dienstplanForm.controls.schichtmodellId.setValue('modell-1');
-
-    await fixture.componentInstance.saveDienstplan();
-
-    expect(updateDienstplanSchichtmodell).toHaveBeenCalledWith(
-      { ...pfad, dienstplanId: '2026-10', versionId: 'v-1' },
-      schichtmodell,
-    );
-    expect(createDienstplan).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledWith(true);
   });
 

@@ -10,7 +10,7 @@ describe('handleCreateBenutzer', () => {
     namensbestandteil: 'Test Benutzer',
     anzeigename: 'Test Benutzer',
     userRole: 'office',
-    erlaubteBereiche: ['dashboard', 'verwaltung'],
+    erlaubteBereiche: ['dashboard', 'mitarbeiter'],
     zugriffe: { 'u-1': { 'firma-1': ['filiale-1'] } },
     passwort: 'SicheresPasswort123!',
   };
@@ -139,14 +139,16 @@ describe('handleCreateBenutzer', () => {
     await handleCreateBenutzer(
       {
         auth: { uid: 'master-123' },
-        data: { ...data, erlaubteBereiche: ['systemverwaltung', 'verwaltung'] },
+        data: { ...data, erlaubteBereiche: ['system', 'mitarbeiter', 'einstellungen'] },
       },
       dependencies,
     );
 
     expect(dependencies.setBenutzerProfilDokument).toHaveBeenCalledWith(
       'neu-123',
-      expect.objectContaining({ erlaubteBereiche: ['dashboard', 'verwaltung'] }),
+      expect.objectContaining({
+        erlaubteBereiche: ['dashboard', 'mitarbeiter', 'einstellungen'],
+      }),
     );
   });
 
@@ -163,7 +165,7 @@ describe('handleCreateBenutzer', () => {
 
     expect(dependencies.setBenutzerProfilDokument).toHaveBeenCalledWith(
       'neu-123',
-      expect.objectContaining({ erlaubteBereiche: ['dashboard', 'systemverwaltung'] }),
+      expect.objectContaining({ erlaubteBereiche: ['dashboard', 'system'] }),
     );
   });
 
@@ -176,7 +178,7 @@ describe('handleCreateBenutzer', () => {
         data: {
           ...data,
           userRole: 'master',
-          erlaubteBereiche: ['verwaltung', 'schichtplan'],
+          erlaubteBereiche: ['mitarbeiter', 'schichtplan'],
           zugriffe: {},
         },
       },
@@ -186,7 +188,7 @@ describe('handleCreateBenutzer', () => {
     expect(dependencies.setBenutzerProfilDokument).toHaveBeenCalledWith(
       'neu-123',
       expect.objectContaining({
-        erlaubteBereiche: ['dashboard', 'schichtplan', 'verwaltung', 'systemverwaltung'],
+        erlaubteBereiche: ['dashboard', 'schichtplan', 'mitarbeiter', 'system'],
       }),
     );
   });

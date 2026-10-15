@@ -1,0 +1,64 @@
+// pur-system/src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.scss
+
+.monatsplan {
+  display: grid;
+  //gap: 16px;
+  min-width: 0;
+}
+
+.monatskopf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  min-height: 40px;
+}
+
+.status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-large);
+}
+
+.kopf-aktion {
+  margin-left: auto;
+}
+
+.anlegen {
+  //margin-bottom: 8px;
+}
+
+.schicht {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+  overflow-wrap: anywhere;
+
+  & + & {
+    margin-top: 8px;
+  }
+
+  span {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-medium);
+  }
+}
+
+.nicht-besetzt {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.mitarbeiter-farbe {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 1px;
+}

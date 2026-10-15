@@ -69,13 +69,15 @@ describe('SchichtmodellBearbeitenDialog', () => {
   it('should add and remove model shifts while retaining one shift', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
+    const bestehendeSchicht = component.schichtmodellForm.controls.modellschichten.at(0);
 
     component.addModellschicht();
-    component.schichtmodellForm.controls.modellschichten.at(0).controls.bezeichnung.setValue('A');
-    component.schichtmodellForm.controls.modellschichten.at(1).controls.bezeichnung.setValue('B');
-    component.removeModellschicht(1);
+    expect(component.schichtmodellForm.controls.modellschichten.at(0)).not.toBe(bestehendeSchicht);
+    expect(component.schichtmodellForm.controls.modellschichten.at(1)).toBe(bestehendeSchicht);
+    component.removeModellschicht(0);
     component.removeModellschicht(0);
     expect(component.schichtmodellForm.controls.modellschichten).toHaveLength(1);
+    expect(component.schichtmodellForm.controls.modellschichten.at(0)).toBe(bestehendeSchicht);
   });
 
   it('should submit model shifts chronologically by start time', async () => {
@@ -88,7 +90,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
       endeLokalzeit: '01:00',
     });
     component.addModellschicht();
-    component.schichtmodellForm.controls.modellschichten.at(1).patchValue({
+    component.schichtmodellForm.controls.modellschichten.at(0).patchValue({
       bezeichnung: 'Früh',
       beginnLokalzeit: '07:00',
       endeLokalzeit: '16:00',

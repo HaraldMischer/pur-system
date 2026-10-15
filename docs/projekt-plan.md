@@ -11,9 +11,8 @@ bereitgestellt.
 ## Zielrichtung
 
 - Die fachlichen App-Bereiche lesen Daten aus Firestore und schreiben ausschließlich die jeweils ausdrücklich freigegebenen Daten.
-- Die Systemverwaltung bündelt administrative Vorgänge des Masters. Die Verwaltung erlaubt Office und Master das Aktualisieren
-  bestehender Firmen- und Filialdaten innerhalb der Firestore Rules. Sicherheitskritische Auth-Vorgänge laufen über ein
-  geschütztes Backend.
+- Der Systembereich bündelt administrative Vorgänge des Masters einschließlich der Anlage und Verwaltung von Unternehmern,
+  Firmen und Filialen. Sicherheitskritische Auth-Vorgänge laufen über ein geschütztes Backend.
 - Fachliche Bereiche werden klar getrennt.
 - UI und Datenzugriff werden über Components, Stores und Services getrennt.
 - Das System wird als vier getrennte, installierbare Progressive Web Apps für Master, Office, Filiale und Mitarbeiter
@@ -25,9 +24,8 @@ bereitgestellt.
 - Sicherheitskritische administrative Vorgänge an Firebase Auth werden über geschützte Firebase Cloud Functions mit Firebase Admin
   SDK ausgeführt.
 - Fachliche Verwaltungsdaten können durch einen aktiven Master direkt aus dem Angular-Client in Firestore geschrieben werden.
-  Aktive Office-Konten dürfen ausschließlich ihre zugeordneten Firmen- und Filialdokumente aktualisieren.
-- Firestore Rules bleiben bewusst einfach und sichern nur Zugriff und Besitz.
-- Fachliche Regeln, Feldvalidierung und UI-Logik werden in der Anwendung umgesetzt.
+- Firestore Rules sichern Zugriff, Pfadbindung und die für die Datenintegrität erforderlichen Dokumentformen und Zustandswechsel.
+- Weiterführende fachliche Validierung und UI-Logik werden zusätzlich in der Anwendung umgesetzt.
 - Feature-Bereiche werden lazy geladen.
 - Persistenter App-State wird zentral und nachvollziehbar gekapselt.
 
@@ -65,7 +63,7 @@ bereitgestellt.
 
 ### Auslieferungsvarianten
 
-- **Pur Master:** Installierbare PWA für die zentrale Systemverwaltung mit eigener Hosting-Adresse `pur-master.web.app`.
+- **Pur Master:** Installierbare PWA für den zentralen Systembereich mit eigener Hosting-Adresse `pur-master.web.app`.
 - **Pur Office:** Installierbare PWA für Büro und Verwaltung mit eigener Hosting-Adresse `pur-office.web.app`.
 - **Pur Filiale:** Installierbare Progressive Web App. Der Angular Service Worker stellt nach dem ersten erfolgreichen Laden die
   App-Shell und die zum Start erforderlichen statischen Ressourcen offline bereit.
@@ -154,7 +152,7 @@ benutzerprofil/{uid}
 
 Das Benutzerprofil enthält mit `userRole` die Rollen `filiale`, `office`, `master` und `mitarbeiter`. Die allgemeinen
 Bereichsfreigaben richten sich nach `erlaubteBereiche`. `dashboard` ist für jede Rolle verpflichtend und bildet die dauerhaft
-erreichbare Hauptseite für den später rollenabhängig dargestellten Hauptinhalt. `systemverwaltung` ist ausschließlich für die
+erreichbare Hauptseite für den später rollenabhängig dargestellten Hauptinhalt. `system` ist ausschließlich für die
 Rolle `master` verpflichtend und für alle anderen Rollen unzulässig.
 
 Die Anwendung beobachtet das eigene Benutzerprofil während der Sitzung. Bei Abmeldung oder Benutzerwechsel wird der bisherige
@@ -206,21 +204,24 @@ gesperrt. Der tatsächliche initiale Ladeumfang ist enger: Der eigene Mitarbeite
 persönlich zugeordneten Filialen. Bei der Sitzungsinitialisierung werden nach dem eigenen Mitarbeiterdatensatz genau diese
 Filialstammdaten geladen. Weitere Mitarbeiter gehören nicht zum initialen Ladeumfang. Die `filialIds` bilden außerdem die
 Grundlage für weitere persönliche Datenrechte, beispielsweise auf Dienstpläne bestimmter Filialen. `erlaubteBereiche` steuert
-ausschließlich, welche App-Funktionen geöffnet werden dürfen.
+grundsätzlich, welche App-Funktionen geöffnet werden dürfen. Für Filialeinstellungen verlangen die Firestore Rules bei Office-
+und Filialkonten zusätzlich ausdrücklich den Bereich `einstellungen`; Masterkonten bleiben aufgrund ihrer Rolle unabhängig von
+dieser Bereichsfreigabe datenberechtigt.
 
-Bei der Anlage und Bearbeitung von Benutzerprofilen zeigt die Oberfläche die gemäß App-Bereich-Matrix optional wählbaren Bereiche
-rollenabhängig als Checkboxen. `dashboard` und `systemverwaltung` werden nicht als Checkboxen angeboten. Die Callable Function
-ergänzt `dashboard` immer und `systemverwaltung` ausschließlich für Master; die optionalen Bereiche übernimmt sie aus der
-Clientauswahl. Bei Profilaktualisierungen normalisiert der fachliche Service die Bereiche entsprechend. Die Firestore Rules
-leiten aus `erlaubteBereiche` keine Datenrechte oder rollenabhängigen Bereichskombinationen ab.
+Bei der Anlage und Bearbeitung von Benutzerprofilen zeigt die Oberfläche die gemäß App-Bereich-Matrix optional wählbaren
+Bereiche rollenabhängig als Checkboxen. `dashboard` und `system` werden nicht als Checkboxen angeboten. Die Callable Function
+ergänzt `dashboard` immer und `system` ausschließlich für Master; die optionalen Bereiche übernimmt sie aus der Clientauswahl.
+Bei Profilaktualisierungen normalisiert der fachliche Service die Bereiche entsprechend. Mit Ausnahme der Filialeinstellungen
+leiten die Firestore Rules aus `erlaubteBereiche` keine Datenrechte oder rollenabhängigen Bereichskombinationen ab.
 
 ### Datenrechte und Firestore Rules
 
-Welche App-Bereiche sichtbar und erreichbar sind, wird über `erlaubteBereiche` festgelegt. Datenrechte ergeben sich unabhängig
-davon aus `userRole`, Aktivstatus, `zugriffe` und den fachlichen Bedingungen der Collection-Matrix. Die Zugriffe sind als
-verschachtelte Map `Unternehmer-ID -> Firma-ID -> Filial-IDs` gespeichert. Altprofile mit der früheren Array-Struktur bleiben für
-Login und Bereichsfreigaben lesbar, gewähren Office- und Filialkonten aber keinen Datenzugriff. Aktive Master bleiben davon
-unberührt.
+Welche App-Bereiche sichtbar und erreichbar sind, wird über `erlaubteBereiche` festgelegt. Datenrechte ergeben sich
+grundsätzlich aus `userRole`, Aktivstatus, `zugriffe` und den fachlichen Bedingungen der Collection-Matrix. Filialeinstellungen
+bilden die bewusste Ausnahme: Office- und Filialkonten benötigen dafür zusätzlich `einstellungen` in `erlaubteBereiche`. Die
+Zugriffe sind als verschachtelte Map `Unternehmer-ID -> Firma-ID -> Filial-IDs` gespeichert. Altprofile mit der früheren
+Array-Struktur bleiben für Login und Bereichsfreigaben lesbar, gewähren Office- und Filialkonten aber keinen Datenzugriff. Aktive
+Master bleiben davon unberührt.
 
 Die App speichert keine direkten Firestore-Pfade als Berechtigung, sondern fachliche Berechtigungen. Daraus werden Navigation,
 Route Guards und Firestore-Abfragen abgeleitet.
@@ -246,7 +247,7 @@ auch zwischenzeitlich entzogene Rechte und deaktivierte Konten behandeln.
 
 ### Kontoverwaltung
 
-Eine Selbstregistrierung ist nicht vorgesehen. Benutzerzugänge werden im Zielablauf im Bereich `systemverwaltung` von einem
+Eine Selbstregistrierung ist nicht vorgesehen. Benutzerzugänge werden im Zielablauf im Bereich `system` von einem
 `master` vorkonfiguriert. Die Angular-App ruft dafür eine geschützte Firebase Cloud Function auf. Die Function prüft die Rolle des
 aufrufenden Benutzers serverseitig, legt mit dem Firebase Admin SDK den Auth-Benutzer und anschließend das Dokument
 `benutzerprofil/{uid}` an. Der angemeldete `master` bleibt dabei eingeloggt.
@@ -274,12 +275,12 @@ automatisch übernommen.
   Profilaktualisierungen müssen genau eine solche Zuordnung erhalten.
 - **Office:** Das Konto erhält Zugriff ausschließlich auf ausgewählte Firmen und deren ausdrücklich freigegebene Filialen. Mehrere
   Firmen und Filialen können zugeordnet werden; auch eine Beschränkung auf einzelne Filialen ist möglich. Office hat keinen
-  pauschalen Lesezugriff auf alle Daten. Bestehende zugeordnete Firmen- und Filialdokumente dürfen aktualisiert, aber nicht
-  angelegt oder gelöscht werden. Weitere Schreibaktionen, beispielsweise Mitarbeiter anlegen, müssen pro Datenart und Aktion
-  innerhalb des freigegebenen Datenbereichs festgelegt werden.
+  pauschalen Lesezugriff auf alle Daten. Firmen- und Filialdokumente sind für Office rein lesbar. Weitere Schreibaktionen,
+  beispielsweise Mitarbeiter anlegen, müssen pro Datenart und Aktion innerhalb des freigegebenen Datenbereichs festgelegt
+  werden.
 - **Master:** Keine Datenzuordnung erforderlich; aktive Master erhalten die in der Collection-Matrix aufgeführten Rechte auch mit
   `zugriffe: {}`. Nicht aufgeführte Collections bleiben gesperrt. Bestehende Masterprofile mit der früheren leeren Liste bleiben
-  ebenfalls funktionsfähig. Datenstruktur- und Benutzerverwaltung bleiben dem Master vorbehalten.
+  ebenfalls funktionsfähig. Struktur- und Benutzerverwaltung bleiben dem Master vorbehalten.
 - **Mitarbeiter:** Vierte Auth-Rolle für die mobile Mitarbeiter-App. Ein Mitarbeiter kann optional einen eigenen, durch einen
   Master angelegten Mitarbeiterzugang erhalten. Der Master weist die benötigten `erlaubteBereiche` zu und verknüpft den Zugang
   mit genau einem aktiven Firma-Mitarbeiter. Das Benutzerprofil speichert dessen `firmaMitarbeiterId`; der Mitarbeiterdatensatz
@@ -309,7 +310,7 @@ Top-Level-Collection `unternehmer`.
 
 ### Auswahlverhalten
 
-Die Systemverwaltungsseite erzeugt für Filiale und Office getrennte Auswahlkomponenten mit festen Mehrfachauswahl-Einstellungen;
+Die Systemseite erzeugt für Filiale und Office getrennte Auswahlkomponenten mit festen Mehrfachauswahl-Einstellungen;
 bei Master entfällt die Auswahl. Ein Rollenwechsel setzt die bisherige Zuordnung zurück. Die Auswahlkomponente selbst schaltet
 ihre Modi nicht dynamisch um.
 
@@ -509,22 +510,57 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
    in der Filiale. Firebase-Auth-Benutzer einschließlich der Rolle `mitarbeiter` verwenden dagegen weiterhin die allgemeine
    `auth/login-page`.
 
-4. **Verwaltung (`/verwaltung`):** Bereich für Office und Master zur Auswahl und Bearbeitung zugeordneter Firmen- und Filialdaten.
-   Die Route erfordert zusätzlich die Bereichsfreigabe `verwaltung`; Filialkonten bleiben ausgeschlossen.
+4. **Einstellungen (`/einstellungen`):** Komponentenloser Elternbereich und ausklappbare Navigationsgruppe ohne eigene
+   Zielseite. Der erste Unterpunkt `Öffnungszeiten` führt zur direkt routbaren Page unter
+   `/einstellungen/oeffnungszeiten`. Dort werden je
+   ausgewählter Filiale zunächst die Grundlagen Bundesland und Zeitzone sowie Wochenöffnungszeiten, Sondertage und konkrete
+   Datumsausnahmen verwaltet. Weitere filialbezogene Einstellungsseiten können später als gleichrangige Unterpunkte ergänzt
+   werden. Sichtbarkeit und Route der gesamten Gruppe werden über den App-Bereich `einstellungen` geschützt.
 
-5. **Systemverwaltung (`/systemverwaltung`):** Administrativer Bereich für `master`. Er umfasst die hierarchische
-   Datenstruktur-Anlage unter `/systemverwaltung/datenstruktur`, die Benutzeranlage unter
-   `/systemverwaltung/benutzer/anlegen` und die Bearbeitung vorhandener Benutzerprofile unter
-   `/systemverwaltung/benutzer/verwalten`. In der Sidebar ist der Bereich eine ausklappbare Gruppe mit direkten Links auf die
-   administrativen Unterseiten. Die Auth-Benutzeranlage erfolgt serverseitig über eine geschützte Firebase Cloud Function mit
-   Firebase Admin SDK; fachliche Stammdaten darf der Master direkt in Firestore schreiben. `/systemverwaltung` leitet auf die
-   Datenstruktur-Anlage und `/systemverwaltung/benutzer` auf die Verwaltung vorhandener Benutzer weiter.
+5. **System (`/system`):** Administrativer Bereich für `master`, der in der Sidebar als `System` bezeichnet wird. Er umfasst die
+   Page `StrukturAnlegenPage` unter `/system/struktur/anlegen`, die `StrukturVerwaltenPage` für vorhandene Firmen und
+   Filialen unter `/system/struktur/bearbeiten`, die Benutzeranlage unter `/system/benutzer/anlegen` und die
+   Bearbeitung vorhandener Benutzerprofile unter `/system/benutzer/verwalten`. In der Sidebar ist der Bereich eine
+   ausklappbare Gruppe mit direkten Links auf die administrativen Unterseiten. Die Auth-Benutzeranlage erfolgt serverseitig über
+   eine geschützte Firebase Cloud Function mit Firebase Admin SDK; fachliche Stammdaten darf der Master direkt in Firestore
+   schreiben. `/system` leitet auf „Struktur anlegen“ und `/system/benutzer` auf die Verwaltung vorhandener
+   Benutzer weiter.
 
 ## Dienst- und Schichtplanung
 
 Die Dienst- und Schichtplanung ist als filialbezogene, versionierte Monatsplanung mit einer monatsbezogenen
 Schichtmodell-Momentaufnahme und firmenweiter Konfliktprüfung konzipiert. Berechtigte Planer bearbeiten Entwürfe;
 Mitarbeiterzugänge lesen ausschließlich veröffentlichte Stände.
+
+Filialbezogene Konfiguration wird unterhalb der jeweiligen Filiale in einer eigenen Collection `einstellung` geführt. Das
+Dokument `allgemein` enthält insbesondere Bundesland und Zeitzone. Das Dokument `oeffnungszeiten` enthält die regelmäßigen
+Wochenregeln. Eine geöffnete Regel beschreibt genau einen durchgehenden lokalen Zeitraum mit Beginn, Ende und der Angabe, ob
+das Ende am Folgetag liegt. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht vorgesehen. Wiederkehrende
+und berechnete besondere Tage
+liegen als bezeichnete Einträge unter `einstellung/oeffnungszeiten/sondertag`; konkrete Abweichungen für ein Datum unter
+`einstellung/oeffnungszeiten/ausnahme`.
+
+Sondertage unterscheiden mindestens jährlich feste Daten, beispielsweise Heiligabend oder Silvester, von zentral berechneten
+gesetzlichen Feiertagen, beispielsweise Karfreitag oder Ostermontag. Die wirksame Öffnungsregel wird in der Reihenfolge
+`Ausnahme → Sondertag → Wochentag` bestimmt. Öffnungszeiten beschreiben den Kundenbetrieb und bleiben von den Arbeitszeiten
+der Schichtmodelle getrennt. Beim Anlegen eines Monatsdienstplans werden Tagestyp, Sondertags-ID und -Bezeichnung sowie die für
+seine Kalendertage aufgelösten Öffnungsregeln als unveränderliche Momentaufnahme übernommen. Sie begrenzen
+Mitarbeiterschichten nicht automatisch.
+
+Gesetzliche Feiertage werden ohne externe Laufzeitabhängigkeit aus einem zentralen Katalog nach Jahr und Bundesland berechnet.
+Lokal oder kommunal begrenzte Feiertage werden nicht allein aus dem Bundesland abgeleitet. Initiale gesetzliche Feiertage sowie
+Heiligabend und Silvester sind aktiv und geschlossen. Bei einem Bundeslandwechsel bleiben gemeinsame Feiertage einschließlich
+ihrer angepassten Öffnungsregel erhalten; nicht mehr geltende werden entfernt und neu geltende geschlossen ergänzt. Mehrere
+aktive Sondertage für dasselbe Datum bilden einen Konfigurationsfehler, sofern keine konkrete Datumsausnahme die Kollision
+bewusst überschreibt. Eine über Mitternacht reichende Öffnungsregel gehört vollständig zu ihrem Startdatum.
+
+Ein fachlicher Service lädt und schreibt den vollständigen Einstellungsbestand ausschließlich im konkreten Filialpfad. Ein
+Store hält die Bestände und ihre Lade-, Schreib- und Fehlerzustände je Filiale getrennt und bietet die Auflösung der wirksamen
+Öffnungsregel für ein Datum an. Allgemeine Einstellungen und Wochenregeln werden atomar gespeichert; Sondertage und Ausnahmen
+bleiben unabhängig verwaltbare Dokumente. Die Firestore Rules verlangen für zugeordnete Office- und Filialkonten neben dem
+konkreten Filialzugriff den App-Bereich `einstellungen` und validieren bekannte Dokument-IDs, Feldmengen, Datumsregeln, lokale
+Zeitwerte und Datumsausnahme-IDs. Masterkonten dürfen Filialeinstellungen aufgrund ihrer Rolle unabhängig von der optionalen
+Bereichsfreigabe verwalten; Navigation und Route bleiben auch für sie an `einstellungen` gebunden.
 
 Das vollständige fachliche und architektonische Zielbild steht im
 [Fachkonzept Dienst- und Schichtplanung](./fachkonzepte/dienst-und-schichtplanung.md).

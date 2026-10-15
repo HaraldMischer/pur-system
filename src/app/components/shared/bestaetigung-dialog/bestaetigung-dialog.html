@@ -1,0 +1,20 @@
+<!-- pur-system/src/app/components/shared/bestaetigung-dialog/bestaetigung-dialog.html -->
+
+<h2 mat-dialog-title>{{ daten.titel }}</h2>
+
+<mat-dialog-content class="pur-dialog__content">
+  <div class="pur-form pur-form--grid">
+    <p class="pur-form__item pur-form__item--message">
+      {{ daten.nachricht }}
+    </p>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" [mat-dialog-close]="undefined">
+    {{ daten.abbrechenText ?? 'Abbrechen' }}
+  </button>
+  <button matButton="filled" type="button" [mat-dialog-close]="true">
+    {{ daten.bestaetigenText ?? 'Bestätigen' }}
+  </button>
+</mat-dialog-actions>

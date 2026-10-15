@@ -218,78 +218,57 @@ describe('DienstplanService', () => {
     expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
   });
 
-  it('should replace the model snapshot of an empty never-published draft', async () => {
+  it('should delete an empty never-published plan with its draft and model snapshot', async () => {
     loadDocumentMock.mockResolvedValue({
       id: '2026-10',
       daten: createDienstplanDokument({ entwurfVersionId: 'v-1' }),
     });
     loadCollectionMock.mockImplementation(async (path: string) => {
-      return path.endsWith('/schicht') ? [] : [{ id: 'frueh', daten: createModellschichtDaten() }];
+      return path.endsWith('/modellschicht')
+        ? [{ id: 'frueh', daten: createModellschichtDaten() }]
+        : [];
     });
     const service = TestBed.inject(DienstplanService);
-    const schichtmodell = createSchichtmodell('modell-2', 'Winter', 'spaet');
 
-    const ergebnis = await service.updateDienstplanSchichtmodell(
-      versionsPfad,
-      2,
-      schichtmodell,
-      'uid-1',
-    );
+    await service.deleteDienstplan(versionsPfad, 2);
 
-    expect(ergebnis).toEqual(
-      expect.objectContaining({
-        dienstplan: expect.objectContaining({
-          schichtmodellId: 'modell-2',
-          schichtmodellBezeichnung: 'Winter',
-        }),
-        modellschichten: [expect.objectContaining({ id: 'spaet' })],
-        versionRevision: 3,
-      }),
-    );
     const transaktion = executeDocumentTransactionMock.mock.calls[0];
-    const operationen = transaktion[1]({
-      id: 'v-1',
-      daten: createVersionDokument(),
-    }).operationen;
-    expect(operationen).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ daten: expect.objectContaining({ revision: 3 }) }),
-        expect.objectContaining({
-          daten: expect.objectContaining({ schichtmodellId: 'modell-2' }),
-        }),
-        expect.objectContaining({
-          documentPath:
-            'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/modellschicht/frueh',
-          delete: true,
-        }),
-        expect.objectContaining({
-          documentPath:
-            'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/modellschicht/spaet',
-        }),
-      ]),
+    expect(transaktion[0]).toBe(
+      'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1',
     );
+    expect(transaktion[1]({ id: 'v-1', daten: createVersionDokument() }).operationen).toEqual([
+      {
+        documentPath:
+          'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/modellschicht/frueh',
+        delete: true,
+      },
+      {
+        documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1',
+        delete: true,
+      },
+      {
+        documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10',
+        delete: true,
+      },
+    ]);
   });
 
-  it('should reject a model switch when the server draft contains a shift', async () => {
+  it('should reject deleting a plan when the server draft contains a shift', async () => {
     loadDocumentMock.mockResolvedValue({
       id: '2026-10',
       daten: createDienstplanDokument({ entwurfVersionId: 'v-1' }),
     });
     loadCollectionMock.mockImplementation(async (path: string) => {
-      return path.endsWith('/schicht')
-        ? [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }]
-        : [{ id: 'frueh', daten: createModellschichtDaten() }];
+      if (path.endsWith('/schicht')) {
+        return [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }];
+      }
+      return [{ id: 'frueh', daten: createModellschichtDaten() }];
     });
     const service = TestBed.inject(DienstplanService);
 
-    await expect(
-      service.updateDienstplanSchichtmodell(
-        versionsPfad,
-        2,
-        createSchichtmodell('modell-2', 'Winter', 'spaet'),
-        'uid-1',
-      ),
-    ).rejects.toThrow('Lösche zuerst alle Schichten des Entwurfs.');
+    await expect(service.deleteDienstplan(versionsPfad, 2)).rejects.toThrow(
+      'Lösche zuerst alle Schichten des Entwurfs.',
+    );
     expect(executeDocumentTransactionMock).not.toHaveBeenCalled();
   });
 

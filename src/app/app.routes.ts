@@ -8,7 +8,6 @@ import { dienstplanPlanungGuard } from './guards/dienstplan-planung.guard';
 import { initialisierungGuard } from './guards/initialisierung.guard';
 import { masterGuard } from './guards/master.guard';
 import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
-import { verwaltungGuard } from './guards/verwaltung.guard';
 
 export const routes: Routes = [
   // ===== Standardweiterleitung =======================
@@ -23,21 +22,21 @@ export const routes: Routes = [
     path: 'login',
     title: 'Anmelden',
     data: { layout: 'auth' },
-    loadComponent: () => import('./pages/auth/login-page/login-page').then((m) => m.LoginPage),
+    loadComponent: () => import('./pages/zugang/login-page/login-page').then((m) => m.LoginPage),
   },
   {
     path: 'passwort',
     title: 'Passwort ändern',
     canActivate: [authGuard, initialisierungGuard],
     loadComponent: () =>
-      import('./pages/auth/passwort-page/passwort-page').then((m) => m.PasswortPage),
+      import('./pages/zugang/passwort-page/passwort-page').then((m) => m.PasswortPage),
   },
   {
     path: 'initialisierungsfehler',
     title: 'Initialisierungsfehler',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/initialisierungsfehler-page/initialisierungsfehler-page').then(
+      import('./pages/zugang/initialisierungsfehler-page/initialisierungsfehler-page').then(
         (m) => m.InitialisierungsfehlerPage,
       ),
   },
@@ -111,31 +110,62 @@ export const routes: Routes = [
     ],
   },
   {
-    path: 'verwaltung',
-    title: 'Verwaltung',
-    canActivate: [authGuard, initialisierungGuard, bereichGuard, verwaltungGuard],
-    data: { bereich: 'verwaltung' },
-    loadComponent: () =>
-      import('./pages/verwaltung-page/verwaltung-page').then((m) => m.VerwaltungPage),
-  },
-  {
-    path: 'systemverwaltung',
-    canActivate: [authGuard, initialisierungGuard, bereichGuard, masterGuard],
-    canActivateChild: [authGuard, initialisierungGuard, bereichGuard, masterGuard],
-    data: { bereich: 'systemverwaltung' },
+    path: 'einstellungen',
+    canActivate: [authGuard, initialisierungGuard, bereichGuard],
+    canActivateChild: [authGuard, initialisierungGuard, bereichGuard],
+    data: { bereich: 'einstellungen' },
     children: [
       {
         path: '',
         pathMatch: 'full',
-        redirectTo: 'datenstruktur',
+        redirectTo: 'oeffnungszeiten',
       },
       {
-        path: 'datenstruktur',
-        title: 'Datenstruktur anlegen',
+        path: 'oeffnungszeiten',
+        title: 'Öffnungszeiten',
         loadComponent: () =>
-          import('./pages/systemverwaltung/datenstruktur-page/datenstruktur-page').then(
-            (m) => m.DatenstrukturPage,
+          import('./pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page').then(
+            (m) => m.OeffnungszeitenPage,
           ),
+      },
+    ],
+  },
+  {
+    path: 'system',
+    canActivate: [authGuard, initialisierungGuard, bereichGuard, masterGuard],
+    canActivateChild: [authGuard, initialisierungGuard, bereichGuard, masterGuard],
+    data: { bereich: 'system' },
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'struktur/anlegen',
+      },
+      {
+        path: 'struktur',
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            redirectTo: 'anlegen',
+          },
+          {
+            path: 'anlegen',
+            title: 'Struktur anlegen',
+            loadComponent: () =>
+              import('./pages/system/struktur-anlegen-page/struktur-anlegen-page').then(
+                (m) => m.StrukturAnlegenPage,
+              ),
+          },
+          {
+            path: 'bearbeiten',
+            title: 'Struktur verwalten',
+            loadComponent: () =>
+              import('./pages/system/struktur-verwalten-page/struktur-verwalten-page').then(
+                (m) => m.StrukturVerwaltenPage,
+              ),
+          },
+        ],
       },
       {
         path: 'benutzer',
@@ -149,7 +179,7 @@ export const routes: Routes = [
             path: 'anlegen',
             title: 'Benutzer anlegen',
             loadComponent: () =>
-              import('./pages/systemverwaltung/benutzer-anlegen-page/benutzer-anlegen-page').then(
+              import('./pages/system/benutzer-anlegen-page/benutzer-anlegen-page').then(
                 (m) => m.BenutzerAnlegenPage,
               ),
           },
@@ -157,7 +187,7 @@ export const routes: Routes = [
             path: 'verwalten',
             title: 'Benutzer verwalten',
             loadComponent: () =>
-              import('./pages/systemverwaltung/benutzer-verwalten-page/benutzer-verwalten-page').then(
+              import('./pages/system/benutzer-verwalten-page/benutzer-verwalten-page').then(
                 (m) => m.BenutzerVerwaltenPage,
               ),
           },
@@ -167,7 +197,7 @@ export const routes: Routes = [
         path: 'datenmigration',
         title: 'Datenmigration',
         loadComponent: () =>
-          import('./pages/systemverwaltung/datenmigration-page/datenmigration-page').then(
+          import('./pages/system/datenmigration-page/datenmigration-page').then(
             (m) => m.DatenmigrationPage,
           ),
       },

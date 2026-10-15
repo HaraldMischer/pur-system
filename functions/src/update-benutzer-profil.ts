@@ -7,10 +7,10 @@ const APP_BEREICHE = [
   'dashboard',
   'schichtplan',
   'mitarbeiter',
-  'verwaltung',
-  'systemverwaltung',
+  'einstellungen',
+  'system',
 ] as const;
-const WAEHLBARE_APP_BEREICHE = ['schichtplan', 'mitarbeiter', 'verwaltung'] as const;
+const WAEHLBARE_APP_BEREICHE = ['schichtplan', 'mitarbeiter', 'einstellungen'] as const;
 
 type TUserRole = (typeof USER_ROLES)[number];
 type TAppBereich = (typeof APP_BEREICHE)[number];
@@ -73,7 +73,7 @@ function parseData(value: unknown, userRole: TUserRole): IUpdateBenutzerProfilDa
     'dashboard',
     ...WAEHLBARE_APP_BEREICHE.filter((bereich) => ausgewaehlteBereiche.has(bereich)),
   ];
-  if (userRole === 'master') normalisierteBereiche.push('systemverwaltung');
+  if (userRole === 'master') normalisierteBereiche.push('system');
 
   return {
     uid: parseUid(value['uid']),

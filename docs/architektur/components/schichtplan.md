@@ -8,8 +8,8 @@ Darstellung und Dialoge liegen unter `src/app/components/schichtplan`.
 ## Dienstplan-Planungsseite
 
 Die routbare `DienstplanPlanungPage` verwaltet eine gemeinsame Monatsauswahl und rendert für jede ausgewählte Filiale einen
-`DienstplanFiliale`. Ein Monatswechsel gilt dadurch gleichzeitig für alle ausgewählten Filialen. Die Planungslogik liegt direkt
-in der Page und wird nicht mit der Dienstplanansicht geteilt.
+`DienstplanPlanungsbereich`. Ein Monatswechsel gilt dadurch gleichzeitig für alle ausgewählten Filialen. Die Planungslogik
+liegt direkt in der Page und wird nicht mit der Dienstplanansicht geteilt.
 
 Die wiederverwendbare Component `MonatSelector` erhält den ausgewählten Monat über `selectedMonat` im Format `YYYY-MM` und
 meldet Änderungen über `selectedMonatChange`. Sie bietet ausschließlich die Navigation zum vorherigen und nächsten Monat an.
@@ -28,7 +28,7 @@ unverändert; ein Mitarbeiter kann nacheinander in mehrere zulässige Rasterzell
 Bei höchstens `900px` Containerbreite werden die Bereiche untereinander angeordnet und innerhalb der gemeinsamen Arbeitsfläche
 gescrollt.
 
-Jede `DienstplanFiliale` lädt ihren Monatsplan über den direkten Filialpfad und zeigt ihren eigenen Lade-, Fehler-,
+Jeder `DienstplanPlanungsbereich` lädt seinen Monatsplan über den direkten Filialpfad und zeigt seinen eigenen Lade-, Fehler-,
 Leer- oder Planzustand. Ein fehlender Plan kann ausschließlich in diesem Filialabschnitt angelegt werden. Dazu lädt der
 Abschnitt die Schichtmodelle seiner Filiale und bietet nur aktive Modelle mit mindestens einer Modellschicht an. Beim Öffnen
 eines Schichtdialogs übernimmt der Abschnitt Datum und Modellschicht aus der gewählten Rasterzelle und begrenzt die
@@ -37,16 +37,20 @@ Mitarbeiterwahl auf die aktiven Mitarbeiter der Filiale.
 Die routbare `DienstplanAnsichtPage` verwendet die Planungsseite und ihre Rasterdarstellung nicht. Sie ist derzeit leer und
 bildet die Grundlage für eigenständige Ansichts-Views.
 
-Im leeren, noch nie veröffentlichten Entwurf bietet die Statuszeile des Monatsplans zusätzlich `Schichtmodell wechseln` an.
-Sobald der Entwurf mindestens eine Schicht enthält, ist die Aktion mit einem erklärenden Hinweis deaktiviert; nach dem Löschen
-aller Schichten wird sie wieder aktiv. Nach der ersten Veröffentlichung wird die Aktion dauerhaft ausgeblendet.
+Im leeren, noch nie veröffentlichten Entwurf bietet die Statuszeile des Monatsplans zusätzlich `Dienstplan löschen` an. Sobald
+der Entwurf mindestens eine Schicht enthält, ist die Aktion mit einem erklärenden Hinweis deaktiviert; nach dem Löschen aller
+Schichten wird sie wieder aktiv. Vor der Löschung fragt der allgemeine `BestaetigungDialog` nach. Dienstplan, Entwurfsversion
+und Modell-Momentaufnahme werden gemeinsam gelöscht. Nach der ersten Veröffentlichung wird die Aktion dauerhaft ausgeblendet.
 
 ## Monatsdarstellung
 
-`SchichtplanMonat` stellt den Monat als Tabelle dar. Die erste Spalte enthält die Kalendertage; jede weitere Spalte entspricht
-einer nach ihrer lokalen Beginnzeit sortierten Modellschicht aus der unveränderlichen Momentaufnahme des Monatsplans. Jede
-Rasterzelle enthält alle konkreten Mitarbeiterschichten ihres Tages und ihrer Modellschicht. Mehrere Mitarbeiterschichten sind
-nur möglich, wenn die Modellschicht in der Momentaufnahme `mehrfachbelegungErlaubt` enthält.
+`DienstplanMonatstabelle` stellt den Monat als Tabelle dar. Die erste Spalte enthält die Kalendertage; jede weitere Spalte
+entspricht einer nach ihrer lokalen Beginnzeit sortierten Modellschicht aus der unveränderlichen Momentaufnahme des
+Monatsplans. Jede Rasterzelle enthält alle konkreten Mitarbeiterschichten ihres Tages und ihrer Modellschicht. Mehrere
+Mitarbeiterschichten sind nur möglich, wenn die Modellschicht in der Momentaufnahme `mehrfachbelegungErlaubt` enthält.
+Identische Kapazitäten können deshalb entweder als getrennte Modellschichten mit jeweils einer Belegung oder als eine
+mehrfach belegbare Modellschicht dargestellt werden. Auch bei einer Mehrfachbelegung bleibt jede Mitarbeiterzuordnung eine
+eigene konkrete Schicht.
 
 Jede Schicht löst Anzeigename und optionale `farbkennung` über die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf
 und zeigt Zeitspanne, Pause und Lohnzeit. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher
@@ -57,21 +61,21 @@ festgelegte Modellschicht. Eine Ablage ist nur für einen aktiven, der Zielfilia
 während eines Schreibvorgangs gesperrt. Derselbe Mitarbeiter kann nicht erneut in dieselbe Rasterzelle abgelegt werden. Bei
 deaktivierter Mehrfachbelegung werden Anlageaktion und Ablageziel nach der ersten Belegung gesperrt.
 
-Nach einer gültigen Ablage legt `DienstplanFiliale` die Schicht unmittelbar mit den Zeitwerten und der Standardpause aus
-der Modell-Momentaufnahme an. Vor dem Schreiben werden die aktiven Planungsstände aller bereits im Dienstplan-Store geladenen
-Filialkontexte auf zeitliche Überschneidungen geprüft. Diese Prüfung ist eine vorläufige Bedienabsicherung; die vollständige,
-filialübergreifend verbindliche Prüfung über einen firmenweiten Belegungsindex folgt in Todo 20.8. Auf kleinen Viewports bleibt
-die Tabelle horizontal scrollbar; die Tagesspalte bleibt beim horizontalen Scrollen sichtbar. Das vertikale Scrollen übernimmt
-der umgebende Dienstplanbereich, damit keine verschachtelten vertikalen Scrollflächen entstehen. Die Planungsoberfläche ist
-vorrangig für Desktop und Tablet vorgesehen; eine eigenständige mobile Dienstplanansicht für Mitarbeiter folgt in einem
-späteren Ausbauschritt.
+Nach einer gültigen Ablage legt `DienstplanPlanungsbereich` die Schicht unmittelbar mit den Zeitwerten und der Standardpause
+aus der Modell-Momentaufnahme an. Vor dem Schreiben werden die aktiven Planungsstände aller bereits im Dienstplan-Store
+geladenen Filialkontexte auf zeitliche Überschneidungen geprüft. Diese Prüfung ist eine vorläufige Bedienabsicherung; die
+vollständige, filialübergreifend verbindliche Prüfung über einen firmenweiten Belegungsindex folgt in Todo 21.10. Auf kleinen
+Viewports bleibt die Tabelle horizontal scrollbar; die Tagesspalte bleibt beim horizontalen Scrollen sichtbar. Das vertikale
+Scrollen übernimmt der umgebende Dienstplanbereich, damit keine verschachtelten vertikalen Scrollflächen entstehen. Die
+Planungsoberfläche ist vorrangig für Desktop und Tablet vorgesehen; eine eigenständige mobile Dienstplanansicht für Mitarbeiter
+folgt in einem späteren Ausbauschritt.
 
 ## Dialoge
 
-`DienstplanAnlegenDialog` verlangt ein aktives Schichtmodell der konkreten Filiale. Er wird für die erstmalige Anlage und für
-den erlaubten Modellwechsel wiederverwendet. Die Anlage speichert Modell-ID und Modellbezeichnung am Monatsplan und übernimmt
-alle geordneten Modellschichten als Momentaufnahme. Plan, erste Entwurfsversion und Momentaufnahme entstehen gemeinsam in einem
-atomaren Schreibvorgang. Beim Modellwechsel stehen nur andere aktive, nicht leere Modelle derselben Filiale zur Auswahl.
+`DienstplanAnlegenDialog` verlangt ein aktives Schichtmodell der konkreten Filiale. Die Anlage speichert Modell-ID und
+Modellbezeichnung am Monatsplan und übernimmt alle geordneten Modellschichten als Momentaufnahme. Plan, erste Entwurfsversion
+und Momentaufnahme entstehen gemeinsam in einem atomaren Schreibvorgang. Soll das Modell eines leeren, noch nie
+veröffentlichten Plans geändert werden, wird der Plan gelöscht und anschließend mit dem gewünschten Modell neu angelegt.
 
 `SchichtBearbeitenDialog` ordnet der bereits gewählten Rasterzelle einen aktiven Mitarbeiter zu. Datum, Modellschicht, Beginn,
 Ende und Standardpause stammen aus der Modell-Momentaufnahme und werden schreibgeschützt angezeigt. Beginn und Ende werden beim
@@ -86,18 +90,18 @@ der lokalen Beginnzeit bestimmt. Neue Modelle sind immer aktiv, vorhandene Model
 werden.
 
 Die routbare `SchichtmodellePage` ersetzt in der Navigation die bisherige Vorlagenverwaltung. Sie rendert pro ausgewählter
-Filiale einen `SchichtmodelleFilialabschnitt`, der ausschließlich Modelle dieses Filialpfads lädt und bearbeitet. Die
+Filiale eine `SchichtmodelleFiliale`, die ausschließlich Modelle dieses Filialpfads lädt und bearbeitet. Die
 Monatsanlage, die Rasterdarstellung und das Anlegen einzelner Schichten verwenden ausschließlich die Modell-Momentaufnahme.
 
 ## Beteiligte Dateien
 
 - `src/app/commons/utils/datum/monat.ts`
 - `src/app/components/date-selectors/monat-selector`
-- `src/app/components/schichtplan/dienstplan-filiale`
+- `src/app/components/schichtplan/dienstplan-planungsbereich`
 - `src/app/components/schichtplan/dienstplan-anlegen-dialog`
-- `src/app/components/schichtplan/schichtplan-monat`
+- `src/app/components/schichtplan/dienstplan-monatstabelle`
 - `src/app/components/schichtplan/schicht-bearbeiten-dialog`
 - `src/app/components/schichtplan/schichtmodell-bearbeiten-dialog`
-- `src/app/components/schichtplan/schichtmodelle-filialabschnitt`
+- `src/app/components/schichtplan/schichtmodelle-filiale`
 - `src/app/pages/schichtplan/dienstplan-ansicht-page`
 - `src/app/pages/schichtplan/dienstplan-planung-page`

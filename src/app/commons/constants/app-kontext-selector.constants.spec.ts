@@ -11,7 +11,11 @@ describe('App-Kontextselektor-Konfiguration', () => {
       unternehmer: 'editable',
       firma: 'editable',
     });
-    expect(getAppKontextSelectorKonfiguration('master', 'systemverwaltung')).toMatchObject({
+    expect(getAppKontextSelectorKonfiguration('master', 'system')).toMatchObject({
+      unternehmer: 'editable',
+      firma: 'editable',
+    });
+    expect(getAppKontextSelectorKonfiguration('master', 'einstellungen')).toMatchObject({
       unternehmer: 'editable',
       firma: 'editable',
     });
@@ -21,7 +25,8 @@ describe('App-Kontextselektor-Konfiguration', () => {
     expect(getAppKontextSelectorKonfiguration('master', 'dashboard').filiale).toBe('readonly');
     expect(getAppKontextSelectorKonfiguration('master', 'mitarbeiter').filiale).toBe('editable');
     expect(getAppKontextSelectorKonfiguration('master', 'schichtplan').filiale).toBe('editable');
-    expect(getAppKontextSelectorKonfiguration('master', 'verwaltung').filiale).toBe('readonly');
+    expect(getAppKontextSelectorKonfiguration('master', 'system').filiale).toBe('readonly');
+    expect(getAppKontextSelectorKonfiguration('master', 'einstellungen').filiale).toBe('editable');
   });
 
   it('should expose company and branch throughout the office areas', () => {
@@ -35,10 +40,10 @@ describe('App-Kontextselektor-Konfiguration', () => {
       firma: 'editable',
       filiale: 'editable',
     });
-    expect(getAppKontextSelectorKonfiguration('office', 'verwaltung')).toEqual({
+    expect(getAppKontextSelectorKonfiguration('office', 'einstellungen')).toEqual({
       unternehmer: 'hidden',
       firma: 'editable',
-      filiale: 'readonly',
+      filiale: 'editable',
     });
   });
 

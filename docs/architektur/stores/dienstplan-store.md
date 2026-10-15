@@ -17,8 +17,8 @@ den ausgewählten Dienstplan, seine Versionen und deren Schichten.
   lassen noch fehlende, durch Schichten referenzierte Mitarbeiter-IDs gezielt mit `networkOnly` nachladen.
 - `createDienstplan()` verlangt ein aktives, nicht leeres Schichtmodell derselben Filiale und übernimmt Plan, erste Version und
   Modell-Momentaufnahme aus dem bestätigten Service-Ergebnis in den lokalen Zustand.
-- `updateDienstplanSchichtmodell()` erlaubt den Wechsel nur für den leeren, noch nie veröffentlichten Entwurf und ersetzt Plan,
-  Momentaufnahme sowie Versionsrevision durch das bestätigte Service-Ergebnis.
+- `deleteDienstplan()` erlaubt das Löschen nur für den leeren, noch nie veröffentlichten Entwurf und entfernt Plan, Version,
+  Schichten sowie Modell-Momentaufnahme nach dem bestätigten Service-Aufruf aus dem lokalen Zustand.
 - `createSchicht()`, `updateSchicht()` und `deleteSchicht()` übernehmen bestätigte Service-Ergebnisse direkt in den lokalen
   Zustand und erhöhen die lokale Versionsrevision. Eine Schicht wird über ihre `modellschichtId` einer Zelle der geladenen
   Modell-Momentaufnahme zugeordnet.

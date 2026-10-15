@@ -24,7 +24,7 @@ describe('masterGuard', () => {
       anzeigename: 'Test',
       aktiv: true,
       userRole: 'master',
-      erlaubteBereiche: ['systemverwaltung'],
+      erlaubteBereiche: ['system'],
       zugriffe: {},
     };
     benutzerProfil = signal(profil);
@@ -54,7 +54,7 @@ describe('masterGuard', () => {
     benutzerProfil.set({
       ...profil,
       userRole: 'office',
-      erlaubteBereiche: ['dashboard', 'systemverwaltung'],
+      erlaubteBereiche: ['dashboard', 'system'],
     });
     routerMock.createUrlTree.mockReturnValue(dashboardUrlTree);
 

@@ -168,7 +168,7 @@ describe('BenutzerVerwaltungStore', () => {
     const result = await store.updateBenutzerProfil({
       anzeigename: 'Office Neu',
       aktiv: true,
-      erlaubteBereiche: ['dashboard', 'verwaltung'],
+      erlaubteBereiche: ['dashboard', 'mitarbeiter'],
     });
 
     expect(serviceMock.updateBenutzerProfil).toHaveBeenCalledWith(
@@ -219,7 +219,7 @@ describe('BenutzerVerwaltungStore', () => {
       anzeigename: 'Master',
       aktiv: true,
       userRole: 'master',
-      erlaubteBereiche: ['systemverwaltung'],
+      erlaubteBereiche: ['system'],
       zugriffe: {},
     });
     store.selectBenutzer('master-1');
@@ -228,7 +228,7 @@ describe('BenutzerVerwaltungStore', () => {
       store.updateBenutzerProfil({
         anzeigename: 'Master',
         aktiv: false,
-        erlaubteBereiche: ['systemverwaltung'],
+        erlaubteBereiche: ['system'],
       }),
     ).rejects.toThrow('Ungültige Änderung');
     expect(serviceMock.updateBenutzerProfil).not.toHaveBeenCalled();

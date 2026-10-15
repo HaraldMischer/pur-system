@@ -1,0 +1,39 @@
+<!-- pur-system/src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.html -->
+
+<h2 mat-dialog-title>{{ daten.ausnahme ? 'Ausnahme bearbeiten' : 'Ausnahme anlegen' }}</h2>
+<mat-dialog-content>
+  <form id="ausnahme-form" class="pur-form pur-form--grid" [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field>
+      <mat-label>Datum</mat-label>
+      <input matInput type="date" formControlName="datum" required />
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Bezeichnung</mat-label>
+      <input matInput formControlName="bezeichnung" required maxlength="80" />
+    </mat-form-field>
+    <mat-checkbox formControlName="geoeffnet">Geöffnet</mat-checkbox>
+    @if (form.controls.geoeffnet.value) {
+      <mat-form-field>
+        <mat-label>Beginn</mat-label>
+        <input matInput type="time" formControlName="beginnLokalzeit" required />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Ende</mat-label>
+        <input matInput type="time" formControlName="endeLokalzeit" required />
+      </mat-form-field>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" [mat-dialog-close]="undefined" [disabled]="inProgress()">
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="ausnahme-form"
+    [disabled]="form.invalid || !hatAenderungen() || inProgress()"
+  >
+    Speichern
+  </button>
+</mat-dialog-actions>

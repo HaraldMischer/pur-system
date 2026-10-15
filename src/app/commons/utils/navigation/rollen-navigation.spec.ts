@@ -22,22 +22,22 @@ function createProfil(
 describe('rollen-navigation', () => {
   it('should combine the role navigation with the allowed areas', () => {
     const navigation = getSichtbareRollenNavigation(
-      createProfil('office', ['dashboard', 'verwaltung', 'systemverwaltung']),
+      createProfil('office', ['dashboard', 'schichtplan', 'system']),
     );
 
     expect(navigation.darstellung).toBe('nested');
-    expect(navigation.eintraege.map((eintrag) => eintrag.id)).toEqual(['dashboard', 'verwaltung']);
+    expect(navigation.eintraege.map((eintrag) => eintrag.id)).toEqual(['dashboard', 'schichtplan']);
   });
 
   it('should preserve the configured nested renderer for master', () => {
     const navigation = getSichtbareRollenNavigation(
-      createProfil('master', ['dashboard', 'systemverwaltung']),
+      createProfil('master', ['dashboard', 'system']),
     );
 
     expect(navigation.darstellung).toBe('nested');
     expect(navigation.eintraege.map((eintrag) => eintrag.id)).toEqual([
       'dashboard',
-      'systemverwaltung',
+      'system',
     ]);
   });
 
@@ -62,20 +62,20 @@ describe('rollen-navigation', () => {
 
   it('should show the assigned employee area for master without a data scope', () => {
     const navigation = getSichtbareRollenNavigation({
-      ...createProfil('master', ['dashboard', 'mitarbeiter', 'systemverwaltung']),
+      ...createProfil('master', ['dashboard', 'mitarbeiter', 'system']),
       zugriffe: {},
     });
 
     expect(navigation.eintraege.map((eintrag) => eintrag.id)).toEqual([
       'dashboard',
       'mitarbeiter',
-      'systemverwaltung',
+      'system',
     ]);
   });
 
   it('should provide no entries for an inactive profile', () => {
     const navigation = getSichtbareRollenNavigation(
-      createProfil('master', ['dashboard', 'systemverwaltung'], false),
+      createProfil('master', ['dashboard', 'system'], false),
     );
 
     expect(navigation.eintraege).toEqual([]);
@@ -93,8 +93,8 @@ describe('rollen-navigation', () => {
       },
       {
         typ: 'gruppe',
-        id: 'systemverwaltung',
-        label: 'Systemverwaltung',
+        id: 'system',
+        label: 'System',
         icon: 'admin_panel_settings',
         kinder: [
           {
@@ -102,16 +102,16 @@ describe('rollen-navigation', () => {
             id: 'benutzeranlage',
             label: 'Benutzer anlegen',
             icon: 'person_add',
-            route: '/systemverwaltung/benutzer/anlegen',
-            bereich: 'systemverwaltung',
+            route: '/system/benutzer/anlegen',
+            bereich: 'system',
           },
           {
             typ: 'link',
             id: 'benutzerverwaltung',
             label: 'Benutzer verwalten',
             icon: 'manage_accounts',
-            route: '/systemverwaltung/benutzer/verwalten',
-            bereich: 'systemverwaltung',
+            route: '/system/benutzer/verwalten',
+            bereich: 'system',
           },
         ],
       },

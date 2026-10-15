@@ -2,7 +2,7 @@
 
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
-import { SchichtmodelleFilialabschnitt } from '../../../components/schichtplan/schichtmodelle-filialabschnitt/schichtmodelle-filialabschnitt';
+import { SchichtmodelleFiliale } from '../../../components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
@@ -14,7 +14,7 @@ type TSchichtmodelleFilialauswahl = {
 
 @Component({
   selector: 'app-schichtmodelle-page',
-  imports: [SchichtmodelleFilialabschnitt],
+  imports: [SchichtmodelleFiliale],
   templateUrl: './schichtmodelle-page.html',
   styleUrl: './schichtmodelle-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

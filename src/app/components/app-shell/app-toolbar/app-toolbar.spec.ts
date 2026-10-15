@@ -86,12 +86,12 @@ describe('AppToolbar', () => {
 
   it('should render the current route title', () => {
     const fixture = TestBed.createComponent(AppToolbar);
-    fixture.componentRef.setInput('title', 'Systemverwaltung');
+    fixture.componentRef.setInput('title', 'System');
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(compiled.querySelector('.app-toolbar__title')?.textContent).toContain(
-      'Systemverwaltung',
+      'System',
     );
   });
 

@@ -4,9 +4,9 @@ import { buildErlaubteBereiche, getWaehlbareAppBereiche } from './erlaubte-berei
 
 describe('erlaubte-bereiche', () => {
   it.each([
-    ['master', ['schichtplan', 'mitarbeiter', 'verwaltung']],
-    ['office', ['schichtplan', 'mitarbeiter', 'verwaltung']],
-    ['filiale', ['schichtplan', 'mitarbeiter']],
+    ['master', ['schichtplan', 'mitarbeiter', 'einstellungen']],
+    ['office', ['schichtplan', 'mitarbeiter', 'einstellungen']],
+    ['filiale', ['schichtplan', 'mitarbeiter', 'einstellungen']],
     ['mitarbeiter', ['schichtplan']],
   ] as const)('should expose optional areas for %s', (userRole, expected) => {
     expect(getWaehlbareAppBereiche(userRole).map((bereich) => bereich.value)).toEqual(expected);
@@ -15,23 +15,23 @@ describe('erlaubte-bereiche', () => {
   it.each(['office', 'filiale', 'mitarbeiter'] as const)(
     'should always provide dashboard and exclude system administration for %s',
     (userRole) => {
-      expect(buildErlaubteBereiche(userRole, ['systemverwaltung'])).toEqual(['dashboard']);
+      expect(buildErlaubteBereiche(userRole, ['system'])).toEqual(['dashboard']);
     },
   );
 
   it('should always provide dashboard and system administration for master', () => {
-    expect(buildErlaubteBereiche('master', [])).toEqual(['dashboard', 'systemverwaltung']);
+    expect(buildErlaubteBereiche('master', [])).toEqual(['dashboard', 'system']);
   });
 
   it('should preserve optional areas once in their configured order', () => {
     expect(
-      buildErlaubteBereiche('office', ['verwaltung', 'dashboard', 'schichtplan', 'verwaltung']),
-    ).toEqual(['dashboard', 'schichtplan', 'verwaltung']);
+      buildErlaubteBereiche('office', ['einstellungen', 'mitarbeiter', 'dashboard', 'schichtplan']),
+    ).toEqual(['dashboard', 'schichtplan', 'mitarbeiter', 'einstellungen']);
   });
 
   it.each([
-    ['filiale', ['verwaltung'], ['dashboard']],
-    ['mitarbeiter', ['mitarbeiter', 'verwaltung'], ['dashboard']],
+    ['filiale', ['system'], ['dashboard']],
+    ['mitarbeiter', ['mitarbeiter'], ['dashboard']],
   ] as const)('should remove areas unavailable for %s', (userRole, areas, expected) => {
     expect(buildErlaubteBereiche(userRole, [...areas])).toEqual(expected);
   });
@@ -40,7 +40,7 @@ describe('erlaubte-bereiche', () => {
     expect(buildErlaubteBereiche('master', ['mitarbeiter'])).toEqual([
       'dashboard',
       'mitarbeiter',
-      'systemverwaltung',
+      'system',
     ]);
   });
 });

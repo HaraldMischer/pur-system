@@ -5,6 +5,9 @@ import type {
   IDienstplanPfad,
   IDienstplanVersionPfad,
   IFilialPfad,
+  IFilialeinstellungAusnahmePfad,
+  IFilialeinstellungPfad,
+  IFilialeinstellungSondertagPfad,
   IModellschichtPfad,
   ISchichtPfad,
   ISchichtmodellPfad,
@@ -44,6 +47,21 @@ export const FIRESTORE_COLLECTION_PATHS = {
   },
   mitarbeiter(unternehmerId: string, firmaId: string): string {
     return `unternehmer/${unternehmerId}/firma/${firmaId}/mitarbeiter`;
+  },
+  filialeinstellungen(pfad: IFilialPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/einstellung`;
+  },
+  filialeinstellungSondertage(pfad: IFilialPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.filialeinstellung({
+      ...pfad,
+      einstellungId: 'oeffnungszeiten',
+    })}/sondertag`;
+  },
+  filialeinstellungAusnahmen(pfad: IFilialPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.filialeinstellung({
+      ...pfad,
+      einstellungId: 'oeffnungszeiten',
+    })}/ausnahme`;
   },
   schichtmodelle(pfad: IFilialPfad): string {
     return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/schichtmodell`;
@@ -101,6 +119,15 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   },
   mitarbeiter(unternehmerId: string, firmaId: string, mitarbeiterId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId)}/${mitarbeiterId}`;
+  },
+  filialeinstellung(pfad: IFilialeinstellungPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.filialeinstellungen(pfad)}/${pfad.einstellungId}`;
+  },
+  filialeinstellungSondertag(pfad: IFilialeinstellungSondertagPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.filialeinstellungSondertage(pfad)}/${pfad.sondertagId}`;
+  },
+  filialeinstellungAusnahme(pfad: IFilialeinstellungAusnahmePfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.filialeinstellungAusnahmen(pfad)}/${pfad.datum}`;
   },
   schichtmodell(pfad: ISchichtmodellPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad)}/${pfad.schichtmodellId}`;

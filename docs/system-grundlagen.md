@@ -43,12 +43,12 @@ Datenrechte.
 
 ## Benutzerrollen
 
-| Auth-Rolle    | Aufgabe                                      | Datenzuordnung                                              |
-| ------------- | -------------------------------------------- | ----------------------------------------------------------- |
-| `master`      | Zentrale System- und Benutzerverwaltung      | Keine Zuordnung erforderlich                                |
-| `office`      | Verwaltung freigegebener Firmen und Filialen | Ein oder mehrere Unternehmer, Firmen und Filialen           |
-| `filiale`     | Arbeit innerhalb einer Filiale               | Genau ein Unternehmer, eine Firma und eine Filiale          |
-| `mitarbeiter` | Persönlicher Zugang eines Mitarbeiters       | Genau ein Unternehmer, eine Firma und ein Firmenmitarbeiter |
+| Auth-Rolle    | Aufgabe                                            | Datenzuordnung                                              |
+| ------------- | -------------------------------------------------- | ----------------------------------------------------------- |
+| `master`      | Zentrale System-, Struktur- und Benutzerverwaltung | Keine Zuordnung erforderlich                                |
+| `office`      | Arbeit in freigegebenen Firmen und Filialen        | Ein oder mehrere Unternehmer, Firmen und Filialen           |
+| `filiale`     | Arbeit innerhalb einer Filiale                     | Genau ein Unternehmer, eine Firma und eine Filiale          |
+| `mitarbeiter` | Persönlicher Zugang eines Mitarbeiters             | Genau ein Unternehmer, eine Firma und ein Firmenmitarbeiter |
 
 ## Datenzugriffe
 

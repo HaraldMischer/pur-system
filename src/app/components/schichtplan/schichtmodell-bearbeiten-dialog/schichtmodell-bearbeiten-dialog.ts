@@ -154,10 +154,10 @@ export class SchichtmodellBearbeitenDialog {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Fügt am Ende des Modells eine leere Modellschicht hinzu.
+   * Fügt am Anfang des Modells eine leere Modellschicht hinzu.
    */
   addModellschicht(): void {
-    this.schichtmodellForm.controls.modellschichten.push(this.createModellschichtForm());
+    this.schichtmodellForm.controls.modellschichten.insert(0, this.createModellschichtForm());
   }
 
   /**

@@ -52,9 +52,7 @@ describe('SchichtmodellePage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(
-      fixture.nativeElement.querySelectorAll('app-schichtmodelle-filialabschnitt'),
-    ).toHaveLength(1);
+    expect(fixture.nativeElement.querySelectorAll('app-schichtmodelle-filiale')).toHaveLength(1);
     expect(loadSchichtmodelle).toHaveBeenCalledWith({
       unternehmerId: 'u-1',
       firmaId: 'f-1',
@@ -67,8 +65,6 @@ describe('SchichtmodellePage', () => {
     const fixture = TestBed.createComponent(SchichtmodellePage);
     fixture.detectChanges();
 
-    expect(
-      fixture.nativeElement.querySelectorAll('app-schichtmodelle-filialabschnitt'),
-    ).toHaveLength(0);
+    expect(fixture.nativeElement.querySelectorAll('app-schichtmodelle-filiale')).toHaveLength(0);
   });
 });

@@ -112,6 +112,10 @@ const andererMitarbeiterPath = `${firmaPath}/mitarbeiter/m-2`;
 const nichtZugeordneteFirmaPath = `${unternehmerPath}/firma/f-2`;
 const nichtZugeordneterMitarbeiterPath = `${nichtZugeordneteFirmaPath}/mitarbeiter/m-3`;
 const nichtZugeordneteFilialePath = `${firmaPath}/filiale/b-2`;
+const filialeinstellungAllgemeinPath = `${filialePath}/einstellung/allgemein`;
+const filialeinstellungOeffnungszeitenPath = `${filialePath}/einstellung/oeffnungszeiten`;
+const filialeinstellungSondertagPath = `${filialeinstellungOeffnungszeitenPath}/sondertag`;
+const filialeinstellungAusnahmePath = `${filialeinstellungOeffnungszeitenPath}/ausnahme`;
 const schichtmodellPath = `${filialePath}/schichtmodell/sommer`;
 const modellschichtPath = `${schichtmodellPath}/modellschicht/frueh`;
 const dienstplanSchichtmodellPath = `${filialePath}/schichtmodell/standard`;
@@ -134,7 +138,7 @@ async function seedProfile(userRole, overrides = {}) {
     await setDoc(doc(db, 'benutzerprofil/scoped'), {
       aktiv: true,
       userRole,
-      erlaubteBereiche: userRole === 'master' ? ['dashboard', 'systemverwaltung'] : ['dashboard'],
+      erlaubteBereiche: userRole === 'master' ? ['dashboard', 'system'] : ['dashboard'],
       zugriffe,
       ...overrides,
     });
@@ -343,31 +347,10 @@ function setInitialenDienstplan(batch, db, basisPfad, monat) {
   batch.set(doc(db, `${basisPfad}/modellschicht/frueh`), modellschichtDaten());
 }
 
-function setDienstplanSchichtmodellwechsel(batch, db, mitRevision = true) {
-  batch.update(doc(db, dienstplanPath), {
-    schichtmodellId: 'winter',
-    schichtmodellBezeichnung: 'Winter',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  if (mitRevision) {
-    batch.update(doc(db, entwurfVersionPath), {
-      revision: 1,
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    });
-  }
+function deleteUnveroeffentlichtenDienstplan(batch, db) {
   batch.delete(doc(db, dienstplanModellschichtPath));
-  batch.set(
-    doc(db, `${dienstplanPath}/modellschicht/spaet`),
-    modellschichtDaten({
-      bezeichnung: 'Spätschicht',
-      beginnLokalzeit: '16:00',
-      endeLokalzeit: '01:00',
-      endetAmFolgetag: true,
-      standardpauseMinuten: 30,
-    }),
-  );
+  batch.delete(doc(db, entwurfVersionPath));
+  batch.delete(doc(db, dienstplanPath));
 }
 
 function schichtmodellDaten(overrides = {}) {
@@ -392,6 +375,91 @@ function modellschichtDaten(overrides = {}) {
     mehrfachbelegungErlaubt: false,
     ...overrides,
   };
+}
+
+function filialeinstellungMetadaten() {
+  return {
+    erstelltAm: serverTimestamp(),
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  };
+}
+
+function wochenregeln(overrides = {}) {
+  const geschlossen = { geoeffnet: false };
+  return {
+    montag: {
+      geoeffnet: true,
+      beginnLokalzeit: '07:00',
+      endeLokalzeit: '01:00',
+      endetAmFolgetag: true,
+    },
+    dienstag: geschlossen,
+    mittwoch: geschlossen,
+    donnerstag: geschlossen,
+    freitag: geschlossen,
+    samstag: geschlossen,
+    sonntag: geschlossen,
+    ...overrides,
+  };
+}
+
+function allgemeineFilialeinstellung(overrides = {}) {
+  return {
+    bundesland: 'DE-NW',
+    zeitzone: 'Europe/Berlin',
+    ...filialeinstellungMetadaten(),
+    ...overrides,
+  };
+}
+
+function oeffnungszeitenFilialeinstellung(overrides = {}) {
+  return {
+    wochenregeln: wochenregeln(),
+    ...filialeinstellungMetadaten(),
+    ...overrides,
+  };
+}
+
+function systemSondertagDaten(overrides = {}) {
+  return {
+    bezeichnung: 'Neujahr',
+    aktiv: true,
+    herkunft: 'system',
+    datumsregel: { typ: 'gesetzlicherFeiertag', feiertagSchluessel: 'neujahr' },
+    oeffnungsregel: { geoeffnet: false },
+    ...filialeinstellungMetadaten(),
+    ...overrides,
+  };
+}
+
+function benutzerSondertagDaten(overrides = {}) {
+  return {
+    bezeichnung: 'Inventur',
+    aktiv: true,
+    herkunft: 'benutzer',
+    datumsregel: { typ: 'jaehrlichFestesDatum', monat: 2, tag: 15 },
+    oeffnungsregel: { geoeffnet: false },
+    ...filialeinstellungMetadaten(),
+    ...overrides,
+  };
+}
+
+function ausnahmeDaten(datum, overrides = {}) {
+  return {
+    datum,
+    bezeichnung: 'Sonderöffnung',
+    oeffnungsregel: { geoeffnet: false },
+    ...filialeinstellungMetadaten(),
+    ...overrides,
+  };
+}
+
+function setInitialeFilialeinstellung(batch, db) {
+  batch.set(doc(db, filialeinstellungAllgemeinPath), allgemeineFilialeinstellung());
+  batch.set(doc(db, filialeinstellungOeffnungszeitenPath), oeffnungszeitenFilialeinstellung());
+  batch.set(doc(db, `${filialeinstellungSondertagPath}/neujahr`), systemSondertagDaten());
 }
 
 for (const role of ['master', 'office', 'filiale']) {
@@ -443,6 +511,187 @@ test('shift models reject foreign branches, employee accounts and invalid model 
   });
   await assertFails(getDoc(doc(mitarbeiterDb, schichtmodellPath)));
   await assertFails(setDoc(doc(mitarbeiterDb, schichtmodellPath), schichtmodellDaten()));
+});
+
+for (const role of ['master', 'office', 'filiale']) {
+  test(`${role} initializes and reads valid branch settings`, async () => {
+    const overrides =
+      role === 'master' ? { zugriffe: {} } : { erlaubteBereiche: ['dashboard', 'einstellungen'] };
+    const db = await seedProfile(role, overrides);
+    const batch = writeBatch(db);
+    setInitialeFilialeinstellung(batch, db);
+
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(getDoc(doc(db, filialeinstellungAllgemeinPath)));
+    await assertSucceeds(getDoc(doc(db, filialeinstellungOeffnungszeitenPath)));
+    await assertSucceeds(getDoc(doc(db, `${filialeinstellungSondertagPath}/neujahr`)));
+  });
+}
+
+test('branch settings require the settings area and the concrete branch assignment', async () => {
+  const officeDb = await seedProfile('office');
+  await assertFails(getDoc(doc(officeDb, filialeinstellungAllgemeinPath)));
+  await assertFails(
+    setDoc(doc(officeDb, filialeinstellungAllgemeinPath), allgemeineFilialeinstellung()),
+  );
+
+  const db = await seedProfile('office', {
+    erlaubteBereiche: ['dashboard', 'einstellungen'],
+  });
+  await assertFails(
+    setDoc(
+      doc(db, `${nichtZugeordneteFilialePath}/einstellung/allgemein`),
+      allgemeineFilialeinstellung(),
+    ),
+  );
+
+  const mitarbeiterDb = await seedProfile('mitarbeiter', {
+    erlaubteBereiche: ['dashboard', 'einstellungen'],
+    zugriffe: { 'u-1': { 'f-1': [] } },
+    firmaMitarbeiterId: 'm-1',
+  });
+  await assertFails(getDoc(doc(mitarbeiterDb, filialeinstellungAllgemeinPath)));
+});
+
+test('branch settings reject unknown documents, fields and invalid weekly times', async () => {
+  const db = await seedProfile('office', {
+    erlaubteBereiche: ['dashboard', 'einstellungen'],
+  });
+  await assertFails(
+    setDoc(doc(db, `${filialePath}/einstellung/unbekannt`), allgemeineFilialeinstellung()),
+  );
+  await assertFails(
+    setDoc(
+      doc(db, filialeinstellungAllgemeinPath),
+      allgemeineFilialeinstellung({ postleitzahl: '12345' }),
+    ),
+  );
+  await assertFails(
+    setDoc(
+      doc(db, filialeinstellungOeffnungszeitenPath),
+      oeffnungszeitenFilialeinstellung({
+        wochenregeln: wochenregeln({
+          montag: {
+            geoeffnet: true,
+            beginnLokalzeit: '7:00',
+            endeLokalzeit: '01:00',
+            endetAmFolgetag: true,
+          },
+        }),
+      }),
+    ),
+  );
+});
+
+test('system special days keep their identity and can only change state and opening rule', async () => {
+  const db = await seedProfile('office', {
+    erlaubteBereiche: ['dashboard', 'einstellungen'],
+  });
+  const batch = writeBatch(db);
+  setInitialeFilialeinstellung(batch, db);
+  await assertSucceeds(batch.commit());
+  const neujahr = doc(db, `${filialeinstellungSondertagPath}/neujahr`);
+
+  await assertSucceeds(
+    updateDoc(neujahr, {
+      aktiv: false,
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '08:00',
+        endeLokalzeit: '14:00',
+        endetAmFolgetag: false,
+      },
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+  await assertFails(
+    updateDoc(neujahr, {
+      bezeichnung: 'Freier Tag',
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+  await assertFails(deleteDoc(neujahr));
+});
+
+test('a federal-state change atomically removes no-longer-applicable system holidays', async () => {
+  const db = await seedProfile('office', {
+    erlaubteBereiche: ['dashboard', 'einstellungen'],
+  });
+  let batch = writeBatch(db);
+  setInitialeFilialeinstellung(batch, db);
+  batch.set(
+    doc(db, `${filialeinstellungSondertagPath}/allerheiligen`),
+    systemSondertagDaten({
+      bezeichnung: 'Allerheiligen',
+      datumsregel: {
+        typ: 'gesetzlicherFeiertag',
+        feiertagSchluessel: 'allerheiligen',
+      },
+    }),
+  );
+  await assertSucceeds(batch.commit());
+
+  batch = writeBatch(db);
+  batch.update(doc(db, filialeinstellungAllgemeinPath), {
+    bundesland: 'DE-HE',
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.delete(doc(db, `${filialeinstellungSondertagPath}/allerheiligen`));
+  await assertSucceeds(batch.commit());
+});
+
+test('user special days support fixed dates but cannot impersonate system holidays', async () => {
+  const db = await seedProfile('filiale', {
+    erlaubteBereiche: ['dashboard', 'einstellungen'],
+  });
+  let batch = writeBatch(db);
+  setInitialeFilialeinstellung(batch, db);
+  await assertSucceeds(batch.commit());
+  const inventur = doc(db, `${filialeinstellungSondertagPath}/inventur`);
+
+  await assertSucceeds(setDoc(inventur, benutzerSondertagDaten()));
+  await assertSucceeds(
+    updateDoc(inventur, {
+      bezeichnung: 'Inventurtag',
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+  await assertSucceeds(deleteDoc(inventur));
+  await assertFails(
+    setDoc(
+      doc(db, `${filialeinstellungSondertagPath}/falscher-feiertag`),
+      benutzerSondertagDaten({
+        datumsregel: { typ: 'gesetzlicherFeiertag', feiertagSchluessel: 'neujahr' },
+      }),
+    ),
+  );
+});
+
+test('date exceptions require matching ISO document IDs and valid field sets', async () => {
+  const db = await seedProfile('office', {
+    erlaubteBereiche: ['dashboard', 'einstellungen'],
+  });
+  const ausnahme = doc(db, `${filialeinstellungAusnahmePath}/2026-12-23`);
+
+  await assertSucceeds(setDoc(ausnahme, ausnahmeDaten('2026-12-23')));
+  await assertSucceeds(
+    updateDoc(ausnahme, {
+      bezeichnung: 'Geänderte Sonderöffnung',
+      aktualisiertAm: serverTimestamp(),
+      aktualisiertVonUid: 'scoped',
+    }),
+  );
+  await assertSucceeds(deleteDoc(ausnahme));
+  await assertFails(
+    setDoc(doc(db, `${filialeinstellungAusnahmePath}/23-12-2026`), ausnahmeDaten('23-12-2026')),
+  );
+  await assertFails(
+    setDoc(doc(db, `${filialeinstellungAusnahmePath}/2026-12-24`), ausnahmeDaten('2026-12-23')),
+  );
 });
 
 for (const role of ['master', 'office', 'filiale']) {
@@ -506,31 +755,26 @@ test('model snapshots of an existing service plan are immutable', async () => {
   );
 });
 
-test('office switches the model snapshot of a never-published draft with its next revision', async () => {
+test('office deletes a never-published service plan with its draft and model snapshot', async () => {
   const db = await seedProfile('office');
   await seedUnveroeffentlichtenDienstplan();
   const batch = writeBatch(db);
-  setDienstplanSchichtmodellwechsel(batch, db);
+  deleteUnveroeffentlichtenDienstplan(batch, db);
 
   await assertSucceeds(batch.commit());
-  const dienstplan = await getDoc(doc(db, dienstplanPath));
-  const version = await getDoc(doc(db, entwurfVersionPath));
-  assert.equal(dienstplan.data().schichtmodellId, 'winter');
-  assert.equal(version.data().revision, 1);
+  assert.equal((await getDoc(doc(db, dienstplanPath))).exists(), false);
+  assert.equal((await getDoc(doc(db, entwurfVersionPath))).exists(), false);
   assert.equal((await getDoc(doc(db, dienstplanModellschichtPath))).exists(), false);
-  await assertSucceeds(getDoc(doc(db, `${dienstplanPath}/modellschicht/spaet`)));
 });
 
-test('office cannot switch a model after publication or without advancing the draft revision', async () => {
+test('office cannot delete a published service plan or only its plan document', async () => {
   const db = await seedProfile('office');
   await seedUnveroeffentlichtenDienstplan();
-  let batch = writeBatch(db);
-  setDienstplanSchichtmodellwechsel(batch, db, false);
-  await assertFails(batch.commit());
+  await assertFails(deleteDoc(doc(db, dienstplanPath)));
 
   await seedDienstplan();
-  batch = writeBatch(db);
-  setDienstplanSchichtmodellwechsel(batch, db);
+  const batch = writeBatch(db);
+  deleteUnveroeffentlichtenDienstplan(batch, db);
   await assertFails(batch.commit());
 });
 
@@ -1222,7 +1466,7 @@ test('active master manages company employees without the employee area', async 
 
 test('active master manages all company employees with the employee area', async () => {
   const db = await seedProfile('master', {
-    erlaubteBereiche: ['dashboard', 'mitarbeiter', 'systemverwaltung'],
+    erlaubteBereiche: ['dashboard', 'mitarbeiter', 'system'],
     zugriffe: {},
   });
   const neuerMitarbeiter = doc(db, `${firmaPath}/mitarbeiter/neu`);
@@ -1334,12 +1578,12 @@ test('active master cannot store client-managed profile areas directly', async (
   const anderesProfil = doc(db, 'benutzerprofil/other');
 
   await assertFails(setDoc(eigenesProfil, { erlaubteBereiche: ['dashboard'] }, { merge: true }));
-  await assertFails(setDoc(anderesProfil, { erlaubteBereiche: ['verwaltung'] }, { merge: true }));
+  await assertFails(setDoc(anderesProfil, { erlaubteBereiche: ['mitarbeiter'] }, { merge: true }));
   await assertFails(
-    setDoc(anderesProfil, { erlaubteBereiche: ['dashboard', 'systemverwaltung'] }, { merge: true }),
+    setDoc(anderesProfil, { erlaubteBereiche: ['dashboard', 'system'] }, { merge: true }),
   );
   await assertFails(
-    setDoc(anderesProfil, { erlaubteBereiche: ['dashboard', 'verwaltung'] }, { merge: true }),
+    setDoc(anderesProfil, { erlaubteBereiche: ['dashboard', 'mitarbeiter'] }, { merge: true }),
   );
 });
 
@@ -1414,11 +1658,11 @@ test('active master cannot create employee account profiles directly', async () 
   );
 });
 
-test('active office can update assigned companies and branches without creating or deleting', async () => {
+test('active office cannot update, create or delete companies and branches', async () => {
   const db = await seedProfile('office');
 
-  await assertSucceeds(setDoc(doc(db, firmaPath), { name: 'Firma aktualisiert' }, { merge: true }));
-  await assertSucceeds(
+  await assertFails(setDoc(doc(db, firmaPath), { name: 'Firma aktualisiert' }, { merge: true }));
+  await assertFails(
     setDoc(doc(db, filialePath), { name: 'Filiale aktualisiert' }, { merge: true }),
   );
   await assertFails(

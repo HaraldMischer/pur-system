@@ -3,7 +3,7 @@
 import { TAppBereich } from '../../models/app/app-bereich';
 import { TUserRole } from '../../models/domain/benutzer';
 
-export type TWaehlbarerAppBereich = Exclude<TAppBereich, 'dashboard' | 'systemverwaltung'>;
+export type TWaehlbarerAppBereich = Exclude<TAppBereich, 'dashboard' | 'system'>;
 
 type TWaehlbarerAppBereichEintrag = {
   value: TWaehlbarerAppBereich;
@@ -13,14 +13,14 @@ type TWaehlbarerAppBereichEintrag = {
 const WAEHLBARE_APP_BEREICHE: ReadonlyArray<TWaehlbarerAppBereichEintrag> = [
   { value: 'schichtplan', label: 'Schichtplan' },
   { value: 'mitarbeiter', label: 'Mitarbeiter' },
-  { value: 'verwaltung', label: 'Verwaltung' },
+  { value: 'einstellungen', label: 'Einstellungen' },
 ];
 
 const WAEHLBARE_APP_BEREICHE_NACH_ROLLE = {
-  filiale: ['schichtplan', 'mitarbeiter'],
-  office: ['schichtplan', 'mitarbeiter', 'verwaltung'],
+  filiale: ['schichtplan', 'mitarbeiter', 'einstellungen'],
+  office: ['schichtplan', 'mitarbeiter', 'einstellungen'],
   mitarbeiter: ['schichtplan'],
-  master: ['schichtplan', 'mitarbeiter', 'verwaltung'],
+  master: ['schichtplan', 'mitarbeiter', 'einstellungen'],
 } as const satisfies Readonly<Record<TUserRole, ReadonlyArray<TWaehlbarerAppBereich>>>;
 
 /**
@@ -38,7 +38,7 @@ export function getWaehlbareAppBereiche(
 }
 
 /**
- * Ergänzt die verpflichtenden Bereiche und entfernt unzulässige Systemverwaltungsfreigaben.
+ * Ergänzt die verpflichtenden Bereiche und entfernt unzulässige Systemfreigaben.
  *
  * @param userRole - Die unveränderliche Benutzerrolle.
  * @param bereiche - Die zusätzlich ausgewählten App-Bereiche.
@@ -58,7 +58,7 @@ export function buildErlaubteBereiche(
   }
 
   if (userRole === 'master') {
-    erlaubteBereiche.push('systemverwaltung');
+    erlaubteBereiche.push('system');
   }
 
   return erlaubteBereiche;

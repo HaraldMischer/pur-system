@@ -18,7 +18,6 @@ import {
   IDienstplanBestand,
   IDienstplanDokument,
   IDienstplanEintrag,
-  IDienstplanModellwechselErgebnis,
   IDienstplanVersionDokument,
   IDienstplanVersionEintrag,
 } from '../../commons/models/domain/dienstplan';
@@ -208,28 +207,19 @@ export class DienstplanService {
   }
 
   /**
-   * Ersetzt das Schichtmodell eines leeren, noch nie veröffentlichten Entwurfs.
+   * Löscht einen leeren, noch nie veröffentlichten Dienstplan mit seinem Entwurf und seiner Momentaufnahme.
    *
    * @param pfad - Vollständiger Pfad der Entwurfsversion.
    * @param erwarteteRevision - Vom Client zuletzt geladene Revision.
-   * @param schichtmodell - Neues aktives Schichtmodell derselben Filiale.
-   * @param benutzerUid - UID des ändernden Benutzers.
-   * @returns Aktualisierter Dienstplan, neue Momentaufnahme und bestätigte Versionsrevision.
    */
-  async updateDienstplanSchichtmodell(
-    pfad: IDienstplanVersionPfad,
-    erwarteteRevision: number,
-    schichtmodell: ISchichtmodellBestand,
-    benutzerUid: string,
-  ): Promise<IDienstplanModellwechselErgebnis> {
-    validateSchichtmodell(pfad, schichtmodell);
+  async deleteDienstplan(pfad: IDienstplanVersionPfad, erwarteteRevision: number): Promise<void> {
     const dienstplanPfad: IDienstplanPfad = {
       unternehmerId: pfad.unternehmerId,
       firmaId: pfad.firmaId,
       filialeId: pfad.filialeId,
       dienstplanId: pfad.dienstplanId,
     };
-    const [dienstplanDokument, schichten, bisherigeModellschichten] = await Promise.all([
+    const [dienstplanDokument, schichten, modellschichten] = await Promise.all([
       this.firestoreDbService.loadDocument<IDienstplanDokument>(
         FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
         'networkOnly',
@@ -246,62 +236,26 @@ export class DienstplanService {
       dienstplanDokument.daten,
     );
     if (dienstplan.entwurfVersionId !== pfad.versionId || dienstplan.veroeffentlichteVersionId) {
-      throw new Error(
-        'Das Schichtmodell kann nach einer Veröffentlichung nicht mehr gewechselt werden.',
-      );
+      throw new Error('Ein bereits veröffentlichter Dienstplan kann nicht gelöscht werden.');
     }
     if (schichten.length > 0) {
       throw new Error('Lösche zuerst alle Schichten des Entwurfs.');
     }
-    if (dienstplan.schichtmodellId === schichtmodell.schichtmodell.id) {
-      throw new Error('Der Dienstplan verwendet dieses Schichtmodell bereits.');
-    }
 
-    const zeitstempel = this.firestoreDbService.createServerTimestamp();
-    const modellschichten = schichtmodell.modellschichten
-      .slice()
-      .sort(compareModellschichtenNachBeginn)
-      .map((modellschicht) => {
-        return mapModellschichtMomentaufnahme(dienstplanPfad, modellschicht.id, modellschicht);
-      });
-    const neueModellschichtIds = new Set(modellschichten.map((modellschicht) => modellschicht.id));
-    return this.firestoreDbService.executeDocumentTransaction<
-      IDienstplanVersionDokument,
-      IDienstplanModellwechselErgebnis
-    >(FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad), (version) => {
-      const versionRevision = getNaechsteRevision(version?.daten, erwarteteRevision);
-      return {
-        ergebnis: {
-          dienstplan: {
-            ...dienstplan,
-            schichtmodellId: schichtmodell.schichtmodell.id,
-            schichtmodellBezeichnung: schichtmodell.schichtmodell.bezeichnung,
-            aktualisiertVonUid: benutzerUid,
-          },
-          modellschichten,
-          versionRevision,
-        },
-        operationen: [
-          {
-            documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad),
-            daten: {
-              revision: versionRevision,
-              aktualisiertAm: zeitstempel,
-              aktualisiertVonUid: benutzerUid,
-            },
-          },
-          {
-            documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
-            daten: {
-              schichtmodellId: schichtmodell.schichtmodell.id,
-              schichtmodellBezeichnung: schichtmodell.schichtmodell.bezeichnung,
-              aktualisiertAm: zeitstempel,
-              aktualisiertVonUid: benutzerUid,
-            },
-          },
-          ...bisherigeModellschichten
-            .filter((modellschicht) => !neueModellschichtIds.has(modellschicht.id))
-            .map((modellschicht) => {
+    await this.firestoreDbService.executeDocumentTransaction<IDienstplanVersionDokument, void>(
+      FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad),
+      (version) => {
+        if (
+          !version ||
+          version.daten.status !== 'entwurf' ||
+          version.daten.revision !== erwarteteRevision
+        ) {
+          throw new Error('Der Dienstplan wurde zwischenzeitlich geändert. Bitte lade ihn erneut.');
+        }
+        return {
+          ergebnis: undefined,
+          operationen: [
+            ...modellschichten.map((modellschicht) => {
               return {
                 documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
                   ...dienstplanPfad,
@@ -310,25 +264,18 @@ export class DienstplanService {
                 delete: true as const,
               };
             }),
-          ...modellschichten.map((modellschicht) => {
-            return {
-              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
-                ...dienstplanPfad,
-                modellschichtId: modellschicht.id,
-              }),
-              daten: {
-                bezeichnung: modellschicht.bezeichnung,
-                beginnLokalzeit: modellschicht.beginnLokalzeit,
-                endeLokalzeit: modellschicht.endeLokalzeit,
-                endetAmFolgetag: modellschicht.endetAmFolgetag,
-                standardpauseMinuten: modellschicht.standardpauseMinuten,
-                mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
-              },
-            };
-          }),
-        ],
-      };
-    });
+            {
+              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad),
+              delete: true,
+            },
+            {
+              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
+              delete: true,
+            },
+          ],
+        };
+      },
+    );
   }
 
   /**

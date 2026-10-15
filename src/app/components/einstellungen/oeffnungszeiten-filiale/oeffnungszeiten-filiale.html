@@ -1,0 +1,166 @@
+<!-- pur-system/src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.html -->
+
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>{{ filiale().anzeigename }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    @if (kontext()?.download) {
+      <p role="status">Öffnungszeiten werden geladen …</p>
+    } @else if (kontext()?.error; as error) {
+      <p class="pur-form__error" role="alert">{{ error }}</p>
+    }
+
+    @if (kontext()?.isLoaded) {
+      <form class="pur-form pur-form--grid" [formGroup]="form" (ngSubmit)="saveGrundlagen()">
+        <div class="pur-form__group oeffnungszeiten-filiale__grundlagen">
+          <h2 class="pur-form__group-titel">Grundlagen</h2>
+          <mat-form-field>
+            <mat-label>Bundesland</mat-label>
+            <mat-select formControlName="bundesland" required>
+              @for (bundesland of bundeslaender; track bundesland.value) {
+                <mat-option [value]="bundesland.value">{{ bundesland.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Zeitzone</mat-label>
+            <input matInput formControlName="zeitzone" readonly />
+          </mat-form-field>
+        </div>
+
+        <div class="pur-form__group">
+          <h2 class="pur-form__group-titel">Reguläre Woche</h2>
+          <div class="oeffnungszeiten-filiale__wochentage">
+            @for (wochentag of wochentage; track wochentag.value) {
+              <section
+                class="oeffnungszeiten-filiale__wochentag"
+                [formGroup]="getTagForm(wochentag.value)"
+              >
+                <h3>{{ wochentag.label }}</h3>
+                <mat-checkbox formControlName="geoeffnet">Geöffnet</mat-checkbox>
+                @if (getTagForm(wochentag.value).controls.geoeffnet.value) {
+                  <mat-form-field>
+                    <mat-label>Beginn</mat-label>
+                    <input matInput type="time" formControlName="beginnLokalzeit" required />
+                  </mat-form-field>
+                  <mat-form-field>
+                    <mat-label>Ende</mat-label>
+                    <input matInput type="time" formControlName="endeLokalzeit" required />
+                  </mat-form-field>
+                  @if (endetAmFolgetag(wochentag.value)) {
+                    <span class="oeffnungszeiten-filiale__folgetag">Endet am Folgetag</span>
+                  }
+                }
+              </section>
+            }
+          </div>
+        </div>
+
+        <div class="oeffnungszeiten-filiale__formular-aktionen">
+          <button
+            matButton="filled"
+            type="submit"
+            [disabled]="form.invalid || form.pristine || kontext()?.inProgress"
+          >
+            {{ bestand() ? 'Grundlagen speichern' : 'Öffnungszeiten initialisieren' }}
+          </button>
+        </div>
+      </form>
+
+      @if (bestand(); as daten) {
+        <section class="oeffnungszeiten-filiale__liste">
+          <header class="oeffnungszeiten-filiale__listen-kopf">
+            <h2>Sondertage</h2>
+            <button
+              matButton="filled"
+              type="button"
+              (click)="openSondertagAnlegen()"
+              [disabled]="kontext()?.inProgress"
+            >
+              <mat-icon>add</mat-icon>
+              Sondertag
+            </button>
+          </header>
+          @for (sondertag of daten.sondertage; track sondertag.id) {
+            <div class="oeffnungszeiten-filiale__eintrag">
+              <div>
+                <strong>{{ sondertag.bezeichnung }}</strong>
+                <span
+                  >{{ sondertag.aktiv ? 'Aktiv' : 'Inaktiv' }} ·
+                  {{
+                    sondertag.herkunft === 'system' ? 'Gesetzlicher Feiertag' : 'Eigenes Datum'
+                  }}</span
+                >
+              </div>
+              <div class="oeffnungszeiten-filiale__eintrag-aktionen">
+                <button
+                  matIconButton
+                  type="button"
+                  aria-label="Sondertag bearbeiten"
+                  (click)="openSondertagBearbeiten(sondertag)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                @if (sondertag.herkunft === 'benutzer') {
+                  <button
+                    matIconButton
+                    type="button"
+                    aria-label="Sondertag löschen"
+                    (click)="deleteSondertag(sondertag)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </section>
+
+        <section class="oeffnungszeiten-filiale__liste">
+          <header class="oeffnungszeiten-filiale__listen-kopf">
+            <h2>Datumsbezogene Ausnahmen</h2>
+            <button
+              matButton="filled"
+              type="button"
+              (click)="openAusnahmeAnlegen()"
+              [disabled]="kontext()?.inProgress"
+            >
+              <mat-icon>add</mat-icon>
+              Ausnahme
+            </button>
+          </header>
+          @if (daten.ausnahmen.length === 0) {
+            <p>Noch keine Ausnahmen vorhanden.</p>
+          }
+          @for (ausnahme of daten.ausnahmen; track ausnahme.id) {
+            <div class="oeffnungszeiten-filiale__eintrag">
+              <div>
+                <strong>{{ ausnahme.datum }} · {{ ausnahme.bezeichnung }}</strong>
+                <span>{{ ausnahme.oeffnungsregel.geoeffnet ? 'Geöffnet' : 'Geschlossen' }}</span>
+              </div>
+              <div class="oeffnungszeiten-filiale__eintrag-aktionen">
+                <button
+                  matIconButton
+                  type="button"
+                  aria-label="Ausnahme bearbeiten"
+                  (click)="openAusnahmeBearbeiten(ausnahme)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  matIconButton
+                  type="button"
+                  aria-label="Ausnahme löschen"
+                  (click)="deleteAusnahme(ausnahme)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          }
+        </section>
+      }
+    }
+  </mat-card-content>
+</mat-card>

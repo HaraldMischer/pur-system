@@ -154,7 +154,7 @@ describe('BenutzerVerwaltungService', () => {
     await service.updateBenutzerProfil('user-1', {
       anzeigename: 'Benutzer Neu',
       aktiv: true,
-      erlaubteBereiche: ['dashboard', 'verwaltung'],
+      erlaubteBereiche: ['dashboard', 'mitarbeiter'],
     });
 
     expect(httpsCallableMock).toHaveBeenCalledWith(functionsMock, 'updateBenutzerProfil');
@@ -162,7 +162,7 @@ describe('BenutzerVerwaltungService', () => {
       uid: 'user-1',
       anzeigename: 'Benutzer Neu',
       aktiv: true,
-      erlaubteBereiche: ['dashboard', 'verwaltung'],
+      erlaubteBereiche: ['dashboard', 'mitarbeiter'],
     });
   });
 

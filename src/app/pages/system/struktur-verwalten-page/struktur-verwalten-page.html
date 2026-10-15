@@ -1,0 +1,174 @@
+<!-- pur-system/src/app/pages/system/struktur-verwalten-page/struktur-verwalten-page.html -->
+
+<section class="pur-page pur-page--limited">
+  <!-- Firmen- und Filialverwaltung -->
+  <section class="pur-page-section">
+    <header class="pur-page-section__header">
+      <h2 class="pur-page-section__title">Firmen und Filialen verwalten</h2>
+    </header>
+
+    <!-- Stammdatenauswahl -->
+    <div class="pur-form pur-form--grid">
+      <!-- Unternehmer -->
+      @if (strukturBearbeitenStore.istMaster()) {
+        <div class="pur-form__row">
+          <!-- Unternehmer wählen -->
+          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+            <mat-label>Unternehmer</mat-label>
+            <mat-select
+              [value]="strukturBearbeitenStore.selectedUnternehmerId()"
+              [disabled]="
+                strukturBearbeitenStore.unternehmerListe().download ||
+                strukturBearbeitenStore.unternehmer().length === 0
+              "
+              (selectionChange)="strukturBearbeitenStore.selectUnternehmer($event.value)"
+            >
+              @for (unternehmer of strukturBearbeitenStore.unternehmer(); track unternehmer.id) {
+                <mat-option [value]="unternehmer.id">{{ unternehmer.anzeigename }}</mat-option>
+              } @empty {
+                <mat-option disabled>Keine Unternehmer verfügbar</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      }
+
+      <!-- Firma -->
+      <div class="pur-form__row">
+        <!-- Firma wählen -->
+        <mat-form-field class="pur-form__item pur-form__item--field" appearance="outline">
+          <mat-label>Firma</mat-label>
+          <mat-select
+            [value]="strukturBearbeitenStore.selectedFirmaId()"
+            [disabled]="
+              !strukturBearbeitenStore.selectedUnternehmerId() ||
+              strukturBearbeitenStore.firmenListe().download ||
+              strukturBearbeitenStore.firmen().length === 0
+            "
+            (selectionChange)="strukturBearbeitenStore.selectFirma($event.value)"
+          >
+            @for (firma of strukturBearbeitenStore.firmen(); track firma.id) {
+              <mat-option [value]="firma.id">{{ firma.anzeigename }}</mat-option>
+            } @empty {
+              <mat-option disabled>Keine Firmen verfügbar</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <!-- Firma bearbeiten -->
+        <button
+          class="pur-form__item pur-form__item--button pur-form__item--end"
+          matButton="outlined"
+          type="button"
+          [disabled]="
+            !strukturBearbeitenStore.selectedFirma() || strukturBearbeitenStore.inProgress()
+          "
+          (click)="openFirmaBearbeitenDialog()"
+        >
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          Firma bearbeiten
+        </button>
+      </div>
+
+      <!-- Filiale -->
+      <div class="pur-form__row">
+        <!-- Filiale wählen -->
+        <mat-form-field class="pur-form__item pur-form__item--field" appearance="outline">
+          <mat-label>Filiale</mat-label>
+          <mat-select
+            [value]="strukturBearbeitenStore.selectedFilialeId()"
+            [disabled]="
+              !strukturBearbeitenStore.selectedFirmaId() ||
+              strukturBearbeitenStore.filialenListe().download ||
+              strukturBearbeitenStore.filialen().length === 0
+            "
+            (selectionChange)="strukturBearbeitenStore.selectFiliale($event.value)"
+          >
+            @for (filiale of strukturBearbeitenStore.filialen(); track filiale.id) {
+              <mat-option [value]="filiale.id">{{ filiale.anzeigename }}</mat-option>
+            } @empty {
+              <mat-option disabled>Keine Filialen verfügbar</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <!-- Filiale bearbeiten -->
+        <button
+          class="pur-form__item pur-form__item--button pur-form__item--end"
+          matButton="outlined"
+          type="button"
+          [disabled]="
+            !strukturBearbeitenStore.selectedFiliale() || strukturBearbeitenStore.inProgress()
+          "
+          (click)="openFilialeBearbeitenDialog()"
+        >
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          Filiale bearbeiten
+        </button>
+      </div>
+
+      @if (strukturBearbeitenStore.updateSuccess(); as erfolg) {
+        <p class="pur-form__item pur-form__item--success" role="status">{{ erfolg }}</p>
+      }
+
+      @if (strukturBearbeitenStore.updateError(); as error) {
+        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+      }
+
+      @if (strukturBearbeitenStore.unternehmerListe().error; as error) {
+        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <button
+          class="pur-form__item pur-form__item--end"
+          matButton="tonal"
+          type="button"
+          (click)="strukturBearbeitenStore.loadUnternehmer()"
+        >
+          Unternehmer erneut laden
+        </button>
+      } @else if (
+        strukturBearbeitenStore.unternehmerListe().isLoaded &&
+        strukturBearbeitenStore.unternehmer().length === 0
+      ) {
+        <p class="pur-form__item pur-form__item--message" role="status">
+          Dem Benutzer sind keine Unternehmer zugeordnet.
+        </p>
+      }
+
+      @if (strukturBearbeitenStore.firmenListe().error; as error) {
+        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <button
+          class="pur-form__item pur-form__item--end"
+          matButton="tonal"
+          type="button"
+          (click)="strukturBearbeitenStore.loadFirmen()"
+        >
+          Firmen erneut laden
+        </button>
+      } @else if (
+        strukturBearbeitenStore.firmenListe().isLoaded &&
+        strukturBearbeitenStore.firmen().length === 0
+      ) {
+        <p class="pur-form__item pur-form__item--message" role="status">
+          Dem gewählten Unternehmer sind keine Firmen zugeordnet.
+        </p>
+      }
+
+      @if (strukturBearbeitenStore.filialenListe().error; as error) {
+        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <button
+          class="pur-form__item pur-form__item--end"
+          matButton="tonal"
+          type="button"
+          (click)="strukturBearbeitenStore.loadFilialen()"
+        >
+          Filialen erneut laden
+        </button>
+      } @else if (
+        strukturBearbeitenStore.filialenListe().isLoaded &&
+        strukturBearbeitenStore.filialen().length === 0
+      ) {
+        <p class="pur-form__item pur-form__item--message" role="status">
+          Der gewählten Firma sind keine Filialen zugeordnet.
+        </p>
+      }
+    </div>
+  </section>
+</section>

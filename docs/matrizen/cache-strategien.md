@@ -43,7 +43,7 @@ nichttechnische Serverfehler lösen bei `networkFirst` keinen Cache-Rückfall au
 
 | Merkmal                      | Pur Master                                | Pur Office                                | Pur Filiale                               | Pur Mitarbeiter                           |
 | ---------------------------- | ----------------------------------------- | ----------------------------------------- | ----------------------------------------- | ----------------------------------------- |
-| Vorgesehene Verwendung       | Systemverwaltung                          | Büro                                      | Filialrechner                             | Mitarbeiter-Handy                         |
+| Vorgesehene Verwendung       | Systembereich                             | Büro                                      | Filialrechner                             | Mitarbeiter-Handy                         |
 | Installation                 | als PWA vorgesehen                        | als PWA vorgesehen                        | als PWA vorgesehen und geprüft            | als PWA vorgesehen und geprüft            |
 | Offline-App-Shell            | ja                                        | ja                                        | ja                                        | ja                                        |
 | Fachliche Daten online       | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten | ja, gemäß Benutzerprofil und Datenrechten |

@@ -13,7 +13,7 @@ import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { MonatSelector } from '../../../components/date-selectors/monat-selector/monat-selector';
-import { DienstplanFiliale } from '../../../components/schichtplan/dienstplan-filiale/dienstplan-filiale';
+import { DienstplanPlanungsbereich } from '../../../components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich';
 
 // ===== Top-Level Helper =====================
 function formatLohnzeit(lohnzeitMinuten: number): string {
@@ -50,7 +50,7 @@ type TMitarbeiterMonatswerte = {
     CdkDropListGroup,
     MatButtonModule,
     MonatSelector,
-    DienstplanFiliale,
+    DienstplanPlanungsbereich,
   ],
   templateUrl: './dienstplan-planung-page.html',
   styleUrl: './dienstplan-planung-page.scss',

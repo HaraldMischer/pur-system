@@ -1,14 +1,14 @@
 <!-- pur-system/src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.html -->
 
 <h2 mat-dialog-title>{{ istBearbeitung ? 'Schicht bearbeiten' : 'Schicht anlegen' }}</h2>
-<mat-dialog-content>
+<mat-dialog-content class="pur-dialog__content">
   <form
     id="schicht-form"
     class="pur-form pur-form--grid"
     [formGroup]="schichtForm"
     (ngSubmit)="saveSchicht()"
   >
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
       <mat-label>Mitarbeiter</mat-label>
       <mat-select formControlName="mitarbeiterId">
         @for (eintrag of daten.mitarbeiter; track eintrag.id) {

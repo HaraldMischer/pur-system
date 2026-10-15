@@ -1,0 +1,17 @@
+// pur-system/src/app/components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale.scss
+
+.schichtmodelle-filiale {
+  --pur-card-grid-min-width: 320px;
+  margin: 0;
+
+  ol {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding-inline-start: 24px;
+  }
+
+  li span {
+    display: block;
+  }
+}

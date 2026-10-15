@@ -1,0 +1,86 @@
+<!-- pur-system/src/app/pages/zugang/login-page/login-page.html -->
+
+<section class="pur-page">
+  @if (isDevelopmentMode) {
+    <div class="login-page__development-actions">
+      <button type="button" (click)="patchLoginForm('harry-master')">Master</button>
+      <button type="button" (click)="patchLoginForm('gevelsberg02-filiale')">Filiale</button>
+      <button type="button" (click)="patchLoginForm('harry-office')">Office</button>
+      <button type="button" (click)="patchLoginForm('harry-mitarbeiter')">Mitarbeiter</button>
+    </div>
+  }
+
+  <mat-card class="pur-card">
+    <!-- Kartenkopf -->
+    <mat-card-header>
+      <mat-card-title>Anmelden</mat-card-title>
+      <mat-card-subtitle>Melde dich mit deinem Anmeldenamen an.</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Anmeldeformular -->
+      <form
+        class="pur-form pur-form--grid"
+        [formGroup]="loginForm"
+        [attr.aria-label]="'Bei ' + appTitle + ' anmelden'"
+        (ngSubmit)="submitLogin()"
+      >
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+          <mat-label>Anmeldename</mat-label>
+          <input
+            formControlName="anmeldename"
+            matInput
+            type="text"
+            autocomplete="username"
+            autocapitalize="none"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+          <mat-label>Passwort</mat-label>
+          <input
+            formControlName="password"
+            matInput
+            [type]="passwortSichtbar() ? 'text' : 'password'"
+            autocomplete="current-password"
+          />
+          <button
+            matIconButton
+            matSuffix
+            type="button"
+            [attr.aria-label]="passwortSichtbar() ? 'Passwort ausblenden' : 'Passwort anzeigen'"
+            [matTooltip]="passwortSichtbar() ? 'Passwort ausblenden' : 'Passwort anzeigen'"
+            (click)="togglePasswortSichtbarkeit()"
+          >
+            <mat-icon aria-hidden="true">{{
+              passwortSichtbar() ? 'visibility_off' : 'visibility'
+            }}</mat-icon>
+          </button>
+        </mat-form-field>
+
+        <!-- Fehlermeldung -->
+        @if (error()) {
+          <p class="pur-form__item pur-form__item--error" role="alert">{{ error() }}</p>
+        }
+
+        <!-- Netzwerkhinweis -->
+        @if (!isOnline()) {
+          <p class="pur-form__item pur-form__item--error" role="status">
+            Du bist offline. Die Anmeldung benötigt eine Internetverbindung.
+          </p>
+        }
+
+        <!-- Anmeldung -->
+        <button
+          class="pur-form__item pur-form__item--button pur-form__item--full"
+          matButton="filled"
+          type="submit"
+          [disabled]="loginForm.invalid || inProgress() || !isOnline()"
+        >
+          <mat-icon aria-hidden="true">login</mat-icon>
+          Anmelden
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</section>

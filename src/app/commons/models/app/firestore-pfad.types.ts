@@ -12,6 +12,18 @@ export interface IFilialPfad extends IFirmaPfad {
   filialeId: string;
 }
 
+export interface IFilialeinstellungPfad extends IFilialPfad {
+  einstellungId: 'allgemein' | 'oeffnungszeiten';
+}
+
+export interface IFilialeinstellungSondertagPfad extends IFilialPfad {
+  sondertagId: string;
+}
+
+export interface IFilialeinstellungAusnahmePfad extends IFilialPfad {
+  datum: string;
+}
+
 export interface ISchichtmodellPfad extends IFilialPfad {
   schichtmodellId: string;
 }

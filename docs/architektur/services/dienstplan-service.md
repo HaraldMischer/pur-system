@@ -21,9 +21,8 @@ ergänzt und anschließend fachlich sortiert.
 
 - `createDienstplan()` prüft ein aktives, nicht leeres Schichtmodell derselben Filiale und legt den Monatsplan, seine erste
   Entwurfsversion und die vollständige Modell-Momentaufnahme atomar an.
-- `updateDienstplanSchichtmodell()` lädt Dienstplan, Entwurfsschichten und bisherige Momentaufnahme verbindlich vom Server. Nur
-  bei einem leeren, noch nie veröffentlichten Entwurf ersetzt die Methode Modellreferenz und Momentaufnahme gemeinsam mit der
-  nächsten Versionsrevision.
+- `deleteDienstplan()` lädt Dienstplan, Entwurfsschichten und Modell-Momentaufnahme verbindlich vom Server. Nur einen leeren,
+  noch nie veröffentlichten Entwurf löscht die Methode gemeinsam mit dem Dienstplan und dessen Momentaufnahme.
 - `createSchicht()`, `updateSchicht()` und `deleteSchicht()` schreiben eine Schicht gemeinsam mit der nächsten Versionsrevision
   in einer Firestore-Transaktion. Vor Anlage und Änderung prüft der Service anhand der Modell-Momentaufnahme und der vorhandenen
   Schichten, ob die betroffene Rasterzelle eine weitere Belegung erlaubt.
@@ -35,7 +34,7 @@ Firestore Rules prüfen die Modellschichtreferenz und schützen Rasterzelle, Zei
 Nicht zum aktuellen Schichtmodell gehörende Felder werden weder geschrieben noch in das Domainmodell übernommen. Vor jedem
 Schreiben prüft der Service die Lohnzeit einschließlich bezahlter Pause. Eine abweichende Entwurfsrevision verhindert
 veraltete Schreibzugriffe. Dadurch kann auch eine parallele Anlage die Begrenzung einer Einfachbelegung nicht umgehen. Nach der
-ersten Veröffentlichung verhindern Service und Firestore Rules jeden weiteren Modellwechsel.
+ersten Veröffentlichung verhindern Service und Firestore Rules das Löschen des Monatsplans.
 
 ## Beteiligte Dateien
 

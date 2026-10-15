@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   IDienstplanModellschichtPfad,
+  IFilialeinstellungAusnahmePfad,
+  IFilialeinstellungSondertagPfad,
   IModellschichtPfad,
   ISchichtPfad,
 } from '../models/app/firestore-pfad.types';
@@ -110,6 +112,43 @@ describe('Firebase-Konstanten', () => {
     );
     expect(FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht(momentaufnahmePfad)).toBe(
       'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/modellschicht/frueh',
+    );
+  });
+
+  it('bildet die Pfade der Filialeinstellungen', () => {
+    const sondertagPfad: IFilialeinstellungSondertagPfad = {
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialeId: 'filiale-1',
+      sondertagId: 'heiligabend',
+    };
+    const ausnahmePfad: IFilialeinstellungAusnahmePfad = {
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialeId: 'filiale-1',
+      datum: '2026-12-24',
+    };
+
+    expect(FIRESTORE_COLLECTION_PATHS.filialeinstellungen(sondertagPfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung',
+    );
+    expect(
+      FIRESTORE_DOCUMENT_PATHS.filialeinstellung({
+        ...sondertagPfad,
+        einstellungId: 'allgemein',
+      }),
+    ).toBe('unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung/allgemein');
+    expect(FIRESTORE_COLLECTION_PATHS.filialeinstellungSondertage(sondertagPfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung/oeffnungszeiten/sondertag',
+    );
+    expect(FIRESTORE_DOCUMENT_PATHS.filialeinstellungSondertag(sondertagPfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung/oeffnungszeiten/sondertag/heiligabend',
+    );
+    expect(FIRESTORE_COLLECTION_PATHS.filialeinstellungAusnahmen(ausnahmePfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung/oeffnungszeiten/ausnahme',
+    );
+    expect(FIRESTORE_DOCUMENT_PATHS.filialeinstellungAusnahme(ausnahmePfad)).toBe(
+      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung/oeffnungszeiten/ausnahme/2026-12-24',
     );
   });
 });

@@ -34,9 +34,12 @@ Die Pfadkürzel bauen aufeinander auf:
 | `benutzerprofil/{uid}`                                                    | R/C/U    | R        | R         | R             | –            |
 | `benutzerprofil/{uid}/{subcollection}/{document=**}`                      | R/C/U/D  | –        | –         | –             | –            |
 | `unternehmer/{unternehmerId}`                                             | R/C/U/D  | R        | R         | R             | –            |
-| `{firmaPfad}`                                                             | R/C/U/D  | R/U      | R         | R             | –            |
+| `{firmaPfad}`                                                             | R/C/U/D  | R        | R         | R             | –            |
 | `{mitarbeiterPfad}`                                                       | R/C/U/D  | R/C/U    | R/C/U     | R             | –            |
-| `{filialPfad}`                                                            | R/C/U/D  | R/U      | R         | R             | –            |
+| `{filialPfad}`                                                            | R/C/U/D  | R        | R         | R             | –            |
+| `{filialPfad}/einstellung/{dokumentId}`                                   | R/C/U    | R/C/U    | R/C/U     | –             | –            |
+| `{filialPfad}/einstellung/oeffnungszeiten/sondertag/{sondertagId}`        | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
+| `{filialPfad}/einstellung/oeffnungszeiten/ausnahme/{datum}`               | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
 | `{filialPfad}/dienstplan/{monat}`                                         | R/C/U    | R/C/U    | R/C/U     | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/version/{versionId}`                     | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/version/{versionId}/schicht/{schichtId}` | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
@@ -53,8 +56,11 @@ Die Pfadkürzel bauen aufeinander auf:
 - Strukturdatensätze werden nur durch die Cloud Function rekursiv gelöscht; vorhandene Referenzen verhindern das Löschen.
 - Normale Datenzugriffe erfolgen clientseitig und werden durch Firestore Rules abgesichert. Technisch notwendige serverseitige
   Aktionen prüfen ihre Berechtigungen in der jeweiligen Cloud Function.
-- `erlaubteBereiche` beeinflusst keine Datenrechte.
+- `erlaubteBereiche` beeinflusst grundsätzlich keine Datenrechte. Filialeinstellungen bilden eine ausdrückliche Ausnahme:
+  Office- und Filialkonten benötigen zusätzlich den Bereich `einstellungen`; Masterkonten bleiben rollenbedingt berechtigt.
 - `office` darf nur Daten innerhalb der zugewiesenen Unternehmer, Firmen und Filialen verwenden.
+- Firmen- und Filialstammdaten dürfen ausschließlich von `master` angelegt oder bearbeitet werden. Für `office`, `filiale` und
+  `mitarbeiter` sind diese Dokumente rein lesbar.
 - `office` verwaltet Mitarbeiter zugewiesener Firmen. `filiale` liest Mitarbeiter der eigenen Firma, lädt über `filialIds`
   gezielt die Mitarbeiter der eigenen Filiale und darf nur diese anlegen oder bearbeiten.
 - Der Aktivstatus eines fachlichen Mitarbeiters schränkt diese Lese- und Bearbeitungsrechte nicht ein. `aktiv: false` beschreibt
@@ -97,16 +103,17 @@ Die App-Bereich-Matrix zeigt, welche Benutzerrolle einen App-Bereich grundsätzl
 
 ### Matrix
 
-| `TUserRole` \ `TAppBereich` | `dashboard`     | `schichtplan` | `mitarbeiter` | `verwaltung` | `systemverwaltung` |
-| --------------------------- | --------------- | ------------- | ------------- | ------------ | ------------------ |
-| `master`                    | `verpflichtend` | `optional`    | `optional`    | `optional`   | `verpflichtend`    |
-| `office`                    | `verpflichtend` | `optional`    | `optional`    | `optional`   | `verboten`         |
-| `filiale`                   | `verpflichtend` | `optional`    | `optional`    | `verboten`   | `verboten`         |
-| `mitarbeiter`               | `verpflichtend` | `optional`    | `verboten`    | `verboten`   | `verboten`         |
+| `TUserRole` \ `TAppBereich` | `dashboard`     | `schichtplan` | `mitarbeiter` | `einstellungen` | `system`        |
+| --------------------------- | --------------- | ------------- | ------------- | --------------- | --------------- |
+| `master`                    | `verpflichtend` | `optional`    | `optional`    | `optional`      | `verpflichtend` |
+| `office`                    | `verpflichtend` | `optional`    | `optional`    | `optional`      | `verboten`      |
+| `filiale`                   | `verpflichtend` | `optional`    | `optional`    | `optional`      | `verboten`      |
+| `mitarbeiter`               | `verpflichtend` | `optional`    | `verboten`    | `verboten`      | `verboten`      |
 
 ### Zusatzbedingungen
 
 - Die Cloud Function ergänzt `verpflichtend` bei der Benutzeranlage; beim Bearbeiten erhält der Client diese Bereiche.
 - `optional` und `verboten` werden durch die rollenabhängigen Checkboxen im Client umgesetzt.
-- `erlaubteBereiche` steuert Navigation, Routenzugriff und sichtbare App-Funktionen, aber keine Datenrechte.
+- `erlaubteBereiche` steuert Navigation, Routenzugriff und sichtbare App-Funktionen. Nur bei Filialeinstellungen prüfen die Rules
+  für Office- und Filialkonten zusätzlich den Bereich `einstellungen`; für Master genügt die Rolle.
 - `mitarbeiter` erfordert für `office` und `filiale` zusätzlich mindestens einen gültigen Firmen- und Filialzugriff.

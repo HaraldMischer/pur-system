@@ -1,0 +1,52 @@
+<!-- pur-system/src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.html -->
+
+<h2 mat-dialog-title>{{ daten.sondertag ? 'Sondertag bearbeiten' : 'Sondertag anlegen' }}</h2>
+<mat-dialog-content>
+  <form id="sondertag-form" class="pur-form pur-form--grid" [formGroup]="form" (ngSubmit)="save()">
+    @if (istSystemtag) {
+      <p>
+        <strong>{{ daten.sondertag?.bezeichnung }}</strong
+        ><br />Die gesetzliche Datumsregel wird zentral berechnet und kann hier nicht geändert
+        werden.
+      </p>
+    } @else {
+      <mat-form-field>
+        <mat-label>Bezeichnung</mat-label>
+        <input matInput formControlName="bezeichnung" required maxlength="80" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Monat</mat-label>
+        <input matInput type="number" formControlName="monat" required min="1" max="12" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Tag</mat-label>
+        <input matInput type="number" formControlName="tag" required min="1" max="31" />
+      </mat-form-field>
+    }
+    <mat-checkbox formControlName="aktiv">Aktiv</mat-checkbox>
+    <mat-checkbox formControlName="geoeffnet">Geöffnet</mat-checkbox>
+    @if (form.controls.geoeffnet.value) {
+      <mat-form-field
+        ><mat-label>Beginn</mat-label
+        ><input matInput type="time" formControlName="beginnLokalzeit" required
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Ende</mat-label
+        ><input matInput type="time" formControlName="endeLokalzeit" required
+      /></mat-form-field>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" [mat-dialog-close]="undefined" [disabled]="inProgress()">
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="sondertag-form"
+    [disabled]="form.invalid || !hatAenderungen() || inProgress()"
+  >
+    Speichern
+  </button>
+</mat-dialog-actions>

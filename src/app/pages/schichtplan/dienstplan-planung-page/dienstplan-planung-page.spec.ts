@@ -108,7 +108,9 @@ describe('DienstplanPlanungPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelectorAll('app-dienstplan-filiale')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelectorAll('app-dienstplan-planungsbereich')).toHaveLength(
+      2,
+    );
     expect(loadDienstplanMonat).toHaveBeenCalledTimes(2);
     expect(loadDienstplanMonat).toHaveBeenCalledWith(
       { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' },
@@ -231,7 +233,9 @@ describe('DienstplanPlanungPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelectorAll('app-dienstplan-filiale')).toHaveLength(0);
+    expect(fixture.nativeElement.querySelectorAll('app-dienstplan-planungsbereich')).toHaveLength(
+      0,
+    );
     expect(fixture.nativeElement.querySelector('[role="status"]')).not.toBeNull();
     expect(loadDienstplanMonat).not.toHaveBeenCalled();
   });

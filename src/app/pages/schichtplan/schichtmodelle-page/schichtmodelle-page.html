@@ -5,9 +5,9 @@
     @if (filialauswahl().length === 0) {
       <p class="pur-page-section__message" role="status">Wähle mindestens eine Filiale aus.</p>
     } @else {
-      <div class="schichtmodelle-page__filialabschnitte">
+      <div class="schichtmodelle-page__filialen">
         @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
-          <app-schichtmodelle-filialabschnitt [filiale]="auswahl.filiale" [pfad]="auswahl.pfad" />
+          <app-schichtmodelle-filiale [filiale]="auswahl.filiale" [pfad]="auswahl.pfad" />
         }
       </div>
     }

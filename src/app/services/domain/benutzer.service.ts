@@ -78,7 +78,7 @@ export class BenutzerService {
   }
 
   /**
-   * Lädt alle Benutzerprofile für die Systemverwaltung.
+   * Lädt alle Benutzerprofile für den Systembereich.
    *
    * @param strategie - Datenquellenstrategie für die Benutzerprofile.
    * @returns Die nach Anzeigename sortierten Profile einschließlich ihrer Dokument-ID als UID.

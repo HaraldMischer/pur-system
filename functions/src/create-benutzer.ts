@@ -13,10 +13,10 @@ const APP_BEREICHE = [
   'dashboard',
   'schichtplan',
   'mitarbeiter',
-  'verwaltung',
-  'systemverwaltung',
+  'einstellungen',
+  'system',
 ] as const;
-const WAEHLBARE_APP_BEREICHE = ['schichtplan', 'mitarbeiter', 'verwaltung'] as const;
+const WAEHLBARE_APP_BEREICHE = ['schichtplan', 'mitarbeiter', 'einstellungen'] as const;
 
 type TUserRole = (typeof USER_ROLES)[number];
 type TAppBereich = (typeof APP_BEREICHE)[number];
@@ -204,7 +204,7 @@ function parseCreateBenutzerData(value: unknown): IParsedCreateBenutzerData {
     ...WAEHLBARE_APP_BEREICHE.filter((bereich) => ausgewaehlteBereiche.has(bereich)),
   ];
   if (userRole === 'master') {
-    normalisierteBereiche.push('systemverwaltung');
+    normalisierteBereiche.push('system');
   }
 
   const parsed: IParsedCreateBenutzerData = {

@@ -22,7 +22,7 @@
         } @else {
           <div class="filial-dienstplaene">
             @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
-              <app-dienstplan-filiale
+              <app-dienstplan-planungsbereich
                 [filiale]="auswahl.filiale"
                 [pfad]="auswahl.pfad"
                 [monat]="selectedMonat()"

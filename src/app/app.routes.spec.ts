@@ -6,7 +6,6 @@ import { dienstplanPlanungGuard } from './guards/dienstplan-planung.guard';
 import { initialisierungGuard } from './guards/initialisierung.guard';
 import { masterGuard } from './guards/master.guard';
 import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
-import { verwaltungGuard } from './guards/verwaltung.guard';
 import { routes } from './app.routes';
 
 describe('app routes', () => {
@@ -16,7 +15,6 @@ describe('app routes', () => {
       ['initialisierungsfehler', 'Initialisierungsfehler'],
       ['dashboard', 'Dashboard'],
       ['passwort', 'Passwort ändern'],
-      ['verwaltung', 'Verwaltung'],
     ]);
 
     expectedTitles.forEach((title, path) => {
@@ -61,6 +59,34 @@ describe('app routes', () => {
     expect(listeRoute?.loadComponent).toBeDefined();
   });
 
+  it('should protect the componentless settings area and opening-hours page', () => {
+    const einstellungenRoute = routes.find((route) => route.path === 'einstellungen');
+    const redirectRoute = einstellungenRoute?.children?.find((route) => route.path === '');
+    const oeffnungszeitenRoute = einstellungenRoute?.children?.find(
+      (route) => route.path === 'oeffnungszeiten',
+    );
+
+    expect(einstellungenRoute?.canActivate).toEqual([
+      authGuard,
+      initialisierungGuard,
+      bereichGuard,
+    ]);
+    expect(einstellungenRoute?.canActivateChild).toEqual([
+      authGuard,
+      initialisierungGuard,
+      bereichGuard,
+    ]);
+    expect(einstellungenRoute?.data?.['bereich']).toBe('einstellungen');
+    expect(einstellungenRoute?.loadComponent).toBeUndefined();
+    expect(redirectRoute).toEqual({
+      path: '',
+      pathMatch: 'full',
+      redirectTo: 'oeffnungszeiten',
+    });
+    expect(oeffnungszeitenRoute?.title).toBe('Öffnungszeiten');
+    expect(oeffnungszeitenRoute?.loadComponent).toBeDefined();
+  });
+
   it('should use the auth layout for the login route', () => {
     const loginRoute = routes.find((route) => route.path === 'login');
 
@@ -84,55 +110,60 @@ describe('app routes', () => {
   });
 
   it('should protect the componentless administration parent by area and master role', () => {
-    const systemverwaltungRoute = routes.find((route) => route.path === 'systemverwaltung');
+    const systemRoute = routes.find((route) => route.path === 'system');
 
-    expect(systemverwaltungRoute).toBeDefined();
-    expect(systemverwaltungRoute?.data?.['bereich']).toBe('systemverwaltung');
-    expect(systemverwaltungRoute?.canActivate).toEqual([
+    expect(systemRoute).toBeDefined();
+    expect(systemRoute?.data?.['bereich']).toBe('system');
+    expect(systemRoute?.canActivate).toEqual([
       authGuard,
       initialisierungGuard,
       bereichGuard,
       masterGuard,
     ]);
-    expect(systemverwaltungRoute?.canActivateChild).toEqual([
+    expect(systemRoute?.canActivateChild).toEqual([
       authGuard,
       initialisierungGuard,
       bereichGuard,
       masterGuard,
     ]);
-    expect(systemverwaltungRoute?.loadComponent).toBeUndefined();
+    expect(systemRoute?.loadComponent).toBeUndefined();
   });
 
-  it('should redirect administration to the data structure route', () => {
-    const systemverwaltungRoute = routes.find((route) => route.path === 'systemverwaltung');
-    const redirectRoute = systemverwaltungRoute?.children?.find((route) => route.path === '');
+  it('should redirect administration to structure creation', () => {
+    const systemRoute = routes.find((route) => route.path === 'system');
+    const redirectRoute = systemRoute?.children?.find((route) => route.path === '');
 
     expect(redirectRoute).toEqual({
       path: '',
       pathMatch: 'full',
-      redirectTo: 'datenstruktur',
+      redirectTo: 'struktur/anlegen',
     });
   });
 
   it('should provide separate system administration routes', () => {
-    const systemverwaltungRoute = routes.find((route) => route.path === 'systemverwaltung');
-    const datenstrukturRoute = systemverwaltungRoute?.children?.find(
-      (route) => route.path === 'datenstruktur',
+    const systemRoute = routes.find((route) => route.path === 'system');
+    const strukturRoute = systemRoute?.children?.find((route) => route.path === 'struktur');
+    const strukturRedirect = strukturRoute?.children?.find((route) => route.path === '');
+    const strukturAnlegenRoute = strukturRoute?.children?.find((route) => route.path === 'anlegen');
+    const strukturVerwaltenRoute = strukturRoute?.children?.find(
+      (route) => route.path === 'bearbeiten',
     );
-    const benutzerRoute = systemverwaltungRoute?.children?.find(
-      (route) => route.path === 'benutzer',
-    );
+    const benutzerRoute = systemRoute?.children?.find((route) => route.path === 'benutzer');
     const benutzerRedirect = benutzerRoute?.children?.find((route) => route.path === '');
     const benutzerAnlegenRoute = benutzerRoute?.children?.find((route) => route.path === 'anlegen');
     const benutzerVerwaltenRoute = benutzerRoute?.children?.find(
       (route) => route.path === 'verwalten',
     );
-    const datenmigrationRoute = systemverwaltungRoute?.children?.find(
+    const datenmigrationRoute = systemRoute?.children?.find(
       (route) => route.path === 'datenmigration',
     );
 
-    expect(datenstrukturRoute?.title).toBe('Datenstruktur anlegen');
-    expect(datenstrukturRoute?.loadComponent).toBeDefined();
+    expect(strukturRoute?.loadComponent).toBeUndefined();
+    expect(strukturRedirect).toEqual({ path: '', pathMatch: 'full', redirectTo: 'anlegen' });
+    expect(strukturAnlegenRoute?.title).toBe('Struktur anlegen');
+    expect(strukturAnlegenRoute?.loadComponent).toBeDefined();
+    expect(strukturVerwaltenRoute?.title).toBe('Struktur verwalten');
+    expect(strukturVerwaltenRoute?.loadComponent).toBeDefined();
     expect(benutzerRoute?.loadComponent).toBeUndefined();
     expect(benutzerRedirect).toEqual({
       path: '',
@@ -147,17 +178,7 @@ describe('app routes', () => {
     expect(datenmigrationRoute?.loadComponent).toBeDefined();
   });
 
-  it('should protect the management route by area and allowed roles', () => {
-    const verwaltungRoute = routes.find((route) => route.path === 'verwaltung');
-
-    expect(verwaltungRoute).toBeDefined();
-    expect(verwaltungRoute?.data?.['bereich']).toBe('verwaltung');
-    expect(verwaltungRoute?.canActivate).toEqual([
-      authGuard,
-      initialisierungGuard,
-      bereichGuard,
-      verwaltungGuard,
-    ]);
-    expect(verwaltungRoute?.loadComponent).toBeDefined();
+  it('should not provide a standalone management route', () => {
+    expect(routes.find((route) => route.path === 'verwaltung')).toBeUndefined();
   });
 });

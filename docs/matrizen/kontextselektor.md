@@ -40,13 +40,13 @@ Die dynamische Regel wird auf die rollen- und bereichsabhängige Grundkonfigurat
 
 ### Matrix
 
-| Bereich            | Unternehmer | Firma      | Filiale    |
-| ------------------ | ----------- | ---------- | ---------- |
-| `dashboard`        | `editable`  | `editable` | `readonly` |
-| `schichtplan`      | `editable`  | `editable` | `editable` |
-| `mitarbeiter`      | `editable`  | `editable` | `editable` |
-| `verwaltung`       | `editable`  | `editable` | `readonly` |
-| `systemverwaltung` | `editable`  | `editable` | `readonly` |
+| Bereich         | Unternehmer | Firma      | Filiale    |
+| --------------- | ----------- | ---------- | ---------- |
+| `dashboard`     | `editable`  | `editable` | `readonly` |
+| `schichtplan`   | `editable`  | `editable` | `editable` |
+| `mitarbeiter`   | `editable`  | `editable` | `editable` |
+| `einstellungen` | `editable`  | `editable` | `editable` |
+| `system`        | `editable`  | `editable` | `readonly` |
 
 ### Zusatzbedingungen
 
@@ -59,50 +59,50 @@ Die dynamische Regel wird auf die rollen- und bereichsabhängige Grundkonfigurat
 
 ### Matrix
 
-| Bereich            | Unternehmer | Firma      | Filiale    |
-| ------------------ | ----------- | ---------- | ---------- |
-| `dashboard`        | `hidden`    | `editable` | `readonly` |
-| `schichtplan`      | `hidden`    | `editable` | `editable` |
-| `mitarbeiter`      | `hidden`    | `editable` | `editable` |
-| `verwaltung`       | `hidden`    | `editable` | `readonly` |
-| `systemverwaltung` | `hidden`    | `hidden`   | `hidden`   |
+| Bereich         | Unternehmer | Firma      | Filiale    |
+| --------------- | ----------- | ---------- | ---------- |
+| `dashboard`     | `hidden`    | `editable` | `readonly` |
+| `schichtplan`   | `hidden`    | `editable` | `editable` |
+| `mitarbeiter`   | `hidden`    | `editable` | `editable` |
+| `einstellungen` | `hidden`    | `editable` | `editable` |
+| `system`        | `hidden`    | `hidden`   | `hidden`   |
 
 ### Zusatzbedingungen
 
 - Der einzige zugeordnete Unternehmer wird automatisch ausgewählt und nicht als Selektor dargestellt.
 - Die Firmenauswahl wird nur bei mehreren zugewiesenen Firmen dargestellt.
-- Die Filialauswahl wird bei mehreren erlaubten Filialen der ausgewählten Firma dauerhaft dargestellt. Im Dashboard und in der
-  Verwaltung ist sie deaktiviert; im Schichtplan und Mitarbeiterbereich ist sie bearbeitbar.
+- Die Filialauswahl wird bei mehreren erlaubten Filialen der ausgewählten Firma dauerhaft dargestellt. Im Dashboard ist sie
+  deaktiviert; im Schichtplan, Mitarbeiter- und Einstellungsbereich ist sie bearbeitbar.
 
 ## 5. Filial-Matrix
 
 ### Matrix
 
-| Bereich            | Unternehmer | Firma    | Filiale  |
-| ------------------ | ----------- | -------- | -------- |
-| `dashboard`        | `offen`     | `offen`  | `offen`  |
-| `schichtplan`      | `hidden`    | `hidden` | `hidden` |
-| `mitarbeiter`      | `offen`     | `offen`  | `offen`  |
-| `verwaltung`       | `offen`     | `offen`  | `offen`  |
-| `systemverwaltung` | `offen`     | `offen`  | `offen`  |
+| Bereich         | Unternehmer | Firma    | Filiale  |
+| --------------- | ----------- | -------- | -------- |
+| `dashboard`     | `offen`     | `offen`  | `offen`  |
+| `schichtplan`   | `hidden`    | `hidden` | `hidden` |
+| `mitarbeiter`   | `offen`     | `offen`  | `offen`  |
+| `einstellungen` | `hidden`    | `hidden` | `hidden` |
+| `system`        | `offen`     | `offen`  | `offen`  |
 
 ### Zusatzbedingungen
 
 - Unternehmer, Firma und Filiale sind für ein Filialkonto eindeutig und werden automatisch ausgewählt. Im Bereich
-  `schichtplan` wird deshalb kein Kontextselektor dargestellt.
+  `schichtplan` und `einstellungen` wird deshalb kein Kontextselektor dargestellt.
 - Die wirksamen Modi der übrigen Bereiche sind noch festzulegen.
 
 ## 6. Mitarbeiter-Matrix
 
 ### Matrix
 
-| Bereich            | Unternehmer | Firma    | Filiale    |
-| ------------------ | ----------- | -------- | ---------- |
-| `dashboard`        | `offen`     | `offen`  | `offen`    |
-| `schichtplan`      | `hidden`    | `hidden` | `editable` |
-| `mitarbeiter`      | `offen`     | `offen`  | `offen`    |
-| `verwaltung`       | `offen`     | `offen`  | `offen`    |
-| `systemverwaltung` | `offen`     | `offen`  | `offen`    |
+| Bereich         | Unternehmer | Firma    | Filiale    |
+| --------------- | ----------- | -------- | ---------- |
+| `dashboard`     | `offen`     | `offen`  | `offen`    |
+| `schichtplan`   | `hidden`    | `hidden` | `editable` |
+| `mitarbeiter`   | `offen`     | `offen`  | `offen`    |
+| `einstellungen` | `hidden`    | `hidden` | `hidden`   |
+| `system`        | `offen`     | `offen`  | `offen`    |
 
 ### Zusatzbedingungen
 
