@@ -255,10 +255,6 @@ Neu hinzuzufügen:
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.spec.ts
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.scss
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.ts
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.html
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/schicht-bearbeiten-dialog.scss
@@ -275,6 +271,7 @@ Neu hinzuzufügen:
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.scss
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
 - src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.ts
 - src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.html
 - src/app/pages/schichtplan/schichtvorlagen-page/schichtvorlagen-page.scss
@@ -381,10 +378,10 @@ gemeinsamen Planungsoberfläche bearbeitet werden. Jeder Filialdienstplan bleibt
 - src/app/components/data-selectors/app-kontext-selector/filiale-selector/filiale-selector.ts
 - src/app/components/data-selectors/app-kontext-selector/filiale-selector/filiale-selector.html
 - src/app/components/data-selectors/app-kontext-selector/filiale-selector/filiale-selector.spec.ts
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.scss
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.scss
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.ts
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.html
 - src/app/components/schichtplan/schichtplan-monat/schichtplan-monat.scss
@@ -667,10 +664,10 @@ gleichwertige Tastatur- und Mobilalternative erhalten.
 
 Änderungen:
 
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.scss
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.scss
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
 - src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
 - src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
 - src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
@@ -733,8 +730,6 @@ nur im leeren, noch nie veröffentlichten Erstentwurf gewechselt werden. Später
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.ts
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.html
 - src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.spec.ts
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.ts
-- src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.html
 - src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.ts
 - src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.html
 - src/app/components/schichtplan/dienstplan-filiale/dienstplan-filiale.spec.ts
@@ -745,7 +740,12 @@ nur im leeren, noch nie veröffentlichten Erstentwurf gewechselt werden. Später
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.html
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
 - src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.ts
+- src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.html
+- src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.scss
 - src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.scss
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
 - src/app/services/domain/dienstplan.service.ts
 - src/app/services/domain/dienstplan.service.spec.ts
 - src/app/services/domain/schichtmodell.service.ts
@@ -767,6 +767,7 @@ nur im leeren, noch nie veröffentlichten Erstentwurf gewechselt werden. Später
 Neu hinzuzufügen:
 
 - src/app/commons/models/domain/mitarbeiterbelegung.ts
+- src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.spec.ts
 - src/app/stores/domain/mitarbeiterbelegung.store.ts
 - src/app/stores/domain/mitarbeiterbelegung.store.spec.ts
 

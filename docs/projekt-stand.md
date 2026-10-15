@@ -113,8 +113,8 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Mitarbeiter können mehrere erlaubte Filialen auswählen. Eine gemeinsame Monatsauswahl lädt deren filialbezogene Monatspläne
   über getrennte direkte Firestore-Pfade und stellt jede Filiale in einem eigenen Monatsplanabschnitt dar.
 - Die wiederverwendbare Component `MonatSelector` erhält und meldet den ausgewählten Monat im Format `YYYY-MM`. Der
-  Dienstplan-Arbeitsbereich bindet sein Monatssignal darüber in beide Richtungen und setzt es über eine eigene Aktion auf den
-  mit `getAktuellerMonat()` für `Europe/Berlin` ermittelten aktuellen Monat zurück.
+  `DienstplanPlanungPage` bindet ihr Monatssignal darüber in beide Richtungen und setzt es über eine eigene Aktion auf den mit
+  `getAktuellerMonat()` für `Europe/Berlin` ermittelten aktuellen Monat zurück.
 - Jeder Monatsplanabschnitt besitzt einen eigenen Lade-, Fehler-, Leer- oder Planzustand. Fehlt ein Plan, bleiben die übrigen
   Filialpläne sichtbar; berechtigte Benutzer können den fehlenden Plan ausschließlich in dessen Abschnitt anlegen. Speicherung
   und Versionierung bleiben je Filiale getrennt. Die Veröffentlichung folgt in Todo 20.8.
@@ -148,20 +148,21 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Transaktionsablauf und Sicherheitsgrenzen sind festgelegt. Modelltestfälle für Monatsgrenzen, Zeitberechnung, Normalisierung
   und Zustandswechsel sowie ein Monatsplan mit mehreren Tagen, Mitarbeitern und Schichten sind als Grundlage für 20.4 und 20.5
   dokumentiert.
-- Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtmodelle. Ansicht und Planung
-  verwenden einen gemeinsamen Dienstplan-Arbeitsbereich mit einer Monatsnavigation für alle ausgewählten Filialen. Für jede
-  Filiale wird ein eigener Abschnitt mit Schichtraster sowie Lade-, Leer- und Fehlerzuständen gerendert. Filialkonten verwenden
-  unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Rasterzelle den
-  Schichtdialog mit bereits gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende Konfliktprüfung und
-  die atomare Veröffentlichung folgen in Todo 20.8.
-- Der Dienstplan-Arbeitsbereich stellt Dienstpläne und die Mitarbeiterübersicht auf breiten Ansichten in zwei unabhängig
+- Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtmodelle. Die
+  `DienstplanPlanungPage` enthält die Planungslogik und eine Monatsnavigation für alle ausgewählten Filialen. Für jede Filiale
+  wird ein eigener Abschnitt mit Schichtraster sowie Lade-, Leer- und Fehlerzuständen gerendert. Die leere
+  `DienstplanAnsichtPage` bildet die Grundlage für eigenständige Ansichts-Views und verwendet das Bearbeitungsraster nicht.
+  Filialkonten verwenden unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je
+  Rasterzelle den Schichtdialog mit bereits gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende
+  Konfliktprüfung und die atomare Veröffentlichung folgen in Todo 20.8.
+- Die `DienstplanPlanungPage` stellt Dienstpläne und die Mitarbeiterübersicht auf breiten Ansichten in zwei unabhängig
   scrollbaren Spalten dar. Die Mitarbeiterübersicht führt die aktiven Mitarbeiter aller ausgewählten Filialen ohne Duplikate
   zusammen und zeigt ihre optionale Farbkennung sowie die filialübergreifend summierte Lohnzeit und Schichtanzahl des
   ausgewählten Monats. Pausen sind vollständig bezahlt und werden deshalb nicht von der angezeigten Einzel- oder
   Monatslohnzeit abgezogen. Die Monatswerte berücksichtigen je Filiale den Entwurf oder ersatzweise die veröffentlichte Version.
   Fehlt eine Farbkennung, verwendet der Farbpunkt die normale Textfarbe mit 38 Prozent Deckkraft. Bei höchstens `900px`
   Containerbreite werden beide Bereiche untereinander angeordnet und innerhalb der gemeinsamen Arbeitsfläche gescrollt.
-- Im Planungsmodus sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente umgesetzt.
+- In der Planungsseite sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente umgesetzt.
   Bearbeitbare Rasterzellen nehmen nur aktive, der jeweiligen Filiale zugeordnete Mitarbeiter an und legen beim Ablegen
   unmittelbar eine Schicht mit Datum, Modellschicht, Zeitwerten und Standardpause der Modell-Momentaufnahme an. Laufende
   Schreibvorgänge sperren weitere Ablagen; Fehler werden im betroffenen Filialabschnitt angezeigt. Die bisherige Anlageaktion

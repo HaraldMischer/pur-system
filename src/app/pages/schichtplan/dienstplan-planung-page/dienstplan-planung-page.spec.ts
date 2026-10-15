@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/dienstplan-arbeitsbereich/dienstplan-arbeitsbereich.spec.ts
+// pur-system/src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -20,8 +20,8 @@ import {
 } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
-import { MonatSelector } from '../../date-selectors/monat-selector/monat-selector';
-import { DienstplanArbeitsbereich } from './dienstplan-arbeitsbereich';
+import { MonatSelector } from '../../../components/date-selectors/monat-selector/monat-selector';
+import { DienstplanPlanungPage } from './dienstplan-planung-page';
 
 const FILIALE_1: IFilialeEintrag = {
   id: 'b-1',
@@ -39,7 +39,7 @@ const FILIALE_2: IFilialeEintrag = {
   filialname: 'Bochum 2',
 };
 
-describe('DienstplanArbeitsbereich', () => {
+describe('DienstplanPlanungPage', () => {
   const selectedUnternehmer = signal<{ id: string } | null>({ id: 'u-1' });
   const selectedFirma = signal<{ id: string } | null>({ id: 'f-1' });
   const selectedFilialen = signal<readonly IFilialeEintrag[]>([FILIALE_1, FILIALE_2]);
@@ -65,7 +65,7 @@ describe('DienstplanArbeitsbereich', () => {
     getMitarbeiterNachFilialen.mockReturnValue([]);
     getDienstplanKontext.mockReturnValue(null);
     await TestBed.configureTestingModule({
-      imports: [DienstplanArbeitsbereich],
+      imports: [DienstplanPlanungPage],
       providers: [
         {
           provide: AppKontextStore,
@@ -104,13 +104,11 @@ describe('DienstplanArbeitsbereich', () => {
   });
 
   it('should render and load one monthly section per selected branch', async () => {
-    const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
+    const fixture = TestBed.createComponent(DienstplanPlanungPage);
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelectorAll('app-dienstplan-filiale')).toHaveLength(
-      2,
-    );
+    expect(fixture.nativeElement.querySelectorAll('app-dienstplan-filiale')).toHaveLength(2);
     expect(loadDienstplanMonat).toHaveBeenCalledTimes(2);
     expect(loadDienstplanMonat).toHaveBeenCalledWith(
       { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' },
@@ -125,7 +123,7 @@ describe('DienstplanArbeitsbereich', () => {
   });
 
   it('should apply a month change to every selected branch section', async () => {
-    const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
+    const fixture = TestBed.createComponent(DienstplanPlanungPage);
     fixture.componentInstance.selectedMonat.set('2026-01');
     fixture.detectChanges();
     await fixture.whenStable();
@@ -162,7 +160,7 @@ describe('DienstplanArbeitsbereich', () => {
       fremderMitarbeiter,
     ]);
     getMitarbeiterNachFilialen.mockReturnValue([gemeinsamerMitarbeiter]);
-    const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
+    const fixture = TestBed.createComponent(DienstplanPlanungPage);
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -204,7 +202,7 @@ describe('DienstplanArbeitsbereich', () => {
     getDienstplanKontext.mockImplementation((pfad: IFilialPfad) => {
       return kontexte.get(pfad.filialeId) ?? null;
     });
-    const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
+    const fixture = TestBed.createComponent(DienstplanPlanungPage);
     fixture.componentInstance.selectedMonat.set('2026-10');
     fixture.detectChanges();
     await fixture.whenStable();
@@ -216,32 +214,24 @@ describe('DienstplanArbeitsbereich', () => {
     );
   });
 
-  it('should provide employees as drag sources only in planning mode', async () => {
+  it('should provide employees as drag sources', async () => {
     getMitarbeiter.mockReturnValue([createMitarbeiter('m-1', 'Anna', 'Alpha', ['b-1'], true)]);
-    const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
+    const fixture = TestBed.createComponent(DienstplanPlanungPage);
     fixture.detectChanges();
     await fixture.whenStable();
 
-    let drag = fixture.debugElement.query(By.directive(CdkDrag)).injector.get(CdkDrag);
+    const drag = fixture.debugElement.query(By.directive(CdkDrag)).injector.get(CdkDrag);
     expect(drag.data).toBe('m-1');
-    expect(drag.disabled).toBe(true);
-
-    fixture.componentRef.setInput('planungsmodus', true);
-    fixture.detectChanges();
-
-    drag = fixture.debugElement.query(By.directive(CdkDrag)).injector.get(CdkDrag);
     expect(drag.disabled).toBe(false);
   });
 
   it('should not load a plan without a selected branch', async () => {
     selectedFilialen.set([]);
-    const fixture = TestBed.createComponent(DienstplanArbeitsbereich);
+    const fixture = TestBed.createComponent(DienstplanPlanungPage);
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelectorAll('app-dienstplan-filiale')).toHaveLength(
-      0,
-    );
+    expect(fixture.nativeElement.querySelectorAll('app-dienstplan-filiale')).toHaveLength(0);
     expect(fixture.nativeElement.querySelector('[role="status"]')).not.toBeNull();
     expect(loadDienstplanMonat).not.toHaveBeenCalled();
   });

@@ -5,34 +5,37 @@
 Der routbare Schichtplan-Bereich besteht aus getrennten Pages für Ansicht, Planung und Schichtmodelle. Wiederverwendbare
 Darstellung und Dialoge liegen unter `src/app/components/schichtplan`.
 
-## Dienstplan-Arbeitsbereich
+## Dienstplan-Planungsseite
 
-`DienstplanArbeitsbereich` verwaltet eine gemeinsame Monatsauswahl und rendert für jede ausgewählte Filiale einen
-`DienstplanFiliale`. Ein Monatswechsel gilt dadurch gleichzeitig für alle ausgewählten Filialen.
+Die routbare `DienstplanPlanungPage` verwaltet eine gemeinsame Monatsauswahl und rendert für jede ausgewählte Filiale einen
+`DienstplanFiliale`. Ein Monatswechsel gilt dadurch gleichzeitig für alle ausgewählten Filialen. Die Planungslogik liegt direkt
+in der Page und wird nicht mit der Dienstplanansicht geteilt.
 
 Die wiederverwendbare Component `MonatSelector` erhält den ausgewählten Monat über `selectedMonat` im Format `YYYY-MM` und
 meldet Änderungen über `selectedMonatChange`. Sie bietet ausschließlich die Navigation zum vorherigen und nächsten Monat an.
-Der Arbeitsbereich bindet sein Signal über `[(selectedMonat)]`, bleibt Eigentümer des Auswahlzustands und ergänzt bei Bedarf
+Die Planungsseite bindet ihr Signal über `[(selectedMonat)]`, bleibt Eigentümerin des Auswahlzustands und ergänzt bei Bedarf
 eigene Aktionen wie den Wechsel zum aktuellen Kalendermonat.
 
 Das Utility `getAktuellerMonat()` ermittelt den aktuellen Monat für die verbindliche Zeitzone `Europe/Berlin`. Auf breiten
-Ansichten stellt der Arbeitsbereich die Dienstpläne und die Mitarbeiterübersicht in zwei unabhängig scrollbaren Spalten dar.
+Ansichten stellt die Planungsseite die Dienstpläne und die Mitarbeiterübersicht in zwei unabhängig scrollbaren Spalten dar.
 Die Mitarbeiterübersicht führt die aktiven Mitarbeiter aller ausgewählten Filialen ohne Duplikate zusammen und zeigt die
 optionale `farbkennung`. Ohne gespeicherte Farbkennung verwendet der Farbpunkt die normale Textfarbe mit 38 Prozent Deckkraft.
 Für jeden Mitarbeiter summiert die Übersicht außerdem die Lohnzeit einschließlich der vollständig bezahlten Pausen und die
 Schichtanzahl des ausgewählten Monats über alle ausgewählten Filialen. Je Filiale zählt der Entwurf als aktiver Planungsstand;
 ohne Entwurf wird die veröffentlichte Version verwendet. Ältere Versionen fließen nicht zusätzlich in die Monatswerte ein.
-Im Planungsmodus sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente verfügbar. Die Liste
-bleibt dabei unverändert; ein Mitarbeiter kann nacheinander in mehrere zulässige Rasterzellen eingeplant werden. Im
-Ansichtsmodus sind die Karten nicht ziehbar.
+Die Mitarbeiterkarten sind mit Angular CDK Drag-and-drop als kopierbare Planungselemente verfügbar. Die Liste bleibt dabei
+unverändert; ein Mitarbeiter kann nacheinander in mehrere zulässige Rasterzellen eingeplant werden.
 Bei höchstens `900px` Containerbreite werden die Bereiche untereinander angeordnet und innerhalb der gemeinsamen Arbeitsfläche
 gescrollt.
 
 Jede `DienstplanFiliale` lädt ihren Monatsplan über den direkten Filialpfad und zeigt ihren eigenen Lade-, Fehler-,
-Leer- oder Planzustand. Ein fehlender Plan kann im Planungsmodus ausschließlich in diesem Filialabschnitt angelegt werden. Dazu
-lädt der Abschnitt die Schichtmodelle seiner Filiale und bietet nur aktive Modelle mit mindestens einer Modellschicht an. Im
-Ansichtsmodus bleiben alle Abschnitte lesend. Beim Öffnen eines Schichtdialogs übernimmt der Abschnitt Datum und Modellschicht
-aus der gewählten Rasterzelle und begrenzt die Mitarbeiterwahl auf die aktiven Mitarbeiter der Filiale.
+Leer- oder Planzustand. Ein fehlender Plan kann ausschließlich in diesem Filialabschnitt angelegt werden. Dazu lädt der
+Abschnitt die Schichtmodelle seiner Filiale und bietet nur aktive Modelle mit mindestens einer Modellschicht an. Beim Öffnen
+eines Schichtdialogs übernimmt der Abschnitt Datum und Modellschicht aus der gewählten Rasterzelle und begrenzt die
+Mitarbeiterwahl auf die aktiven Mitarbeiter der Filiale.
+
+Die routbare `DienstplanAnsichtPage` verwendet die Planungsseite und ihre Rasterdarstellung nicht. Sie ist derzeit leer und
+bildet die Grundlage für eigenständige Ansichts-Views.
 
 Im leeren, noch nie veröffentlichten Entwurf bietet die Statuszeile des Monatsplans zusätzlich `Schichtmodell wechseln` an.
 Sobald der Entwurf mindestens eine Schicht enthält, ist die Aktion mit einem erklärenden Hinweis deaktiviert; nach dem Löschen
@@ -90,11 +93,11 @@ Monatsanlage, die Rasterdarstellung und das Anlegen einzelner Schichten verwende
 
 - `src/app/commons/utils/datum/monat.ts`
 - `src/app/components/date-selectors/monat-selector`
-- `src/app/components/schichtplan/dienstplan-arbeitsbereich`
 - `src/app/components/schichtplan/dienstplan-filiale`
 - `src/app/components/schichtplan/dienstplan-anlegen-dialog`
 - `src/app/components/schichtplan/schichtplan-monat`
 - `src/app/components/schichtplan/schicht-bearbeiten-dialog`
 - `src/app/components/schichtplan/schichtmodell-bearbeiten-dialog`
 - `src/app/components/schichtplan/schichtmodelle-filialabschnitt`
-- `src/app/pages/schichtplan`
+- `src/app/pages/schichtplan/dienstplan-ansicht-page`
+- `src/app/pages/schichtplan/dienstplan-planung-page`

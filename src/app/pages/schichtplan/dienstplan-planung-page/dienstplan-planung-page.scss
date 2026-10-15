@@ -1,1 +1,109 @@
 // pur-system/src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.scss
+
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.pur-page {
+  height: 100%;
+  min-height: 0;
+
+  > .pur-page-section {
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+  }
+
+  .pur-page-section__grid {
+    //grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    //grid-template-columns: minmax(0, 1fr) clamp(320px, 30%, 400px);
+    grid-template-columns: minmax(0, 1fr) 280px;
+    overflow: hidden;
+  }
+
+  .firmen-dienstplaene,
+  .firmen-mitarbeiter {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .firmen-mitarbeiter {
+    display: grid;
+    align-content: start;
+    gap: 16px;
+  }
+
+  .filial-dienstplaene {
+    display: grid;
+    gap: 24px;
+  }
+
+  .mitarbeiter-liste {
+    display: grid;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .mitarbeiter-karte {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 10px;
+    background: var(--mat-sys-surface-container-lowest);
+
+    &:not(.cdk-drag-disabled) {
+      cursor: grab;
+      touch-action: none;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
+  }
+
+  .mitarbeiter-liste.cdk-drop-list-dragging .mitarbeiter-karte:not(.cdk-drag-placeholder) {
+    transition: transform 180ms cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  .mitarbeiter-farbe {
+    flex: 0 0 12px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: color-mix(in srgb, var(--mat-sys-on-surface) 38%, transparent);
+  }
+
+  .mitarbeiter-daten {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .mitarbeiter-monatswerte {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-small);
+  }
+
+  @container pur-page (max-width: 900px) {
+    .pur-page-section__grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: max-content max-content;
+      align-content: start;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .firmen-dienstplaene,
+    .firmen-mitarbeiter {
+      overflow: visible;
+    }
+  }
+}

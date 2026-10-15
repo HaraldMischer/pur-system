@@ -1,3 +1,5 @@
+// pur-system/src/app/app.routes.ts
+
 import { Routes } from '@angular/router';
 
 import { authGuard } from './guards/auth.guard';
@@ -9,11 +11,26 @@ import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guar
 import { verwaltungGuard } from './guards/verwaltung.guard';
 
 export const routes: Routes = [
+  // ===== Standardweiterleitung =======================
+  {
+    path: '',
+    pathMatch: 'full',
+    redirectTo: 'dashboard',
+  },
+
+  // ===== Systemzustände ==============================
   {
     path: 'login',
     title: 'Anmelden',
     data: { layout: 'auth' },
     loadComponent: () => import('./pages/auth/login-page/login-page').then((m) => m.LoginPage),
+  },
+  {
+    path: 'passwort',
+    title: 'Passwort ändern',
+    canActivate: [authGuard, initialisierungGuard],
+    loadComponent: () =>
+      import('./pages/auth/passwort-page/passwort-page').then((m) => m.PasswortPage),
   },
   {
     path: 'initialisierungsfehler',
@@ -24,11 +41,8 @@ export const routes: Routes = [
         (m) => m.InitialisierungsfehlerPage,
       ),
   },
-  {
-    path: '',
-    pathMatch: 'full',
-    redirectTo: 'dashboard',
-  },
+
+  // ===== Fachbereiche ================================
   {
     path: 'dashboard',
     title: 'Dashboard',
@@ -97,13 +111,6 @@ export const routes: Routes = [
     ],
   },
   {
-    path: 'passwort',
-    title: 'Passwort ändern',
-    canActivate: [authGuard, initialisierungGuard],
-    loadComponent: () =>
-      import('./pages/auth/passwort-page/passwort-page').then((m) => m.PasswortPage),
-  },
-  {
     path: 'verwaltung',
     title: 'Verwaltung',
     canActivate: [authGuard, initialisierungGuard, bereichGuard, verwaltungGuard],
@@ -166,6 +173,8 @@ export const routes: Routes = [
       },
     ],
   },
+
+  // ===== Fallback =====================================
   {
     path: '**',
     redirectTo: '',
