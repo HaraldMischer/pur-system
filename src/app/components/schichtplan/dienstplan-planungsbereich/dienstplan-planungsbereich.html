@@ -42,7 +42,9 @@
         (dienstplanLoeschen)="deleteDienstplan()"
       />
     } @else {
-      <div class="pur-message pur-message--surface pur-message--dashed pur-message--full">
+      <div
+        class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+      >
         <p role="status">Für diesen Monat ist noch kein Dienstplan vorhanden.</p>
         @if (darfSchreiben()) {
           <button

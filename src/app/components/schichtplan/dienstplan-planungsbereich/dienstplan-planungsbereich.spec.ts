@@ -211,8 +211,8 @@ describe('DienstplanPlanungsbereich', () => {
 
     expect(loadDienstplanMonat).toHaveBeenCalledWith(PFAD, '2026-10', false);
     expect(fixture.nativeElement.querySelector('h3')?.textContent).toContain(FILIALE.anzeigename);
-    expect(fixture.nativeElement.querySelector('.pur-message--dashed')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.pur-message--dashed button')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.pur-message--empty')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.pur-message--empty button')).not.toBeNull();
   });
 
   it('should keep a missing plan read-only outside planning mode', async () => {
@@ -220,8 +220,8 @@ describe('DienstplanPlanungsbereich', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelector('.pur-message--dashed')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.pur-message--dashed button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.pur-message--empty')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.pur-message--empty button')).toBeNull();
   });
 
   it('should load branch models before opening the plan dialog', async () => {

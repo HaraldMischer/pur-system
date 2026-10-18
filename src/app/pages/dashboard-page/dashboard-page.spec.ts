@@ -55,7 +55,11 @@ describe('DashboardPage', () => {
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(compiled.querySelector('.pur-message--surface')).not.toBeNull();
-    expect(compiled.querySelector('.pur-message--surface.pur-message--dashed')).not.toBeNull();
+    expect(
+      compiled.querySelector(
+        '.pur-message--empty.pur-message--surface.pur-message--dashed.pur-message--auto',
+      ),
+    ).not.toBeNull();
   });
 
   it('should render the tertiary preview action', () => {

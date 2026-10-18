@@ -24,6 +24,12 @@
     border-style: dashed;
   }
 
+  // Zustandsmodifier stellt einen inhaltlich leeren Bereich bewusst zurückhaltend dar.
+  &--empty {
+    color: var(--mat-sys-outline);
+    font-weight: 400;
+  }
+
   // Breitenmodifier passen die Meldung an den verfügbaren Platz oder ihren Inhalt an.
   &--full {
     width: 100%;

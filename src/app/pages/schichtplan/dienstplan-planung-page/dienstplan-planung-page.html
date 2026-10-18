@@ -38,7 +38,9 @@
           <h3 class="pur-page-section__title">Mitarbeiter</h3>
         </header>
         @if (filialauswahl().length === 0) {
-          <p class="pur-message pur-message--surface pur-message--dashed pur-message--full">
+          <p
+            class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+          >
             Wähle mindestens eine Filiale, um ihre Mitarbeiter anzuzeigen.
           </p>
         } @else if (mitarbeiter().length > 0) {
@@ -62,7 +64,9 @@
             }
           </ul>
         } @else {
-          <p class="pur-message pur-message--surface pur-message--dashed pur-message--full">
+          <p
+            class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+          >
             Keine aktiven Mitarbeiter.
           </p>
         }
