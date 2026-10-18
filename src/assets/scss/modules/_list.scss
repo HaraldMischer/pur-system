@@ -1,0 +1,76 @@
+// pur-system/src/assets/scss/modules/_list.scss
+
+.pur-list {
+  // Ordnet Kopf und Zeilen einer allgemeinen Liste untereinander an.
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+
+  // Ordnet Listentitel und zugehörige Aktionen in einer Kopfzeile an.
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  // Ordnet die direkten Bereiche einer Listenzeile horizontal an und bricht sie bei Platzmangel um.
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+
+    // Kennzeichnet die Inhalte eines inaktiven Listeneintrags.
+    &--inactive {
+      > .pur-list__row-item {
+        color: var(--mat-sys-on-surface-variant);
+        opacity: 0.6;
+      }
+    }
+  }
+
+  // Bildet einen frei kombinierbaren Inhaltsbereich innerhalb einer Listenzeile.
+  &__row-item {
+    min-width: 0;
+
+    // Positioniert einen abschließenden Bereich am Ende der Listenzeile.
+    &--end {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      margin-inline-start: auto;
+    }
+  }
+
+  // Stellt jede Listenzeile als einzeln umrandeten Bereich dar.
+  &--outlined {
+    > .pur-list__row {
+      padding: 12px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 12px;
+    }
+  }
+
+  // Trennt aufeinanderfolgende Listenzeilen durch horizontale Linien.
+  &--divided {
+    gap: 0;
+
+    > .pur-list__header {
+      margin-bottom: 12px;
+    }
+
+    > .pur-list__row {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+      &:first-of-type {
+        border-top: 1px solid var(--mat-sys-outline-variant);
+      }
+    }
+  }
+}

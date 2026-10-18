@@ -1,166 +1,183 @@
 <!-- pur-system/src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.html -->
 
-<mat-card appearance="outlined">
-  <mat-card-header>
-    <mat-card-title>{{ filiale().anzeigename }}</mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    @if (kontext()?.download) {
-      <p role="status">Öffnungszeiten werden geladen …</p>
-    } @else if (kontext()?.error; as error) {
-      <p class="pur-form__error" role="alert">{{ error }}</p>
-    }
+<section class="pur-page-section">
+  <!-- Filialbezeichnung -->
+  <header class="pur-page-section__header">
+    <h2 class="pur-page-section__title">{{ filiale().anzeigename }}</h2>
+  </header>
 
-    @if (kontext()?.isLoaded) {
-      <form class="pur-form pur-form--grid" [formGroup]="form" (ngSubmit)="saveGrundlagen()">
-        <div class="pur-form__group oeffnungszeiten-filiale__grundlagen">
-          <h2 class="pur-form__group-titel">Grundlagen</h2>
-          <mat-form-field>
-            <mat-label>Bundesland</mat-label>
-            <mat-select formControlName="bundesland" required>
-              @for (bundesland of bundeslaender; track bundesland.value) {
-                <mat-option [value]="bundesland.value">{{ bundesland.label }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Zeitzone</mat-label>
-            <input matInput formControlName="zeitzone" readonly />
-          </mat-form-field>
-        </div>
+  @if (kontext()?.download) {
+    <p role="status">Öffnungszeiten werden geladen …</p>
+  } @else if (kontext()?.error; as error) {
+    <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+  }
 
-        <div class="pur-form__group">
-          <h2 class="pur-form__group-titel">Reguläre Woche</h2>
-          <div class="oeffnungszeiten-filiale__wochentage">
-            @for (wochentag of wochentage; track wochentag.value) {
-              <section
-                class="oeffnungszeiten-filiale__wochentag"
-                [formGroup]="getTagForm(wochentag.value)"
-              >
-                <h3>{{ wochentag.label }}</h3>
-                <mat-checkbox formControlName="geoeffnet">Geöffnet</mat-checkbox>
-                @if (getTagForm(wochentag.value).controls.geoeffnet.value) {
-                  <mat-form-field>
-                    <mat-label>Beginn</mat-label>
-                    <input matInput type="time" formControlName="beginnLokalzeit" required />
-                  </mat-form-field>
-                  <mat-form-field>
-                    <mat-label>Ende</mat-label>
-                    <input matInput type="time" formControlName="endeLokalzeit" required />
-                  </mat-form-field>
-                  @if (endetAmFolgetag(wochentag.value)) {
-                    <span class="oeffnungszeiten-filiale__folgetag">Endet am Folgetag</span>
-                  }
-                }
-              </section>
-            }
-          </div>
-        </div>
+  @if (kontext()?.isLoaded) {
+    <!-- Wochentage -->
+    <form [formGroup]="form" (ngSubmit)="saveGrundlagen()">
+      <section class="pur-list pur-list--divided wochentage">
+        <header class="pur-list__header">
+          <h3 class="pur-text pur-text--title-medium">Wochentage</h3>
+        </header>
 
-        <div class="oeffnungszeiten-filiale__formular-aktionen">
-          <button
-            matButton="filled"
-            type="submit"
-            [disabled]="form.invalid || form.pristine || kontext()?.inProgress"
-          >
-            {{ bestand() ? 'Grundlagen speichern' : 'Öffnungszeiten initialisieren' }}
-          </button>
-        </div>
-      </form>
+        @for (wochentag of wochentage; track wochentag.value) {
+          <section class="pur-list__row" [formGroup]="getTagForm(wochentag.value)">
+            <h4 class="pur-list__row-item wochentag">
+              {{ wochentag.label }}
+            </h4>
 
-      @if (bestand(); as daten) {
-        <section class="oeffnungszeiten-filiale__liste">
-          <header class="oeffnungszeiten-filiale__listen-kopf">
-            <h2>Sondertage</h2>
-            <button
-              matButton="filled"
-              type="button"
-              (click)="openSondertagAnlegen()"
-              [disabled]="kontext()?.inProgress"
-            >
-              <mat-icon>add</mat-icon>
-              Sondertag
-            </button>
-          </header>
-          @for (sondertag of daten.sondertage; track sondertag.id) {
-            <div class="oeffnungszeiten-filiale__eintrag">
-              <div>
-                <strong>{{ sondertag.bezeichnung }}</strong>
-                <span
-                  >{{ sondertag.aktiv ? 'Aktiv' : 'Inaktiv' }} ·
-                  {{
-                    sondertag.herkunft === 'system' ? 'Gesetzlicher Feiertag' : 'Eigenes Datum'
-                  }}</span
+            <div class="pur-list__row-item">
+              <mat-checkbox formControlName="geoeffnet"> Geöffnet </mat-checkbox>
+            </div>
+
+            @if (getTagForm(wochentag.value).controls.geoeffnet.value) {
+              <div class="pur-list__row-item pur-list__row-item--end uhrzeitfelder">
+                <mat-form-field
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                  class="pur-flex__item pur-flex__item--time"
                 >
+                  <mat-label>Beginn</mat-label>
+                  <input matInput type="time" formControlName="beginnLokalzeit" required />
+                  <span matTextSuffix>Uhr</span>
+                </mat-form-field>
+
+                <mat-form-field
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                  class="pur-flex__item pur-flex__item--time"
+                >
+                  <mat-label>Ende</mat-label>
+                  <input matInput type="time" formControlName="endeLokalzeit" required />
+                  <span matTextSuffix>Uhr</span>
+                </mat-form-field>
               </div>
-              <div class="oeffnungszeiten-filiale__eintrag-aktionen">
+            }
+          </section>
+        }
+      </section>
+
+      <div class="formular-aktionen">
+        <button
+          matButton="filled"
+          type="submit"
+          [disabled]="form.invalid || form.pristine || kontext()?.inProgress"
+        >
+          {{ bestand() ? 'Öffnungszeiten speichern' : 'Öffnungszeiten initialisieren' }}
+        </button>
+      </div>
+    </form>
+
+    @if (bestand(); as daten) {
+      <!-- Gesetzliche Feiertage -->
+      <section class="pur-list pur-list--divided liste">
+        <header class="pur-list__header">
+          <h3 class="pur-text pur-text--title-medium">Gesetzliche Feiertag</h3>
+        </header>
+        @for (feiertag of feiertage(); track feiertag.id) {
+          <div class="pur-list__row" [class.pur-list__row--inactive]="!feiertag.aktiv">
+            <div class="pur-list__row-item">
+              <p class="pur-text pur-text--label">{{ feiertag.bezeichnung }}</p>
+              <p class="pur-text pur-text--secondary">
+                {{ feiertag.aktiv ? 'Aktiv' : 'Inaktiv' }}
+              </p>
+            </div>
+            <div class="pur-list__row-item pur-list__row-item--end">
+              <button
+                matIconButton
+                type="button"
+                aria-label="Feiertag bearbeiten"
+                (click)="openSondertagBearbeiten(feiertag)"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </section>
+
+      <!-- Sondertage -->
+      <section class="pur-list pur-list--divided liste">
+        <header class="pur-list__header">
+          <h3 class="pur-text pur-text--title-medium">Sondertage</h3>
+        </header>
+        @if (sondertage().length === 0) {
+          <p>Noch keine Sondertage vorhanden.</p>
+        }
+        @for (sondertag of sondertage(); track sondertag.typ + sondertag.eintrag.id) {
+          <div
+            class="pur-list__row"
+            [class.pur-list__row--inactive]="
+              sondertag.typ === 'wiederkehrend' && !sondertag.eintrag.aktiv
+            "
+          >
+            <div class="pur-list__row-item">
+              <p class="pur-text pur-text--label">{{ sondertag.eintrag.bezeichnung }}</p>
+              @if (sondertag.typ === 'wiederkehrend') {
+                <p class="pur-text pur-text--secondary">
+                  {{ sondertag.eintrag.aktiv ? 'Aktiv' : 'Inaktiv' }} · Jährlich am
+                  {{ getJaehrlichesDatum(sondertag.eintrag) }}
+                </p>
+              } @else {
+                <p class="pur-text pur-text--secondary">
+                  Einmalig am {{ sondertag.eintrag.datum }}
+                </p>
+              }
+            </div>
+            <div class="pur-list__row-item pur-list__row-item--end">
+              @if (sondertag.typ === 'wiederkehrend') {
                 <button
                   matIconButton
                   type="button"
                   aria-label="Sondertag bearbeiten"
-                  (click)="openSondertagBearbeiten(sondertag)"
+                  (click)="openSondertagBearbeiten(sondertag.eintrag)"
                 >
                   <mat-icon>edit</mat-icon>
                 </button>
-                @if (sondertag.herkunft === 'benutzer') {
+                @if (sondertag.eintrag.herkunft === 'benutzer') {
                   <button
                     matIconButton
                     type="button"
                     aria-label="Sondertag löschen"
-                    (click)="deleteSondertag(sondertag)"
+                    (click)="deleteSondertag(sondertag.eintrag)"
                   >
                     <mat-icon>delete</mat-icon>
                   </button>
                 }
-              </div>
-            </div>
-          }
-        </section>
-
-        <section class="oeffnungszeiten-filiale__liste">
-          <header class="oeffnungszeiten-filiale__listen-kopf">
-            <h2>Datumsbezogene Ausnahmen</h2>
-            <button
-              matButton="filled"
-              type="button"
-              (click)="openAusnahmeAnlegen()"
-              [disabled]="kontext()?.inProgress"
-            >
-              <mat-icon>add</mat-icon>
-              Ausnahme
-            </button>
-          </header>
-          @if (daten.ausnahmen.length === 0) {
-            <p>Noch keine Ausnahmen vorhanden.</p>
-          }
-          @for (ausnahme of daten.ausnahmen; track ausnahme.id) {
-            <div class="oeffnungszeiten-filiale__eintrag">
-              <div>
-                <strong>{{ ausnahme.datum }} · {{ ausnahme.bezeichnung }}</strong>
-                <span>{{ ausnahme.oeffnungsregel.geoeffnet ? 'Geöffnet' : 'Geschlossen' }}</span>
-              </div>
-              <div class="oeffnungszeiten-filiale__eintrag-aktionen">
+              } @else {
                 <button
                   matIconButton
                   type="button"
-                  aria-label="Ausnahme bearbeiten"
-                  (click)="openAusnahmeBearbeiten(ausnahme)"
+                  aria-label="Sondertag bearbeiten"
+                  (click)="openEinmaligenSondertagBearbeiten(sondertag.eintrag)"
                 >
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button
                   matIconButton
                   type="button"
-                  aria-label="Ausnahme löschen"
-                  (click)="deleteAusnahme(ausnahme)"
+                  aria-label="Sondertag löschen"
+                  (click)="deleteEinmaligenSondertag(sondertag.eintrag)"
                 >
                   <mat-icon>delete</mat-icon>
                 </button>
-              </div>
+              }
             </div>
-          }
-        </section>
-      }
+          </div>
+        }
+
+        <div class="formular-aktionen">
+          <button
+            matButton="filled"
+            type="button"
+            (click)="openSondertagAnlegen()"
+            [disabled]="kontext()?.inProgress"
+          >
+            <mat-icon>add</mat-icon>
+            Sondertag hinzufügen
+          </button>
+        </div>
+      </section>
     }
-  </mat-card-content>
-</mat-card>
+  }
+</section>

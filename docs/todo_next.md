@@ -17,7 +17,7 @@ Hauptnavigation entsteht dafür die ausklappbare Gruppe `Einstellungen`. Ihr ers
 `/einstellungen/oeffnungszeiten` erreichbar; weitere Einstellungsseiten können später als gleichrangige Unterpunkte ergänzt
 werden. Die gesamte Gruppe wird über den App-Bereich `einstellungen` freigegeben.
 
-Der erste Ausbau umfasst die allgemeinen Standortdaten für Zeitzone und Feiertagsauflösung sowie die Kundenöffnungszeiten. Die
+Der erste Ausbau umfasst die Feiertagsauflösung für Nordrhein-Westfalen sowie die Kundenöffnungszeiten. Die
 Konfiguration wird unterhalb der jeweiligen Filiale in der Collection `einstellung` gespeichert. Das Dokument `allgemein`
 enthält die dafür benötigten Grundlagen. Das Dokument `oeffnungszeiten` enthält die regelmäßigen Wochenregeln.
 Wiederkehrende oder berechnete besondere Tage werden mit sichtbarer Bezeichnung in der Subcollection `sondertag` verwaltet.
@@ -80,10 +80,6 @@ Neu hinzuzufügen:
 - src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.html
 - src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.scss
 - src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.spec.ts
-- src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.ts
-- src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.html
-- src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.scss
-- src/app/components/einstellungen/ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog.spec.ts
 - docs/architektur/components/einstellungen.md
 - docs/architektur/services/filialeinstellung-service.md
 - docs/architektur/stores/filialeinstellung-store.md
@@ -95,8 +91,9 @@ Neu hinzuzufügen:
 #### Schritt 1: Firestore-Struktur und Einstellungsmodell festlegen
 
 - [x] Die Collection `filiale/{filialeId}/einstellung` als gemeinsamen Ablageort für filialbezogene Konfiguration einführen.
-- [x] Im Dokument `einstellung/allgemein` mindestens `bundesland` und `zeitzone` speichern. Beide Werte besitzen nur dort ihre
-      verbindliche Quelle und werden nicht zusätzlich im Filialdokument dupliziert.
+- [x] Im Dokument `einstellung/allgemein` das Bundesland speichern. Die Oberfläche verwendet zunächst fest
+      Nordrhein-Westfalen (`DE-NW`); eine Auswahl ist noch nicht vorgesehen. Die deutschlandweit einheitlich verwendete
+      Zeitzone `Europe/Berlin` bleibt eine technische Konstante und wird nicht als Filialeinstellung gespeichert.
 - [x] Im Dokument `einstellung/oeffnungszeiten` die festen Einträge `montag`, `dienstag`, `mittwoch`, `donnerstag`, `freitag`,
       `samstag` und `sonntag` als regelmäßige Wochenregeln speichern.
 - [x] Jede geöffnete Öffnungsregel mit `beginnLokalzeit`, `endeLokalzeit` und `endetAmFolgetag` als genau einen durchgehenden
@@ -150,15 +147,15 @@ Neu hinzuzufügen:
 - [x] Die komponentenlose Elternroute `/einstellungen` mit dem App-Bereich `einstellungen` und die direkt routbare Page
       `/einstellungen/oeffnungszeiten` anlegen. Die Sidebar zeigt `Einstellungen` als ausklappbare Gruppe und darunter zunächst
       ausschließlich `Öffnungszeiten`.
-- [x] Allgemeine Grundlagen und Öffnungszeiten je ausgewählter Filiale getrennt laden und bearbeiten; Änderungen einer Filiale
-      dürfen keine andere ausgewählte Filiale beeinflussen. Bundesland und Zeitzone dürfen im ersten Ausbau als eigener Bereich
-      auf der Öffnungszeitenseite erscheinen.
+- [x] Öffnungszeiten je ausgewählter Filiale getrennt laden und bearbeiten; Änderungen einer Filiale dürfen keine andere
+      ausgewählte Filiale beeinflussen. Bundesland und Zeitzone werden nicht als Formularfelder dargestellt.
 - [x] Alle sieben Wochentage vollständig darstellen. Geschlossene Tage benötigen keine Zeitfelder; geöffnete Tage verlangen
       genau eine gültige Beginn- und Endzeit und können ausdrücklich am Folgetag enden.
-- [x] Sondertage mit Bezeichnung, Aktivstatus, Datumsregel und Öffnungsregel anlegen, bearbeiten und deaktivieren können.
-      Gesetzliche Feiertage werden aus dem zentralen Katalog angeboten; ihre Berechnungsregel ist nicht frei editierbar.
-- [x] Datumsbezogene Ausnahmen mit Datum, Bezeichnung, Öffnungsstatus und gegebenenfalls abweichenden Zeiten anlegen, bearbeiten
-      und löschen können.
+- [x] Die Oberfläche in Wochentage, gesetzliche Feiertage und Sondertage gliedern. Heiligabend und Silvester werden als
+      Sondertage und nicht als gesetzliche Feiertage dargestellt.
+- [x] Eigene Sondertage mit Bezeichnung, Öffnungsstatus und gegebenenfalls abweichenden Zeiten anlegen, bearbeiten und löschen.
+      Beim Anlegen wird zwischen einem konkreten Einzeldatum und einer jährlichen Wiederholung nach Monat und Tag gewählt.
+- [x] Gesetzliche Feiertage aus dem zentralen Katalog anbieten; ihre Berechnungsregel ist nicht frei editierbar.
 - [x] Die wirksame Priorität `Ausnahme → Sondertag → Wochentag` in der Oberfläche verständlich erläutern.
 
 #### Tests und Abschluss
@@ -176,12 +173,15 @@ Neu hinzuzufügen:
 - [x] Fachkonzept, Architektur, Projektstand und Datenübergang aktualisieren.
 - [x] Firestore Rules und Functions mit dem App-Bereich `einstellungen` produktiv deployen und die Profilbearbeitung mit einem
       realen Masterkonto prüfen.
+- [ ] Die geänderten Firestore Rules ohne gespeichertes Feld `zeitzone` produktiv deployen. Vorhandene ältere
+      Einstellungsdokumente bleiben lesbar und entfernen das Feld beim nächsten Speichern.
 - [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich
       ausführen.
 
 #### Erledigt, wenn
 
-- [ ] Jede Filiale besitzt genau eine verbindliche allgemeine Einstellung mit Bundesland und Zeitzone.
+- [ ] Jede Filiale besitzt genau eine verbindliche allgemeine Einstellung mit dem zunächst fest verwendeten Bundesland
+      Nordrhein-Westfalen.
 - [ ] Jede Filiale besitzt eine Öffnungsregel für jeden Wochentag und eine erweiterbare, bezeichnete Liste besonderer Tage.
 - [ ] Feste jährliche Sondertage und zentral berechnete gesetzliche Feiertage können unterschiedliche Öffnungsregeln besitzen.
 - [ ] Datumsbezogene Ausnahmen überschreiben Sondertags- und Wochentagsregeln nachvollziehbar.
@@ -1048,7 +1048,8 @@ Neu hinzuzufügen:
 
 #### Schritt 2: Datumsauflösung aus den Filialeinstellungen übernehmen
 
-- [ ] Bundesland, Zeitzone und Öffnungsregeln ausschließlich über die nach Todo 20 bereitgestellte Filialeinstellung laden.
+- [ ] Bundesland und Öffnungsregeln ausschließlich über die nach Todo 20 bereitgestellte Filialeinstellung laden; für technische
+      Zeitberechnungen zentral `Europe/Berlin` verwenden.
 - [ ] Die dort festgelegte Berechnungsregel für bundeslandspezifische feste und bewegliche Feiertage wiederverwenden und keine
       zweite unabhängige Feiertagsauflösung im Dienstplan einführen.
 - [ ] Feiertage immer in der verbindlichen Filial- beziehungsweise Dienstplan-Zeitzone auflösen und Jahres- sowie Monatsgrenzen

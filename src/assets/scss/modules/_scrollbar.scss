@@ -1,10 +1,13 @@
 // pur-system/src/assets/scss/modules/_scrollbar.scss
 
 .pur-scrollbar {
-  padding-inline-end: 4px;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--mat-sys-outline-variant) transparent;
+
+  &--inset {
+    padding-inline-end: 4px;
+  }
 
   &::-webkit-scrollbar {
     width: 8px;

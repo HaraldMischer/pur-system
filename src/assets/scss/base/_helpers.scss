@@ -3,3 +3,16 @@
 .flex-spacer {
   flex: 1 1 auto;
 }
+
+.pur-flex {
+  &__item {
+    min-width: 0;
+
+    // Reserviert Platz für eine Uhrzeit mit dem Suffix „Uhr“.
+    &--time {
+      width: 115px;
+      flex: 0 0 115px;
+    }
+
+  }
+}

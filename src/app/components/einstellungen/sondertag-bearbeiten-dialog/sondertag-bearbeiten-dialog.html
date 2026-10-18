@@ -1,39 +1,88 @@
 <!-- pur-system/src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.html -->
 
-<h2 mat-dialog-title>{{ daten.sondertag ? 'Sondertag bearbeiten' : 'Sondertag anlegen' }}</h2>
-<mat-dialog-content>
+<h2 mat-dialog-title>
+  {{ daten.sondertag || daten.ausnahme ? 'Sondertag bearbeiten' : 'Sondertag anlegen' }}
+</h2>
+<mat-dialog-content class="pur-dialog__content">
   <form id="sondertag-form" class="pur-form pur-form--grid" [formGroup]="form" (ngSubmit)="save()">
     @if (istSystemtag) {
       <p>
         <strong>{{ daten.sondertag?.bezeichnung }}</strong
-        ><br />Die gesetzliche Datumsregel wird zentral berechnet und kann hier nicht geändert
-        werden.
+        ><br />
+        @if (istGesetzlicherFeiertag) {
+          Die gesetzliche Datumsregel wird zentral berechnet und kann hier nicht geändert werden.
+        } @else {
+          Dieser vordefinierte Sondertag kann zeitlich angepasst, aber nicht umdatiert werden.
+        }
       </p>
     } @else {
-      <mat-form-field>
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Bezeichnung</mat-label>
         <input matInput formControlName="bezeichnung" required maxlength="80" />
       </mat-form-field>
-      <mat-form-field>
-        <mat-label>Monat</mat-label>
-        <input matInput type="number" formControlName="monat" required min="1" max="12" />
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Tag</mat-label>
-        <input matInput type="number" formControlName="tag" required min="1" max="31" />
-      </mat-form-field>
+      <mat-checkbox
+        class="pur-form__item pur-form__item--checkbox"
+        formControlName="jaehrlichWiederkehrend"
+      >
+        Jährlich wiederholen
+      </mat-checkbox>
+      @if (form.controls.jaehrlichWiederkehrend.value) {
+        <div class="pur-form__row">
+          <mat-form-field
+            appearance="outline"
+            class="pur-form__item pur-form__item--field pur-form__item--50"
+          >
+            <mat-label>Monat</mat-label>
+            <input matInput type="number" formControlName="monat" required min="1" max="12" />
+          </mat-form-field>
+          <mat-form-field
+            appearance="outline"
+            class="pur-form__item pur-form__item--field pur-form__item--50"
+          >
+            <mat-label>Tag</mat-label>
+            <input matInput type="number" formControlName="tag" required min="1" max="31" />
+          </mat-form-field>
+        </div>
+      } @else {
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+          <mat-label>Datum</mat-label>
+          <input matInput type="date" formControlName="datum" required />
+        </mat-form-field>
+      }
     }
-    <mat-checkbox formControlName="aktiv">Aktiv</mat-checkbox>
-    <mat-checkbox formControlName="geoeffnet">Geöffnet</mat-checkbox>
+    <div class="pur-form__row">
+      @if (form.controls.jaehrlichWiederkehrend.value) {
+        <mat-checkbox
+          class="pur-form__item pur-form__item--checkbox pur-form__item--50"
+          formControlName="aktiv"
+          >Aktiv</mat-checkbox
+        >
+      }
+      <mat-checkbox
+        class="pur-form__item pur-form__item--checkbox pur-form__item--50"
+        formControlName="geoeffnet"
+        >Geöffnet</mat-checkbox
+      >
+    </div>
     @if (form.controls.geoeffnet.value) {
-      <mat-form-field
-        ><mat-label>Beginn</mat-label
-        ><input matInput type="time" formControlName="beginnLokalzeit" required
-      /></mat-form-field>
-      <mat-form-field
-        ><mat-label>Ende</mat-label
-        ><input matInput type="time" formControlName="endeLokalzeit" required
-      /></mat-form-field>
+      <div class="pur-form__row">
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Beginn</mat-label>
+          <input matInput type="time" formControlName="beginnLokalzeit" required />
+          <span matTextSuffix>Uhr</span>
+        </mat-form-field>
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Ende</mat-label>
+          <input matInput type="time" formControlName="endeLokalzeit" required />
+          <span matTextSuffix>Uhr</span>
+        </mat-form-field>
+      </div>
     }
   </form>
 </mat-dialog-content>

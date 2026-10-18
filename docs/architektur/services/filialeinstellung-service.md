@@ -12,9 +12,10 @@ Der Service lädt die beiden verbindlichen Dokumente `einstellung/allgemein` und
 Subcollections `sondertag` und `ausnahme`. Fehlen beide Hauptdokumente, liefert er einen noch nicht initialisierten Bestand.
 Existiert nur eines der beiden Dokumente, wird der unvollständige Zustand als Fehler behandelt.
 
-Die Initialisierung verlangt Bundesland, Zeitzone und vollständige Wochenregeln für alle sieben Tage. Sie legt außerdem die für
-das Bundesland geltenden systemdefinierten Feiertage sowie die zentral vorgesehenen festen Sondertage an. Werte werden nicht aus
-Adresse oder Postleitzahl abgeleitet.
+Die Initialisierung verlangt Bundesland und vollständige Wochenregeln für alle sieben Tage. Die Oberfläche übergibt zunächst
+fest Nordrhein-Westfalen (`DE-NW`). Der Service legt die dafür geltenden systemdefinierten Feiertage sowie die zentral
+vorgesehenen festen Sondertage an. Werte werden nicht aus Adresse oder Postleitzahl abgeleitet. Die anwendungsweit feste
+technische Zeitzone `Europe/Berlin` wird nicht in den Filialeinstellungen gespeichert.
 
 ## Schreiben
 
@@ -22,13 +23,15 @@ Allgemeine Einstellungen und Wochenregeln werden gemeinsam gespeichert. Ein Bund
 Feiertage atomar ab: gemeinsame Einträge behalten ihre angepasste Öffnungsregel, nicht mehr geltende werden entfernt und neue
 geschlossen ergänzt. Benutzerdefinierte Sondertage bleiben erhalten.
 
-Eigene Sondertage und Datumsausnahmen werden als einzelne Dokumente angelegt, aktualisiert oder gelöscht. Systemdefinierte
+Eigene Sondertage werden in der Oberfläche gemeinsam angelegt und je nach Wiederholung technisch als jährlich fester
+Sondertag oder konkrete Datumsausnahme gespeichert. Beide Varianten werden als einzelne Dokumente aktualisiert oder gelöscht.
+Systemdefinierte
 Sondertage behalten Identität, Bezeichnung, Herkunft und Datumsregel; veränderbar sind nur Aktivstatus und Öffnungsregel. Jeder
 Schreibvorgang ergänzt die fachlichen Metadaten mit Benutzer-UID und Serverzeitstempel.
 
 ## Validierung
 
-Der Service validiert Bundesland, Zeitzone, vollständige Wochenregeln, lokale Zeitwerte, jährlich feste Daten und konkrete
+Der Service validiert Bundesland, vollständige Wochenregeln, lokale Zeitwerte, jährlich feste Daten und konkrete
 Datumswerte. Eine geöffnete Regel muss verschiedene Beginn- und Endzeiten besitzen; `endetAmFolgetag` muss aus ihrer Reihenfolge
 korrekt abgeleitet sein. Geschlossene Regeln enthalten keine Zeitwerte.
 

@@ -34,11 +34,17 @@ unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiterbelegung/{mitarbeiterId}_
 Die filialbezogenen Dienstpläne bleiben die fachliche Quelle der einzelnen Schichten. Der Belegungsindex ist eine gemeinsam mit
 den Schichten atomar gepflegte Prüfstruktur und ersetzt weder die Dienstplandokumente noch deren getrennte Versionierung.
 
-Die allgemeinen Filialeinstellungen speichern Bundesland und Zeitzone. Die regelmäßigen Öffnungszeiten enthalten genau eine
-Regel für jeden Wochentag. Eine geöffnete Regel besitzt eine lokale Beginn- und Endzeit sowie `endetAmFolgetag`; damit wird
+Die allgemeinen Filialeinstellungen speichern das Bundesland. Die Oberfläche verwendet zunächst fest Nordrhein-Westfalen
+(`DE-NW`) und bietet keine Bundeslandauswahl an. Die technische Zeitzone `Europe/Berlin` gilt anwendungsweit und wird nicht als
+Filialeinstellung gespeichert. Die regelmäßigen Öffnungszeiten enthalten genau eine Regel für jeden Wochentag. Eine geöffnete
+Regel besitzt eine lokale Beginn- und Endzeit sowie `endetAmFolgetag`; damit wird
 beispielsweise eine Montagsöffnung von 07:00 Uhr bis Dienstag 01:00 Uhr eindeutig dem Montag zugeordnet. Eine Öffnungsregel
 beschreibt immer einen durchgehenden Zeitraum. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht Teil des
 Modells. Eine geschlossene Regel enthält keine Zeitwerte.
+
+Die Oberfläche unterscheidet Wochentage, gesetzliche Feiertage und Sondertage. Heiligabend und Silvester sind keine
+gesetzlichen Feiertage und werden daher wie eigene einmalige oder jährlich wiederkehrende Einträge unter Sondertage geführt.
+Damit kann die spätere Dienstplanung gesetzliche Feiertage eindeutig von sonstigen besonderen Tagen unterscheiden.
 
 Wiederkehrende Sondertage besitzen eine sichtbare Bezeichnung, einen Aktivstatus, eine Herkunft, eine eigene Öffnungsregel und
 entweder ein jährlich festes Datum oder einen zentral definierten gesetzlichen Feiertagsschlüssel. Systemdefinierte gesetzliche
@@ -52,7 +58,8 @@ bleiben unverändert. Schlüssel, Bezeichnung und Datumsberechnung gesetzlicher 
 nur Aktivstatus und Öffnungsregel. Bei eigenen festen Sondertagen sind Bezeichnung, Monat, Tag, Aktivstatus und Öffnungsregel
 bearbeitbar.
 
-Konkrete Datumsausnahmen besitzen eine Dokument-ID im Format `YYYY-MM-DD`, eine Bezeichnung und eine vollständige
+Einmalige Sondertage werden technisch als konkrete Datumsausnahmen mit einer Dokument-ID im Format `YYYY-MM-DD`, einer
+Bezeichnung und einer vollständigen
 Öffnungsregel. Die wirksame Regel wird in der Reihenfolge `Ausnahme → Sondertag → Wochentag` aufgelöst. Treffen mehrere
 aktive Sondertage auf dasselbe Datum, liegt ein Konfigurationsfehler vor; nur eine konkrete Datumsausnahme darf diese Kollision
 bewusst überschreiben. Fehlende Wochenregeln werden nicht als geöffnet interpretiert. Eine über Mitternacht reichende
@@ -60,9 +67,9 @@ bewusst überschreiben. Fehlende Wochenregeln werden nicht als geöffnet interpr
 
 Der `FilialeinstellungService` behandelt vollständig fehlende Einstellungsdokumente als noch nicht initialisierten Zustand.
 Existiert dagegen nur ein Teil der beiden verbindlichen Hauptdokumente, wird ein Initialisierungsfehler gemeldet. Die erstmalige
-Anlage verlangt Bundesland, Zeitzone und alle sieben Wochenregeln ausdrücklich; Werte werden nicht aus Anschrift oder
-Postleitzahl abgeleitet. Der `FilialeinstellungStore` hält vollständige Bestände sowie Lade-, Schreib- und Fehlerzustände für
-jeden Filialpfad getrennt und stellt die Datumsauflösung bereit.
+Anlage verwendet Nordrhein-Westfalen und verlangt alle sieben Wochenregeln ausdrücklich; das Bundesland wird nicht aus Anschrift
+oder Postleitzahl abgeleitet. Der `FilialeinstellungStore` hält vollständige Bestände sowie Lade-, Schreib- und Fehlerzustände
+für jeden Filialpfad getrennt und stellt die Datumsauflösung bereit.
 
 Allgemeine Einstellungen, Wochenregeln und der automatische Sondertagsabgleich eines Bundeslandwechsels werden atomar
 geschrieben. Benutzerdefinierte Sondertage und Datumsausnahmen bleiben einzeln anleg-, änder- und löschbar. Systemdefinierte

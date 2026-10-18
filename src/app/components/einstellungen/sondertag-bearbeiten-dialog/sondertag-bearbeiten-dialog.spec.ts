@@ -10,6 +10,7 @@ const PFAD = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' } as const
 
 describe('SondertagBearbeitenDialog', () => {
   const createSondertag = vi.fn().mockResolvedValue(undefined);
+  const createAusnahme = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
 
   beforeEach(async () => {
@@ -24,6 +25,7 @@ describe('SondertagBearbeitenDialog', () => {
           useValue: {
             getFilialeinstellungKontext: vi.fn(() => ({ inProgress: false })),
             createSondertag,
+            createAusnahme,
           },
         },
       ],
@@ -34,6 +36,8 @@ describe('SondertagBearbeitenDialog', () => {
     const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
     fixture.componentInstance.form.setValue({
       bezeichnung: 'Heiligabend',
+      jaehrlichWiederkehrend: true,
+      datum: '',
       monat: 12,
       tag: 24,
       aktiv: true,
@@ -58,6 +62,25 @@ describe('SondertagBearbeitenDialog', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
+  it('should create a one-time special day for a concrete date', async () => {
+    const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
+    fixture.componentInstance.form.patchValue({
+      bezeichnung: 'Betriebsversammlung',
+      jaehrlichWiederkehrend: false,
+      datum: '2026-11-12',
+      geoeffnet: false,
+    });
+
+    await fixture.componentInstance.save();
+
+    expect(createAusnahme).toHaveBeenCalledWith(PFAD, {
+      datum: '2026-11-12',
+      bezeichnung: 'Betriebsversammlung',
+      oeffnungsregel: { geoeffnet: false },
+    });
+    expect(close).toHaveBeenCalledWith(true);
+  });
+
   it('should reject equal opening times', () => {
     const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
     fixture.componentInstance.form.patchValue({
@@ -68,5 +91,14 @@ describe('SondertagBearbeitenDialog', () => {
     });
 
     expect(fixture.componentInstance.form.hasError('identischeOeffnungszeiten')).toBe(true);
+  });
+
+  it('should arrange the checkboxes and opening times in rows', () => {
+    const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
+    fixture.componentInstance.form.controls.geoeffnet.setValue(true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.pur-form__row')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelectorAll('span[matTextSuffix]')).toHaveLength(2);
   });
 });

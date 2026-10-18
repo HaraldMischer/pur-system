@@ -1,65 +1,37 @@
 // pur-system/src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.scss
 
-.oeffnungszeiten-filiale {
-  &__grundlagen,
-  &__wochentag,
-  &__listen-kopf,
-  &__eintrag,
-  &__eintrag-aktionen {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+@use '../../../../assets/scss/variables/breakpoints' as breakpoints;
+
+.wochentage,
+.liste {
+  margin-top: 24px;
+}
+
+.wochentage {
+  container-type: inline-size;
+
+  .wochentag {
+    width: 80px;
+    flex: 0 0 80px;
+    margin: 0;
   }
 
-  &__grundlagen,
-  &__wochentage,
-  &__liste {
-    margin-top: 24px;
-  }
+  @container (max-width: #{breakpoints.$breakpoint-medium-device}) {
+    .uhrzeitfelder {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      flex-basis: 100%;
+      margin-inline-start: 0;
 
-  &__wochentage {
-    display: grid;
-    gap: 12px;
-  }
-
-  &__wochentag {
-    flex-wrap: wrap;
-    padding: 12px;
-    border: 1px solid var(--mat-sys-outline-variant);
-    border-radius: 12px;
-
-    h3 {
-      width: 112px;
-      margin: 0;
-    }
-
-    mat-form-field {
-      width: 140px;
+      > .pur-flex__item--time {
+        width: 100%;
+      }
     }
   }
+}
 
-  &__folgetag {
-    color: var(--mat-sys-primary);
-  }
-
-  &__formular-aktionen {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 16px;
-  }
-
-  &__listen-kopf,
-  &__eintrag {
-    justify-content: space-between;
-  }
-
-  &__eintrag {
-    padding: 12px 0;
-    border-bottom: 1px solid var(--mat-sys-outline-variant);
-
-    span {
-      display: block;
-      color: var(--mat-sys-on-surface-variant);
-    }
-  }
+.formular-aktionen {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }

@@ -40,6 +40,7 @@ function isAppBereich(value: unknown): value is TAppBereich {
     value === 'dashboard' ||
     value === 'schichtplan' ||
     value === 'mitarbeiter' ||
+    value === 'einstellungen' ||
     value === 'system'
   );
 }

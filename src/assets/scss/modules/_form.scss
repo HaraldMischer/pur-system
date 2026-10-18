@@ -51,7 +51,7 @@
       color: var(--mat-sys-error);
     }
 
-    // Größenmodifier verteilen den verfügbaren Platz anteilig innerhalb eines Flex-Layouts.
+    // Größenmodifier steuern feste oder anteilige Item-Größen innerhalb eines Flex-Layouts.
     &--20 {
       flex: 20 1 0;
     }

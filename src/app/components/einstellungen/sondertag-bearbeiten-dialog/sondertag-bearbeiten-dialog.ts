@@ -25,6 +25,7 @@ import { MatInputModule } from '@angular/material/input';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import {
+  IFilialeinstellungAusnahmeEintrag,
   IFilialeinstellungSondertagEintrag,
   TOeffnungsregel,
 } from '../../../commons/models/domain/filialeinstellung';
@@ -35,6 +36,7 @@ import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung
 export interface ISondertagBearbeitenDialogDaten {
   readonly pfad: IFilialPfad;
   readonly sondertag?: IFilialeinstellungSondertagEintrag;
+  readonly ausnahme?: IFilialeinstellungAusnahmeEintrag;
 }
 
 function oeffnungszeitValidator(control: AbstractControl): ValidationErrors | null {
@@ -68,24 +70,35 @@ export class SondertagBearbeitenDialog {
   // ===== Öffentliche Werte ====================
 
   readonly istSystemtag = this.daten.sondertag?.herkunft === 'system';
+  readonly istGesetzlicherFeiertag =
+    this.daten.sondertag?.datumsregel.typ === 'gesetzlicherFeiertag';
+  readonly istBestehenderEintrag = Boolean(this.daten.sondertag ?? this.daten.ausnahme);
   readonly form = new FormGroup(
     {
-      bezeichnung: new FormControl(this.daten.sondertag?.bezeichnung ?? '', {
+      bezeichnung: new FormControl(
+        this.daten.sondertag?.bezeichnung ?? this.daten.ausnahme?.bezeichnung ?? '',
+        {
+          nonNullable: true,
+          validators: [Validators.required, Validators.maxLength(80)],
+        },
+      ),
+      jaehrlichWiederkehrend: new FormControl(Boolean(this.daten.sondertag), {
         nonNullable: true,
-        validators: [Validators.required, Validators.maxLength(80)],
       }),
+      datum: new FormControl(this.daten.ausnahme?.datum ?? '', { nonNullable: true }),
       monat: new FormControl(this.getMonat(), {
         nonNullable: true,
-        validators: [Validators.required, Validators.min(1), Validators.max(12)],
       }),
       tag: new FormControl(this.getTag(), {
         nonNullable: true,
-        validators: [Validators.required, Validators.min(1), Validators.max(31)],
       }),
       aktiv: new FormControl(this.daten.sondertag?.aktiv ?? true, { nonNullable: true }),
-      geoeffnet: new FormControl(this.daten.sondertag?.oeffnungsregel.geoeffnet ?? false, {
-        nonNullable: true,
-      }),
+      geoeffnet: new FormControl(
+        this.daten.sondertag?.oeffnungsregel.geoeffnet ??
+          this.daten.ausnahme?.oeffnungsregel.geoeffnet ??
+          false,
+        { nonNullable: true },
+      ),
       beginnLokalzeit: new FormControl(this.getBeginn(), {
         nonNullable: true,
         validators: [Validators.required],
@@ -97,19 +110,36 @@ export class SondertagBearbeitenDialog {
     },
     { validators: [oeffnungszeitValidator] },
   );
-  readonly hatAenderungen = signal(!this.daten.sondertag);
+  readonly hatAenderungen = signal(!this.istBestehenderEintrag);
   readonly inProgress = computed(() => {
     return this.store.getFilialeinstellungKontext(this.daten.pfad)?.inProgress ?? false;
   });
 
   constructor() {
+    this.updateDatumsvalidierung();
+    if (this.istBestehenderEintrag) {
+      this.form.controls.jaehrlichWiederkehrend.disable({ emitEvent: false });
+    }
+    if (this.daten.ausnahme) this.form.controls.datum.disable({ emitEvent: false });
     const ursprung = JSON.stringify(this.form.getRawValue());
+    this.form.controls.jaehrlichWiederkehrend.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        this.updateDatumsvalidierung();
+      });
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.hatAenderungen.set(JSON.stringify(this.form.getRawValue()) !== ursprung);
     });
     effect(() => {
-      if (this.inProgress()) this.form.disable({ emitEvent: false });
-      else this.form.enable({ emitEvent: false });
+      if (this.inProgress()) {
+        this.form.disable({ emitEvent: false });
+      } else {
+        this.form.enable({ emitEvent: false });
+        if (this.istBestehenderEintrag) {
+          this.form.controls.jaehrlichWiederkehrend.disable({ emitEvent: false });
+        }
+        if (this.daten.ausnahme) this.form.controls.datum.disable({ emitEvent: false });
+      }
     });
   }
 
@@ -123,7 +153,19 @@ export class SondertagBearbeitenDialog {
     const wert = this.form.getRawValue();
     const oeffnungsregel = this.buildOeffnungsregel();
     try {
-      if (!this.daten.sondertag) {
+      if (this.daten.ausnahme) {
+        await this.store.updateAusnahme(this.daten.pfad, this.daten.ausnahme.datum, {
+          datum: wert.datum,
+          bezeichnung: wert.bezeichnung.trim(),
+          oeffnungsregel,
+        });
+      } else if (!this.daten.sondertag && !wert.jaehrlichWiederkehrend) {
+        await this.store.createAusnahme(this.daten.pfad, {
+          datum: wert.datum,
+          bezeichnung: wert.bezeichnung.trim(),
+          oeffnungsregel,
+        });
+      } else if (!this.daten.sondertag) {
         await this.store.createSondertag(this.daten.pfad, {
           bezeichnung: wert.bezeichnung.trim(),
           aktiv: wert.aktiv,
@@ -162,12 +204,12 @@ export class SondertagBearbeitenDialog {
   }
 
   private getBeginn(): string {
-    const regel = this.daten.sondertag?.oeffnungsregel;
+    const regel = this.daten.sondertag?.oeffnungsregel ?? this.daten.ausnahme?.oeffnungsregel;
     return regel?.geoeffnet ? regel.beginnLokalzeit : '08:00';
   }
 
   private getEnde(): string {
-    const regel = this.daten.sondertag?.oeffnungsregel;
+    const regel = this.daten.sondertag?.oeffnungsregel ?? this.daten.ausnahme?.oeffnungsregel;
     return regel?.geoeffnet ? regel.endeLokalzeit : '18:00';
   }
 
@@ -180,5 +222,19 @@ export class SondertagBearbeitenDialog {
       endeLokalzeit: wert.endeLokalzeit,
       endetAmFolgetag: wert.endeLokalzeit < wert.beginnLokalzeit,
     };
+  }
+
+  private updateDatumsvalidierung(): void {
+    const jaehrlich = this.form.controls.jaehrlichWiederkehrend.getRawValue();
+    this.form.controls.datum.setValidators(jaehrlich ? [] : [Validators.required]);
+    this.form.controls.monat.setValidators(
+      jaehrlich ? [Validators.required, Validators.min(1), Validators.max(12)] : [],
+    );
+    this.form.controls.tag.setValidators(
+      jaehrlich ? [Validators.required, Validators.min(1), Validators.max(31)] : [],
+    );
+    this.form.controls.datum.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.monat.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.tag.updateValueAndValidity({ emitEvent: false });
   }
 }

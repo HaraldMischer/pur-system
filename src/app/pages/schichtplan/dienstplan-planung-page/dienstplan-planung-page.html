@@ -13,8 +13,8 @@
       </div>
     </header>
 
-    <div cdkDropListGroup class="pur-page-section__grid pur-scrollbar">
-      <div class="firmen-dienstplaene pur-scrollbar">
+    <div cdkDropListGroup class="pur-page-section__grid pur-scrollbar pur-scrollbar--inset">
+      <div class="firmen-dienstplaene pur-scrollbar pur-scrollbar--inset">
         @if (filialauswahl().length === 0) {
           <p class="pur-page-section__message" role="status">
             Wähle mindestens eine Filiale, um ihre Dienstpläne anzuzeigen.
@@ -33,7 +33,7 @@
         }
       </div>
 
-      <div class="firmen-mitarbeiter pur-scrollbar">
+      <div class="firmen-mitarbeiter pur-scrollbar pur-scrollbar--inset">
         <header class="pur-page-section__header">
           <h3 class="pur-page-section__title">Mitarbeiter</h3>
         </header>

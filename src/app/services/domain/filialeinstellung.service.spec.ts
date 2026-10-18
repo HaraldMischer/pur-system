@@ -23,6 +23,7 @@ describe('FilialeinstellungService', () => {
     loadCollection: vi.fn(),
     createDocumentId: vi.fn(),
     createServerTimestamp: vi.fn(),
+    createDeleteField: vi.fn(),
     executeDocumentTransaction: vi.fn(),
     updateDocumentsAtomically: vi.fn(),
     updateDocument: vi.fn(),
@@ -35,6 +36,7 @@ describe('FilialeinstellungService', () => {
     firestoreDbServiceMock.loadCollection.mockResolvedValue([]);
     firestoreDbServiceMock.createDocumentId.mockReturnValue('sondertag-neu');
     firestoreDbServiceMock.createServerTimestamp.mockReturnValue('server-zeitstempel');
+    firestoreDbServiceMock.createDeleteField.mockReturnValue('feld-loeschen');
     firestoreDbServiceMock.executeDocumentTransaction.mockImplementation(
       async (_documentPath, aktion) => {
         return aktion(null).ergebnis;
@@ -63,7 +65,6 @@ describe('FilialeinstellungService', () => {
         id: 'allgemein',
         daten: {
           bundesland: 'DE-NW',
-          zeitzone: 'Europe/Berlin',
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
         },
@@ -80,7 +81,6 @@ describe('FilialeinstellungService', () => {
         id: 'allgemein',
         daten: {
           bundesland: 'DE-NW',
-          zeitzone: 'Europe/Berlin',
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
         },
@@ -146,7 +146,6 @@ describe('FilialeinstellungService', () => {
     expect(operationen[0]).toMatchObject({
       daten: {
         bundesland: 'DE-NW',
-        zeitzone: 'Europe/Berlin',
         erstelltAm: 'server-zeitstempel',
       },
     });
@@ -189,6 +188,7 @@ describe('FilialeinstellungService', () => {
     );
     expect(aktualisiert.sondertage.some((sondertag) => sondertag.id === 'intern')).toBe(true);
     const operationen = firestoreDbServiceMock.updateDocumentsAtomically.mock.calls[0][0];
+    expect(operationen[0].daten).toMatchObject({ zeitzone: 'feld-loeschen' });
     expect(operationen).toContainEqual({
       documentPath:
         'unternehmer/u-1/firma/f-1/filiale/b-1/einstellung/oeffnungszeiten/sondertag/allerheiligen',
@@ -309,7 +309,7 @@ function createGrundlagen(): IFilialeinstellungGrundlagen {
     samstag: geoeffnet,
     sonntag: { geoeffnet: false },
   };
-  return { bundesland: 'DE-NW', zeitzone: 'Europe/Berlin', wochenregeln };
+  return { bundesland: 'DE-NW', wochenregeln };
 }
 
 function createSondertag(
@@ -336,7 +336,6 @@ function createBestand(
   return {
     allgemein: {
       bundesland: grundlagen.bundesland,
-      zeitzone: grundlagen.zeitzone,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },

@@ -10,22 +10,19 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 
-import { AusnahmeBearbeitenDialog } from '../ausnahme-bearbeiten-dialog/ausnahme-bearbeiten-dialog';
 import { SondertagBearbeitenDialog } from '../sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import {
   IFilialeinstellungAusnahmeEintrag,
   IFilialeinstellungSondertagEintrag,
-  TBundeslandCode,
+  STANDARD_BUNDESLAND,
   TOeffnungsregel,
   TWochenoeffnungszeiten,
   TWochentag,
@@ -42,6 +39,10 @@ type TTagForm = FormGroup<{
   endeLokalzeit: FormControl<string>;
 }>;
 
+type TSondertagListeneintrag =
+  | { typ: 'wiederkehrend'; eintrag: IFilialeinstellungSondertagEintrag }
+  | { typ: 'einmalig'; eintrag: IFilialeinstellungAusnahmeEintrag };
+
 const WOCHENTAGE: ReadonlyArray<{ value: TWochentag; label: string }> = [
   { value: 'montag', label: 'Montag' },
   { value: 'dienstag', label: 'Dienstag' },
@@ -50,25 +51,6 @@ const WOCHENTAGE: ReadonlyArray<{ value: TWochentag; label: string }> = [
   { value: 'freitag', label: 'Freitag' },
   { value: 'samstag', label: 'Samstag' },
   { value: 'sonntag', label: 'Sonntag' },
-];
-
-const BUNDESLAENDER: ReadonlyArray<{ value: TBundeslandCode; label: string }> = [
-  { value: 'DE-BW', label: 'Baden-Württemberg' },
-  { value: 'DE-BY', label: 'Bayern' },
-  { value: 'DE-BE', label: 'Berlin' },
-  { value: 'DE-BB', label: 'Brandenburg' },
-  { value: 'DE-HB', label: 'Bremen' },
-  { value: 'DE-HH', label: 'Hamburg' },
-  { value: 'DE-HE', label: 'Hessen' },
-  { value: 'DE-MV', label: 'Mecklenburg-Vorpommern' },
-  { value: 'DE-NI', label: 'Niedersachsen' },
-  { value: 'DE-NW', label: 'Nordrhein-Westfalen' },
-  { value: 'DE-RP', label: 'Rheinland-Pfalz' },
-  { value: 'DE-SL', label: 'Saarland' },
-  { value: 'DE-SN', label: 'Sachsen' },
-  { value: 'DE-ST', label: 'Sachsen-Anhalt' },
-  { value: 'DE-SH', label: 'Schleswig-Holstein' },
-  { value: 'DE-TH', label: 'Thüringen' },
 ];
 
 function oeffnungszeitValidator(control: AbstractControl): ValidationErrors | null {
@@ -110,12 +92,10 @@ function getOeffnungsregel(form: TTagForm): TOeffnungsregel {
   selector: 'app-oeffnungszeiten-filiale',
   imports: [
     MatButtonModule,
-    MatCardModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatSelectModule,
     ReactiveFormsModule,
   ],
   templateUrl: './oeffnungszeiten-filiale.html',
@@ -136,13 +116,7 @@ export class OeffnungszeitenFiliale {
   // ===== Öffentliche Werte ====================
 
   readonly wochentage = WOCHENTAGE;
-  readonly bundeslaender = BUNDESLAENDER;
   readonly form = new FormGroup({
-    bundesland: new FormControl<TBundeslandCode | null>(null, Validators.required),
-    zeitzone: new FormControl('Europe/Berlin', {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
     montag: createTagForm(),
     dienstag: createTagForm(),
     mittwoch: createTagForm(),
@@ -159,6 +133,30 @@ export class OeffnungszeitenFiliale {
   });
   readonly bestand = computed(() => {
     return this.kontext()?.bestand ?? null;
+  });
+  readonly feiertage = computed(() => {
+    return (
+      this.bestand()?.sondertage.filter((sondertag) => {
+        return sondertag.datumsregel.typ === 'gesetzlicherFeiertag';
+      }) ?? []
+    );
+  });
+  readonly sondertage = computed<TSondertagListeneintrag[]>(() => {
+    const bestand = this.bestand();
+    if (!bestand) return [];
+    const wiederkehrend: TSondertagListeneintrag[] = bestand.sondertage
+      .filter((sondertag) => {
+        return sondertag.datumsregel.typ === 'jaehrlichFestesDatum';
+      })
+      .map((sondertag) => {
+        return { typ: 'wiederkehrend', eintrag: sondertag };
+      });
+    const einmalig: TSondertagListeneintrag[] = bestand.ausnahmen.map((ausnahme) => {
+      return { typ: 'einmalig', eintrag: ausnahme };
+    });
+    return [...wiederkehrend, ...einmalig].sort((a, b) => {
+      return a.eintrag.bezeichnung.localeCompare(b.eintrag.bezeichnung, 'de');
+    });
   });
 
   constructor() {
@@ -191,7 +189,7 @@ export class OeffnungszeitenFiliale {
   }
 
   /**
-   * Öffnet den Dialog zum Anlegen eines benutzerdefinierten Sondertags.
+   * Öffnet den Dialog zum Anlegen eines einmaligen oder wiederkehrenden Sondertags.
    */
   openSondertagAnlegen(): void {
     this.dialog.open(SondertagBearbeitenDialog, {
@@ -231,35 +229,25 @@ export class OeffnungszeitenFiliale {
   }
 
   /**
-   * Öffnet den Dialog zum Anlegen einer datumsbezogenen Ausnahme.
+   * Öffnet den Dialog zum Bearbeiten eines einmaligen Sondertags.
    */
-  openAusnahmeAnlegen(): void {
-    this.dialog.open(AusnahmeBearbeitenDialog, {
-      panelClass: ['pur-dialog__panel'],
-      data: { pfad: this.pfad() },
-    });
-  }
-
-  /**
-   * Öffnet den Dialog zum Bearbeiten einer datumsbezogenen Ausnahme.
-   */
-  openAusnahmeBearbeiten(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
-    this.dialog.open(AusnahmeBearbeitenDialog, {
+  openEinmaligenSondertagBearbeiten(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
+    this.dialog.open(SondertagBearbeitenDialog, {
       panelClass: ['pur-dialog__panel'],
       data: { pfad: this.pfad(), ausnahme },
     });
   }
 
   /**
-   * Löscht eine datumsbezogene Ausnahme nach Bestätigung.
+   * Löscht einen einmaligen Sondertag nach Bestätigung.
    */
-  deleteAusnahme(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
+  deleteEinmaligenSondertag(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
     this.dialog
       .open(BestaetigungDialog, {
         panelClass: ['pur-dialog__panel'],
         data: {
-          titel: 'Ausnahme löschen',
-          nachricht: `Die Ausnahme für ${ausnahme.datum} wirklich löschen?`,
+          titel: 'Sondertag löschen',
+          nachricht: `„${ausnahme.bezeichnung}“ für den ${ausnahme.datum} wirklich löschen?`,
           bestaetigenText: 'Löschen',
         },
       })
@@ -278,11 +266,12 @@ export class OeffnungszeitenFiliale {
   }
 
   /**
-   * Meldet, ob die Öffnung eines Tages am Folgetag endet.
+   * Formatiert das feste Datum eines jährlich wiederkehrenden Sondertags.
    */
-  endetAmFolgetag(wochentag: TWochentag): boolean {
-    const wert = this.getTagForm(wochentag).getRawValue();
-    return wert.geoeffnet && wert.endeLokalzeit < wert.beginnLokalzeit;
+  getJaehrlichesDatum(sondertag: IFilialeinstellungSondertagEintrag): string {
+    const datumsregel = sondertag.datumsregel;
+    if (datumsregel.typ !== 'jaehrlichFestesDatum') return '';
+    return `${datumsregel.tag}.${datumsregel.monat}.`;
   }
 
   // ===== Interne Helfer =======================
@@ -292,8 +281,6 @@ export class OeffnungszeitenFiliale {
       await this.store.loadFilialeinstellung(pfad);
       const bestand = this.store.getFilialeinstellungKontext(pfad)?.bestand;
       if (!bestand) return;
-      this.form.controls.bundesland.setValue(bestand.allgemein.bundesland);
-      this.form.controls.zeitzone.setValue(bestand.allgemein.zeitzone);
       for (const { value } of WOCHENTAGE) {
         const regel = bestand.oeffnungszeiten.wochenregeln[value];
         this.getTagForm(value).reset({
@@ -309,11 +296,9 @@ export class OeffnungszeitenFiliale {
   }
 
   private buildGrundlagen(): IFilialeinstellungGrundlagen {
-    const bundesland = this.form.controls.bundesland.value;
-    if (!bundesland) throw new Error('Das Bundesland fehlt.');
     const wochenregeln = Object.fromEntries(
       WOCHENTAGE.map(({ value }) => [value, getOeffnungsregel(this.getTagForm(value))]),
     ) as unknown as TWochenoeffnungszeiten;
-    return { bundesland, zeitzone: this.form.controls.zeitzone.value, wochenregeln };
+    return { bundesland: STANDARD_BUNDESLAND, wochenregeln };
   }
 }

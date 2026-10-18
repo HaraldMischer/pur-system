@@ -482,7 +482,6 @@ service cloud.firestore {
     function hatGueltigeAllgemeineFilialeinstellung(daten) {
       return daten.keys().hasAll([
           'bundesland',
-          'zeitzone',
           'erstelltAm',
           'erstelltVonUid',
           'aktualisiertAm',
@@ -490,14 +489,12 @@ service cloud.firestore {
         ])
         && daten.keys().hasOnly([
           'bundesland',
-          'zeitzone',
           'erstelltAm',
           'erstelltVonUid',
           'aktualisiertAm',
           'aktualisiertVonUid'
         ])
-        && istGueltigesBundesland(daten.bundesland)
-        && daten.zeitzone == 'Europe/Berlin';
+        && istGueltigesBundesland(daten.bundesland);
     }
 
     function hatGueltigeOeffnungszeitenFilialeinstellung(daten) {

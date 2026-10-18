@@ -513,9 +513,12 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
 4. **Einstellungen (`/einstellungen`):** Komponentenloser Elternbereich und ausklappbare Navigationsgruppe ohne eigene
    Zielseite. Der erste Unterpunkt `Öffnungszeiten` führt zur direkt routbaren Page unter
    `/einstellungen/oeffnungszeiten`. Dort werden je
-   ausgewählter Filiale zunächst die Grundlagen Bundesland und Zeitzone sowie Wochenöffnungszeiten, Sondertage und konkrete
-   Datumsausnahmen verwaltet. Weitere filialbezogene Einstellungsseiten können später als gleichrangige Unterpunkte ergänzt
-   werden. Sichtbarkeit und Route der gesamten Gruppe werden über den App-Bereich `einstellungen` geschützt.
+   ausgewählter Filiale Wochentage, gesetzliche Feiertage sowie einmalige und jährlich wiederkehrende Sondertage verwaltet.
+   Einmalige Sondertage werden technisch weiterhin als konkrete Datumsausnahmen gespeichert. Das Bundesland wird zunächst
+   fest mit Nordrhein-Westfalen (`DE-NW`) initialisiert und nicht zur Auswahl angeboten. Die technische Zeitzone
+   `Europe/Berlin` wird nicht als Filialeinstellung gespeichert. Weitere filialbezogene Einstellungsseiten können später als
+   gleichrangige Unterpunkte ergänzt werden. Sichtbarkeit und Route der gesamten Gruppe werden über den App-Bereich
+   `einstellungen` geschützt.
 
 5. **System (`/system`):** Administrativer Bereich für `master`, der in der Sidebar als `System` bezeichnet wird. Er umfasst die
    Page `StrukturAnlegenPage` unter `/system/struktur/anlegen`, die `StrukturVerwaltenPage` für vorhandene Firmen und
@@ -533,15 +536,17 @@ Schichtmodell-Momentaufnahme und firmenweiter Konfliktprüfung konzipiert. Berec
 Mitarbeiterzugänge lesen ausschließlich veröffentlichte Stände.
 
 Filialbezogene Konfiguration wird unterhalb der jeweiligen Filiale in einer eigenen Collection `einstellung` geführt. Das
-Dokument `allgemein` enthält insbesondere Bundesland und Zeitzone. Das Dokument `oeffnungszeiten` enthält die regelmäßigen
+Dokument `allgemein` enthält das Bundesland. Das Dokument `oeffnungszeiten` enthält die regelmäßigen
 Wochenregeln. Eine geöffnete Regel beschreibt genau einen durchgehenden lokalen Zeitraum mit Beginn, Ende und der Angabe, ob
 das Ende am Folgetag liegt. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht vorgesehen. Wiederkehrende
 und berechnete besondere Tage
 liegen als bezeichnete Einträge unter `einstellung/oeffnungszeiten/sondertag`; konkrete Abweichungen für ein Datum unter
 `einstellung/oeffnungszeiten/ausnahme`.
 
-Sondertage unterscheiden mindestens jährlich feste Daten, beispielsweise Heiligabend oder Silvester, von zentral berechneten
-gesetzlichen Feiertagen, beispielsweise Karfreitag oder Ostermontag. Die wirksame Öffnungsregel wird in der Reihenfolge
+Die Oberfläche trennt gesetzliche Feiertage von Sondertagen. Heiligabend und Silvester sind keine gesetzlichen Feiertage und
+werden deshalb zusammen mit eigenen einmaligen oder jährlich wiederkehrenden Einträgen als Sondertage dargestellt. Technisch
+unterscheiden die Datumsregeln jährlich feste Daten von zentral berechneten gesetzlichen Feiertagen. Die wirksame Öffnungsregel
+wird weiterhin in der Reihenfolge
 `Ausnahme → Sondertag → Wochentag` bestimmt. Öffnungszeiten beschreiben den Kundenbetrieb und bleiben von den Arbeitszeiten
 der Schichtmodelle getrennt. Beim Anlegen eines Monatsdienstplans werden Tagestyp, Sondertags-ID und -Bezeichnung sowie die für
 seine Kalendertage aufgelösten Öffnungsregeln als unveränderliche Momentaufnahme übernommen. Sie begrenzen

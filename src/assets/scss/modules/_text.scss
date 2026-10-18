@@ -29,6 +29,10 @@
     font: var(--mat-sys-label-large);
   }
 
+  &--title-medium {
+    font: var(--mat-sys-title-medium);
+  }
+
   &--error {
     color: var(--mat-sys-error);
   }

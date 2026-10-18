@@ -408,7 +408,6 @@ function wochenregeln(overrides = {}) {
 function allgemeineFilialeinstellung(overrides = {}) {
   return {
     bundesland: 'DE-NW',
-    zeitzone: 'Europe/Berlin',
     ...filialeinstellungMetadaten(),
     ...overrides,
   };
@@ -564,6 +563,12 @@ test('branch settings reject unknown documents, fields and invalid weekly times'
     setDoc(
       doc(db, filialeinstellungAllgemeinPath),
       allgemeineFilialeinstellung({ postleitzahl: '12345' }),
+    ),
+  );
+  await assertFails(
+    setDoc(
+      doc(db, filialeinstellungAllgemeinPath),
+      allgemeineFilialeinstellung({ zeitzone: 'Europe/Berlin' }),
     ),
   );
   await assertFails(

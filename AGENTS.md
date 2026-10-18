@@ -199,6 +199,16 @@
 ## Styles und UI
 
 - Nutze Angular Material/CDK als bestehendes UI-System.
+- Angular-Material-Formularfelder verwenden grundsätzlich `appearance="outline"` und die globalen Klassen
+  `pur-form__item pur-form__item--field`. Abweichende Darstellungen werden nur bei einer bewusst begründeten fachlichen oder
+  gestalterischen Ausnahme eingesetzt.
+- Zeilenorientierte, nicht tabellarische Sammlungen verwenden den globalen Block `pur-list` mit einem passenden
+  Darstellungsmodifier wie `pur-list--outlined` oder `pur-list--divided`. `pur-table` bleibt echten Tabellen und
+  `pur-page__card-grid` mehrspaltigen Kartenrastern vorbehalten.
+- Einträge einer `pur-list` verwenden `pur-list__row`. Die Bereiche innerhalb einer Zeile verwenden
+  `pur-list__row-item`; nur ein bewusst abschließender Bereich verwendet den Positionsmodifier `--end`. Spezifische Bereiche und
+  responsive Anordnungen erhalten lokale Helferklassen. Enthaltene Formularelemente behalten zusätzlich ihre passenden
+  `pur-form__item`-Klassen.
 - Jeder über `MatDialog` geöffnete Dialog erhält standardmäßig `panelClass: ['pur-dialog__panel']`. Benötigt ein Dialog mehr
   Platz, wird die Standardklasse durch `pur-dialog__panel--large` ergänzt.
 - Für eigene Layoutwerte werden grundsätzlich `px` verwendet, insbesondere für Breiten, Höhen, Abstände und Breakpoints.

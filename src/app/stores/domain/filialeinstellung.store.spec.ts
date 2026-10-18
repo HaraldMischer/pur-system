@@ -240,7 +240,7 @@ function createGrundlagen(): IFilialeinstellungGrundlagen {
     samstag: { geoeffnet: false },
     sonntag: { geoeffnet: false },
   };
-  return { bundesland: 'DE-NW', zeitzone: 'Europe/Berlin', wochenregeln };
+  return { bundesland: 'DE-NW', wochenregeln };
 }
 
 function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {
@@ -248,7 +248,6 @@ function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {
   return {
     allgemein: {
       bundesland: grundlagen.bundesland,
-      zeitzone: grundlagen.zeitzone,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },

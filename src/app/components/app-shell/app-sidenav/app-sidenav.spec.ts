@@ -89,6 +89,11 @@ describe('AppSidenav', () => {
           },
           { path: 'mitarbeiter', component: AppSidenavHost, data: { bereich: 'mitarbeiter' } },
           {
+            path: 'einstellungen',
+            data: { bereich: 'einstellungen' },
+            children: [{ path: 'oeffnungszeiten', component: AppSidenavHost }],
+          },
+          {
             path: 'system',
             component: AppSidenavHost,
             data: { bereich: 'system' },
@@ -191,6 +196,23 @@ describe('AppSidenav', () => {
     ).componentInstance as AppKontextSelector;
 
     expect(selector.konfiguration().filiale).toBe('editable');
+  });
+
+  it('should render editable context selectors for opening hours', async () => {
+    await TestBed.inject(Router).navigateByUrl('/einstellungen/oeffnungszeiten');
+    const fixture = TestBed.createComponent(AppSidenavHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const selector = fixture.debugElement.query(
+      (debugElement) => debugElement.componentInstance instanceof AppKontextSelector,
+    ).componentInstance as AppKontextSelector;
+
+    expect(selector.konfiguration()).toEqual({
+      unternehmer: 'editable',
+      firma: 'editable',
+      filiale: 'editable',
+    });
   });
 
   it('should expand system administration and show all child routes for master', () => {

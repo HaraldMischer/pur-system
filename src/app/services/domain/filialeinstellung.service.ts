@@ -42,6 +42,18 @@ function mapSondertagDokument(
   };
 }
 
+function mapAllgemeineFilialeinstellung(
+  dokument: IFilialeinstellungAllgemeinDokument,
+): IFilialeinstellungAllgemeinDokument {
+  return {
+    bundesland: dokument.bundesland,
+    erstelltAm: dokument.erstelltAm,
+    erstelltVonUid: dokument.erstelltVonUid,
+    aktualisiertAm: dokument.aktualisiertAm,
+    aktualisiertVonUid: dokument.aktualisiertVonUid,
+  };
+}
+
 function assertBezeichnung(bezeichnung: string): void {
   const normalisiert = bezeichnung.trim();
   if (!normalisiert || normalisiert.length > 80) {
@@ -104,7 +116,6 @@ export interface IFilialeinstellungBestand {
 
 export interface IFilialeinstellungGrundlagen {
   bundesland: TBundeslandCode;
-  zeitzone: string;
   wochenregeln: TWochenoeffnungszeiten;
 }
 
@@ -212,11 +223,10 @@ export class FilialeinstellungService {
     }
     this.assertGrundlagen({
       bundesland: allgemein.daten.bundesland,
-      zeitzone: allgemein.daten.zeitzone,
       wochenregeln: oeffnungszeiten.daten.wochenregeln,
     });
     return {
-      allgemein: allgemein.daten,
+      allgemein: mapAllgemeineFilialeinstellung(allgemein.daten),
       oeffnungszeiten: oeffnungszeiten.daten,
       sondertage: sondertage.map((dokument) => {
         return { ...pfad, id: dokument.id, ...dokument.daten };
@@ -231,7 +241,7 @@ export class FilialeinstellungService {
    * Initialisiert die vollständigen Einstellungen einer bisher nicht eingerichteten Filiale atomar.
    *
    * @param pfad - Vollständiger Filialpfad.
-   * @param grundlagen - Ausdrücklich gewähltes Bundesland, Zeitzone und vollständige Wochenregeln.
+   * @param grundlagen - Bundesland und vollständige Wochenregeln.
    * @param benutzerUid - UID des initialisierenden Benutzers.
    * @returns Lokal abbildbarer initialer Einstellungsbestand.
    */
@@ -250,7 +260,6 @@ export class FilialeinstellungService {
     };
     const allgemein: IFilialeinstellungAllgemeinDokument = {
       bundesland: grundlagen.bundesland,
-      zeitzone: grundlagen.zeitzone,
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
@@ -341,7 +350,7 @@ export class FilialeinstellungService {
         }),
         daten: {
           bundesland: grundlagen.bundesland,
-          zeitzone: grundlagen.zeitzone,
+          zeitzone: this.firestoreDbService.createDeleteField(),
           aktualisiertAm: zeitstempel,
           aktualisiertVonUid: benutzerUid,
         },
@@ -390,9 +399,10 @@ export class FilialeinstellungService {
     return {
       ...bestand,
       allgemein: {
-        ...bestand.allgemein,
         bundesland: grundlagen.bundesland,
-        zeitzone: grundlagen.zeitzone,
+        erstelltAm: bestand.allgemein.erstelltAm,
+        erstelltVonUid: bestand.allgemein.erstelltVonUid,
+        aktualisiertAm: bestand.allgemein.aktualisiertAm,
         aktualisiertVonUid: benutzerUid,
       },
       oeffnungszeiten: {
@@ -577,9 +587,6 @@ export class FilialeinstellungService {
   private assertGrundlagen(grundlagen: IFilialeinstellungGrundlagen): void {
     if (!BUNDESLAENDER.has(grundlagen.bundesland)) {
       throw new Error('Das Bundesland der Filiale ist ungültig.');
-    }
-    if (grundlagen.zeitzone !== 'Europe/Berlin') {
-      throw new Error('Die Filiale muss die Zeitzone Europe/Berlin verwenden.');
     }
     if (Object.keys(grundlagen.wochenregeln).length !== WOCHENTAGE.length) {
       throw new Error('Die Wochenöffnungszeiten müssen genau sieben Wochentage enthalten.');

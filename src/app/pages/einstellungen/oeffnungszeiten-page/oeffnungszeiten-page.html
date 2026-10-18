@@ -1,16 +1,15 @@
 <!-- pur-system/src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.html -->
 
 <section class="pur-page pur-page--limited oeffnungszeiten-page">
-  <header class="pur-page__header">
-    <h1 class="pur-page__title">Öffnungszeiten</h1>
-    <p>Ausnahmen überschreiben Sondertage; Sondertage überschreiben die regulären Wochentage.</p>
-  </header>
-
   <section class="pur-page-section">
+    <p class="pur-page-section__message">
+      Einmalige Sondertage überschreiben Feiertage und jährlich wiederkehrende Sondertage; diese
+      überschreiben die Wochentage.
+    </p>
     @if (filialauswahl().length === 0) {
       <p class="pur-page-section__message" role="status">Wähle mindestens eine Filiale aus.</p>
     } @else {
-      <div class="oeffnungszeiten-page__filialen">
+      <div class="filial-oeffnungszeiten">
         @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
           <app-oeffnungszeiten-filiale [filiale]="auswahl.filiale" [pfad]="auswahl.pfad" />
         }

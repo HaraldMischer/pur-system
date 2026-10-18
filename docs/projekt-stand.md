@@ -101,7 +101,9 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Datumsausnahmen sind festgelegt. Eine Öffnungsregel beschreibt genau einen durchgehenden Zeitraum und kann mit
   `endetAmFolgetag` über Mitternacht reichen; Pausen beziehungsweise mehrere Öffnungszeiträume je Tag sind nicht vorgesehen.
   Der lokale Feiertagskatalog berechnet feste und bewegliche gesetzliche Feiertage nach Jahr und Bundesland und erzeugt die
-  initial aktiven, geschlossenen Sondertage einschließlich Heiligabend und Silvester. Die Auflösung verwendet verbindlich
+  initial aktiven, geschlossenen Einträge einschließlich Heiligabend und Silvester. Die Oberfläche trennt Wochentage,
+  gesetzliche Feiertage und Sondertage; Heiligabend, Silvester sowie eigene einmalige und jährlich wiederkehrende Einträge
+  gehören zu den Sondertagen. Die Auflösung verwendet intern verbindlich
   `Ausnahme → Sondertag → Wochentag`, meldet kollidierende Sondertage und ordnet über Mitternacht reichende Regeln
   vollständig ihrem Startdatum zu. Der Abgleich nach einem Bundeslandwechsel erhält gemeinsame und benutzerdefinierte
   Sondertage. Der `FilialeinstellungService` lädt und schreibt vollständige Filialbestände, initialisiert bestehende Filialen
@@ -110,8 +112,11 @@ Das vollständige fachliche und architektonische Zielbild steht im
   öffentlich bereit. Firestore Rules begrenzen den Zugriff auf Master beziehungsweise zugeordnete Office- und Filialkonten mit
   dem Bereich `einstellungen` und validieren Dokument-IDs, Feldmengen, Datumsregeln und lokale Zeitwerte. Die geschützte
   Einstellungsroute und Sidebar-Gruppe führen auf die Öffnungszeiten. Dort werden ausgewählte Filialen unabhängig geladen und
-  allgemeine Grundlagen, alle sieben Wochenregeln, systemdefinierte und eigene Sondertage sowie Datumsausnahmen gepflegt. Die
-  Oberfläche erläutert die Auflösungsreihenfolge `Ausnahme → Sondertag → Wochentag`.
+  alle sieben Wochenregeln, gesetzliche Feiertage sowie einmalige und jährlich wiederkehrende Sondertage gepflegt.
+  Nordrhein-Westfalen wird
+  zunächst intern als Bundesland verwendet; die technische Zeitzone `Europe/Berlin` ist keine gespeicherte Filialeinstellung.
+  Die Oberfläche erläutert die Auflösungsreihenfolge mit den sichtbaren Begriffen einmaliger Sondertag, Feiertag,
+  wiederkehrender Sondertag und Wochentag.
 - Das Mitarbeiter-Domainmodell führt optional `farbkennung` im Firestore-Dokument und im Anwendungseintrag. Vorhandene Werte
   werden geladen und im Schichtraster sowie in der Mitarbeiterübersicht dargestellt. Eine Oberfläche zur Pflege der Farbkennung
   ist noch nicht umgesetzt.
@@ -806,13 +811,16 @@ Das vollständige fachliche und architektonische Zielbild steht im
 - Die Firestore Rules für Filialeinstellungen und die Functions mit dem neuen optionalen Bereich `einstellungen` wurden am
   15.10.2026 produktiv deployed. Die Profilbearbeitung des Masterkontos wurde anschließend erfolgreich geprüft. Ein Hosting-
   Deployment der neuen Einstellungsoberfläche ist damit nicht verbunden und wurde für diesen Stand noch nicht bestätigt.
+- Die am 18.10.2026 lokal geprüfte Vereinfachung entfernt `zeitzone` aus den Filialeinstellungen und verwendet in der Oberfläche
+  fest Nordrhein-Westfalen. Die angepassten Firestore Rules sind noch nicht produktiv deployt. Vorhandene Dokumente mit dem
+  bisherigen Feld bleiben lesbar; der Service entfernt das Feld beim nächsten Speichern.
 - Der Git-Push der aktuellen Änderungen ist kein Firebase-Deployment.
 
 ## Tests und Build
 
-Am 15.10.2026 für den aktuellen Stand geprüft:
+Am 18.10.2026 für den aktuellen Stand geprüft:
 
-- 885 von 887 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben,
+- 889 von 891 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben,
   konsistenter Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Strukturanlage, zentraler Stammdateninitialisierung sowie Firmen-,
   Filial- und Benutzerprofil-Bearbeitung, fachlichem Mitarbeiter-Service und -Store, Mitarbeiterlistenroute, Rollenprüfung und

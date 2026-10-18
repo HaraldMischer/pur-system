@@ -22,6 +22,8 @@ export type TBundeslandCode =
   | 'DE-ST'
   | 'DE-TH';
 
+export const STANDARD_BUNDESLAND: TBundeslandCode = 'DE-NW';
+
 export type TWochentag =
   'montag' | 'dienstag' | 'mittwoch' | 'donnerstag' | 'freitag' | 'samstag' | 'sonntag';
 
@@ -113,7 +115,6 @@ export interface IFilialeinstellungAusnahmeEintrag extends IFilialeinstellungAus
 
 export interface IFilialeinstellungAllgemeinDokument extends IFilialeinstellungDokumentMetadaten {
   bundesland: TBundeslandCode;
-  zeitzone: string;
 }
 
 export interface IFilialeinstellungOeffnungszeitenDokument extends IFilialeinstellungDokumentMetadaten {
