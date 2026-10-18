@@ -106,15 +106,17 @@
       </div>
 
       @if (strukturBearbeitenStore.updateSuccess(); as erfolg) {
-        <p class="pur-form__item pur-form__item--success" role="status">{{ erfolg }}</p>
+        <p class="pur-message pur-message--success pur-message--full" role="status">
+          {{ erfolg }}
+        </p>
       }
 
       @if (strukturBearbeitenStore.updateError(); as error) {
-        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
       }
 
       @if (strukturBearbeitenStore.unternehmerListe().error; as error) {
-        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
         <button
           class="pur-form__item pur-form__item--end"
           matButton="tonal"
@@ -127,13 +129,13 @@
         strukturBearbeitenStore.unternehmerListe().isLoaded &&
         strukturBearbeitenStore.unternehmer().length === 0
       ) {
-        <p class="pur-form__item pur-form__item--message" role="status">
+        <p class="pur-message pur-message--info pur-message--full" role="status">
           Dem Benutzer sind keine Unternehmer zugeordnet.
         </p>
       }
 
       @if (strukturBearbeitenStore.firmenListe().error; as error) {
-        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
         <button
           class="pur-form__item pur-form__item--end"
           matButton="tonal"
@@ -146,13 +148,13 @@
         strukturBearbeitenStore.firmenListe().isLoaded &&
         strukturBearbeitenStore.firmen().length === 0
       ) {
-        <p class="pur-form__item pur-form__item--message" role="status">
+        <p class="pur-message pur-message--info pur-message--full" role="status">
           Dem gewählten Unternehmer sind keine Firmen zugeordnet.
         </p>
       }
 
       @if (strukturBearbeitenStore.filialenListe().error; as error) {
-        <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+        <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
         <button
           class="pur-form__item pur-form__item--end"
           matButton="tonal"
@@ -165,7 +167,7 @@
         strukturBearbeitenStore.filialenListe().isLoaded &&
         strukturBearbeitenStore.filialen().length === 0
       ) {
-        <p class="pur-form__item pur-form__item--message" role="status">
+        <p class="pur-message pur-message--info pur-message--full" role="status">
           Der gewählten Firma sind keine Filialen zugeordnet.
         </p>
       }

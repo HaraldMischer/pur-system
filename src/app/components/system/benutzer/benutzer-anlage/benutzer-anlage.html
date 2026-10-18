@@ -115,11 +115,11 @@
           </app-datenzugriff-selector>
 
           @if (verwaltungStore.mitarbeiterAuswahlDownload()) {
-            <p class="pur-form__item pur-form__item--message" role="status">
+            <p class="pur-message pur-message--info pur-message--full" role="status">
               Mitarbeiter werden geladen.
             </p>
           } @else if (verwaltungStore.mitarbeiterAuswahlError(); as error) {
-            <p class="pur-form__item pur-form__item--error" role="alert">
+            <p class="pur-message pur-message--error pur-message--full" role="alert">
               Mitarbeiter: {{ error }}
             </p>
             <button
@@ -134,7 +134,7 @@
             verwaltungStore.mitarbeiterAuswahlIsLoaded() &&
             verwaltungStore.mitarbeiterAuswahl().length === 0
           ) {
-            <p class="pur-form__item pur-form__item--error" role="alert">
+            <p class="pur-message pur-message--error pur-message--full" role="alert">
               Die Firma hat noch keine Mitarbeiter.
             </p>
           }
@@ -174,7 +174,7 @@
           verwaltungStore.unternehmerIds().length > 0 &&
           !datenAuswahlGueltig()
         ) {
-          <p class="pur-form__item pur-form__item--message">
+          <p class="pur-message pur-message--info pur-message--full">
             Wähle für jeden Unternehmer mindestens eine Firma und für jede Firma mindestens eine
             Filiale.
           </p>
@@ -183,7 +183,7 @@
         <!-- Ladestatus -->
         @for (status of verwaltungStore.datenStatus(); track status.key) {
           @if (status.error) {
-            <p class="pur-form__item pur-form__item--error" role="alert">
+            <p class="pur-message pur-message--error pur-message--full" role="alert">
               {{ status.name }}: {{ status.error }}
             </p>
             <button
@@ -195,7 +195,7 @@
               Erneut laden
             </button>
           } @else if (status.isLoaded && status.daten.length === 0) {
-            <p class="pur-form__item pur-form__item--message" role="status">
+            <p class="pur-message pur-message--info pur-message--full" role="status">
               {{ status.name }}: Keine Einträge vorhanden.
             </p>
           }
@@ -205,12 +205,12 @@
 
     <!-- Fehlermeldung -->
     @if (verwaltungStore.error(); as error) {
-      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+      <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
     }
 
     <!-- Ergebnis -->
     @if (verwaltungStore.createdBenutzer(); as benutzer) {
-      <p class="pur-form__item pur-form__item--success" role="status">
+      <p class="pur-message pur-message--success pur-message--full" role="status">
         Benutzer {{ benutzer.anmeldename }} wurde angelegt.
       </p>
     }

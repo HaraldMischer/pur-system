@@ -112,18 +112,18 @@
 
         <!-- Fehlermeldungen -->
         @if (passwortForm.hasError('passwoerterUngleich')) {
-          <p class="pur-form__item pur-form__item--error" role="alert">
+          <p class="pur-message pur-message--error pur-message--full" role="alert">
             Die Passwörter stimmen nicht überein.
           </p>
         }
 
         @if (passwortStore.error(); as error) {
-          <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+          <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
         }
 
         <!-- Erfolgsmeldung -->
         @if (passwortStore.erfolgreich()) {
-          <p class="pur-form__item pur-form__item--success" role="status">
+          <p class="pur-message pur-message--success pur-message--full" role="status">
             Das Passwort wurde erfolgreich geändert.
           </p>
         }

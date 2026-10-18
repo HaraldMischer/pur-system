@@ -6,17 +6,19 @@
   </header>
 
   @if (download() && !isLoaded()) {
-    <p class="pur-page-section__message" role="status">Dienstplan wird geladen.</p>
+    <p class="pur-message pur-message--surface pur-message--full" role="status">
+      Dienstplan wird geladen.
+    </p>
   } @else if (ladeFehler(); as error) {
     <div class="pur-page-section__error-state">
-      <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+      <p class="pur-message pur-message--error" role="alert">
         {{ error }}
       </p>
       <button matButton="tonal" type="button" (click)="retryLoad()">Erneut laden</button>
     </div>
   } @else if (isLoaded()) {
     @if (aktionsfehler(); as fehlermeldung) {
-      <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
         {{ fehlermeldung }}
       </p>
     }
@@ -40,7 +42,7 @@
         (dienstplanLoeschen)="deleteDienstplan()"
       />
     } @else {
-      <div class="pur-page-section__empty-state">
+      <div class="pur-message pur-message--surface pur-message--dashed pur-message--full">
         <p role="status">Für diesen Monat ist noch kein Dienstplan vorhanden.</p>
         @if (darfSchreiben()) {
           <button
@@ -55,6 +57,8 @@
       </div>
     }
   } @else {
-    <p class="pur-page-section__message" role="status">Dienstplan wird geladen.</p>
+    <p class="pur-message pur-message--surface pur-message--full" role="status">
+      Dienstplan wird geladen.
+    </p>
   }
 </section>

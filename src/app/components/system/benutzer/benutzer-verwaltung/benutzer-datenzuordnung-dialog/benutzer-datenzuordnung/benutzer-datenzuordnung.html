@@ -24,7 +24,7 @@
     />
 
     @if (nichtVerfuegbareReferenzen().length > 0) {
-      <p class="pur-form__item pur-form__item--error" role="alert">
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
         Nicht verfügbare gespeicherte Zuordnung:
         {{ nichtVerfuegbareReferenzen().join(', ') }}.
         @if (entfernungNichtVerfuegbarerZuordnungenVorgemerkt()) {
@@ -43,7 +43,7 @@
     }
 
     @if (!datenAuswahlGueltig()) {
-      <p class="pur-form__item pur-form__item--error" role="alert">
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
         Wähle eine vollständige und zur Benutzerrolle passende Datenzuordnung.
       </p>
     }

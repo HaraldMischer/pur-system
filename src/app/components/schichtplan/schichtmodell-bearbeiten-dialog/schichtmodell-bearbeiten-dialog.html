@@ -113,7 +113,7 @@
           </div>
 
           @if (modellschicht.hasError('ungueltigeZeitfolge')) {
-            <p class="pur-form__item pur-form__item--error" role="alert">
+            <p class="pur-message pur-message--error pur-message--full" role="alert">
               Beginn und Ende dürfen nicht gleich sein.
             </p>
           }
@@ -122,7 +122,9 @@
     </div>
 
     @if (schichtmodellStore.error(); as fehlermeldung) {
-      <p class="pur-form__item pur-form__item--error" role="alert">{{ fehlermeldung }}</p>
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
+        {{ fehlermeldung }}
+      </p>
     }
   </form>
 </mat-dialog-content>

@@ -29,6 +29,35 @@ describe('DashboardPage', () => {
     expect(compiled.textContent).toContain('Noch zu bestimmende Daten der einzelnen Filialen.');
   });
 
+  it('should render all global message variants', () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.pur-message--info')).not.toBeNull();
+    expect(compiled.querySelector('.pur-message--success')).not.toBeNull();
+    expect(compiled.querySelector('.pur-message--warning')).not.toBeNull();
+    expect(compiled.querySelector('.pur-message--error')).not.toBeNull();
+  });
+
+  it('should render the global message width variants', () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.pur-message--full')).not.toBeNull();
+    expect(compiled.querySelector('.pur-message--auto')).not.toBeNull();
+  });
+
+  it('should render the global message appearance variants', () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.pur-message--surface')).not.toBeNull();
+    expect(compiled.querySelector('.pur-message--surface.pur-message--dashed')).not.toBeNull();
+  });
+
   it('should render the tertiary preview action', () => {
     const fixture = TestBed.createComponent(DashboardPage);
     fixture.detectChanges();

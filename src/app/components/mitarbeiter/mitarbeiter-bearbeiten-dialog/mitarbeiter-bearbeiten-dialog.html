@@ -171,7 +171,7 @@
     </div>
 
     @if (submitError() || mitarbeiterStore.error(); as error) {
-      <p class="pur-form__item pur-form__item--error" role="alert">
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
         {{ submitError() || error }}
       </p>
     }

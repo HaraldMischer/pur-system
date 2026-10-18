@@ -30,13 +30,15 @@
     </mat-form-field>
 
     @if (mitarbeiterAuswahlDownload()) {
-      <p class="pur-form__item pur-form__item--message" role="status">
+      <p class="pur-message pur-message--info pur-message--full" role="status">
         Mitarbeiter werden geladen.
       </p>
     } @else if (mitarbeiterAuswahlError(); as error) {
-      <p class="pur-form__item pur-form__item--error" role="alert">Mitarbeiter: {{ error }}</p>
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
+        Mitarbeiter: {{ error }}
+      </p>
     } @else if (zuordnungForm.controls.firmaId.value && mitarbeiterAuswahl().length === 0) {
-      <p class="pur-form__item pur-form__item--message" role="status">
+      <p class="pur-message pur-message--info pur-message--full" role="status">
         Keine verfügbaren Mitarbeiter vorhanden.
       </p>
     }

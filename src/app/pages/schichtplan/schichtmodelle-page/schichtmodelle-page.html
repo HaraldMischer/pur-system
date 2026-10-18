@@ -3,7 +3,9 @@
 <section class="pur-page pur-page--limited schichtmodelle-page">
   <section class="pur-page-section">
     @if (filialauswahl().length === 0) {
-      <p class="pur-page-section__message" role="status">Wähle mindestens eine Filiale aus.</p>
+      <p class="pur-message pur-message--surface pur-message--full" role="status">
+        Wähle mindestens eine Filiale aus.
+      </p>
     } @else {
       <div class="schichtmodelle-page__filialen">
         @for (auswahl of filialauswahl(); track auswahl.filiale.id) {

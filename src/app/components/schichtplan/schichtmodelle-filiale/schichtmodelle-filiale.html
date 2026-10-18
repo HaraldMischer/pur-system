@@ -18,16 +18,18 @@
 
   @if (kontext(); as filialkontext) {
     @if (filialkontext.download && !filialkontext.isLoaded) {
-      <p class="pur-page-section__message" role="status">Schichtmodelle werden geladen …</p>
+      <p class="pur-message pur-message--surface pur-message--full" role="status">
+        Schichtmodelle werden geladen …
+      </p>
     } @else if (filialkontext.error; as fehlermeldung) {
       <div class="pur-page-section__error-state" role="alert">
-        <p class="pur-page-section__message pur-page-section__message--error">
+        <p class="pur-message pur-message--error">
           {{ fehlermeldung }}
         </p>
         <button matButton type="button" (click)="retryLoad()">Erneut laden</button>
       </div>
     } @else if (filialkontext.isLoaded && filialkontext.schichtmodelle.length === 0) {
-      <p class="pur-page-section__message" role="status">
+      <p class="pur-message pur-message--surface pur-message--full" role="status">
         Für diese Filiale sind noch keine Schichtmodelle angelegt.
       </p>
     } @else if (filialkontext.isLoaded) {
@@ -67,6 +69,8 @@
       </div>
     }
   } @else {
-    <p class="pur-page-section__message" role="status">Schichtmodelle werden geladen …</p>
+    <p class="pur-message pur-message--surface pur-message--full" role="status">
+      Schichtmodelle werden geladen …
+    </p>
   }
 </section>

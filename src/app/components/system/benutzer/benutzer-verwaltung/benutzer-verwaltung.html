@@ -88,21 +88,23 @@
     </div>
 
     @if (verwaltungStore.benutzerprofileError(); as error) {
-      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+      <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
     } @else if (
       verwaltungStore.benutzerprofileIsLoaded() && verwaltungStore.benutzerprofile().length === 0
     ) {
-      <p class="pur-form__item pur-form__item--message" role="status">
+      <p class="pur-message pur-message--info pur-message--full" role="status">
         Keine Benutzerprofile verfügbar.
       </p>
     }
 
     @if (verwaltungStore.updateSuccess(); as erfolg) {
-      <p class="pur-form__item pur-form__item--success" role="status">{{ erfolg }}</p>
+      <p class="pur-message pur-message--success pur-message--full" role="status">
+        {{ erfolg }}
+      </p>
     }
 
     @if (verwaltungStore.updateError(); as error) {
-      <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+      <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
     }
   </div>
 </section>

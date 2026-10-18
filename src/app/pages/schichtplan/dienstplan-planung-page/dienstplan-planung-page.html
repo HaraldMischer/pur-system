@@ -16,7 +16,7 @@
     <div cdkDropListGroup class="pur-page-section__grid pur-scrollbar pur-scrollbar--inset">
       <div class="firmen-dienstplaene pur-scrollbar pur-scrollbar--inset">
         @if (filialauswahl().length === 0) {
-          <p class="pur-page-section__message" role="status">
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
             Wähle mindestens eine Filiale, um ihre Dienstpläne anzuzeigen.
           </p>
         } @else {
@@ -38,7 +38,7 @@
           <h3 class="pur-page-section__title">Mitarbeiter</h3>
         </header>
         @if (filialauswahl().length === 0) {
-          <p class="pur-page-section__empty-state">
+          <p class="pur-message pur-message--surface pur-message--dashed pur-message--full">
             Wähle mindestens eine Filiale, um ihre Mitarbeiter anzuzeigen.
           </p>
         } @else if (mitarbeiter().length > 0) {
@@ -62,7 +62,9 @@
             }
           </ul>
         } @else {
-          <p class="pur-page-section__empty-state">Keine aktiven Mitarbeiter.</p>
+          <p class="pur-message pur-message--surface pur-message--dashed pur-message--full">
+            Keine aktiven Mitarbeiter.
+          </p>
         }
       </div>
     </div>

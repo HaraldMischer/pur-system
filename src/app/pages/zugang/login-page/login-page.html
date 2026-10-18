@@ -60,12 +60,14 @@
 
         <!-- Fehlermeldung -->
         @if (error()) {
-          <p class="pur-form__item pur-form__item--error" role="alert">{{ error() }}</p>
+          <p class="pur-message pur-message--error pur-message--full" role="alert">
+            {{ error() }}
+          </p>
         }
 
         <!-- Netzwerkhinweis -->
         @if (!isOnline()) {
-          <p class="pur-form__item pur-form__item--error" role="status">
+          <p class="pur-message pur-message--error pur-message--full" role="status">
             Du bist offline. Die Anmeldung benötigt eine Internetverbindung.
           </p>
         }

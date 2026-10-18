@@ -110,7 +110,7 @@ describe('OeffnungszeitenFiliale', () => {
     expect(gespeicherteGrundlagen).not.toHaveProperty('zeitzone');
   });
 
-  it('should render store errors with the global form error style', async () => {
+  it('should render store errors with the global message error style', async () => {
     kontext.update((wert) => {
       return { ...wert, error: 'Speichern fehlgeschlagen.' };
     });
@@ -121,7 +121,7 @@ describe('OeffnungszeitenFiliale', () => {
     await fixture.whenStable();
 
     const meldung = fixture.nativeElement.querySelector(
-      '.pur-form__item--error[role="alert"]',
+      '.pur-message--error[role="alert"]',
     ) as HTMLElement | null;
     expect(meldung?.textContent).toContain('Speichern fehlgeschlagen.');
   });

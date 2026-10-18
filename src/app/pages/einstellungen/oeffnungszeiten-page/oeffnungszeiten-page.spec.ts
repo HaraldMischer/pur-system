@@ -69,7 +69,7 @@ describe('OeffnungszeitenPage', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'Einmalige Sondertage überschreiben Feiertage und jährlich wiederkehrende Sondertage; diese überschreiben die Wochentage.',
     );
-    expect(fixture.nativeElement.querySelector('.pur-page-section__message')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.pur-message--surface')).not.toBeNull();
     expect(fixture.nativeElement.querySelectorAll('app-oeffnungszeiten-filiale')).toHaveLength(0);
   });
 });

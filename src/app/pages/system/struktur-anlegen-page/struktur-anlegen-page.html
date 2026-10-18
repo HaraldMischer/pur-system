@@ -36,7 +36,9 @@
         </div>
 
         @if (unternehmerStore.error(); as error) {
-          <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+          <p class="pur-message pur-message--error pur-message--full" role="alert">
+            {{ error }}
+          </p>
           <button
             class="pur-form__item pur-form__item--auto"
             matButton
@@ -46,7 +48,7 @@
             Erneut laden
           </button>
         } @else if (unternehmerStore.isLoaded() && unternehmerStore.unternehmer().length === 0) {
-          <p class="pur-form__item pur-form__item--message" role="status">
+          <p class="pur-message pur-message--info pur-message--full" role="status">
             Keine Unternehmer vorhanden. Lege den ersten Unternehmer an.
           </p>
         }
@@ -97,7 +99,9 @@
         </div>
 
         @if (firmaStore.error(); as error) {
-          <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+          <p class="pur-message pur-message--error pur-message--full" role="alert">
+            {{ error }}
+          </p>
           <button
             class="pur-form__item pur-form__item--auto"
             matButton
@@ -107,7 +111,7 @@
             Erneut laden
           </button>
         } @else if (firmaStore.isLoaded() && firmaStore.firmen().length === 0) {
-          <p class="pur-form__item pur-form__item--message" role="status">
+          <p class="pur-message pur-message--info pur-message--full" role="status">
             Keine Firmen vorhanden. Lege die erste Firma an.
           </p>
         }
@@ -140,7 +144,9 @@
         <h2 class="pur-form__titel">Filiale für {{ getFirmaBezeichnung() }} anlegen</h2>
 
         @if (filialeStore.error(); as error) {
-          <p class="pur-form__item pur-form__item--error" role="alert">{{ error }}</p>
+          <p class="pur-message pur-message--error pur-message--full" role="alert">
+            {{ error }}
+          </p>
           <button
             class="pur-form__item pur-form__item--auto"
             matButton
@@ -170,7 +176,7 @@
         }
 
         @if (filialeForm.controls.id.value) {
-          <p class="pur-form__item pur-form__item--success" role="status">
+          <p class="pur-message pur-message--success pur-message--full" role="status">
             Die Filiale wurde angelegt.
           </p>
         }

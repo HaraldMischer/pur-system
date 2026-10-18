@@ -34,18 +34,20 @@
     </header>
 
     @if (!appKontextStore.selectedFirma()) {
-      <p class="pur-page-section__message" role="status">
+      <p class="pur-message pur-message--surface pur-message--full" role="status">
         Wähle eine Firma, um deren Mitarbeiter anzuzeigen.
       </p>
     } @else if (filialauswahlErforderlich()) {
-      <p class="pur-page-section__message" role="status">
+      <p class="pur-message pur-message--surface pur-message--full" role="status">
         Wähle mindestens eine Filiale, um deren Mitarbeiter anzuzeigen.
       </p>
     } @else if (mitarbeiterDownload()) {
-      <p class="pur-page-section__message" role="status">Mitarbeiter werden geladen.</p>
+      <p class="pur-message pur-message--surface pur-message--full" role="status">
+        Mitarbeiter werden geladen.
+      </p>
     } @else if (mitarbeiterError(); as error) {
       <div class="pur-page-section__error-state">
-        <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+        <p class="pur-message pur-message--error" role="alert">
           {{ error }}
         </p>
         <button matButton="tonal" type="button" (click)="retryLoadMitarbeiter()">
@@ -54,7 +56,7 @@
       </div>
     } @else if (mitarbeiterIsLoaded()) {
       @if (mitarbeiterStore.error(); as error) {
-        <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+        <p class="pur-message pur-message--error pur-message--full" role="alert">
           {{ error }}
         </p>
       }
@@ -69,7 +71,10 @@
         }
       </div>
       @if (mitarbeiter().length === 0) {
-        <p class="pur-page-section__empty-state" role="status">
+        <p
+          class="pur-message pur-message--surface pur-message--dashed pur-message--full"
+          role="status"
+        >
           Die Firma hat noch keine Mitarbeiter.
         </p>
       }

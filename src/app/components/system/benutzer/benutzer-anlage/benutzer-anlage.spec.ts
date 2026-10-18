@@ -261,7 +261,7 @@ describe('BenutzerAnlage', () => {
     datenAuswahl.selectFirmen([datenAuswahl.getFirmaSchluessel('u', 'f')]);
     await render();
 
-    const meldung = fixture.nativeElement.querySelector('.pur-form__item--error[role="alert"]');
+    const meldung = fixture.nativeElement.querySelector('.pur-message--error[role="alert"]');
     expect(meldung?.textContent).toContain('Die Firma hat noch keine Mitarbeiter.');
     expect(fixture.componentInstance.benutzerForm.controls.firmaMitarbeiterId.disabled).toBe(true);
   });
@@ -349,7 +349,7 @@ describe('BenutzerAnlage', () => {
     expect(component.benutzerForm.untouched).toBe(true);
     expect(fixture.nativeElement.querySelectorAll('mat-error')).toHaveLength(0);
     expect(fixture.nativeElement.querySelectorAll('.mat-mdc-form-field-invalid')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelector('.pur-form__item--success')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.pur-message--success')).not.toBeNull();
     expect(
       TestBed.inject(BenutzerVerwaltungService).createBenutzer,
     ).toHaveBeenCalledExactlyOnceWith({

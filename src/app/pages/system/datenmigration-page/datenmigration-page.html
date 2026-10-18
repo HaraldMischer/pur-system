@@ -50,7 +50,7 @@
 
     @if (datenmigrationStore.error(); as error) {
       <div class="pur-page-section__error-state">
-        <p class="pur-page-section__message pur-page-section__message--error" role="alert">
+        <p class="pur-message pur-message--error" role="alert">
           {{ error }}
         </p>
         <button matButton="tonal" type="button" (click)="retryLoad()">
@@ -59,7 +59,9 @@
         </button>
       </div>
     } @else if (datenmigrationStore.isLoaded() && datenmigrationStore.purCustomers().length === 0) {
-      <p class="pur-page-section__message" role="status">Keine Legacy-Kunden vorhanden.</p>
+      <p class="pur-message pur-message--surface pur-message--full" role="status">
+        Keine Legacy-Kunden vorhanden.
+      </p>
     }
   </div>
 
@@ -106,7 +108,7 @@
           @if (
             selectedMigrationsbereich() === 'firmen' && unternehmerStatus()?.status !== 'completed'
           ) {
-            <p class="pur-page-section__message" role="status">
+            <p class="pur-message pur-message--surface pur-message--full" role="status">
               Migriere zuerst den Unternehmer dieses Legacy-Kunden.
             </p>
           }
@@ -114,7 +116,7 @@
           @if (
             selectedMigrationsbereich() === 'filialen' && firmenStatus()?.status !== 'completed'
           ) {
-            <p class="pur-page-section__message" role="status">
+            <p class="pur-message pur-message--surface pur-message--full" role="status">
               Migriere zuerst die Firmen dieses Legacy-Kunden.
             </p>
           }
@@ -123,7 +125,7 @@
             selectedMigrationsbereich() === 'mitarbeiter' &&
             filialenStatus()?.status !== 'completed'
           ) {
-            <p class="pur-page-section__message" role="status">
+            <p class="pur-message pur-message--surface pur-message--full" role="status">
               Migriere zuerst die Filialen dieses Legacy-Kunden.
             </p>
           }
@@ -168,7 +170,7 @@
         </mat-card-header>
 
         <mat-card-content>
-          <p class="pur-page-section__message" role="status">
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
             Die Migration dieses Datenbereichs ist noch nicht umgesetzt.
           </p>
         </mat-card-content>

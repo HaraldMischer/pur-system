@@ -2,12 +2,14 @@
 
 <section class="pur-page pur-page--limited oeffnungszeiten-page">
   <section class="pur-page-section">
-    <p class="pur-page-section__message">
+    <p class="pur-message pur-message--surface pur-message--full">
       Einmalige Sondertage überschreiben Feiertage und jährlich wiederkehrende Sondertage; diese
       überschreiben die Wochentage.
     </p>
     @if (filialauswahl().length === 0) {
-      <p class="pur-page-section__message" role="status">Wähle mindestens eine Filiale aus.</p>
+      <p class="pur-message pur-message--surface pur-message--full" role="status">
+        Wähle mindestens eine Filiale aus.
+      </p>
     } @else {
       <div class="filial-oeffnungszeiten">
         @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
