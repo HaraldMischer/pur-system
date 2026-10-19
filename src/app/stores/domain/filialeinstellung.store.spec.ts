@@ -5,13 +5,17 @@ import { TestBed } from '@angular/core/testing';
 
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import { TWochenoeffnungszeiten } from '../../commons/models/domain/filialeinstellung';
+import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import {
+  FilialeinstellungFachfehler,
   FilialeinstellungService,
   IFilialeinstellungBestand,
   IFilialeinstellungGrundlagen,
+  IFilialeinstellungRohdaten,
 } from '../../services/domain/filialeinstellung.service';
 import { BenutzerStore } from '../app/benutzer.store';
+import { StammdatenStore } from '../app/stammdaten.store';
 import { FilialeinstellungStore } from './filialeinstellung.store';
 
 describe('FilialeinstellungStore', () => {
@@ -21,7 +25,10 @@ describe('FilialeinstellungStore', () => {
   const grundlagen = createGrundlagen();
   const bestand = createBestand(pfad);
   const andererBestand = createBestand(andererPfad);
-  const loadFilialeinstellung = vi.fn();
+  const rohdaten = createRohdaten(bestand);
+  const andereRohdaten = createRohdaten(andererBestand);
+  const loadFilialeinstellungRohdaten = vi.fn();
+  const validateFilialeinstellungRohdaten = vi.fn();
   const initializeFilialeinstellung = vi.fn();
   const saveGrundlagen = vi.fn();
   const createSondertag = vi.fn();
@@ -31,12 +38,20 @@ describe('FilialeinstellungStore', () => {
   const createAusnahme = vi.fn();
   const updateAusnahme = vi.fn();
   const deleteAusnahme = vi.fn();
+  const debugLogServiceMock = {
+    log: vi.fn(),
+    logDatenflussTitel: vi.fn(),
+    logDatenGeladen: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     benutzerId.set('uid-1');
-    loadFilialeinstellung.mockImplementation((ladePfad) => {
-      return Promise.resolve(ladePfad.filialeId === 'b-1' ? bestand : andererBestand);
+    loadFilialeinstellungRohdaten.mockImplementation((ladePfad) => {
+      return Promise.resolve(ladePfad.filialeId === 'b-1' ? rohdaten : andereRohdaten);
+    });
+    validateFilialeinstellungRohdaten.mockImplementation((_ladePfad, geladeneRohdaten) => {
+      return geladeneRohdaten === rohdaten ? bestand : andererBestand;
     });
     initializeFilialeinstellung.mockResolvedValue(bestand);
     saveGrundlagen.mockResolvedValue(bestand);
@@ -77,7 +92,8 @@ describe('FilialeinstellungStore', () => {
         {
           provide: FilialeinstellungService,
           useValue: {
-            loadFilialeinstellung,
+            loadFilialeinstellungRohdaten,
+            validateFilialeinstellungRohdaten,
             initializeFilialeinstellung,
             saveGrundlagen,
             createSondertag,
@@ -90,6 +106,16 @@ describe('FilialeinstellungStore', () => {
           },
         },
         { provide: BenutzerStore, useValue: { benutzerId } },
+        {
+          provide: StammdatenStore,
+          useValue: {
+            getFilialen: vi.fn(() => [
+              { id: 'b-1', anzeigename: 'Testhalle' },
+              { id: 'b-2', anzeigename: 'Nebenhalle' },
+            ]),
+          },
+        },
+        { provide: DebugLogService, useValue: debugLogServiceMock },
         {
           provide: StoreSnapshotService,
           useValue: { registerStoreSnapshot: vi.fn().mockReturnValue(vi.fn()) },
@@ -111,7 +137,9 @@ describe('FilialeinstellungStore', () => {
   });
 
   it('should represent a loaded branch without settings as not initialized', async () => {
-    loadFilialeinstellung.mockResolvedValueOnce(null);
+    const leereRohdaten = createLeereRohdaten();
+    loadFilialeinstellungRohdaten.mockResolvedValueOnce(leereRohdaten);
+    validateFilialeinstellungRohdaten.mockReturnValueOnce(null);
     const store = TestBed.inject(FilialeinstellungStore);
 
     await store.loadFilialeinstellung(pfad);
@@ -123,8 +151,66 @@ describe('FilialeinstellungStore', () => {
     });
   });
 
+  it('should store the complete raw settings and log the document count before validation', async () => {
+    const store = TestBed.inject(FilialeinstellungStore);
+
+    await store.loadFilialeinstellung(pfad);
+
+    expect(store.getFilialeinstellungKontext(pfad)?.rohdaten).toBe(rohdaten);
+    expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith('3. FILIALDATEN ');
+    expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith(
+      'Einstellungen | Testhalle',
+      2,
+    );
+    expect(validateFilialeinstellungRohdaten).toHaveBeenCalledWith(pfad, rohdaten);
+  });
+
+  it('should log the original loading error with its branch path', async () => {
+    const error = Object.assign(new Error('Firestore-Lesen fehlgeschlagen.'), {
+      code: 'permission-denied',
+    });
+    loadFilialeinstellungRohdaten.mockRejectedValueOnce(error);
+    const store = TestBed.inject(FilialeinstellungStore);
+
+    await expect(store.loadFilialeinstellung(pfad)).rejects.toBe(error);
+
+    expect(debugLogServiceMock.log).toHaveBeenCalledWith(
+      'Laden',
+      'Die Filialeinstellungen konnten nicht geladen werden.',
+      { ...pfad, error },
+    );
+    expect(store.getFilialeinstellungKontext(pfad)?.error).toEqual({
+      meldung: 'Die Filialeinstellungen konnten nicht geladen werden.',
+      ursache: 'Du hast keine Berechtigung für diese Aktion.',
+    });
+  });
+
+  it('should expose a domain validation cause separately from the loading action', async () => {
+    const error = new FilialeinstellungFachfehler(
+      'Die Öffnungsregel enthält keine gültige Zeitfolge.',
+    );
+    validateFilialeinstellungRohdaten.mockImplementationOnce(() => {
+      throw error;
+    });
+    const store = TestBed.inject(FilialeinstellungStore);
+
+    await expect(store.loadFilialeinstellung(pfad)).rejects.toBe(error);
+
+    expect(store.getFilialeinstellungKontext(pfad)?.error).toEqual({
+      meldung: 'Die Filialeinstellungen wurden geladen, sind aber ungültig.',
+      ursache: 'Die Öffnungsregel enthält keine gültige Zeitfolge.',
+    });
+    expect(store.getFilialeinstellungKontext(pfad)?.rohdaten).toBe(rohdaten);
+    expect(debugLogServiceMock.logDatenGeladen).toHaveBeenCalledWith(
+      'Einstellungen | Testhalle',
+      2,
+    );
+    expect(debugLogServiceMock.log).not.toHaveBeenCalled();
+  });
+
   it('should initialize only a loaded empty context with an authenticated user', async () => {
-    loadFilialeinstellung.mockResolvedValueOnce(null);
+    loadFilialeinstellungRohdaten.mockResolvedValueOnce(createLeereRohdaten());
+    validateFilialeinstellungRohdaten.mockReturnValueOnce(null);
     const store = TestBed.inject(FilialeinstellungStore);
     await store.loadFilialeinstellung(pfad);
 
@@ -159,7 +245,7 @@ describe('FilialeinstellungStore', () => {
   });
 
   it('should resolve an exception before a system special day and the weekly rule', async () => {
-    loadFilialeinstellung.mockResolvedValueOnce({
+    const bestandMitAusnahme = {
       ...bestand,
       ausnahmen: [
         {
@@ -177,7 +263,10 @@ describe('FilialeinstellungStore', () => {
           aktualisiertVonUid: 'uid-1',
         },
       ],
-    });
+    } satisfies IFilialeinstellungBestand;
+    const rohdatenMitAusnahme = createRohdaten(bestandMitAusnahme);
+    loadFilialeinstellungRohdaten.mockResolvedValueOnce(rohdatenMitAusnahme);
+    validateFilialeinstellungRohdaten.mockReturnValueOnce(bestandMitAusnahme);
     const store = TestBed.inject(FilialeinstellungStore);
     await store.loadFilialeinstellung(pfad);
 
@@ -209,8 +298,14 @@ describe('FilialeinstellungStore', () => {
     expect(store.getFilialeinstellungKontext(andererPfad)?.inProgress).toBe(false);
     rejectWrite?.(new Error('Speichern fehlgeschlagen'));
     await expect(promise).rejects.toThrow('Speichern fehlgeschlagen');
-    expect(store.getFilialeinstellungKontext(pfad)?.error).toBe(
-      'Die Aktion konnte nicht ausgeführt werden.',
+    expect(store.getFilialeinstellungKontext(pfad)?.error).toEqual({
+      meldung: 'Der Sondertag konnte nicht angelegt werden.',
+      ursache: null,
+    });
+    expect(debugLogServiceMock.log).toHaveBeenCalledWith(
+      'Store',
+      'Der Sondertag konnte nicht angelegt werden.',
+      expect.objectContaining({ ...pfad, error: expect.any(Error) }),
     );
     expect(store.getFilialeinstellungKontext(andererPfad)?.error).toBeNull();
   });
@@ -271,4 +366,23 @@ function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {
     ],
     ausnahmen: [],
   };
+}
+
+function createRohdaten(bestand: IFilialeinstellungBestand): IFilialeinstellungRohdaten {
+  return {
+    allgemein: { id: 'allgemein', daten: bestand.allgemein },
+    oeffnungszeiten: { id: 'oeffnungszeiten', daten: bestand.oeffnungszeiten },
+    sondertage: bestand.sondertage.map((sondertag) => {
+      const { id, ...daten } = sondertag;
+      return { id, daten };
+    }),
+    ausnahmen: bestand.ausnahmen.map((ausnahme) => {
+      const { id, ...daten } = ausnahme;
+      return { id, daten };
+    }),
+  };
+}
+
+function createLeereRohdaten(): IFilialeinstellungRohdaten {
+  return { allgemein: null, oeffnungszeiten: null, sondertage: [], ausnahmen: [] };
 }

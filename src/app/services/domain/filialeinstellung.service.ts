@@ -26,7 +26,11 @@ import {
   createInitialeSondertage,
   reconcileInitialeSondertage,
 } from '../../commons/utils/filialeinstellung/feiertag';
-import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
+import {
+  FirestoreDbService,
+  IFirestoreDokument,
+  TFirestoreBatchOperation,
+} from '../firebase/firestore-db.service';
 
 // ===== Top-Level Helper =====================
 
@@ -57,7 +61,9 @@ function mapAllgemeineFilialeinstellung(
 function assertBezeichnung(bezeichnung: string): void {
   const normalisiert = bezeichnung.trim();
   if (!normalisiert || normalisiert.length > 80) {
-    throw new Error('Die Bezeichnung muss zwischen 1 und 80 Zeichen lang sein.');
+    throw new FilialeinstellungFachfehler(
+      'Die Bezeichnung muss zwischen 1 und 80 Zeichen lang sein.',
+    );
   }
 }
 
@@ -68,31 +74,37 @@ function assertFestesDatum(datumsregel: IJaehrlichFestesDatum): void {
     pruefdatum.getUTCMonth() + 1 !== datumsregel.monat ||
     pruefdatum.getUTCDate() !== datumsregel.tag
   ) {
-    throw new Error('Der Sondertag benötigt ein gültiges jährliches Datum.');
+    throw new FilialeinstellungFachfehler('Der Sondertag benötigt ein gültiges jährliches Datum.');
   }
 }
 
 function assertOeffnungsregel(oeffnungsregel: TOeffnungsregel | undefined): void {
-  if (!oeffnungsregel) throw new Error('Die Öffnungsregel fehlt.');
-  if (!oeffnungsregel.geoeffnet) {
-    if (Object.keys(oeffnungsregel).length !== 1) {
-      throw new Error('Eine geschlossene Öffnungsregel darf keine Zeitwerte enthalten.');
-    }
+  if (!oeffnungsregel) throw new FilialeinstellungFachfehler('Die Öffnungsregel fehlt.');
+  const { beginnLokalzeit, endeLokalzeit, endetAmFolgetag } = oeffnungsregel;
+  if (
+    !oeffnungsregel.geoeffnet &&
+    beginnLokalzeit === undefined &&
+    endeLokalzeit === undefined &&
+    endetAmFolgetag === undefined
+  ) {
     return;
   }
   if (
-    !LOKALZEIT_PATTERN.test(oeffnungsregel.beginnLokalzeit) ||
-    !LOKALZEIT_PATTERN.test(oeffnungsregel.endeLokalzeit) ||
-    oeffnungsregel.beginnLokalzeit === oeffnungsregel.endeLokalzeit ||
-    oeffnungsregel.endetAmFolgetag !== oeffnungsregel.endeLokalzeit < oeffnungsregel.beginnLokalzeit
+    typeof beginnLokalzeit !== 'string' ||
+    typeof endeLokalzeit !== 'string' ||
+    typeof endetAmFolgetag !== 'boolean' ||
+    !LOKALZEIT_PATTERN.test(beginnLokalzeit) ||
+    !LOKALZEIT_PATTERN.test(endeLokalzeit) ||
+    beginnLokalzeit === endeLokalzeit ||
+    endetAmFolgetag !== endeLokalzeit < beginnLokalzeit
   ) {
-    throw new Error('Die geöffnete Öffnungsregel enthält keine gültige Zeitfolge.');
+    throw new FilialeinstellungFachfehler('Die Öffnungsregel enthält keine gültige Zeitfolge.');
   }
 }
 
 function assertDatum(datum: string): void {
   if (!DATUM_PATTERN.test(datum)) {
-    throw new Error('Das Datum muss dem Format YYYY-MM-DD entsprechen.');
+    throw new FilialeinstellungFachfehler('Das Datum muss dem Format YYYY-MM-DD entsprechen.');
   }
   const [jahr, monat, tag] = datum.split('-').map(Number);
   const pruefdatum = new Date(Date.UTC(jahr, monat - 1, tag));
@@ -101,7 +113,7 @@ function assertDatum(datum: string): void {
     pruefdatum.getUTCMonth() + 1 !== monat ||
     pruefdatum.getUTCDate() !== tag
   ) {
-    throw new Error('Das Datum muss ein gültiges Kalenderdatum sein.');
+    throw new FilialeinstellungFachfehler('Das Datum muss ein gültiges Kalenderdatum sein.');
   }
 }
 
@@ -112,6 +124,13 @@ export interface IFilialeinstellungBestand {
   oeffnungszeiten: IFilialeinstellungOeffnungszeitenDokument;
   sondertage: readonly IFilialeinstellungSondertagEintrag[];
   ausnahmen: readonly IFilialeinstellungAusnahmeEintrag[];
+}
+
+export interface IFilialeinstellungRohdaten {
+  readonly allgemein: IFirestoreDokument<IFilialeinstellungAllgemeinDokument> | null;
+  readonly oeffnungszeiten: IFirestoreDokument<IFilialeinstellungOeffnungszeitenDokument> | null;
+  readonly sondertage: readonly IFirestoreDokument<IFilialeinstellungSondertagDokument>[];
+  readonly ausnahmen: readonly IFirestoreDokument<IFilialeinstellungAusnahmeDokument>[];
 }
 
 export interface IFilialeinstellungGrundlagen {
@@ -142,6 +161,13 @@ export interface IFilialeinstellungAusnahmeSchreibdaten {
   datum: string;
   bezeichnung: string;
   oeffnungsregel: TOeffnungsregel;
+}
+
+export class FilialeinstellungFachfehler extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FilialeinstellungFachfehler';
+  }
 }
 
 const BUNDESLAENDER = new Set<TBundeslandCode>([
@@ -183,17 +209,16 @@ export class FilialeinstellungService {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Lädt den vollständigen Einstellungsbestand einer Filiale.
+   * Lädt die unveränderten Einstellungsdaten einer Filiale aus Firestore.
    *
    * @param pfad - Vollständiger Filialpfad.
    * @param strategie - Datenquellenstrategie für den Ladevorgang.
-   * @returns Vollständiger Bestand oder `null`, wenn die Filiale noch nicht initialisiert ist.
-   * @throws Wenn nur ein unvollständiger Teilbestand vorhanden ist.
+   * @returns Gemeinsam aus allen vier Einstellungsbereichen geladene Rohdaten.
    */
-  async loadFilialeinstellung(
+  async loadFilialeinstellungRohdaten(
     pfad: IFilialPfad,
     strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.dienstplaene,
-  ): Promise<IFilialeinstellungBestand | null> {
+  ): Promise<IFilialeinstellungRohdaten> {
     const [allgemein, oeffnungszeiten, sondertage, ausnahmen] = await Promise.all([
       this.firestoreDbService.loadDocument<IFilialeinstellungAllgemeinDokument>(
         FIRESTORE_DOCUMENT_PATHS.filialeinstellung({ ...pfad, einstellungId: 'allgemein' }),
@@ -215,11 +240,29 @@ export class FilialeinstellungService {
         strategie,
       ),
     ]);
+    return { allgemein, oeffnungszeiten, sondertage, ausnahmen };
+  }
+
+  /**
+   * Validiert geladene Firestore-Rohdaten und erzeugt den fachlich verwendbaren Bestand.
+   *
+   * @param pfad - Vollständiger Filialpfad.
+   * @param rohdaten - Unveränderte Daten aus den vier Einstellungsbereichen.
+   * @returns Vollständiger Bestand oder `null`, wenn die Filiale noch nicht initialisiert ist.
+   * @throws Wenn die geladenen Daten unvollständig oder fachlich ungültig sind.
+   */
+  validateFilialeinstellungRohdaten(
+    pfad: IFilialPfad,
+    rohdaten: IFilialeinstellungRohdaten,
+  ): IFilialeinstellungBestand | null {
+    const { allgemein, oeffnungszeiten, sondertage, ausnahmen } = rohdaten;
     if (!allgemein && !oeffnungszeiten && sondertage.length === 0 && ausnahmen.length === 0) {
       return null;
     }
     if (!allgemein || !oeffnungszeiten) {
-      throw new Error('Die Filialeinstellungen sind unvollständig und müssen repariert werden.');
+      throw new FilialeinstellungFachfehler(
+        'Die Filialeinstellungen sind unvollständig und müssen repariert werden.',
+      );
     }
     this.assertGrundlagen({
       bundesland: allgemein.daten.bundesland,
@@ -275,7 +318,9 @@ export class FilialeinstellungService {
     });
     await this.firestoreDbService.executeDocumentTransaction(allgemeinPfad, (dokument) => {
       if (dokument) {
-        throw new Error('Die Filialeinstellungen wurden bereits initialisiert.');
+        throw new FilialeinstellungFachfehler(
+          'Die Filialeinstellungen wurden bereits initialisiert.',
+        );
       }
       return {
         ergebnis: undefined,
@@ -461,7 +506,9 @@ export class FilialeinstellungService {
     benutzerUid: string,
   ): Promise<IFilialeinstellungSondertagEintrag> {
     if (sondertag.herkunft !== 'benutzer') {
-      throw new Error('Systemdefinierte Sondertage besitzen eine eigene Bearbeitungsart.');
+      throw new FilialeinstellungFachfehler(
+        'Systemdefinierte Sondertage besitzen eine eigene Bearbeitungsart.',
+      );
     }
     this.assertSondertagAnlage(aktualisierung);
     const daten = { ...aktualisierung, bezeichnung: aktualisierung.bezeichnung.trim() };
@@ -489,7 +536,7 @@ export class FilialeinstellungService {
     benutzerUid: string,
   ): Promise<IFilialeinstellungSondertagEintrag> {
     if (sondertag.herkunft !== 'system') {
-      throw new Error('Der Sondertag ist nicht systemdefiniert.');
+      throw new FilialeinstellungFachfehler('Der Sondertag ist nicht systemdefiniert.');
     }
     assertOeffnungsregel(aktualisierung.oeffnungsregel);
     await this.firestoreDbService.updateDocument(
@@ -514,7 +561,9 @@ export class FilialeinstellungService {
     sondertag: IFilialeinstellungSondertagEintrag,
   ): Promise<void> {
     if (sondertag.herkunft !== 'benutzer') {
-      throw new Error('Systemdefinierte Sondertage können nicht gelöscht werden.');
+      throw new FilialeinstellungFachfehler(
+        'Systemdefinierte Sondertage können nicht gelöscht werden.',
+      );
     }
     await this.firestoreDbService.deleteDocument(
       FIRESTORE_DOCUMENT_PATHS.filialeinstellungSondertag({
@@ -558,7 +607,9 @@ export class FilialeinstellungService {
   ): Promise<IFilialeinstellungAusnahmeEintrag> {
     this.assertAusnahme(aktualisierung);
     if (aktualisierung.datum !== ausnahme.datum || ausnahme.id !== ausnahme.datum) {
-      throw new Error('Das Datum einer bestehenden Ausnahme kann nicht geändert werden.');
+      throw new FilialeinstellungFachfehler(
+        'Das Datum einer bestehenden Ausnahme kann nicht geändert werden.',
+      );
     }
     const daten = { ...aktualisierung, bezeichnung: aktualisierung.bezeichnung.trim() };
     await this.firestoreDbService.updateDocument(
@@ -586,10 +637,12 @@ export class FilialeinstellungService {
 
   private assertGrundlagen(grundlagen: IFilialeinstellungGrundlagen): void {
     if (!BUNDESLAENDER.has(grundlagen.bundesland)) {
-      throw new Error('Das Bundesland der Filiale ist ungültig.');
+      throw new FilialeinstellungFachfehler('Das Bundesland der Filiale ist ungültig.');
     }
     if (Object.keys(grundlagen.wochenregeln).length !== WOCHENTAGE.length) {
-      throw new Error('Die Wochenöffnungszeiten müssen genau sieben Wochentage enthalten.');
+      throw new FilialeinstellungFachfehler(
+        'Die Wochenöffnungszeiten müssen genau sieben Wochentage enthalten.',
+      );
     }
     for (const wochentag of WOCHENTAGE) {
       assertOeffnungsregel(grundlagen.wochenregeln[wochentag]);

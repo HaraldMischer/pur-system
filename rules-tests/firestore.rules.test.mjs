@@ -118,10 +118,6 @@ const filialeinstellungSondertagPath = `${filialeinstellungOeffnungszeitenPath}/
 const filialeinstellungAusnahmePath = `${filialeinstellungOeffnungszeitenPath}/ausnahme`;
 const schichtmodellPath = `${filialePath}/schichtmodell/sommer`;
 const modellschichtPath = `${schichtmodellPath}/modellschicht/frueh`;
-const dienstplanSchichtmodellPath = `${filialePath}/schichtmodell/standard`;
-const dienstplanQuellModellschichtPath = `${dienstplanSchichtmodellPath}/modellschicht/frueh`;
-const wechselSchichtmodellPath = `${filialePath}/schichtmodell/winter`;
-const wechselQuellModellschichtPath = `${wechselSchichtmodellPath}/modellschicht/spaet`;
 const fremdesSchichtmodellPath = `${nichtZugeordneteFilialePath}/schichtmodell/sommer`;
 const dienstplanPath = `${filialePath}/dienstplan/2026-10`;
 const dienstplanModellschichtPath = `${dienstplanPath}/modellschicht/frueh`;
@@ -188,33 +184,6 @@ async function seedProfile(userRole, overrides = {}) {
       erlaubteBereiche: ['dashboard'],
       zugriffe,
     });
-    await setDoc(doc(db, dienstplanSchichtmodellPath), {
-      bezeichnung: 'Standard',
-      aktiv: true,
-      erstelltAm: new Date('2026-01-01T00:00:00.000Z'),
-      erstelltVonUid: 'scoped',
-      aktualisiertAm: new Date('2026-01-01T00:00:00.000Z'),
-      aktualisiertVonUid: 'scoped',
-    });
-    await setDoc(doc(db, dienstplanQuellModellschichtPath), modellschichtDaten());
-    await setDoc(doc(db, wechselSchichtmodellPath), {
-      bezeichnung: 'Winter',
-      aktiv: true,
-      erstelltAm: new Date('2026-01-01T00:00:00.000Z'),
-      erstelltVonUid: 'scoped',
-      aktualisiertAm: new Date('2026-01-01T00:00:00.000Z'),
-      aktualisiertVonUid: 'scoped',
-    });
-    await setDoc(
-      doc(db, wechselQuellModellschichtPath),
-      modellschichtDaten({
-        bezeichnung: 'Spätschicht',
-        beginnLokalzeit: '16:00',
-        endeLokalzeit: '01:00',
-        endetAmFolgetag: true,
-        standardpauseMinuten: 30,
-      }),
-    );
   });
   return testEnvironment.authenticatedContext('scoped').firestore();
 }
@@ -287,84 +256,6 @@ async function seedDienstplan() {
   });
 }
 
-async function seedUnveroeffentlichtenDienstplan() {
-  const zeitpunkt = new Date('2026-10-01T08:00:00.000Z');
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    const db = context.firestore();
-    await setDoc(doc(db, dienstplanPath), {
-      zeitraumStart: '2026-10-01',
-      zeitraumEnde: '2026-10-31',
-      zeitzone: 'Europe/Berlin',
-      schichtmodellId: 'standard',
-      schichtmodellBezeichnung: 'Standard',
-      entwurfVersionId: 'v2',
-      naechsteVersionsnummer: 3,
-      erstelltAm: zeitpunkt,
-      erstelltVonUid: 'scoped',
-      aktualisiertAm: zeitpunkt,
-      aktualisiertVonUid: 'scoped',
-    });
-    await setDoc(doc(db, entwurfVersionPath), {
-      nummer: 2,
-      revision: 0,
-      status: 'entwurf',
-      erstelltAm: zeitpunkt,
-      erstelltVonUid: 'scoped',
-      aktualisiertAm: zeitpunkt,
-      aktualisiertVonUid: 'scoped',
-    });
-    await setDoc(doc(db, dienstplanModellschichtPath), modellschichtDaten());
-  });
-}
-
-function setInitialenDienstplan(batch, db, basisPfad, monat) {
-  const [jahr, monatsnummer] = monat.split('-').map(Number);
-  const letzterTag = new Date(Date.UTC(jahr, monatsnummer, 0)).getUTCDate();
-  const planRef = doc(db, basisPfad);
-  const versionRef = doc(db, `${basisPfad}/version/v1`);
-  batch.set(planRef, {
-    zeitraumStart: `${monat}-01`,
-    zeitraumEnde: `${monat}-${letzterTag}`,
-    zeitzone: 'Europe/Berlin',
-    schichtmodellId: 'standard',
-    schichtmodellBezeichnung: 'Standard',
-    entwurfVersionId: 'v1',
-    naechsteVersionsnummer: 2,
-    erstelltAm: serverTimestamp(),
-    erstelltVonUid: 'scoped',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.set(versionRef, {
-    nummer: 1,
-    revision: 0,
-    status: 'entwurf',
-    erstelltAm: serverTimestamp(),
-    erstelltVonUid: 'scoped',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.set(doc(db, `${basisPfad}/modellschicht/frueh`), modellschichtDaten());
-}
-
-function deleteUnveroeffentlichtenDienstplan(batch, db) {
-  batch.delete(doc(db, dienstplanModellschichtPath));
-  batch.delete(doc(db, entwurfVersionPath));
-  batch.delete(doc(db, dienstplanPath));
-}
-
-function schichtmodellDaten(overrides = {}) {
-  return {
-    bezeichnung: 'Sommer',
-    aktiv: true,
-    erstelltAm: serverTimestamp(),
-    erstelltVonUid: 'scoped',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-    ...overrides,
-  };
-}
-
 function modellschichtDaten(overrides = {}) {
   return {
     bezeichnung: 'Frühschicht',
@@ -405,6 +296,15 @@ function wochenregeln(overrides = {}) {
   };
 }
 
+function geoeffneteRegel(beginnLokalzeit, endeLokalzeit) {
+  return {
+    geoeffnet: true,
+    beginnLokalzeit,
+    endeLokalzeit,
+    endetAmFolgetag: endeLokalzeit < beginnLokalzeit,
+  };
+}
+
 function allgemeineFilialeinstellung(overrides = {}) {
   return {
     bundesland: 'DE-NW',
@@ -433,28 +333,6 @@ function systemSondertagDaten(overrides = {}) {
   };
 }
 
-function benutzerSondertagDaten(overrides = {}) {
-  return {
-    bezeichnung: 'Inventur',
-    aktiv: true,
-    herkunft: 'benutzer',
-    datumsregel: { typ: 'jaehrlichFestesDatum', monat: 2, tag: 15 },
-    oeffnungsregel: { geoeffnet: false },
-    ...filialeinstellungMetadaten(),
-    ...overrides,
-  };
-}
-
-function ausnahmeDaten(datum, overrides = {}) {
-  return {
-    datum,
-    bezeichnung: 'Sonderöffnung',
-    oeffnungsregel: { geoeffnet: false },
-    ...filialeinstellungMetadaten(),
-    ...overrides,
-  };
-}
-
 function setInitialeFilialeinstellung(batch, db) {
   batch.set(doc(db, filialeinstellungAllgemeinPath), allgemeineFilialeinstellung());
   batch.set(doc(db, filialeinstellungOeffnungszeitenPath), oeffnungszeitenFilialeinstellung());
@@ -462,46 +340,26 @@ function setInitialeFilialeinstellung(batch, db) {
 }
 
 for (const role of ['master', 'office', 'filiale']) {
-  test(`${role} manages shift models and model shifts in an allowed branch`, async () => {
+  test(role + ' follows the CRUD matrix for shift models and model shifts', async () => {
     const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
     const modell = doc(db, schichtmodellPath);
     const schicht = doc(db, modellschichtPath);
 
-    await assertSucceeds(setDoc(modell, schichtmodellDaten()));
-    await assertSucceeds(setDoc(schicht, modellschichtDaten()));
+    await assertSucceeds(setDoc(modell, { frei: 'Schichtmodell' }));
     await assertSucceeds(getDoc(modell));
-    await assertSucceeds(getDoc(schicht));
-    await assertSucceeds(
-      updateDoc(modell, {
-        aktiv: false,
-        aktualisiertAm: serverTimestamp(),
-        aktualisiertVonUid: 'scoped',
-      }),
-    );
-    await assertSucceeds(updateDoc(schicht, { bezeichnung: 'Früh' }));
-    await assertSucceeds(deleteDoc(schicht));
+    await assertSucceeds(updateDoc(modell, { frei: 1 }));
     await assertFails(deleteDoc(modell));
+
+    await assertSucceeds(setDoc(schicht, { frei: 'Modellschicht' }));
+    await assertSucceeds(getDoc(schicht));
+    await assertSucceeds(updateDoc(schicht, { frei: 2 }));
+    await assertSucceeds(deleteDoc(schicht));
   });
 }
 
-test('shift models reject foreign branches, employee accounts and invalid model shifts', async () => {
+test('shift-model paths require an allowed branch and an authorized role', async () => {
   const officeDb = await seedProfile('office');
-
-  await assertFails(getDoc(doc(officeDb, fremdesSchichtmodellPath)));
-  await assertFails(setDoc(doc(officeDb, fremdesSchichtmodellPath), schichtmodellDaten()));
-  await assertSucceeds(setDoc(doc(officeDb, schichtmodellPath), schichtmodellDaten()));
-  await assertFails(
-    setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ reihenfolge: -1 })),
-  );
-  await assertFails(
-    setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ beginnLokalzeit: '7:00' })),
-  );
-  await assertFails(
-    setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ standardpauseMinuten: 15 })),
-  );
-  await assertFails(
-    setDoc(doc(officeDb, modellschichtPath), modellschichtDaten({ mehrfachbelegungErlaubt: 'ja' })),
-  );
+  await assertFails(setDoc(doc(officeDb, fremdesSchichtmodellPath), { frei: true }));
 
   const mitarbeiterDb = await seedProfile('mitarbeiter', {
     erlaubteBereiche: ['dashboard', 'schichtplan'],
@@ -509,7 +367,7 @@ test('shift models reject foreign branches, employee accounts and invalid model 
     firmaMitarbeiterId: 'm-1',
   });
   await assertFails(getDoc(doc(mitarbeiterDb, schichtmodellPath)));
-  await assertFails(setDoc(doc(mitarbeiterDb, schichtmodellPath), schichtmodellDaten()));
+  await assertFails(setDoc(doc(mitarbeiterDb, schichtmodellPath), { frei: true }));
 });
 
 for (const role of ['master', 'office', 'filiale']) {
@@ -526,6 +384,50 @@ for (const role of ['master', 'office', 'filiale']) {
     await assertSucceeds(getDoc(doc(db, `${filialeinstellungSondertagPath}/neujahr`)));
   });
 }
+
+test('master updates seven open weekdays and removes the legacy timezone atomically', async () => {
+  const db = await seedProfile('master', { zugriffe: {} });
+  const erstelltAm = new Date('2026-01-01T00:00:00.000Z');
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), filialeinstellungAllgemeinPath), {
+      bundesland: 'DE-NW',
+      zeitzone: 'Europe/Berlin',
+      erstelltAm,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: erstelltAm,
+      aktualisiertVonUid: 'scoped',
+    });
+    await setDoc(
+      doc(context.firestore(), filialeinstellungOeffnungszeitenPath),
+      oeffnungszeitenFilialeinstellung({
+        erstelltAm,
+        aktualisiertAm: erstelltAm,
+      }),
+    );
+  });
+  const batch = writeBatch(db);
+  batch.update(doc(db, filialeinstellungAllgemeinPath), {
+    bundesland: 'DE-NW',
+    zeitzone: deleteField(),
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.update(doc(db, filialeinstellungOeffnungszeitenPath), {
+    wochenregeln: {
+      montag: geoeffneteRegel('07:00', '01:00'),
+      dienstag: geoeffneteRegel('08:00', '16:00'),
+      mittwoch: geoeffneteRegel('09:00', '17:00'),
+      donnerstag: geoeffneteRegel('10:00', '18:00'),
+      freitag: geoeffneteRegel('11:00', '19:00'),
+      samstag: geoeffneteRegel('12:00', '20:00'),
+      sonntag: geoeffneteRegel('13:00', '21:00'),
+    },
+    aktualisiertAm: serverTimestamp(),
+    aktualisiertVonUid: 'scoped',
+  });
+
+  await assertSucceeds(batch.commit());
+});
 
 test('branch settings require the settings area and the concrete branch assignment', async () => {
   const officeDb = await seedProfile('office');
@@ -552,276 +454,112 @@ test('branch settings require the settings area and the concrete branch assignme
   await assertFails(getDoc(doc(mitarbeiterDb, filialeinstellungAllgemeinPath)));
 });
 
-test('branch settings reject unknown documents, fields and invalid weekly times', async () => {
+test('branch settings use path permissions without validating individual fields', async () => {
   const db = await seedProfile('office', {
     erlaubteBereiche: ['dashboard', 'einstellungen'],
   });
+  const einstellung = doc(db, `${filialePath}/einstellung/unbekannt`);
+
+  await assertSucceeds(setDoc(einstellung, { beliebigesFeld: 'wird fachlich im Client geprüft' }));
+  await assertSucceeds(getDoc(einstellung));
+  await assertSucceeds(updateDoc(einstellung, { beliebigesFeld: 42 }));
+  await assertFails(deleteDoc(einstellung));
   await assertFails(
-    setDoc(doc(db, `${filialePath}/einstellung/unbekannt`), allgemeineFilialeinstellung()),
-  );
-  await assertFails(
-    setDoc(
-      doc(db, filialeinstellungAllgemeinPath),
-      allgemeineFilialeinstellung({ postleitzahl: '12345' }),
-    ),
-  );
-  await assertFails(
-    setDoc(
-      doc(db, filialeinstellungAllgemeinPath),
-      allgemeineFilialeinstellung({ zeitzone: 'Europe/Berlin' }),
-    ),
-  );
-  await assertFails(
-    setDoc(
-      doc(db, filialeinstellungOeffnungszeitenPath),
-      oeffnungszeitenFilialeinstellung({
-        wochenregeln: wochenregeln({
-          montag: {
-            geoeffnet: true,
-            beginnLokalzeit: '7:00',
-            endeLokalzeit: '01:00',
-            endetAmFolgetag: true,
-          },
-        }),
-      }),
-    ),
+    setDoc(doc(db, `${filialePath}/einstellung/unbekannt/untercollection/dokument`), {
+      beliebigesFeld: true,
+    }),
   );
 });
 
-test('system special days keep their identity and can only change state and opening rule', async () => {
-  const db = await seedProfile('office', {
-    erlaubteBereiche: ['dashboard', 'einstellungen'],
-  });
-  const batch = writeBatch(db);
-  setInitialeFilialeinstellung(batch, db);
-  await assertSucceeds(batch.commit());
-  const neujahr = doc(db, `${filialeinstellungSondertagPath}/neujahr`);
-
-  await assertSucceeds(
-    updateDoc(neujahr, {
-      aktiv: false,
-      oeffnungsregel: {
-        geoeffnet: true,
-        beginnLokalzeit: '08:00',
-        endeLokalzeit: '14:00',
-        endetAmFolgetag: false,
-      },
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
-  await assertFails(
-    updateDoc(neujahr, {
-      bezeichnung: 'Freier Tag',
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
-  await assertFails(deleteDoc(neujahr));
-});
-
-test('a federal-state change atomically removes no-longer-applicable system holidays', async () => {
-  const db = await seedProfile('office', {
-    erlaubteBereiche: ['dashboard', 'einstellungen'],
-  });
-  let batch = writeBatch(db);
-  setInitialeFilialeinstellung(batch, db);
-  batch.set(
-    doc(db, `${filialeinstellungSondertagPath}/allerheiligen`),
-    systemSondertagDaten({
-      bezeichnung: 'Allerheiligen',
-      datumsregel: {
-        typ: 'gesetzlicherFeiertag',
-        feiertagSchluessel: 'allerheiligen',
-      },
-    }),
-  );
-  await assertSucceeds(batch.commit());
-
-  batch = writeBatch(db);
-  batch.update(doc(db, filialeinstellungAllgemeinPath), {
-    bundesland: 'DE-HE',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.delete(doc(db, `${filialeinstellungSondertagPath}/allerheiligen`));
-  await assertSucceeds(batch.commit());
-});
-
-test('user special days support fixed dates but cannot impersonate system holidays', async () => {
+test('special days and date exceptions allow CRUD only below opening-hours settings', async () => {
   const db = await seedProfile('filiale', {
     erlaubteBereiche: ['dashboard', 'einstellungen'],
   });
-  let batch = writeBatch(db);
-  setInitialeFilialeinstellung(batch, db);
-  await assertSucceeds(batch.commit());
-  const inventur = doc(db, `${filialeinstellungSondertagPath}/inventur`);
-
-  await assertSucceeds(setDoc(inventur, benutzerSondertagDaten()));
-  await assertSucceeds(
-    updateDoc(inventur, {
-      bezeichnung: 'Inventurtag',
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
-  await assertSucceeds(deleteDoc(inventur));
-  await assertFails(
-    setDoc(
-      doc(db, `${filialeinstellungSondertagPath}/falscher-feiertag`),
-      benutzerSondertagDaten({
-        datumsregel: { typ: 'gesetzlicherFeiertag', feiertagSchluessel: 'neujahr' },
-      }),
-    ),
-  );
-});
-
-test('date exceptions require matching ISO document IDs and valid field sets', async () => {
-  const db = await seedProfile('office', {
-    erlaubteBereiche: ['dashboard', 'einstellungen'],
-  });
+  const sondertag = doc(db, `${filialeinstellungSondertagPath}/inventur`);
   const ausnahme = doc(db, `${filialeinstellungAusnahmePath}/2026-12-23`);
 
-  await assertSucceeds(setDoc(ausnahme, ausnahmeDaten('2026-12-23')));
-  await assertSucceeds(
-    updateDoc(ausnahme, {
-      bezeichnung: 'Geänderte Sonderöffnung',
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
+  await assertSucceeds(setDoc(sondertag, { frei: 'Sondertag' }));
+  await assertSucceeds(updateDoc(sondertag, { frei: 1 }));
+  await assertSucceeds(deleteDoc(sondertag));
+  await assertSucceeds(setDoc(ausnahme, { frei: 'Ausnahme' }));
+  await assertSucceeds(updateDoc(ausnahme, { frei: 2 }));
   await assertSucceeds(deleteDoc(ausnahme));
   await assertFails(
-    setDoc(doc(db, `${filialeinstellungAusnahmePath}/23-12-2026`), ausnahmeDaten('23-12-2026')),
-  );
-  await assertFails(
-    setDoc(doc(db, `${filialeinstellungAusnahmePath}/2026-12-24`), ausnahmeDaten('2026-12-23')),
+    setDoc(doc(db, `${filialePath}/einstellung/allgemein/sondertag/inventur`), {
+      frei: 'falscher Elternpfad',
+    }),
   );
 });
 
 for (const role of ['master', 'office', 'filiale']) {
-  test(`${role} reads every service-plan status in an allowed branch`, async () => {
+  test(role + ' follows the CRUD matrix for service-plan paths', async () => {
     const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
-    await seedDienstplan();
+    const plan = doc(db, dienstplanPath);
+    const modellschicht = doc(db, dienstplanModellschichtPath);
+    const version = doc(db, entwurfVersionPath);
+    const schicht = doc(db, entwurfSchichtPath);
 
-    for (const path of [
-      dienstplanPath,
-      archivierteVersionPath,
-      veroeffentlichteVersionPath,
-      entwurfVersionPath,
-      veroeffentlichteSchichtPath,
-      entwurfSchichtPath,
-      dienstplanModellschichtPath,
-    ]) {
-      await assertSucceeds(getDoc(doc(db, path)));
-    }
-  });
+    await assertSucceeds(setDoc(plan, { frei: 'Dienstplan' }));
+    await assertSucceeds(getDoc(plan));
+    await assertSucceeds(updateDoc(plan, { frei: 1 }));
 
-  test(`${role} creates an initial monthly service plan atomically`, async () => {
-    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
-    const batch = writeBatch(db);
-    setInitialenDienstplan(batch, db, `${filialePath}/dienstplan/2026-11`, '2026-11');
+    await assertSucceeds(setDoc(modellschicht, { frei: 'Momentaufnahme' }));
+    await assertSucceeds(getDoc(modellschicht));
+    await assertFails(updateDoc(modellschicht, { frei: 2 }));
+    await assertSucceeds(deleteDoc(modellschicht));
 
-    await assertSucceeds(batch.commit());
+    await assertSucceeds(setDoc(version, { frei: 'Version' }));
+    await assertSucceeds(getDoc(version));
+    await assertSucceeds(updateDoc(version, { frei: 3 }));
+
+    await assertSucceeds(setDoc(schicht, { frei: 'Schicht' }));
+    await assertSucceeds(getDoc(schicht));
+    await assertSucceeds(updateDoc(schicht, { frei: 4 }));
+    await assertSucceeds(deleteDoc(schicht));
+
+    await assertSucceeds(deleteDoc(version));
+    await assertSucceeds(deleteDoc(plan));
   });
 }
 
-test('office cannot create a service plan with an inactive or foreign model snapshot', async () => {
-  const db = await seedProfile('office');
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await updateDoc(doc(context.firestore(), dienstplanSchichtmodellPath), { aktiv: false });
-  });
-  let batch = writeBatch(db);
-  setInitialenDienstplan(batch, db, `${filialePath}/dienstplan/2026-11`, '2026-11');
-  await assertFails(batch.commit());
-
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await updateDoc(doc(context.firestore(), dienstplanSchichtmodellPath), { aktiv: true });
-  });
-  batch = writeBatch(db);
-  setInitialenDienstplan(batch, db, `${filialePath}/dienstplan/2026-11`, '2026-11');
-  batch.update(doc(db, `${filialePath}/dienstplan/2026-11`), {
-    schichtmodellId: 'fremd',
-  });
-  await assertFails(batch.commit());
-});
-
-test('model snapshots of an existing service plan are immutable', async () => {
-  const db = await seedProfile('office');
-  await seedDienstplan();
-
-  await assertFails(updateDoc(doc(db, dienstplanModellschichtPath), { bezeichnung: 'Geändert' }));
-  await assertFails(deleteDoc(doc(db, dienstplanModellschichtPath)));
+test('service-plan writes require an allowed branch and an authorized role', async () => {
+  const officeDb = await seedProfile('office');
   await assertFails(
-    setDoc(doc(db, `${dienstplanPath}/modellschicht/spaet`), {
-      ...modellschichtDaten(),
-      bezeichnung: 'Spät',
+    setDoc(doc(officeDb, nichtZugeordneteFilialePath + '/dienstplan/2026-10'), {
+      frei: true,
     }),
   );
+
+  const mitarbeiterDb = await seedProfile('mitarbeiter', {
+    erlaubteBereiche: ['dashboard', 'schichtplan'],
+    zugriffe: { 'u-1': { 'f-1': [] } },
+    firmaMitarbeiterId: 'm-1',
+  });
+  await assertFails(setDoc(doc(mitarbeiterDb, dienstplanPath), { frei: true }));
 });
 
-test('office deletes a never-published service plan with its draft and model snapshot', async () => {
-  const db = await seedProfile('office');
-  await seedUnveroeffentlichtenDienstplan();
-  const batch = writeBatch(db);
-  deleteUnveroeffentlichtenDienstplan(batch, db);
-
-  await assertSucceeds(batch.commit());
-  assert.equal((await getDoc(doc(db, dienstplanPath))).exists(), false);
-  assert.equal((await getDoc(doc(db, entwurfVersionPath))).exists(), false);
-  assert.equal((await getDoc(doc(db, dienstplanModellschichtPath))).exists(), false);
-});
-
-test('office cannot delete a published service plan or only its plan document', async () => {
-  const db = await seedProfile('office');
-  await seedUnveroeffentlichtenDienstplan();
-  await assertFails(deleteDoc(doc(db, dienstplanPath)));
-
-  await seedDienstplan();
-  const batch = writeBatch(db);
-  deleteUnveroeffentlichtenDienstplan(batch, db);
-  await assertFails(batch.commit());
-});
-
-test('office cannot create service plans for malformed months or foreign branches', async () => {
-  const db = await seedProfile('office');
-  let batch = writeBatch(db);
-  setInitialenDienstplan(batch, db, `${filialePath}/dienstplan/2026-11-01`, '2026-11-01');
-  await assertFails(batch.commit());
-
-  batch = writeBatch(db);
-  setInitialenDienstplan(batch, db, `${nichtZugeordneteFilialePath}/dienstplan/2026-11`, '2026-11');
-  await assertFails(batch.commit());
-});
-
-test('employee accounts read only the current published service plan state', async () => {
+test('employee accounts read every service-plan path in an assigned branch', async () => {
   const db = await seedProfile('mitarbeiter', {
     erlaubteBereiche: ['dashboard', 'schichtplan'],
     zugriffe: { 'u-1': { 'f-1': [] } },
     firmaMitarbeiterId: 'm-1',
   });
   await seedDienstplan();
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), `${filialePath}/dienstplan/2026-11`), {
-      zeitraumStart: '2026-11-01',
-      zeitraumEnde: '2026-11-30',
-      zeitzone: 'Europe/Berlin',
-      entwurfVersionId: 'v1',
-      naechsteVersionsnummer: 2,
-    });
-  });
 
-  await assertSucceeds(getDoc(doc(db, dienstplanPath)));
-  await assertSucceeds(getDoc(doc(db, veroeffentlichteVersionPath)));
-  await assertSucceeds(getDoc(doc(db, veroeffentlichteSchichtPath)));
-  await assertFails(getDoc(doc(db, entwurfVersionPath)));
-  await assertFails(getDoc(doc(db, entwurfSchichtPath)));
-  await assertFails(getDoc(doc(db, archivierteVersionPath)));
-  await assertFails(getDoc(doc(db, `${filialePath}/dienstplan/2026-11`)));
-  await assertFails(getDoc(doc(db, `${nichtZugeordneteFilialePath}/dienstplan/2026-10`)));
-  await assertFails(
-    setDoc(doc(db, dienstplanPath), { aktualisiertVonUid: 'scoped' }, { merge: true }),
-  );
+  for (const path of [
+    dienstplanPath,
+    archivierteVersionPath,
+    veroeffentlichteVersionPath,
+    entwurfVersionPath,
+    veroeffentlichteSchichtPath,
+    entwurfSchichtPath,
+    dienstplanModellschichtPath,
+  ]) {
+    await assertSucceeds(getDoc(doc(db, path)));
+  }
+
+  await assertFails(getDoc(doc(db, nichtZugeordneteFilialePath + '/dienstplan/2026-10')));
+  await assertFails(updateDoc(doc(db, dienstplanPath), { frei: true }));
 });
 
 test('employee service-plan access requires an active linked employee in the branch', async () => {
@@ -837,280 +575,6 @@ test('employee service-plan access requires an active linked employee in the bra
 
   await assertFails(getDoc(doc(db, dienstplanPath)));
   await assertFails(getDoc(doc(db, veroeffentlichteVersionPath)));
-});
-
-test('planner changes a draft shift only with the matching version revision', async () => {
-  const db = await seedProfile('office');
-  await seedDienstplan();
-  const neueSchicht = doc(db, `${entwurfVersionPath}/schicht/neu`);
-
-  await assertFails(
-    setDoc(neueSchicht, {
-      mitarbeiterId: 'm-1',
-      modellschichtId: 'frueh',
-      beginn: new Date('2026-10-06T08:00:00.000Z'),
-      ende: new Date('2026-10-06T16:00:00.000Z'),
-      pauseMinuten: 30,
-      erstelltAm: serverTimestamp(),
-      erstelltVonUid: 'scoped',
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
-
-  const batch = writeBatch(db);
-  batch.update(doc(db, entwurfVersionPath), {
-    revision: 1,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.set(neueSchicht, {
-    mitarbeiterId: 'm-1',
-    modellschichtId: 'frueh',
-    beginn: new Date('2026-10-06T08:00:00.000Z'),
-    ende: new Date('2026-10-06T16:00:00.000Z'),
-    pauseMinuten: 30,
-    erstelltAm: serverTimestamp(),
-    erstelltVonUid: 'scoped',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  await assertSucceeds(batch.commit());
-
-  const legacyBatch = writeBatch(db);
-  legacyBatch.update(doc(db, entwurfVersionPath), {
-    revision: 2,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  legacyBatch.set(doc(db, `${entwurfVersionPath}/schicht/legacy`), {
-    mitarbeiterId: 'm-1',
-    mitarbeiterAnzeigename: 'Mia Muster',
-    modellschichtId: 'frueh',
-    schichtvorlageId: 'fruehschicht',
-    schichtvorlageBezeichnung: 'Frühschicht',
-    beginn: new Date('2026-10-07T08:00:00.000Z'),
-    ende: new Date('2026-10-07T16:00:00.000Z'),
-    pauseMinuten: 30,
-    erstelltAm: serverTimestamp(),
-    erstelltVonUid: 'scoped',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  await assertFails(legacyBatch.commit());
-
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await updateDoc(doc(context.firestore(), andererMitarbeiterPath), {
-      anzeigename: 'Fremde Person',
-      filialIds: ['b-2'],
-    });
-  });
-  const ungueltigerBatch = writeBatch(db);
-  ungueltigerBatch.update(doc(db, entwurfVersionPath), {
-    revision: 2,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  ungueltigerBatch.set(doc(db, `${entwurfVersionPath}/schicht/ungueltig`), {
-    mitarbeiterId: 'm-2',
-    modellschichtId: 'frueh',
-    beginn: new Date('2026-10-07T08:00:00.000Z'),
-    ende: new Date('2026-10-07T16:00:00.000Z'),
-    pauseMinuten: 30,
-    erstelltAm: serverTimestamp(),
-    erstelltVonUid: 'scoped',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  await assertFails(ungueltigerBatch.commit());
-});
-
-test('planner deletes a draft shift only with the matching version revision', async () => {
-  const db = await seedProfile('office');
-  await seedDienstplan();
-
-  await assertFails(deleteDoc(doc(db, entwurfSchichtPath)));
-
-  const batch = writeBatch(db);
-  batch.update(doc(db, entwurfVersionPath), {
-    revision: 1,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.delete(doc(db, entwurfSchichtPath));
-
-  await assertSucceeds(batch.commit());
-});
-
-test('planner changes only the employee of an existing model-shift assignment', async () => {
-  const db = await seedProfile('office');
-  await seedDienstplan();
-
-  let batch = writeBatch(db);
-  batch.update(doc(db, entwurfVersionPath), {
-    revision: 1,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.update(doc(db, entwurfSchichtPath), {
-    mitarbeiterId: 'm-2',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  await assertSucceeds(batch.commit());
-
-  batch = writeBatch(db);
-  batch.update(doc(db, entwurfVersionPath), {
-    revision: 2,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.update(doc(db, entwurfSchichtPath), {
-    pauseMinuten: 45,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  await assertFails(batch.commit());
-
-  batch = writeBatch(db);
-  batch.update(doc(db, entwurfVersionPath), {
-    revision: 2,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.set(doc(db, `${entwurfVersionPath}/schicht/ungueltige-modellschicht`), {
-    mitarbeiterId: 'm-1',
-    modellschichtId: 'nicht-vorhanden',
-    beginn: new Date('2026-10-08T08:00:00.000Z'),
-    ende: new Date('2026-10-08T16:00:00.000Z'),
-    pauseMinuten: 30,
-    erstelltAm: serverTimestamp(),
-    erstelltVonUid: 'scoped',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  await assertFails(batch.commit());
-});
-
-test('draft pointers and version numbers change only with the matching version write', async () => {
-  const db = await seedProfile('office');
-  await seedDienstplan();
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    const adminDb = context.firestore();
-    await updateDoc(doc(adminDb, dienstplanPath), { entwurfVersionId: deleteField() });
-    await deleteDoc(doc(adminDb, entwurfSchichtPath));
-    await deleteDoc(doc(adminDb, entwurfVersionPath));
-  });
-
-  await assertFails(
-    updateDoc(doc(db, dienstplanPath), {
-      naechsteVersionsnummer: 4,
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
-
-  let batch = writeBatch(db);
-  batch.update(doc(db, dienstplanPath), {
-    entwurfVersionId: 'v3',
-    naechsteVersionsnummer: 4,
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.set(doc(db, `${dienstplanPath}/version/v3`), {
-    nummer: 3,
-    revision: 0,
-    status: 'entwurf',
-    erstelltAm: serverTimestamp(),
-    erstelltVonUid: 'scoped',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  await assertSucceeds(batch.commit());
-
-  await assertFails(
-    updateDoc(doc(db, dienstplanPath), {
-      entwurfVersionId: deleteField(),
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
-
-  batch = writeBatch(db);
-  batch.update(doc(db, dienstplanPath), {
-    entwurfVersionId: deleteField(),
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.delete(doc(db, `${dienstplanPath}/version/v3`));
-  await assertSucceeds(batch.commit());
-});
-
-test('published shifts and archived versions remain immutable', async () => {
-  const db = await seedProfile('master', { zugriffe: {} });
-  await seedDienstplan();
-
-  await assertFails(
-    updateDoc(doc(db, veroeffentlichteSchichtPath), {
-      pauseMinuten: 45,
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
-  await assertFails(
-    updateDoc(doc(db, archivierteVersionPath), {
-      revision: 3,
-      aktualisiertAm: serverTimestamp(),
-      aktualisiertVonUid: 'scoped',
-    }),
-  );
-  await assertFails(deleteDoc(doc(db, veroeffentlichteVersionPath)));
-});
-
-test('publishing archives the previous version in the same atomic write', async () => {
-  const db = await seedProfile('master', { zugriffe: {} });
-  await seedDienstplan();
-  let batch = writeBatch(db);
-  batch.update(doc(db, dienstplanPath), {
-    entwurfVersionId: deleteField(),
-    veroeffentlichteVersionId: 'v2',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.update(doc(db, entwurfVersionPath), {
-    revision: 1,
-    status: 'veroeffentlicht',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-    veroeffentlichtAm: serverTimestamp(),
-    veroeffentlichtVonUid: 'scoped',
-  });
-  await assertFails(batch.commit());
-
-  batch = writeBatch(db);
-  batch.update(doc(db, dienstplanPath), {
-    entwurfVersionId: deleteField(),
-    veroeffentlichteVersionId: 'v2',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-  });
-  batch.update(doc(db, entwurfVersionPath), {
-    revision: 1,
-    status: 'veroeffentlicht',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-    veroeffentlichtAm: serverTimestamp(),
-    veroeffentlichtVonUid: 'scoped',
-  });
-  batch.update(doc(db, veroeffentlichteVersionPath), {
-    revision: 1,
-    status: 'archiviert',
-    aktualisiertAm: serverTimestamp(),
-    aktualisiertVonUid: 'scoped',
-    archiviertAm: serverTimestamp(),
-    archiviertVonUid: 'scoped',
-  });
-  await assertSucceeds(batch.commit());
 });
 
 test('active master reads permitted collections and legacy customers without legacy write access', async () => {
@@ -1281,234 +745,29 @@ test('active employee account reads direct company data only within the assigned
   await assertFails(getDocs(collection(db, 'unternehmer')));
 });
 
-for (const role of ['office', 'filiale']) {
-  test(`${role} reads company employees and writes only allowed branch assignments`, async () => {
-    const db = await seedProfile(role, {
-      erlaubteBereiche: ['dashboard', 'mitarbeiter'],
-    });
-    const neuerMitarbeiter = doc(db, `${firmaPath}/mitarbeiter/neu`);
+for (const role of ['master', 'office', 'filiale']) {
+  test(role + ' follows the CRUD matrix for company employees', async () => {
+    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
+    const neuerMitarbeiter = doc(db, firmaPath + '/mitarbeiter/neu');
 
     await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
-    if (role === 'filiale') {
-      await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
-      await assertSucceeds(
-        getDocs(
-          query(
-            collection(db, `${firmaPath}/mitarbeiter`),
-            where('filialIds', 'array-contains', 'b-1'),
-          ),
-        ),
-      );
-      await assertSucceeds(
-        getDocs(
-          query(
-            collection(db, `${firmaPath}/mitarbeiter`),
-            where('filialIds', 'array-contains', 'b-2'),
-          ),
-        ),
-      );
-    } else {
-      await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
-    }
-    await assertSucceeds(
-      setDoc(neuerMitarbeiter, {
-        person: {
-          vorname: 'Neu',
-          nachname: 'Mitarbeiter',
-          adresse: { strasse: 'Weg', hausnummer: '2', postleitzahl: '12345', ort: 'Ort' },
-          kontakt: {},
-        },
-        rollen: ['filialkasse', 'kassierer'],
-        filialIds: role === 'filiale' ? ['b-1'] : [],
-        aktiv: true,
-        erstelltAm: serverTimestamp(),
-        aktualisiertAm: serverTimestamp(),
-      }),
-    );
-    await assertSucceeds(
-      setDoc(doc(db, `${firmaPath}/mitarbeiter/neu-inaktiv`), {
-        person: {},
-        rollen: ['servicekraft'],
-        filialIds: role === 'filiale' ? ['b-1'] : [],
-        aktiv: false,
-        erstelltAm: serverTimestamp(),
-        aktualisiertAm: serverTimestamp(),
-      }),
-    );
-    await assertSucceeds(getDoc(doc(db, `${firmaPath}/mitarbeiter/neu-inaktiv`)));
-    await assertSucceeds(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        {
-          rollen: ['administrator', 'techniker', 'dienstplaner'],
-          filialIds: ['b-1'],
-          aktualisiertAm: serverTimestamp(),
-        },
-        { merge: true },
-      ),
-    );
-    await assertFails(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { rollen: ['unbekannt'], aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await assertFails(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { rollen: [], aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await assertSucceeds(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { anzeigename: 'Mia Muster', aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await assertSucceeds(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { aktiv: false, aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await assertSucceeds(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { aktiv: true, aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await assertFails(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { filialIds: ['b-2'], aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await assertFails(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { filialIds: ['b-1', 'b-1'], aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await testEnvironment.withSecurityRulesDisabled(async (context) => {
-      await setDoc(
-        doc(context.firestore(), mitarbeiterPath),
-        { filialIds: ['b-1', 'b-2'] },
-        { merge: true },
-      );
-    });
-    const fremdeFilialeBehalten = setDoc(
-      doc(db, mitarbeiterPath),
-      {
-        rollen: ['filialkasse'],
-        filialIds: ['b-2'],
-        aktualisiertAm: serverTimestamp(),
-      },
-      { merge: true },
-    );
-    if (role === 'office') {
-      await assertSucceeds(fremdeFilialeBehalten);
-    } else {
-      await assertFails(fremdeFilialeBehalten);
-    }
-    await assertFails(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { filialIds: [], aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await assertFails(
-      setDoc(
-        doc(db, mitarbeiterPath),
-        { filialIds: ['b-2', 'b-3'], aktualisiertAm: serverTimestamp() },
-        { merge: true },
-      ),
-    );
-    await assertFails(deleteDoc(doc(db, mitarbeiterPath)));
-  });
+    await assertSucceeds(getDocs(collection(db, firmaPath + '/mitarbeiter')));
+    await assertSucceeds(setDoc(neuerMitarbeiter, { frei: 'Mitarbeiter' }));
+    await assertSucceeds(updateDoc(neuerMitarbeiter, { frei: 1 }));
 
-  test(`${role} retains employee rights without the employee area`, async () => {
-    const db = await seedProfile(role);
-
-    await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
-    await assertSucceeds(
-      setDoc(doc(db, `${firmaPath}/mitarbeiter/neu`), {
-        person: {},
-        rollen: ['servicekraft'],
-        filialIds: role === 'filiale' ? ['b-1'] : [],
-        aktiv: true,
-        erstelltAm: serverTimestamp(),
-        aktualisiertAm: serverTimestamp(),
-      }),
-    );
+    if (role === 'master') {
+      await assertSucceeds(deleteDoc(neuerMitarbeiter));
+    } else {
+      await assertFails(deleteDoc(neuerMitarbeiter));
+      await assertFails(
+        setDoc(doc(db, nichtZugeordneteFirmaPath + '/mitarbeiter/neu'), { frei: true }),
+      );
+    }
   });
 }
 
-test('active master manages company employees without the employee area', async () => {
-  const db = await seedProfile('master');
-
-  await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
-  await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
-  await assertSucceeds(
-    setDoc(doc(db, `${firmaPath}/mitarbeiter/neu`), {
-      person: {},
-      rollen: ['servicekraft'],
-      filialIds: [],
-      aktiv: true,
-      erstelltAm: serverTimestamp(),
-      aktualisiertAm: serverTimestamp(),
-    }),
-  );
-  await assertSucceeds(deleteDoc(doc(db, mitarbeiterPath)));
-});
-
-test('active master manages all company employees with the employee area', async () => {
-  const db = await seedProfile('master', {
-    erlaubteBereiche: ['dashboard', 'mitarbeiter', 'system'],
-    zugriffe: {},
-  });
-  const neuerMitarbeiter = doc(db, `${firmaPath}/mitarbeiter/neu`);
-
-  await assertSucceeds(getDoc(doc(db, mitarbeiterPath)));
-  await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiter`)));
-  await assertSucceeds(
-    setDoc(neuerMitarbeiter, {
-      person: {},
-      rollen: ['servicekraft'],
-      filialIds: ['b-1'],
-      aktiv: true,
-      erstelltAm: serverTimestamp(),
-      aktualisiertAm: serverTimestamp(),
-    }),
-  );
-  await assertSucceeds(
-    setDoc(doc(db, `${firmaPath}/mitarbeiter/neu-inaktiv`), {
-      person: {},
-      rollen: ['servicekraft'],
-      filialIds: ['b-1'],
-      aktiv: false,
-      erstelltAm: serverTimestamp(),
-      aktualisiertAm: serverTimestamp(),
-    }),
-  );
-  await assertSucceeds(
-    setDoc(
-      doc(db, mitarbeiterPath),
-      {
-        rollen: ['administrator'],
-        filialIds: ['b-2'],
-        aktualisiertAm: serverTimestamp(),
-      },
-      { merge: true },
-    ),
-  );
+test('a linked company employee keeps the explicitly documented delete protection', async () => {
+  const db = await seedProfile('master', { zugriffe: {} });
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
     await setDoc(
       doc(context.firestore(), andererMitarbeiterPath),
@@ -1516,8 +775,8 @@ test('active master manages all company employees with the employee area', async
       { merge: true },
     );
   });
+
   await assertFails(deleteDoc(doc(db, andererMitarbeiterPath)));
-  await assertSucceeds(deleteDoc(doc(db, mitarbeiterPath)));
 });
 
 for (const role of ['master', 'office', 'filiale']) {

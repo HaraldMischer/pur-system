@@ -38,22 +38,18 @@
       </mat-form-field>
     </div>
     <div class="pur-form__row">
-      <mat-form-field
-        appearance="outline"
+      <app-lokalzeit-eingabe
         class="pur-form__item pur-form__item--field pur-form__item--50"
-      >
-        <mat-label>Beginn</mat-label>
-        <input matInput readonly [value]="daten.modellschicht.beginnLokalzeit" />
-        <span matTextSuffix>Uhr</span>
-      </mat-form-field>
-      <mat-form-field
-        appearance="outline"
+        label="Beginn"
+        [formControl]="beginnLokalzeitControl"
+        readonly
+      />
+      <app-lokalzeit-eingabe
         class="pur-form__item pur-form__item--field pur-form__item--50"
-      >
-        <mat-label>Ende</mat-label>
-        <input matInput readonly [value]="daten.modellschicht.endeLokalzeit" />
-        <span matTextSuffix>Uhr</span>
-      </mat-form-field>
+        label="Ende"
+        [formControl]="endeLokalzeitControl"
+        readonly
+      />
     </div>
     @if (error() || dienstplanStore.error(); as fehlermeldung) {
       <p class="pur-message pur-message--error pur-message--full" role="alert">

@@ -40,11 +40,13 @@ Filialeinstellung gespeichert. Die regelmäßigen Öffnungszeiten enthalten gena
 Regel besitzt eine lokale Beginn- und Endzeit sowie `endetAmFolgetag`; damit wird
 beispielsweise eine Montagsöffnung von 07:00 Uhr bis Dienstag 01:00 Uhr eindeutig dem Montag zugeordnet. Eine Öffnungsregel
 beschreibt immer einen durchgehenden Zeitraum. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht Teil des
-Modells. Eine geschlossene Regel enthält keine Zeitwerte.
+Modells. Eine geschlossene Regel darf Zeitwerte für eine spätere Wiederaktivierung behalten; solange sie geschlossen ist,
+werden diese Werte fachlich nicht berücksichtigt.
 
-Die Oberfläche unterscheidet Wochentage, gesetzliche Feiertage und Sondertage. Heiligabend und Silvester sind keine
-gesetzlichen Feiertage und werden daher wie eigene einmalige oder jährlich wiederkehrende Einträge unter Sondertage geführt.
-Damit kann die spätere Dienstplanung gesetzliche Feiertage eindeutig von sonstigen besonderen Tagen unterscheiden.
+Die Oberfläche unterscheidet die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und
+`Einmalige Sondertage`. Einmalige Sondertage werden technisch als konkrete Datumsausnahmen gespeichert. Heiligabend und
+Silvester sind keine gesetzlichen Feiertage und werden daher als jährliche Sondertage geführt. Damit kann die spätere
+Dienstplanung gesetzliche Feiertage eindeutig von sonstigen besonderen Tagen unterscheiden.
 
 Wiederkehrende Sondertage besitzen eine sichtbare Bezeichnung, einen Aktivstatus, eine Herkunft, eine eigene Öffnungsregel und
 entweder ein jährlich festes Datum oder einen zentral definierten gesetzlichen Feiertagsschlüssel. Systemdefinierte gesetzliche
@@ -58,12 +60,15 @@ bleiben unverändert. Schlüssel, Bezeichnung und Datumsberechnung gesetzlicher 
 nur Aktivstatus und Öffnungsregel. Bei eigenen festen Sondertagen sind Bezeichnung, Monat, Tag, Aktivstatus und Öffnungsregel
 bearbeitbar.
 
-Einmalige Sondertage werden technisch als konkrete Datumsausnahmen mit einer Dokument-ID im Format `YYYY-MM-DD`, einer
-Bezeichnung und einer vollständigen
-Öffnungsregel. Die wirksame Regel wird in der Reihenfolge `Ausnahme → Sondertag → Wochentag` aufgelöst. Treffen mehrere
-aktive Sondertage auf dasselbe Datum, liegt ein Konfigurationsfehler vor; nur eine konkrete Datumsausnahme darf diese Kollision
-bewusst überschreiben. Fehlende Wochenregeln werden nicht als geöffnet interpretiert. Eine über Mitternacht reichende
-Öffnungsregel gehört vollständig zu ihrem Startdatum, auch wenn der Folgetag ein Feiertag oder Sondertag ist.
+Benutzerdefinierte Sondertage gelten immer jährlich und besitzen Monat und Tag ohne Jahresangabe. Werden sie nicht mehr
+benötigt, bleiben ihre Daten erhalten und sie werden über ihren Aktivstatus deaktiviert. Konkrete Datumsausnahmen sind davon
+getrennte Einträge mit einer Dokument-ID im Format `YYYY-MM-DD`, einer Bezeichnung und einer vollständigen Öffnungsregel. Sie
+besitzen keinen Aktivstatus. Ihr Datum bildet zugleich die Dokument-ID und bleibt bei der Bearbeitung unverändert; bei Bedarf
+wird der Eintrag gelöscht und für ein anderes Datum neu angelegt. Die wirksame Regel wird in der Reihenfolge
+`Ausnahme → Sondertag → Wochentag` aufgelöst. Treffen mehrere aktive Sondertage auf dasselbe Datum, liegt ein
+Konfigurationsfehler vor; nur eine konkrete Datumsausnahme darf diese Kollision bewusst überschreiben. Fehlende Wochenregeln
+werden nicht als geöffnet interpretiert. Eine über Mitternacht reichende Öffnungsregel gehört vollständig zu ihrem
+Startdatum, auch wenn der Folgetag ein Feiertag oder Sondertag ist.
 
 Der `FilialeinstellungService` behandelt vollständig fehlende Einstellungsdokumente als noch nicht initialisierten Zustand.
 Existiert dagegen nur ein Teil der beiden verbindlichen Hauptdokumente, wird ein Initialisierungsfehler gemeldet. Die erstmalige
@@ -75,8 +80,8 @@ Allgemeine Einstellungen, Wochenregeln und der automatische Sondertagsabgleich e
 geschrieben. Benutzerdefinierte Sondertage und Datumsausnahmen bleiben einzeln anleg-, änder- und löschbar. Systemdefinierte
 Sondertage können nur in Aktivstatus und Öffnungsregel verändert werden. Die Firestore Rules gewähren Masterkonten aufgrund
 ihrer Rolle sowie zugeordneten Office- und Filialkonten mit dem Bereich `einstellungen` Zugriff. Mitarbeiterkonten und nicht
-zugeordnete Filialen bleiben ausgeschlossen; Dokument-IDs, Feldmengen, Datumsregeltypen und lokale Zeitwerte werden serverseitig
-begrenzt.
+zugeordnete Filialen bleiben ausgeschlossen. Die Rules prüfen dafür Rolle, aktives Profil, Filialzugriff, Bereich und
+Collection-Pfad; Dokument-IDs, Feldinhalte, Datumsregeltypen und lokale Zeitwerte validiert der TypeScript-Code.
 
 Jede Filiale besitzt eigene vorkonfigurierte Schichtmodelle, damit unterschiedliche Öffnungs- und Betriebszeiten unabhängig
 voneinander abgebildet werden können. Ein Schichtmodell enthält eine Bezeichnung, einen Aktivstatus und eine chronologisch nach
@@ -168,7 +173,8 @@ filialübergreifende Firestore-Abfrage.
 Pur Mitarbeiter verwendet ebenfalls `networkOnly`. Für jede fachlich erlaubte Filiale wird nur der Dienstplan des ausgewählten
 Monats und dessen Modell-Momentaufnahme direkt geladen. Über `veroeffentlichteVersionId` werden ausschließlich die
 veröffentlichte Version und deren Schichten gelesen. Entwürfe und archivierte Versionen werden weder abgefragt noch durch die
-Firestore Rules freigegeben. Nach dem Laden werden die eindeutigen Mitarbeiter-IDs der sichtbaren Schichten ermittelt. Bereits
+Oberfläche angezeigt. Die Firestore Rules gewähren gemäß Matrix Leserechte auf alle Dienstplanpfade der zugeordneten Filiale.
+Nach dem Laden werden die eindeutigen Mitarbeiter-IDs der sichtbaren Schichten ermittelt. Bereits
 im Mitarbeiter-Store vorhandene Einträge werden wiederverwendet; nur fehlende Mitarbeiterdokumente werden gezielt über ihre
 Dokument-ID nachgeladen.
 
@@ -237,8 +243,10 @@ Die verbindlichen Collection-Rechte und Bedingungen stehen in der
 [Berechtigungsmatrix](../matrizen/berechtigungen.md). Kurz zusammengefasst:
 
 - `master` plant in allen Filialen, `office` nur in freigegebenen Filialen und `filiale` nur in der eigenen Filiale.
-- Diese drei Rollen lesen alle Versionsstände, bearbeiten aber nur Entwürfe. Dienstplandokumente werden nicht gelöscht.
-- `mitarbeiter` liest in zugeordneten Filialen nur die aktuelle veröffentlichte Version mit allen Schichten und schreibt nicht.
+- Diese drei Rollen besitzen die in der Matrix aufgeführten CRUD-Rechte. Welche Zustände bearbeitet oder gelöscht werden dürfen,
+  prüft der TypeScript-Code.
+- `mitarbeiter` besitzt in zugeordneten Filialen Leserechte auf alle Dienstplanpfade und keine Schreibrechte. Das Frontend lädt
+  und zeigt ausschließlich die aktuelle veröffentlichte Version mit ihren Schichten.
 
 In der Filial-App werden diese Planungsaktionen zusätzlich im Frontend auf einen aktiven Firma-Mitarbeiter der eigenen Filiale
 mit der betrieblichen Rolle `dienstplaner` begrenzt. Die Rolle erweitert nicht die Firestore-Rechte des Mitarbeiterzugangs. Die
@@ -337,7 +345,7 @@ Vor dem Löschen lädt das Frontend das Dienstplandokument und die Schichten des
 Löschung ist nur zulässig, wenn der Dienstplan keine veröffentlichte Version referenziert und der Entwurf leer ist. Dienstplan,
 Entwurfsversion und Modell-Momentaufnahme werden gemeinsam entfernt. Da eine parallele Schichtanlage dasselbe Versionsdokument
 mit der erwarteten Revision schreiben muss, kann nur einer der beiden konkurrierenden Vorgänge erfolgreich sein. Nach der
-ersten Veröffentlichung verhindern Dienstplanstatus und Firestore Rules die Löschung.
+ersten Veröffentlichung verhindert der im TypeScript-Code geprüfte Dienstplanstatus die Löschung.
 
 Da jede Schichtänderung dasselbe Versionsdokument einbezieht, werden auch gleichzeitige Änderungen an unterschiedlichen
 Schichten erkannt. Bei einer abweichenden Revision wird die veraltete Änderung nicht gespeichert. Das Frontend lädt den
@@ -354,11 +362,10 @@ Transaktionen und zusammengehörige Batches werden nur als vollständig erfolgre
 bleibt der bisherige Firestore-Stand erhalten. Offline-Schreibvorgänge sind weiterhin nicht vorgesehen; Dienstplantransaktionen
 benötigen eine aktive Firestore-Verbindung.
 
-Firestore Rules sollen für normale Clientänderungen insbesondere den Entwurfsstatus, die erlaubte Filiale, die ändernde
-Benutzer-UID, die Erhöhung der Revision um genau eins und die gemeinsame Änderung der betroffenen Belegungsdokumente validieren.
-Sie berechnen die fachliche Überschneidung nicht selbst; diese Prüfung führt der Client innerhalb der Firestore-Transaktion auf
-dem gemeinsam serialisierten Belegungsstand aus. Ohne vertrauenswürdige serverseitige Fachlogik bleibt eine absichtlich
-manipulierte Konfliktberechnung außerhalb der vollständigen Absicherung durch die Rules.
+Firestore Rules prüfen für normale Clientänderungen ausschließlich aktives Profil, Rolle, Filialzugriff und CRUD-Recht gemäß
+Berechtigungsmatrix. Entwurfsstatus, Benutzer-UID, Revision, Referenzen und gemeinsam zu ändernde Belegungsdokumente validiert
+der TypeScript-Code innerhalb der Firestore-Transaktion. Ohne vertrauenswürdige serverseitige Fachlogik bleiben diese Prüfungen
+bei einem absichtlich manipulierten Client umgehbar.
 
 ## Abgrenzung späterer Erweiterungen
 

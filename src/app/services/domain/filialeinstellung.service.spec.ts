@@ -10,6 +10,7 @@ import {
 } from '../../commons/models/domain/filialeinstellung';
 import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
 import {
+  FilialeinstellungFachfehler,
   FilialeinstellungService,
   IFilialeinstellungBestand,
   IFilialeinstellungGrundlagen,
@@ -56,7 +57,9 @@ describe('FilialeinstellungService', () => {
   it('should expose a completely missing configuration as not initialized', async () => {
     const service = TestBed.inject(FilialeinstellungService);
 
-    await expect(service.loadFilialeinstellung(pfad)).resolves.toBeNull();
+    const rohdaten = await service.loadFilialeinstellungRohdaten(pfad);
+
+    expect(service.validateFilialeinstellungRohdaten(pfad, rohdaten)).toBeNull();
   });
 
   it('should reject a partially initialized configuration', async () => {
@@ -72,7 +75,11 @@ describe('FilialeinstellungService', () => {
       .mockResolvedValueOnce(null);
     const service = TestBed.inject(FilialeinstellungService);
 
-    await expect(service.loadFilialeinstellung(pfad)).rejects.toThrow('unvollständig');
+    const rohdaten = await service.loadFilialeinstellungRohdaten(pfad);
+
+    expect(() => service.validateFilialeinstellungRohdaten(pfad, rohdaten)).toThrow(
+      'unvollständig',
+    );
   });
 
   it('should load the complete configuration from all four path areas', async () => {
@@ -127,10 +134,73 @@ describe('FilialeinstellungService', () => {
       ]);
     const service = TestBed.inject(FilialeinstellungService);
 
-    const bestand = await service.loadFilialeinstellung(pfad);
+    const rohdaten = await service.loadFilialeinstellungRohdaten(pfad);
+    const bestand = service.validateFilialeinstellungRohdaten(pfad, rohdaten);
 
     expect(bestand?.sondertage[0]).toMatchObject({ ...pfad, id: 'heiligabend' });
     expect(bestand?.ausnahmen[0]).toMatchObject({ ...pfad, id: '2026-12-23' });
+  });
+
+  it('should accept stored times for a closed weekly opening rule', async () => {
+    const wochenregelnMitGeschlossenenZeiten = {
+      ...grundlagen.wochenregeln,
+      sonntag: {
+        geoeffnet: false,
+        beginnLokalzeit: '08:00',
+        endeLokalzeit: '18:00',
+        endetAmFolgetag: false,
+      },
+    } as TWochenoeffnungszeiten;
+    firestoreDbServiceMock.loadDocument
+      .mockResolvedValueOnce({
+        id: 'allgemein',
+        daten: {
+          bundesland: 'DE-NW',
+          erstelltVonUid: 'uid-1',
+          aktualisiertVonUid: 'uid-1',
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'oeffnungszeiten',
+        daten: {
+          wochenregeln: wochenregelnMitGeschlossenenZeiten,
+          erstelltVonUid: 'uid-1',
+          aktualisiertVonUid: 'uid-1',
+        },
+      });
+    const service = TestBed.inject(FilialeinstellungService);
+
+    const rohdaten = await service.loadFilialeinstellungRohdaten(pfad);
+
+    expect(rohdaten.oeffnungszeiten?.daten.wochenregeln.sonntag).toMatchObject({
+      geoeffnet: false,
+      beginnLokalzeit: '08:00',
+      endeLokalzeit: '18:00',
+    });
+    const bestand = service.validateFilialeinstellungRohdaten(pfad, rohdaten);
+
+    expect(bestand?.oeffnungszeiten.wochenregeln.sonntag).toEqual({
+      geoeffnet: false,
+      beginnLokalzeit: '08:00',
+      endeLokalzeit: '18:00',
+      endetAmFolgetag: false,
+    });
+  });
+
+  it('should reject incomplete stored times for a closed opening rule', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const ungueltigeGrundlagen = {
+      ...grundlagen,
+      wochenregeln: {
+        ...grundlagen.wochenregeln,
+        sonntag: { geoeffnet: false, beginnLokalzeit: '08:00' },
+      },
+    } as IFilialeinstellungGrundlagen;
+
+    await expect(
+      service.initializeFilialeinstellung(pfad, ungueltigeGrundlagen, 'uid-1'),
+    ).rejects.toThrow('Die Öffnungsregel enthält keine gültige Zeitfolge.');
+    expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
   });
 
   it('should initialize explicit foundations and the system special days atomically', async () => {
@@ -286,9 +356,15 @@ describe('FilialeinstellungService', () => {
       },
     } as IFilialeinstellungGrundlagen;
 
-    await expect(
-      service.initializeFilialeinstellung(pfad, ungueltigeGrundlagen, 'uid-1'),
-    ).rejects.toThrow('Zeitfolge');
+    const fehler = await service
+      .initializeFilialeinstellung(pfad, ungueltigeGrundlagen, 'uid-1')
+      .then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+    expect(fehler).toBeInstanceOf(FilialeinstellungFachfehler);
+    expect((fehler as Error).message).toContain('Zeitfolge');
     expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
   });
 });

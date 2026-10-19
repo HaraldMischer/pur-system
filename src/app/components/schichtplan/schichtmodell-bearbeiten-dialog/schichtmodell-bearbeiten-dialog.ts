@@ -37,6 +37,7 @@ import {
 import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
+import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
 
 // ===== Top-Level Helper =====================
 
@@ -85,6 +86,7 @@ function calculateStandardpauseMinuten(beginn: string, ende: string): number {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    LokalzeitEingabe,
     ReactiveFormsModule,
   ],
   templateUrl: './schichtmodell-bearbeiten-dialog.html',

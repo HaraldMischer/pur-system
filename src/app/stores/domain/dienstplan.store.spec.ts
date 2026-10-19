@@ -114,8 +114,6 @@ describe('DienstplanStore', () => {
     expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith('3. FILIALDATEN ');
     expect(debugLogServiceMock.logDatenGeladen.mock.calls).toEqual([
       ['Dienstpläne | Halle 1', 1],
-      ['Versionen | Halle 1', 1],
-      ['Schichten | Halle 1', 1],
     ]);
   });
 

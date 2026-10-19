@@ -24,8 +24,8 @@ bereitgestellt.
 - Sicherheitskritische administrative Vorgänge an Firebase Auth werden über geschützte Firebase Cloud Functions mit Firebase Admin
   SDK ausgeführt.
 - Fachliche Verwaltungsdaten können durch einen aktiven Master direkt aus dem Angular-Client in Firestore geschrieben werden.
-- Firestore Rules sichern Zugriff, Pfadbindung und die für die Datenintegrität erforderlichen Dokumentformen und Zustandswechsel.
-- Weiterführende fachliche Validierung und UI-Logik werden zusätzlich in der Anwendung umgesetzt.
+- Firestore Rules sichern ausschließlich aktives Profil, Rolle, Datenzugriff sowie Pfad- und CRUD-Rechte gemäß
+  Berechtigungsmatrix. Fachliche Datenformen, Referenzen und Zustandswechsel validiert und steuert die Anwendung.
 - Feature-Bereiche werden lazy geladen.
 - Persistenter App-State wird zentral und nachvollziehbar gekapselt.
 
@@ -226,15 +226,13 @@ Master bleiben davon unberührt.
 Die App speichert keine direkten Firestore-Pfade als Berechtigung, sondern fachliche Berechtigungen. Daraus werden Navigation,
 Route Guards und Firestore-Abfragen abgeleitet.
 
-Die Firestore Rules erlauben aktiven Mastern das Lesen aller Collections samt Untercollections. Fachliche Daten dürfen sie
-anlegen und aktualisieren; vorhandene Benutzerprofile dürfen sie nur in den ausdrücklich freigegebenen Feldern aktualisieren.
-Benutzerrolle, E-Mail-Adresse und Auth-Daten bleiben dabei unveränderlich. Office und Filiale lesen Geschäftsdaten direkt anhand
-der verschachtelten `zugriffe`-Map und weiterhin ihr eigenes Profil. Aktive Office-Konten dürfen ihre zugeordneten Firmen- und
-Filialdokumente aktualisieren, aber weder Firmen oder Filialen anlegen oder löschen noch Filial-Untercollections beschreiben.
-Filialkonten bleiben außerhalb der Mitarbeiterverwaltung rein lesend. Das eigene Profil bleibt auch bei einem inaktiven Konto
-lesbar; alle weiteren Rechte erfordern ein aktives Profil. Ein separater Zugriffsindex wird nicht gespeichert. Bestätigte Altanwendungskonten ohne
-`benutzerprofil`-Dokument behalten ihren bisherigen Zugriff ausschließlich auf `purCustomers` und `purUser`. Für Pur-System-Konten
-gilt die Collection-Matrix abschließend: Was dort nicht steht, ist nicht erlaubt. Clientseitige Guards ersetzen die Rules nicht.
+Die Firestore Rules prüfen für jeden Pur-System-Zugriff aktives Profil, Benutzerrolle, die verschachtelte `zugriffe`-Map und die
+laut Collection-Matrix erlaubte CRUD-Aktion für den konkreten Pfad. Master sind nicht durch `zugriffe` begrenzt. Das eigene
+Profil bleibt auch bei einem inaktiven Konto lesbar; alle weiteren Rechte erfordern ein aktives Profil. Bestätigte
+Altanwendungskonten ohne `benutzerprofil`-Dokument behalten ihren bisherigen Zugriff ausschließlich auf `purCustomers` und
+`purUser`. Fachliche Felder, Dokument-IDs, Referenzen und Zustandswechsel werden im TypeScript-Code geprüft. Weitere Ausnahmen
+müssen in den Zusatzbedingungen der Berechtigungsmatrix ausdrücklich beschrieben sein. Was nicht in der Collection-Matrix
+steht, ist nicht erlaubt.
 
 Unternehmer, Firmen und Filialen werden nicht direkt vom Client gelöscht. Ein aktiver Master verwendet dafür eine geschützte
 Callable Function, die vorhandene Benutzer- oder Mitarbeiterreferenzen ablehnt und den gewählten Strukturzweig anschließend
@@ -513,8 +511,9 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
 4. **Einstellungen (`/einstellungen`):** Komponentenloser Elternbereich und ausklappbare Navigationsgruppe ohne eigene
    Zielseite. Der erste Unterpunkt `Öffnungszeiten` führt zur direkt routbaren Page unter
    `/einstellungen/oeffnungszeiten`. Dort werden je
-   ausgewählter Filiale Wochentage, gesetzliche Feiertage sowie einmalige und jährlich wiederkehrende Sondertage verwaltet.
-   Einmalige Sondertage werden technisch weiterhin als konkrete Datumsausnahmen gespeichert. Das Bundesland wird zunächst
+   ausgewählter Filiale die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`
+   verwaltet. Jährliche Sondertage können deaktiviert werden; einmalige Sondertage gelten genau für ein vollständiges
+   Kalenderdatum, werden getrennt angelegt und technisch als Datumsausnahmen gespeichert. Das Bundesland wird zunächst
    fest mit Nordrhein-Westfalen (`DE-NW`) initialisiert und nicht zur Auswahl angeboten. Die technische Zeitzone
    `Europe/Berlin` wird nicht als Filialeinstellung gespeichert. Weitere filialbezogene Einstellungsseiten können später als
    gleichrangige Unterpunkte ergänzt werden. Sichtbarkeit und Route der gesamten Gruppe werden über den App-Bereich
@@ -543,10 +542,12 @@ und berechnete besondere Tage
 liegen als bezeichnete Einträge unter `einstellung/oeffnungszeiten/sondertag`; konkrete Abweichungen für ein Datum unter
 `einstellung/oeffnungszeiten/ausnahme`.
 
-Die Oberfläche trennt gesetzliche Feiertage von Sondertagen. Heiligabend und Silvester sind keine gesetzlichen Feiertage und
-werden deshalb zusammen mit eigenen einmaligen oder jährlich wiederkehrenden Einträgen als Sondertage dargestellt. Technisch
-unterscheiden die Datumsregeln jährlich feste Daten von zentral berechneten gesetzlichen Feiertagen. Die wirksame Öffnungsregel
-wird weiterhin in der Reihenfolge
+Die Oberfläche trennt `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`. Heiligabend und Silvester
+sind keine gesetzlichen Feiertage und werden deshalb als jährliche Sondertage dargestellt. Eigene jährliche Sondertage
+besitzen ein festes Datum ohne Jahresangabe und einen Aktivstatus; einmalige Sondertage besitzen ein vollständiges Datum ohne
+Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Technisch unterscheiden die Sondertags-Datumsregeln jährlich
+feste Daten von zentral berechneten gesetzlichen Feiertagen. Die wirksame
+Öffnungsregel wird weiterhin in der Reihenfolge
 `Ausnahme → Sondertag → Wochentag` bestimmt. Öffnungszeiten beschreiben den Kundenbetrieb und bleiben von den Arbeitszeiten
 der Schichtmodelle getrennt. Beim Anlegen eines Monatsdienstplans werden Tagestyp, Sondertags-ID und -Bezeichnung sowie die für
 seine Kalendertage aufgelösten Öffnungsregeln als unveränderliche Momentaufnahme übernommen. Sie begrenzen
@@ -560,11 +561,12 @@ aktive Sondertage für dasselbe Datum bilden einen Konfigurationsfehler, sofern 
 bewusst überschreibt. Eine über Mitternacht reichende Öffnungsregel gehört vollständig zu ihrem Startdatum.
 
 Ein fachlicher Service lädt und schreibt den vollständigen Einstellungsbestand ausschließlich im konkreten Filialpfad. Ein
-Store hält die Bestände und ihre Lade-, Schreib- und Fehlerzustände je Filiale getrennt und bietet die Auflösung der wirksamen
-Öffnungsregel für ein Datum an. Allgemeine Einstellungen und Wochenregeln werden atomar gespeichert; Sondertage und Ausnahmen
-bleiben unabhängig verwaltbare Dokumente. Die Firestore Rules verlangen für zugeordnete Office- und Filialkonten neben dem
-konkreten Filialzugriff den App-Bereich `einstellungen` und validieren bekannte Dokument-IDs, Feldmengen, Datumsregeln, lokale
-Zeitwerte und Datumsausnahme-IDs. Masterkonten dürfen Filialeinstellungen aufgrund ihrer Rolle unabhängig von der optionalen
+Store hält Firestore-Rohdaten, validierte Bestände sowie Lade-, Schreib- und Fehlerzustände je Filiale getrennt und bietet die
+Auflösung der wirksamen Öffnungsregel für ein Datum an. Rohdaten werden vor ihrer fachlichen Validierung im Store
+bereitgestellt und protokolliert. Allgemeine Einstellungen und Wochenregeln werden atomar gespeichert; Sondertage und
+Ausnahmen bleiben unabhängig verwaltbare Dokumente. Die Firestore Rules prüfen bei Filialeinstellungen Rolle, aktives Profil,
+Filialzugriff, App-Bereich und Collection-Pfad gemäß Berechtigungsmatrix. Feldinhalte, Datumsregeln und lokale Zeitwerte werden
+im TypeScript-Code validiert. Masterkonten dürfen Filialeinstellungen aufgrund ihrer Rolle unabhängig von der optionalen
 Bereichsfreigabe verwalten; Navigation und Route bleiben auch für sie an `einstellungen` gebunden.
 
 Das vollständige fachliche und architektonische Zielbild steht im

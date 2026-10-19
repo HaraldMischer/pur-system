@@ -33,6 +33,7 @@ import {
   formatSchichtDatum,
 } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
+import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
 
 export type TSchichtBearbeitenDialogDaten = {
   readonly pfad: IDienstplanVersionPfad;
@@ -66,6 +67,7 @@ function formatIsoDatum(datum: string): string {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    LokalzeitEingabe,
   ],
   templateUrl: './schicht-bearbeiten-dialog.html',
   styleUrl: './schicht-bearbeiten-dialog.scss',
@@ -88,6 +90,12 @@ export class SchichtBearbeitenDialog {
     ? formatSchichtDatum(this.daten.schicht.beginn, this.daten.zeitzone)
     : this.daten.datum;
   readonly datumAnzeige = formatIsoDatum(this.datum);
+  readonly beginnLokalzeitControl = new FormControl(this.daten.modellschicht.beginnLokalzeit, {
+    nonNullable: true,
+  });
+  readonly endeLokalzeitControl = new FormControl(this.daten.modellschicht.endeLokalzeit, {
+    nonNullable: true,
+  });
   readonly schichtForm = new FormGroup({
     mitarbeiterId: new FormControl(this.daten.schicht?.mitarbeiterId ?? '', {
       nonNullable: true,

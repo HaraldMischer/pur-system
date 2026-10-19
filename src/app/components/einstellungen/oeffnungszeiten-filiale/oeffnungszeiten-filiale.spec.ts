@@ -9,6 +9,8 @@ import {
   FilialeinstellungStore,
   TFilialeinstellungKontext,
 } from '../../../stores/domain/filialeinstellung.store';
+import { DatumsausnahmeBearbeitenDialog } from '../datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog';
+import { SondertagBearbeitenDialog } from '../sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog';
 import { OeffnungszeitenFiliale } from './oeffnungszeiten-filiale';
 
 const PFAD = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' } as const;
@@ -24,6 +26,7 @@ const FILIALE: IFilialeEintrag = {
 describe('OeffnungszeitenFiliale', () => {
   const kontext = signal<TFilialeinstellungKontext>({
     ...PFAD,
+    rohdaten: null,
     bestand: null,
     download: false,
     isLoaded: true,
@@ -32,11 +35,13 @@ describe('OeffnungszeitenFiliale', () => {
   });
   const loadFilialeinstellung = vi.fn().mockResolvedValue(undefined);
   const initializeFilialeinstellung = vi.fn().mockResolvedValue(undefined);
+  const open = vi.fn();
 
   beforeEach(async () => {
     vi.clearAllMocks();
     kontext.set({
       ...PFAD,
+      rohdaten: null,
       bestand: null,
       download: false,
       isLoaded: true,
@@ -55,7 +60,7 @@ describe('OeffnungszeitenFiliale', () => {
             saveGrundlagen: vi.fn(),
           },
         },
-        { provide: MatDialog, useValue: { open: vi.fn() } },
+        { provide: MatDialog, useValue: { open } },
       ],
     }).compileComponents();
   });
@@ -67,12 +72,14 @@ describe('OeffnungszeitenFiliale', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelectorAll('.wochentage > .pur-list__row')).toHaveLength(7);
+    expect(fixture.nativeElement.querySelectorAll('.wochentage div.pur-list__row')).toHaveLength(7);
     expect(fixture.nativeElement.querySelector('.pur-page-section')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('mat-card')).toBeNull();
     expect(fixture.nativeElement.querySelector('h2')?.textContent).toContain('Bochum 1');
     expect(fixture.nativeElement.querySelector('h3')?.textContent).toContain('Wochentage');
-    expect(fixture.nativeElement.querySelectorAll('h4')).toHaveLength(7);
+    expect(
+      fixture.nativeElement.querySelectorAll('p.wochentag.pur-text.pur-text--label'),
+    ).toHaveLength(7);
     expect(fixture.nativeElement.querySelector('mat-select')).toBeNull();
     expect(fixture.componentInstance.form.contains('bundesland')).toBe(false);
     expect(fixture.componentInstance.form.contains('zeitzone')).toBe(false);
@@ -104,15 +111,77 @@ describe('OeffnungszeitenFiliale', () => {
             endeLokalzeit: '01:00',
             endetAmFolgetag: true,
           },
+          sonntag: {
+            geoeffnet: false,
+            beginnLokalzeit: '08:00',
+            endeLokalzeit: '18:00',
+            endetAmFolgetag: false,
+          },
         }),
       }),
     );
     expect(gespeicherteGrundlagen).not.toHaveProperty('zeitzone');
   });
 
+  it('should keep all time fields visible and disable only those of closed weekdays', async () => {
+    const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
+    fixture.componentRef.setInput('filiale', FILIALE);
+    fixture.componentRef.setInput('pfad', PFAD);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+
+    expect(fixture.nativeElement.querySelectorAll('app-lokalzeit-eingabe')).toHaveLength(14);
+    expect(fixture.nativeElement.querySelectorAll('input[type="text"]')).toHaveLength(14);
+    expect(component.form.controls.montag.controls.beginnLokalzeit.disabled).toBe(true);
+    expect(component.form.controls.montag.controls.endeLokalzeit.disabled).toBe(true);
+
+    component.form.controls.montag.controls.geoeffnet.setValue(true);
+
+    expect(component.form.controls.montag.controls.beginnLokalzeit.enabled).toBe(true);
+    expect(component.form.controls.montag.controls.endeLokalzeit.enabled).toBe(true);
+
+    kontext.update((wert) => {
+      return { ...wert, inProgress: true };
+    });
+    fixture.detectChanges();
+    expect(component.form.disabled).toBe(true);
+
+    kontext.update((wert) => {
+      return { ...wert, inProgress: false };
+    });
+    fixture.detectChanges();
+    expect(component.form.controls.montag.controls.beginnLokalzeit.enabled).toBe(true);
+    expect(component.form.controls.dienstag.controls.beginnLokalzeit.disabled).toBe(true);
+  });
+
+  it('should open separate dialogs for annual special days and concrete date exceptions', () => {
+    const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
+    fixture.componentRef.setInput('filiale', FILIALE);
+    fixture.componentRef.setInput('pfad', PFAD);
+
+    fixture.componentInstance.openSondertagAnlegen();
+    fixture.componentInstance.openDatumsausnahmeAnlegen();
+
+    expect(open).toHaveBeenNthCalledWith(1, SondertagBearbeitenDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: { pfad: PFAD },
+    });
+    expect(open).toHaveBeenNthCalledWith(2, DatumsausnahmeBearbeitenDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: { pfad: PFAD },
+    });
+  });
+
   it('should render store errors with the global message error style', async () => {
     kontext.update((wert) => {
-      return { ...wert, error: 'Speichern fehlgeschlagen.' };
+      return {
+        ...wert,
+        error: {
+          meldung: 'Die Filialeinstellungen konnten nicht gespeichert werden.',
+          ursache: 'Die Öffnungsregel enthält keine gültige Zeitfolge.',
+        },
+      };
     });
     const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
@@ -123,7 +192,36 @@ describe('OeffnungszeitenFiliale', () => {
     const meldung = fixture.nativeElement.querySelector(
       '.pur-message--error[role="alert"]',
     ) as HTMLElement | null;
-    expect(meldung?.textContent).toContain('Speichern fehlgeschlagen.');
+    expect(meldung?.textContent).toContain(
+      'Die Filialeinstellungen konnten nicht gespeichert werden.',
+    );
+    expect(meldung?.textContent).toContain('Die Öffnungsregel enthält keine gültige Zeitfolge.');
+  });
+
+  it('should not restart loading when the store reports a load error', async () => {
+    loadFilialeinstellung.mockImplementationOnce(async () => {
+      kontext.update((wert) => {
+        return {
+          ...wert,
+          download: false,
+          isLoaded: false,
+          error: { meldung: 'Laden fehlgeschlagen.', ursache: null },
+        };
+      });
+      throw new Error('Laden fehlgeschlagen.');
+    });
+    const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
+    fixture.componentRef.setInput('filiale', FILIALE);
+    fixture.componentRef.setInput('pfad', PFAD);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(loadFilialeinstellung).toHaveBeenCalledOnce();
+    const meldung = fixture.nativeElement.querySelector(
+      '.pur-message--error[role="alert"]',
+    ) as HTMLElement | null;
+    expect(meldung?.textContent).toContain('Laden fehlgeschlagen.');
   });
 
   it('should mark inactive special days with the global list modifier', async () => {
@@ -138,7 +236,12 @@ describe('OeffnungszeitenFiliale', () => {
           },
           oeffnungszeiten: {
             wochenregeln: {
-              montag: { geoeffnet: false },
+              montag: {
+                geoeffnet: false,
+                beginnLokalzeit: '07:00',
+                endeLokalzeit: '01:00',
+                endetAmFolgetag: true,
+              },
               dienstag: { geoeffnet: false },
               mittwoch: { geoeffnet: false },
               donnerstag: { geoeffnet: false },
@@ -161,6 +264,25 @@ describe('OeffnungszeitenFiliale', () => {
                 feiertagSchluessel: 'tagDerArbeit',
               },
               oeffnungsregel: { geoeffnet: false },
+              erstelltVonUid: 'uid-1',
+              aktualisiertVonUid: 'uid-1',
+            },
+            {
+              ...PFAD,
+              id: 'erster-weihnachtstag',
+              bezeichnung: '1. Weihnachtstag',
+              aktiv: true,
+              herkunft: 'system',
+              datumsregel: {
+                typ: 'gesetzlicherFeiertag',
+                feiertagSchluessel: 'ersterWeihnachtstag',
+              },
+              oeffnungsregel: {
+                geoeffnet: true,
+                beginnLokalzeit: '08:00',
+                endeLokalzeit: '18:00',
+                endetAmFolgetag: false,
+              },
               erstelltVonUid: 'uid-1',
               aktualisiertVonUid: 'uid-1',
             },
@@ -196,6 +318,12 @@ describe('OeffnungszeitenFiliale', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
+    expect(fixture.componentInstance.form.controls.montag.getRawValue()).toEqual({
+      geoeffnet: false,
+      beginnLokalzeit: '07:00',
+      endeLokalzeit: '01:00',
+    });
+
     const inaktiverSondertag = fixture.nativeElement.querySelector(
       '.pur-list__row--inactive',
     ) as HTMLElement | null;
@@ -208,6 +336,50 @@ describe('OeffnungszeitenFiliale', () => {
     expect(bereiche[0]).toContain('Tag der Arbeit');
     expect(bereiche[0]).not.toContain('Heiligabend');
     expect(bereiche[1]).toContain('Heiligabend');
-    expect(bereiche[1]).toContain('Betriebsversammlung');
+    expect(bereiche[1]).not.toContain('Betriebsversammlung');
+    expect(bereiche[2]).toContain('Betriebsversammlung');
+    expect(bereiche[0]).toContain('Gesetzliche Feiertage');
+    expect(bereiche[1]).toContain('Jährliche Sondertage');
+    expect(bereiche[2]).toContain('Einmalige Sondertage');
+    expect(bereiche[0]).toContain('Inaktiv · Wochentagsregel gilt');
+    expect(bereiche[0]).toContain('Aktiv · Geöffnet 08:00–18:00 Uhr');
+    expect(bereiche[1]).toContain('Aktiv · Geschlossen · Jährlich am 24.12.');
+    expect(bereiche[2]).toContain('Aktiv · Geschlossen · Einmalig am 12.11.2026');
+    expect(bereiche.join(' ')).not.toContain('Folgetag');
+    const jaehrlichHinzufuegen = fixture.nativeElement.querySelector(
+      'button[aria-label="Jährlichen Sondertag hinzufügen"]',
+    ) as HTMLButtonElement | null;
+    const einmaligHinzufuegen = fixture.nativeElement.querySelector(
+      'button[aria-label="Einmaligen Sondertag hinzufügen"]',
+    ) as HTMLButtonElement | null;
+    expect(jaehrlichHinzufuegen?.closest('.pur-list__header')).not.toBeNull();
+    expect(jaehrlichHinzufuegen?.querySelector('mat-icon')?.textContent).toContain('add');
+    expect(einmaligHinzufuegen?.closest('.pur-list__header')).not.toBeNull();
+    expect(einmaligHinzufuegen?.querySelector('mat-icon')?.textContent).toContain('add');
+
+    kontext.update((wert) => {
+      if (!wert.bestand) {
+        return wert;
+      }
+      return {
+        ...wert,
+        bestand: {
+          ...wert.bestand,
+          sondertage: wert.bestand.sondertage.filter((sondertag) => {
+            return sondertag.datumsregel.typ === 'gesetzlicherFeiertag';
+          }),
+          ausnahmen: [],
+        },
+      };
+    });
+    fixture.detectChanges();
+
+    const leereBereiche = fixture.nativeElement.querySelectorAll('section.pur-list.liste');
+    const jaehrlichLeerzeile = leereBereiche[1].querySelector('.pur-list__row');
+    const einmaligLeerzeile = leereBereiche[2].querySelector('.pur-list__row');
+    expect(jaehrlichLeerzeile?.textContent).toContain('Noch keine jährlichen Sondertage');
+    expect(jaehrlichLeerzeile?.querySelector('button')).toBeNull();
+    expect(einmaligLeerzeile?.textContent).toContain('Noch keine einmaligen Sondertage');
+    expect(einmaligLeerzeile?.querySelector('button')).toBeNull();
   });
 });

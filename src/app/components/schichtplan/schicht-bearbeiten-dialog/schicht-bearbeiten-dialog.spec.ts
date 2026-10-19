@@ -83,6 +83,8 @@ describe('SchichtBearbeitenDialog', () => {
       '16:30',
       '01:00',
     ]);
+    expect(compiled.querySelectorAll('app-lokalzeit-eingabe')).toHaveLength(2);
+    expect(compiled.querySelectorAll('mat-icon[matIconSuffix]')).toHaveLength(2);
   });
 
   it('should update only after the employee assignment changes', async () => {

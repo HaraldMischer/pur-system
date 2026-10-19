@@ -52,6 +52,7 @@ Arbeiten an geschlossenen Tagen grundsätzlich fachlich abbildbar.
 - src/app/components/system/benutzer/benutzer-anlage/benutzer-anlage.spec.ts
 - src/app/components/system/benutzer/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.ts
 - src/app/components/system/benutzer/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.spec.ts
+- src/assets/scss/modules/_list.scss
 - firestore.rules
 - rules-tests/firestore.rules.test.mjs
 - docs/fachkonzepte/dienst-und-schichtplanung.md
@@ -80,6 +81,18 @@ Neu hinzuzufügen:
 - src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.html
 - src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.scss
 - src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.spec.ts
+- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.ts
+- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.html
+- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.scss
+- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.spec.ts
+- src/app/components/shared/datum-eingabe/datum-eingabe.ts
+- src/app/components/shared/datum-eingabe/datum-eingabe.html
+- src/app/components/shared/datum-eingabe/datum-eingabe.scss
+- src/app/components/shared/datum-eingabe/datum-eingabe.spec.ts
+- src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.ts
+- src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.html
+- src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.scss
+- src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.spec.ts
 - docs/architektur/components/einstellungen.md
 - docs/architektur/services/filialeinstellung-service.md
 - docs/architektur/stores/filialeinstellung-store.md
@@ -98,7 +111,8 @@ Neu hinzuzufügen:
       `samstag` und `sonntag` als regelmäßige Wochenregeln speichern.
 - [x] Jede geöffnete Öffnungsregel mit `beginnLokalzeit`, `endeLokalzeit` und `endetAmFolgetag` als genau einen durchgehenden
       Zeitraum modellieren. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht vorgesehen. Geschlossene
-      Regeln enthalten ausschließlich `geoeffnet: false`.
+      Regeln dürfen für eine spätere Wiederaktivierung entweder keine Zeitwerte oder eine vollständige gültige Zeitfolge
+      enthalten. Solange sie geschlossen sind, werden vorhandene Zeitwerte fachlich nicht berücksichtigt.
 - [x] Besondere Tage unter `einstellung/oeffnungszeiten/sondertag/{sondertagId}` speichern. Jeder Eintrag enthält mindestens
       `bezeichnung`, `aktiv`, eine diskriminierte `datumsregel` und eine eigene `oeffnungsregel`.
 - [x] Für `datumsregel` mindestens `jaehrlichFestesDatum` mit Monat und Tag sowie `gesetzlicherFeiertag` mit einem zentral
@@ -137,8 +151,8 @@ Neu hinzuzufügen:
       Auflösung der für ein Datum gültigen Öffnungsregel bereitstellen.
 - [x] Schreibvorgänge für die begrenzten Einstellungsdokumente atomar ausführen und Sondertage sowie Ausnahmen als einzelne
       Dokumente unabhängig verwalten.
-- [x] Firestore Rules auf berechtigte Rollen und Filialzugriffe, bekannte Dokument-IDs, gültige Feldmengen, Datumsregeltypen,
-      lokale Zeitwerte und gültige Ausnahme-IDs im Format `YYYY-MM-DD` begrenzen.
+- [x] Firestore Rules gemäß Berechtigungsmatrix auf berechtigte Rollen, aktive Profile, Filialzugriffe, den Bereich
+      `einstellungen` und die vorgesehenen Collection-Pfade begrenzen; fachliche Datenvalidierung im TypeScript-Code halten.
 - [x] Bestehende Filialen ohne Einstellungsdokumente kontrolliert initialisieren; Bundesland und Öffnungszeiten dürfen nicht aus
       Postleitzahl oder Ortsname geraten werden.
 
@@ -149,12 +163,13 @@ Neu hinzuzufügen:
       ausschließlich `Öffnungszeiten`.
 - [x] Öffnungszeiten je ausgewählter Filiale getrennt laden und bearbeiten; Änderungen einer Filiale dürfen keine andere
       ausgewählte Filiale beeinflussen. Bundesland und Zeitzone werden nicht als Formularfelder dargestellt.
-- [x] Alle sieben Wochentage vollständig darstellen. Geschlossene Tage benötigen keine Zeitfelder; geöffnete Tage verlangen
-      genau eine gültige Beginn- und Endzeit und können ausdrücklich am Folgetag enden.
-- [x] Die Oberfläche in Wochentage, gesetzliche Feiertage und Sondertage gliedern. Heiligabend und Silvester werden als
-      Sondertage und nicht als gesetzliche Feiertage dargestellt.
+- [x] Alle sieben Wochentage vollständig darstellen. Geschlossene Tage zeigen ihre gespeicherten Zeitfelder deaktiviert;
+      geöffnete Tage verlangen genau eine gültige Beginn- und Endzeit und können ausdrücklich am Folgetag enden.
+- [x] Die Oberfläche in `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage` gliedern.
+      Heiligabend und Silvester werden als jährliche Sondertage und nicht als gesetzliche Feiertage dargestellt.
 - [x] Eigene Sondertage mit Bezeichnung, Öffnungsstatus und gegebenenfalls abweichenden Zeiten anlegen, bearbeiten und löschen.
-      Beim Anlegen wird zwischen einem konkreten Einzeldatum und einer jährlichen Wiederholung nach Monat und Tag gewählt.
+      Sondertage gelten immer jährlich nach Monat und Tag und können deaktiviert werden. Einmalige Sondertage werden technisch
+      als konkrete Datumsausnahmen über eine getrennte Aktion ohne Aktivstatus angelegt, bearbeitet und gelöscht.
 - [x] Gesetzliche Feiertage aus dem zentralen Katalog anbieten; ihre Berechnungsregel ist nicht frei editierbar.
 - [x] Die wirksame Priorität `Ausnahme → Sondertag → Wochentag` in der Oberfläche verständlich erläutern.
 
@@ -168,7 +183,7 @@ Neu hinzuzufügen:
 - [x] Navigation, Route Guard, Benutzeranlage und Profilbearbeitung für den App-Bereich `einstellungen` testen.
 - [x] Firestore-Emulator-Tests für erlaubte Filialzugriffe, bekannte Einstellungsdokumente und abgewiesene Fremd- oder
       Fehlschreibzugriffe ergänzen.
-- [ ] Manuell unterschiedliche Öffnungszeiten für jeden Wochentag, eine Öffnung bis zum Folgetag, einen festen Sondertag,
+- [x] Manuell unterschiedliche Öffnungszeiten für jeden Wochentag, eine Öffnung bis zum Folgetag, einen festen Sondertag,
       einen berechneten Feiertag und eine überschreibende datumsbezogene Ausnahme prüfen.
 - [x] Fachkonzept, Architektur, Projektstand und Datenübergang aktualisieren.
 - [x] Firestore Rules und Functions mit dem App-Bereich `einstellungen` produktiv deployen und die Profilbearbeitung mit einem
@@ -364,9 +379,10 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 - [x] Die rekursive Filialregel so begrenzen, dass sie keine der drei konkreten Dienstplanregeln umgehen kann.
 - [x] Gemeinsame Hilfsfunktionen für aktives Profil, Auth-Rolle und vollständigen Filialpfad verwenden.
 - [x] Je eine Regel für Dienstplan, Version und Schicht anlegen.
-- [x] Planer auf erlaubte Filialen und Entwürfe begrenzen sowie Schema, UID, Zeitstempel, Revision, Zustandswechsel und
-      Mitarbeiterreferenz prüfen.
-- [x] Mitarbeiterzugänge auf die aktuelle veröffentlichte Version zugeordneter Filialen begrenzen und Schreibzugriffe sperren.
+- [x] Planer gemäß Berechtigungsmatrix auf erlaubte Filialpfade und CRUD-Aktionen begrenzen; Schema, UID, Zeitstempel, Revision,
+      Zustandswechsel und Mitarbeiterreferenz im TypeScript-Code prüfen.
+- [x] Mitarbeiterzugänge auf Leserechte in den über den verknüpften Mitarbeiter zugeordneten Filialen begrenzen und sämtliche
+      Schreibzugriffe sperren; ausschließlich veröffentlichte Stände im Frontend laden und anzeigen.
 - [x] Dokumentieren, dass Firestore Rules den im Filial-Frontend geführten Mitarbeiter nicht als Auth-Identität erkennen und die
       zusätzliche Prüfung auf `dienstplaner` daher bei einem manipulierten Client umgangen werden kann.
 - [x] Dokumentieren, dass zeitliche Konflikte ohne serverseitige Fachlogik nur im Frontend geprüft und nicht vollständig gegen
@@ -375,7 +391,7 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 #### Tests und Abschluss
 
 - [x] Modelltests für Zeitberechnung, Zustände und Normalisierung vorbereiten.
-- [x] Firestore-Emulator-Testfälle für jede Rolle, fremde Filialen und unerlaubte Zustandswechsel festlegen.
+- [x] Firestore-Emulator-Testfälle für jede Rolle, fremde Filialen und die CRUD-Rechte der Matrix festlegen.
 - [x] Das Datenmodell anhand eines Dienstplans mit mehreren Tagen, Mitarbeitern und Schichten probeweise durchspielen.
 - [x] Datenmodell, Pfade, Indizes und Sicherheitsentscheidungen in der Projektdokumentation festhalten.
 
@@ -759,8 +775,8 @@ Neu hinzuzufügen:
 - [x] Ein filialbezogenes Schichtmodell mit Bezeichnung, Aktivstatus und geordneten eigenen Modellschichten modellieren.
 - [x] Modellschichten mit stabiler ID, Bezeichnung, lokaler Beginn- und Endzeit, abgeleitetem Folgetag, automatisch berechneter
       Standardpause und einer aus der Beginnzeit abgeleiteten Reihenfolge definieren.
-- [x] Eine durch Firestore Rules prüfbare Speicherung der Modellschichten und der Dienstplan-Momentaufnahme festlegen, ohne die
-      Anzahl der Schichten redundant zu speichern.
+- [x] Eine Speicherung der Modellschichten und der Dienstplan-Momentaufnahme festlegen, ohne die Anzahl der Schichten redundant
+      zu speichern; fachliche Konsistenz im TypeScript-Code prüfen.
 - [x] Den Monatsdienstplan um Modell-ID, Modellbezeichnung und vollständige geordnete Modell-Momentaufnahme erweitern.
 - [x] Konkrete Schichten über die ID ihrer Modellschicht mit der Momentaufnahme verbinden und die bisherigen Vorlagenfelder aus
       dem neuen Schreibmodell entfernen.
@@ -952,9 +968,8 @@ bei fachlichem Bedarf ausdrücklich für Mehrfachbelegungen freigegeben werden.
       prüfen, damit eine gleichzeitige Schichtanlage die Löschung verhindert.
 - [x] Die Aktion dauerhaft ausblenden, sobald `veroeffentlichteVersionId` gesetzt ist. Neue Versionen verwenden immer die
       bestehende Modell-Momentaufnahme des Monatsplans.
-- [x] Firestore Rules auf einen berechtigten Entwurf ohne veröffentlichte Version und die gemeinsame Löschung begrenzen. Die
-      Leerheitsprüfung der Schicht-Subcollection zusätzlich im Client-Service erzwingen, da Rules keine Collection-Abfrage
-      ausführen können.
+- [x] Firestore Rules gemäß Berechtigungsmatrix auf Filialpfad und Löschrecht begrenzen. Den berechtigten Entwurf ohne
+      veröffentlichte Version, die gemeinsame Löschung und die leere Schicht-Subcollection im TypeScript-Code prüfen.
 
 #### Schritt 2: Mehrfachbelegung je Modellschicht begrenzen
 
@@ -1083,15 +1098,15 @@ Neu hinzuzufügen:
 - [ ] Geschlossene Tage eindeutig darstellen. Eine Schichtanlage wird dort nur durch das gültige Schicht-Tagesprofil bestimmt
       und nicht allein wegen der geschlossenen Kundenöffnung verhindert.
 
-#### Schritt 5: Services, Stores und Firestore Rules absichern
+#### Schritt 5: Services, Stores und Datenzugriffe absichern
 
 - [ ] Schichtmodell- und Dienstplan-Service um die neuen Daten ergänzen, die Filialeinstellungen verbindlich laden und alle
       Schicht-Tagesprofile vor dem Schreiben erneut fachlich validieren.
 - [ ] Die konkrete Schichtzeit ausschließlich aus Datum und der für diesen Tag gültigen Modellschicht-Momentaufnahme ableiten.
 - [ ] Stores so erweitern, dass Tagesprofile, Tageszuordnungen und Feiertagsinformationen ohne erneute Berechnung aus dem
       geladenen Monatsplan bereitgestellt werden.
-- [ ] Firestore Rules auf gültige Felder, zulässige Tagesprofile und die zum konkreten Datum gehörende Modellschichtreferenz
-      begrenzen. Direkte Client-Schreibzugriffe dürfen Tagestyp oder Momentaufnahme nicht nachträglich verändern.
+- [ ] Gültige Felder, zulässige Tagesprofile und die zum konkreten Datum gehörende Modellschichtreferenz im TypeScript-Code
+      validieren. Rules bleiben gemäß Berechtigungsmatrix auf Profil, Rolle, Filialpfad und CRUD-Aktion begrenzt.
 - [ ] Bestehende Schichtmodelle ohne Schicht-Tagesprofile kontrolliert migrieren oder bis zur erneuten Speicherung als reines
       Standardprofil interpretieren; den gewählten Übergang verbindlich dokumentieren.
 
@@ -1119,7 +1134,8 @@ Neu hinzuzufügen:
 - [ ] Geschlossene Kundenöffnungen und vorhandene Mitarbeiterschichten können unabhängig voneinander abgebildet werden.
 - [ ] Bundesland, Feiertagsauflösung und Monatsplan-Momentaufnahme führen auch nach späteren Stammdatenänderungen zu stabilen
       historischen Dienstplänen.
-- [ ] UI, Services, Stores und Firestore Rules akzeptieren nur Modellschichten des für das konkrete Datum gültigen Tagesprofils.
+- [ ] UI, Services und Stores akzeptieren nur Modellschichten des für das konkrete Datum gültigen Tagesprofils; Rules sichern
+      ausschließlich die Rechte der Berechtigungsmatrix.
 - [ ] Tests, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
 
 ### [ ] 21.10 Konfliktprüfung, Verschieben und Veröffentlichung umsetzen
@@ -1198,8 +1214,8 @@ Neu hinzuzufügen:
       relevante Entwürfe und veröffentlichte Planungsstände enthält.
 - [ ] Parallele Einplanungen desselben Mitarbeiters durch transaktionales Lesen und Schreiben der betroffenen Tagesdokumente
       verhindern.
-- [ ] Firestore Rules so absichern, dass Belegungseinträge nur gemeinsam mit einer berechtigten Dienstplanänderung angelegt,
-      geändert oder gelöscht werden können.
+- [ ] Belegungseinträge im TypeScript-Code nur gemeinsam mit einer berechtigten Dienstplanänderung anlegen, ändern oder löschen;
+      Rules gemäß Berechtigungsmatrix auf den zugehörigen Pfad und die CRUD-Aktion begrenzen.
 
 #### Schritt 2: Belegungsindex live in die Planung übernehmen
 
@@ -1243,8 +1259,8 @@ Neu hinzuzufügen:
 - [ ] Die Belegungstage des bisherigen und des neuen Zeitraums innerhalb derselben Transaktion aus dem firmenweiten
       Belegungsindex entfernen beziehungsweise ergänzen. Schichten über Mitternacht müssen alle berührten Tage
       berücksichtigen.
-- [ ] Firestore Rules so erweitern, dass Datum, Modellschicht und daraus abgeleitete Zeitwerte nur bei einem vollständigen,
-      berechtigten Verschiebevorgang in einem Entwurf geändert werden können.
+- [ ] Datum, Modellschicht und daraus abgeleitete Zeitwerte im TypeScript-Code nur bei einem vollständigen, berechtigten
+      Verschiebevorgang in einem Entwurf ändern.
 - [ ] Im Bearbeitungsdialog eine gleichwertige, tastatur- und touchbedienbare Aktion `Schicht verschieben` anbieten, über die
       Zieltag und Zielmodellschicht gewählt werden, ohne reguläre Schichtzeiten frei bearbeiten zu können.
 - [ ] Zulässige und unzulässige Ablageziele während des Ziehens verständlich darstellen und Fehler am bisherigen
@@ -1268,7 +1284,8 @@ Neu hinzuzufügen:
       darstellen.
 - [ ] Aus den Schichten des geöffneten Monats eindeutige Mitarbeiter-IDs ermitteln, vorhandene Store-Einträge wiederverwenden
       und nur fehlende Mitarbeiterdokumente mit `networkOnly` gezielt laden.
-- [ ] Entwürfe und interne Notizen für Mitarbeiter vollständig ausblenden und durch Firestore Rules schützen.
+- [ ] Entwürfe und interne Notizen für Mitarbeiter im Frontend vollständig ausblenden; die Rules gewähren weiterhin die in der
+      Matrix festgelegten Leserechte auf Dienstplanpfade.
 - [ ] Zeitraum, Schichten, Pausen und relevante Veröffentlichungsinformationen mobil verständlich darstellen.
 - [ ] Verhalten bei noch nicht veröffentlichten, zurückgezogenen oder nachträglich ersetzten Plänen festlegen und anzeigen.
 

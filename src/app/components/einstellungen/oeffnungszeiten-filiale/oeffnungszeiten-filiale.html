@@ -9,51 +9,51 @@
   @if (kontext()?.download) {
     <p role="status">Öffnungszeiten werden geladen …</p>
   } @else if (kontext()?.error; as error) {
-    <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
+    <p class="pur-message pur-message--error pur-message--full" role="alert">
+      {{ error.meldung }}
+      @if (error.ursache) {
+        <br />
+        {{ error.ursache }}
+      }
+    </p>
   }
 
   @if (kontext()?.isLoaded) {
     <!-- Wochentage -->
     <form [formGroup]="form" (ngSubmit)="saveGrundlagen()">
       <section class="pur-list pur-list--divided wochentage">
-        <header class="pur-list__header">
+        <header class="pur-list__header pur-list__header--outlined">
           <h3 class="pur-text pur-text--title-medium">Wochentage</h3>
         </header>
 
         @for (wochentag of wochentage; track wochentag.value) {
-          <section class="pur-list__row" [formGroup]="getTagForm(wochentag.value)">
-            <h4 class="pur-list__row-item wochentag">
+          <div class="pur-list__row" [formGroup]="getTagForm(wochentag.value)">
+            <p class="pur-list__row-item pur-text pur-text--label wochentag">
               {{ wochentag.label }}
-            </h4>
+            </p>
 
             <div class="pur-list__row-item">
               <mat-checkbox formControlName="geoeffnet"> Geöffnet </mat-checkbox>
             </div>
 
-            @if (getTagForm(wochentag.value).controls.geoeffnet.value) {
-              <div class="pur-list__row-item pur-list__row-item--end uhrzeitfelder">
-                <mat-form-field
-                  appearance="outline"
-                  subscriptSizing="dynamic"
-                  class="pur-flex__item pur-flex__item--time"
-                >
-                  <mat-label>Beginn</mat-label>
-                  <input matInput type="time" formControlName="beginnLokalzeit" required />
-                  <span matTextSuffix>Uhr</span>
-                </mat-form-field>
+            <div class="pur-list__row-item pur-list__row-item--end uhrzeitfelder">
+              <app-lokalzeit-eingabe
+                class="pur-flex__item pur-flex__item--time"
+                label="Beginn"
+                subscriptSizing="dynamic"
+                formControlName="beginnLokalzeit"
+                required
+              />
 
-                <mat-form-field
-                  appearance="outline"
-                  subscriptSizing="dynamic"
-                  class="pur-flex__item pur-flex__item--time"
-                >
-                  <mat-label>Ende</mat-label>
-                  <input matInput type="time" formControlName="endeLokalzeit" required />
-                  <span matTextSuffix>Uhr</span>
-                </mat-form-field>
-              </div>
-            }
-          </section>
+              <app-lokalzeit-eingabe
+                class="pur-flex__item pur-flex__item--time"
+                label="Ende"
+                subscriptSizing="dynamic"
+                formControlName="endeLokalzeit"
+                required
+              />
+            </div>
+          </div>
         }
       </section>
 
@@ -71,15 +71,15 @@
     @if (bestand(); as daten) {
       <!-- Gesetzliche Feiertage -->
       <section class="pur-list pur-list--divided liste">
-        <header class="pur-list__header">
-          <h3 class="pur-text pur-text--title-medium">Gesetzliche Feiertag</h3>
+        <header class="pur-list__header pur-list__header--outlined">
+          <h3 class="pur-text pur-text--title-medium">Gesetzliche Feiertage</h3>
         </header>
         @for (feiertag of feiertage(); track feiertag.id) {
           <div class="pur-list__row" [class.pur-list__row--inactive]="!feiertag.aktiv">
             <div class="pur-list__row-item">
               <p class="pur-text pur-text--label">{{ feiertag.bezeichnung }}</p>
               <p class="pur-text pur-text--secondary">
-                {{ feiertag.aktiv ? 'Aktiv' : 'Inaktiv' }}
+                {{ getOeffnungsstatus(feiertag.oeffnungsregel, feiertag.aktiv) }}
               </p>
             </div>
             <div class="pur-list__row-item pur-list__row-item--end">
@@ -96,68 +96,51 @@
         }
       </section>
 
-      <!-- Sondertage -->
+      <!-- Jährliche Sondertage -->
       <section class="pur-list pur-list--divided liste">
-        <header class="pur-list__header">
-          <h3 class="pur-text pur-text--title-medium">Sondertage</h3>
+        <header class="pur-list__header pur-list__header--outlined">
+          <h3 class="pur-text pur-text--title-medium">Jährliche Sondertage</h3>
+          <button
+            matIconButton
+            type="button"
+            aria-label="Jährlichen Sondertag hinzufügen"
+            (click)="openSondertagAnlegen()"
+            [disabled]="kontext()?.inProgress"
+          >
+            <mat-icon>add</mat-icon>
+          </button>
         </header>
         @if (sondertage().length === 0) {
-          <p>Noch keine Sondertage vorhanden.</p>
+          <div class="pur-list__row">
+            <p class="pur-list__row-item pur-text pur-text--secondary">
+              Noch keine jährlichen Sondertage vorhanden.
+            </p>
+          </div>
         }
-        @for (sondertag of sondertage(); track sondertag.typ + sondertag.eintrag.id) {
-          <div
-            class="pur-list__row"
-            [class.pur-list__row--inactive]="
-              sondertag.typ === 'wiederkehrend' && !sondertag.eintrag.aktiv
-            "
-          >
+        @for (sondertag of sondertage(); track sondertag.id) {
+          <div class="pur-list__row" [class.pur-list__row--inactive]="!sondertag.aktiv">
             <div class="pur-list__row-item">
-              <p class="pur-text pur-text--label">{{ sondertag.eintrag.bezeichnung }}</p>
-              @if (sondertag.typ === 'wiederkehrend') {
-                <p class="pur-text pur-text--secondary">
-                  {{ sondertag.eintrag.aktiv ? 'Aktiv' : 'Inaktiv' }} · Jährlich am
-                  {{ getJaehrlichesDatum(sondertag.eintrag) }}
-                </p>
-              } @else {
-                <p class="pur-text pur-text--secondary">
-                  Einmalig am {{ sondertag.eintrag.datum }}
-                </p>
-              }
+              <p class="pur-text pur-text--label">{{ sondertag.bezeichnung }}</p>
+              <p class="pur-text pur-text--secondary">
+                {{ getOeffnungsstatus(sondertag.oeffnungsregel, sondertag.aktiv) }} · Jährlich am
+                {{ getJaehrlichesDatum(sondertag) }}
+              </p>
             </div>
             <div class="pur-list__row-item pur-list__row-item--end">
-              @if (sondertag.typ === 'wiederkehrend') {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Jährlichen Sondertag bearbeiten"
+                (click)="openSondertagBearbeiten(sondertag)"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              @if (sondertag.herkunft === 'benutzer') {
                 <button
                   matIconButton
                   type="button"
-                  aria-label="Sondertag bearbeiten"
-                  (click)="openSondertagBearbeiten(sondertag.eintrag)"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-                @if (sondertag.eintrag.herkunft === 'benutzer') {
-                  <button
-                    matIconButton
-                    type="button"
-                    aria-label="Sondertag löschen"
-                    (click)="deleteSondertag(sondertag.eintrag)"
-                  >
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                }
-              } @else {
-                <button
-                  matIconButton
-                  type="button"
-                  aria-label="Sondertag bearbeiten"
-                  (click)="openEinmaligenSondertagBearbeiten(sondertag.eintrag)"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button
-                  matIconButton
-                  type="button"
-                  aria-label="Sondertag löschen"
-                  (click)="deleteEinmaligenSondertag(sondertag.eintrag)"
+                  aria-label="Jährlichen Sondertag löschen"
+                  (click)="deleteSondertag(sondertag)"
                 >
                   <mat-icon>delete</mat-icon>
                 </button>
@@ -165,18 +148,58 @@
             </div>
           </div>
         }
+      </section>
 
-        <div class="formular-aktionen">
+      <!-- Einmalige Sondertage -->
+      <section class="pur-list pur-list--divided liste">
+        <header class="pur-list__header pur-list__header--outlined">
+          <h3 class="pur-text pur-text--title-medium">Einmalige Sondertage</h3>
           <button
-            matButton="filled"
+            matIconButton
             type="button"
-            (click)="openSondertagAnlegen()"
+            aria-label="Einmaligen Sondertag hinzufügen"
+            (click)="openDatumsausnahmeAnlegen()"
             [disabled]="kontext()?.inProgress"
           >
             <mat-icon>add</mat-icon>
-            Sondertag hinzufügen
           </button>
-        </div>
+        </header>
+        @if (ausnahmen().length === 0) {
+          <div class="pur-list__row">
+            <p class="pur-list__row-item pur-text pur-text--secondary">
+              Noch keine einmaligen Sondertage vorhanden.
+            </p>
+          </div>
+        }
+        @for (ausnahme of ausnahmen(); track ausnahme.id) {
+          <div class="pur-list__row">
+            <div class="pur-list__row-item">
+              <p class="pur-text pur-text--label">{{ ausnahme.bezeichnung }}</p>
+              <p class="pur-text pur-text--secondary">
+                {{ getOeffnungsstatus(ausnahme.oeffnungsregel) }} · Einmalig am
+                {{ getEinmaligesDatum(ausnahme) }}
+              </p>
+            </div>
+            <div class="pur-list__row-item pur-list__row-item--end">
+              <button
+                matIconButton
+                type="button"
+                aria-label="Einmaligen Sondertag bearbeiten"
+                (click)="openDatumsausnahmeBearbeiten(ausnahme)"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                matIconButton
+                type="button"
+                aria-label="Einmaligen Sondertag löschen"
+                (click)="deleteDatumsausnahme(ausnahme)"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
       </section>
     }
   }

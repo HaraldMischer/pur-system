@@ -15,26 +15,36 @@ import {
   resolveOeffnungsregel,
 } from '../../commons/utils/filialeinstellung/oeffnungsregel-aufloesung';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
+import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import {
+  FilialeinstellungFachfehler,
   FilialeinstellungService,
   IFilialeinstellungAusnahmeSchreibdaten,
   IFilialeinstellungBestand,
   IFilialeinstellungGrundlagen,
+  IFilialeinstellungRohdaten,
   IFilialeinstellungSondertagAktualisierung,
   IFilialeinstellungSondertagAnlage,
   IFilialeinstellungSystemSondertagAktualisierung,
 } from '../../services/domain/filialeinstellung.service';
 import { BenutzerStore } from '../app/benutzer.store';
+import { StammdatenStore } from '../app/stammdaten.store';
 
 // ===== Top-Level Helper =====================
 
+export interface IFilialeinstellungFehler {
+  readonly meldung: string;
+  readonly ursache: string | null;
+}
+
 export type TFilialeinstellungKontext = IFilialPfad & {
+  readonly rohdaten: IFilialeinstellungRohdaten | null;
   readonly bestand: IFilialeinstellungBestand | null;
   readonly download: boolean;
   readonly isLoaded: boolean;
   readonly inProgress: boolean;
-  readonly error: string | null;
+  readonly error: IFilialeinstellungFehler | null;
 };
 
 export type TFilialeinstellungSnapshot = {
@@ -52,12 +62,30 @@ function getKontextSchluessel(pfad: IFilialPfad): string {
 function createLeerenKontext(pfad: IFilialPfad): TFilialeinstellungKontext {
   return {
     ...pfad,
+    rohdaten: null,
     bestand: null,
     download: false,
     isLoaded: false,
     inProgress: false,
     error: null,
   };
+}
+
+function createFehler(meldung: string, error: unknown): IFilialeinstellungFehler {
+  return { meldung, ursache: getFehlerursache(error) };
+}
+
+function getFehlerursache(error: unknown): string | null {
+  if (error instanceof FilialeinstellungFachfehler) return error.message;
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+  ) {
+    return getFirebaseErrorMessage(error);
+  }
+  return null;
 }
 
 function sortSondertage(
@@ -103,10 +131,13 @@ export const FilialeinstellungStore = signalStore(
       store,
       filialeinstellungService = inject(FilialeinstellungService),
       benutzerStore = inject(BenutzerStore),
+      stammdatenStore = inject(StammdatenStore),
+      debugLogService = inject(DebugLogService),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),
     ) => {
       let generation = 0;
+      let filialdatenTitelAusgegeben = false;
       const kontextGenerationen = new Map<string, number>();
       const ladeauftraege = new Map<string, Promise<void>>();
 
@@ -158,13 +189,18 @@ export const FilialeinstellungStore = signalStore(
       ): Promise<void> {
         const kontext = requireKontext(pfad, false);
         const benutzerUid = requireBenutzerUid();
-        await executeWrite(pfad, kontext, async () => {
-          return filialeinstellungService.initializeFilialeinstellung(
-            pfad,
-            grundlagen,
-            benutzerUid,
-          );
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Die Filialeinstellungen konnten nicht gespeichert werden.',
+          async () => {
+            return filialeinstellungService.initializeFilialeinstellung(
+              pfad,
+              grundlagen,
+              benutzerUid,
+            );
+          },
+        );
       }
 
       /**
@@ -176,14 +212,19 @@ export const FilialeinstellungStore = signalStore(
       ): Promise<void> {
         const kontext = requireKontext(pfad, true);
         const benutzerUid = requireBenutzerUid();
-        await executeWrite(pfad, kontext, async () => {
-          return filialeinstellungService.saveGrundlagen(
-            pfad,
-            requireBestand(kontext),
-            grundlagen,
-            benutzerUid,
-          );
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Die Filialeinstellungen konnten nicht gespeichert werden.',
+          async () => {
+            return filialeinstellungService.saveGrundlagen(
+              pfad,
+              requireBestand(kontext),
+              grundlagen,
+              benutzerUid,
+            );
+          },
+        );
       }
 
       /**
@@ -195,18 +236,23 @@ export const FilialeinstellungStore = signalStore(
       ): Promise<void> {
         const kontext = requireKontext(pfad, true);
         const benutzerUid = requireBenutzerUid();
-        await executeWrite(pfad, kontext, async () => {
-          const bestand = requireBestand(kontext);
-          const sondertag = await filialeinstellungService.createSondertag(
-            pfad,
-            anlage,
-            benutzerUid,
-          );
-          return {
-            ...bestand,
-            sondertage: sortSondertage([...bestand.sondertage, sondertag]),
-          };
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Der Sondertag konnte nicht angelegt werden.',
+          async () => {
+            const bestand = requireBestand(kontext);
+            const sondertag = await filialeinstellungService.createSondertag(
+              pfad,
+              anlage,
+              benutzerUid,
+            );
+            return {
+              ...bestand,
+              sondertage: sortSondertage([...bestand.sondertage, sondertag]),
+            };
+          },
+        );
       }
 
       /**
@@ -220,19 +266,24 @@ export const FilialeinstellungStore = signalStore(
         const kontext = requireKontext(pfad, true);
         const benutzerUid = requireBenutzerUid();
         const sondertag = requireSondertag(kontext, sondertagId);
-        await executeWrite(pfad, kontext, async () => {
-          const bestand = requireBestand(kontext);
-          const aktualisiert = await filialeinstellungService.updateSondertag(
-            pfad,
-            sondertag,
-            aktualisierung,
-            benutzerUid,
-          );
-          return {
-            ...bestand,
-            sondertage: replaceSondertag(bestand.sondertage, aktualisiert),
-          };
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Der Sondertag konnte nicht gespeichert werden.',
+          async () => {
+            const bestand = requireBestand(kontext);
+            const aktualisiert = await filialeinstellungService.updateSondertag(
+              pfad,
+              sondertag,
+              aktualisierung,
+              benutzerUid,
+            );
+            return {
+              ...bestand,
+              sondertage: replaceSondertag(bestand.sondertage, aktualisiert),
+            };
+          },
+        );
       }
 
       /**
@@ -246,19 +297,24 @@ export const FilialeinstellungStore = signalStore(
         const kontext = requireKontext(pfad, true);
         const benutzerUid = requireBenutzerUid();
         const sondertag = requireSondertag(kontext, sondertagId);
-        await executeWrite(pfad, kontext, async () => {
-          const bestand = requireBestand(kontext);
-          const aktualisiert = await filialeinstellungService.updateSystemSondertag(
-            pfad,
-            sondertag,
-            aktualisierung,
-            benutzerUid,
-          );
-          return {
-            ...bestand,
-            sondertage: replaceSondertag(bestand.sondertage, aktualisiert),
-          };
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Der Sondertag konnte nicht gespeichert werden.',
+          async () => {
+            const bestand = requireBestand(kontext);
+            const aktualisiert = await filialeinstellungService.updateSystemSondertag(
+              pfad,
+              sondertag,
+              aktualisierung,
+              benutzerUid,
+            );
+            return {
+              ...bestand,
+              sondertage: replaceSondertag(bestand.sondertage, aktualisiert),
+            };
+          },
+        );
       }
 
       /**
@@ -268,16 +324,21 @@ export const FilialeinstellungStore = signalStore(
         const kontext = requireKontext(pfad, true);
         requireBenutzerUid();
         const sondertag = requireSondertag(kontext, sondertagId);
-        await executeWrite(pfad, kontext, async () => {
-          const bestand = requireBestand(kontext);
-          await filialeinstellungService.deleteSondertag(pfad, sondertag);
-          return {
-            ...bestand,
-            sondertage: bestand.sondertage.filter((eintrag) => {
-              return eintrag.id !== sondertagId;
-            }),
-          };
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Der Sondertag konnte nicht gelöscht werden.',
+          async () => {
+            const bestand = requireBestand(kontext);
+            await filialeinstellungService.deleteSondertag(pfad, sondertag);
+            return {
+              ...bestand,
+              sondertage: bestand.sondertage.filter((eintrag) => {
+                return eintrag.id !== sondertagId;
+              }),
+            };
+          },
+        );
       }
 
       /**
@@ -289,14 +350,25 @@ export const FilialeinstellungStore = signalStore(
       ): Promise<void> {
         const kontext = requireKontext(pfad, true);
         const benutzerUid = requireBenutzerUid();
-        const bestand = requireBestand(kontext);
-        if (bestand.ausnahmen.some((ausnahme) => ausnahme.datum === anlage.datum)) {
-          throw new Error('Für dieses Datum ist bereits eine Ausnahme vorhanden.');
-        }
-        await executeWrite(pfad, kontext, async () => {
-          const ausnahme = await filialeinstellungService.createAusnahme(pfad, anlage, benutzerUid);
-          return { ...bestand, ausnahmen: sortAusnahmen([...bestand.ausnahmen, ausnahme]) };
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Der einmalige Sondertag konnte nicht angelegt werden.',
+          async () => {
+            const bestand = requireBestand(kontext);
+            if (bestand.ausnahmen.some((ausnahme) => ausnahme.datum === anlage.datum)) {
+              throw new FilialeinstellungFachfehler(
+                'Für dieses Datum ist bereits eine Ausnahme vorhanden.',
+              );
+            }
+            const ausnahme = await filialeinstellungService.createAusnahme(
+              pfad,
+              anlage,
+              benutzerUid,
+            );
+            return { ...bestand, ausnahmen: sortAusnahmen([...bestand.ausnahmen, ausnahme]) };
+          },
+        );
       }
 
       /**
@@ -310,21 +382,26 @@ export const FilialeinstellungStore = signalStore(
         const kontext = requireKontext(pfad, true);
         const benutzerUid = requireBenutzerUid();
         const ausnahme = requireAusnahme(kontext, datum);
-        await executeWrite(pfad, kontext, async () => {
-          const bestand = requireBestand(kontext);
-          const aktualisiert = await filialeinstellungService.updateAusnahme(
-            pfad,
-            ausnahme,
-            aktualisierung,
-            benutzerUid,
-          );
-          return {
-            ...bestand,
-            ausnahmen: bestand.ausnahmen.map((eintrag) => {
-              return eintrag.id === datum ? aktualisiert : eintrag;
-            }),
-          };
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Der einmalige Sondertag konnte nicht gespeichert werden.',
+          async () => {
+            const bestand = requireBestand(kontext);
+            const aktualisiert = await filialeinstellungService.updateAusnahme(
+              pfad,
+              ausnahme,
+              aktualisierung,
+              benutzerUid,
+            );
+            return {
+              ...bestand,
+              ausnahmen: bestand.ausnahmen.map((eintrag) => {
+                return eintrag.id === datum ? aktualisiert : eintrag;
+              }),
+            };
+          },
+        );
       }
 
       /**
@@ -334,16 +411,21 @@ export const FilialeinstellungStore = signalStore(
         const kontext = requireKontext(pfad, true);
         requireBenutzerUid();
         requireAusnahme(kontext, datum);
-        await executeWrite(pfad, kontext, async () => {
-          const bestand = requireBestand(kontext);
-          await filialeinstellungService.deleteAusnahme(pfad, datum);
-          return {
-            ...bestand,
-            ausnahmen: bestand.ausnahmen.filter((eintrag) => {
-              return eintrag.id !== datum;
-            }),
-          };
-        });
+        await executeWrite(
+          pfad,
+          kontext,
+          'Der einmalige Sondertag konnte nicht gelöscht werden.',
+          async () => {
+            const bestand = requireBestand(kontext);
+            await filialeinstellungService.deleteAusnahme(pfad, datum);
+            return {
+              ...bestand,
+              ausnahmen: bestand.ausnahmen.filter((eintrag) => {
+                return eintrag.id !== datum;
+              }),
+            };
+          },
+        );
       }
 
       // ===== Methoden: Sonstige Aktionen ==========
@@ -376,6 +458,7 @@ export const FilialeinstellungStore = signalStore(
        */
       function resetFilialeinstellungen(): void {
         generation += 1;
+        filialdatenTitelAusgegeben = false;
         kontextGenerationen.clear();
         ladeauftraege.clear();
         patchState(store, initialState);
@@ -406,10 +489,23 @@ export const FilialeinstellungStore = signalStore(
       ): Promise<void> {
         const schluessel = getKontextSchluessel(pfad);
         try {
-          const bestand = await filialeinstellungService.loadFilialeinstellung(pfad, strategie);
+          const rohdaten = await filialeinstellungService.loadFilialeinstellungRohdaten(
+            pfad,
+            strategie,
+          );
           if (!istAktuellerLadeauftrag(schluessel, aktuelleGeneration, kontextGeneration)) return;
           setKontext(pfad, {
+            ...(getFilialeinstellungKontext(pfad) ?? createLeerenKontext(pfad)),
+            rohdaten,
+          });
+          logFilialeinstellungRohdaten(pfad, rohdaten);
+          const bestand = filialeinstellungService.validateFilialeinstellungRohdaten(
+            pfad,
+            rohdaten,
+          );
+          setKontext(pfad, {
             ...pfad,
+            rohdaten,
             bestand: bestand ? sortBestand(bestand) : null,
             download: false,
             isLoaded: true,
@@ -418,12 +514,19 @@ export const FilialeinstellungStore = signalStore(
           });
         } catch (error: unknown) {
           if (istAktuellerLadeauftrag(schluessel, aktuelleGeneration, kontextGeneration)) {
+            const fehlermeldung =
+              error instanceof FilialeinstellungFachfehler
+                ? 'Die Filialeinstellungen wurden geladen, sind aber ungültig.'
+                : 'Die Filialeinstellungen konnten nicht geladen werden.';
             setKontext(pfad, {
               ...(getFilialeinstellungKontext(pfad) ?? createLeerenKontext(pfad)),
               download: false,
               isLoaded: false,
-              error: getFirebaseErrorMessage(error),
+              error: createFehler(fehlermeldung, error),
             });
+            if (!(error instanceof FilialeinstellungFachfehler)) {
+              debugLogService.log('Laden', fehlermeldung, { ...pfad, error });
+            }
           }
           throw error;
         }
@@ -432,6 +535,7 @@ export const FilialeinstellungStore = signalStore(
       async function executeWrite(
         pfad: IFilialPfad,
         kontext: TFilialeinstellungKontext,
+        fehlermeldung: string,
         aktion: () => Promise<IFilialeinstellungBestand>,
       ): Promise<void> {
         if (kontext.inProgress) {
@@ -455,8 +559,9 @@ export const FilialeinstellungStore = signalStore(
             setKontext(pfad, {
               ...aktuellerKontext,
               inProgress: false,
-              error: getFirebaseErrorMessage(error),
+              error: createFehler(fehlermeldung, error),
             });
+            debugLogService.log('Store', fehlermeldung, { ...pfad, error });
           }
           throw error;
         }
@@ -475,6 +580,23 @@ export const FilialeinstellungStore = signalStore(
 
       function removeLadeauftrag(schluessel: string, promise: Promise<void>): void {
         if (ladeauftraege.get(schluessel) === promise) ladeauftraege.delete(schluessel);
+      }
+
+      function logFilialeinstellungRohdaten(
+        pfad: IFilialPfad,
+        rohdaten: IFilialeinstellungRohdaten,
+      ): void {
+        const filialname =
+          stammdatenStore
+            .getFilialen(pfad.unternehmerId, pfad.firmaId)
+            .find((filiale) => filiale.id === pfad.filialeId)?.anzeigename ?? pfad.filialeId;
+        if (!filialdatenTitelAusgegeben) {
+          debugLogService.logDatenflussTitel('3. FILIALDATEN ');
+          filialdatenTitelAusgegeben = true;
+        }
+        const dokumentAnzahl =
+          Number(rohdaten.allgemein !== null) + Number(rohdaten.oeffnungszeiten !== null);
+        debugLogService.logDatenGeladen(`Einstellungen | ${filialname}`, dokumentAnzahl);
       }
 
       function setKontext(pfad: IFilialPfad, kontext: TFilialeinstellungKontext): void {

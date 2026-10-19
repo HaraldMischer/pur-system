@@ -23,17 +23,19 @@ Allgemeine Einstellungen und Wochenregeln werden gemeinsam gespeichert. Ein Bund
 Feiertage atomar ab: gemeinsame Einträge behalten ihre angepasste Öffnungsregel, nicht mehr geltende werden entfernt und neue
 geschlossen ergänzt. Benutzerdefinierte Sondertage bleiben erhalten.
 
-Eigene Sondertage werden in der Oberfläche gemeinsam angelegt und je nach Wiederholung technisch als jährlich fester
-Sondertag oder konkrete Datumsausnahme gespeichert. Beide Varianten werden als einzelne Dokumente aktualisiert oder gelöscht.
-Systemdefinierte
-Sondertage behalten Identität, Bezeichnung, Herkunft und Datumsregel; veränderbar sind nur Aktivstatus und Öffnungsregel. Jeder
-Schreibvorgang ergänzt die fachlichen Metadaten mit Benutzer-UID und Serverzeitstempel.
+Eigene jährliche Sondertage und konkrete Datumsausnahmen werden über getrennte Serviceaktionen angelegt, aktualisiert und
+gelöscht. Jährliche Sondertage besitzen Monat und Tag sowie einen Aktivstatus. Datumsausnahmen besitzen ein vollständiges
+Datum und keinen Aktivstatus. Das Datum bildet zugleich ihre Firestore-Dokument-ID und bleibt bei der Aktualisierung eines
+bestehenden Eintrags unverändert. Systemdefinierte Sondertage behalten Identität, Bezeichnung, Herkunft und Datumsregel;
+veränderbar sind nur Aktivstatus und Öffnungsregel. Jeder Schreibvorgang ergänzt die fachlichen Metadaten mit Benutzer-UID und
+Serverzeitstempel.
 
 ## Validierung
 
 Der Service validiert Bundesland, vollständige Wochenregeln, lokale Zeitwerte, jährlich feste Daten und konkrete
 Datumswerte. Eine geöffnete Regel muss verschiedene Beginn- und Endzeiten besitzen; `endetAmFolgetag` muss aus ihrer Reihenfolge
-korrekt abgeleitet sein. Geschlossene Regeln enthalten keine Zeitwerte.
+korrekt abgeleitet sein. Eine geschlossene Regel darf entweder keine Zeitwerte oder eine vollständige gültige Zeitfolge
+enthalten. Solange die Regel geschlossen ist, werden vorhandene Zeitwerte fachlich nicht berücksichtigt.
 
 Die Firestore Rules prüfen dieselben Dokumentgrenzen unabhängig vom Client. Masterkonten sind rollenbedingt berechtigt. Office-
 und Filialkonten benötigen sowohl den konkreten Filialzugriff als auch den App-Bereich `einstellungen`.

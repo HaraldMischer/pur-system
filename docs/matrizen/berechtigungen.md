@@ -31,7 +31,7 @@ Die Pfadkürzel bauen aufeinander auf:
 
 | Collection                                                                | `master` | `office` | `filiale` | `mitarbeiter` | Legacy-Konto |
 | ------------------------------------------------------------------------- | -------- | -------- | --------- | ------------- | ------------ |
-| `benutzerprofil/{uid}`                                                    | R/C/U    | R        | R         | R             | –            |
+| `benutzerprofil/{uid}`                                                    | R/C/U/D  | R        | R         | R             | –            |
 | `benutzerprofil/{uid}/{subcollection}/{document=**}`                      | R/C/U/D  | –        | –         | –             | –            |
 | `unternehmer/{unternehmerId}`                                             | R/C/U/D  | R        | R         | R             | –            |
 | `{firmaPfad}`                                                             | R/C/U/D  | R        | R         | R             | –            |
@@ -40,54 +40,95 @@ Die Pfadkürzel bauen aufeinander auf:
 | `{filialPfad}/einstellung/{dokumentId}`                                   | R/C/U    | R/C/U    | R/C/U     | –             | –            |
 | `{filialPfad}/einstellung/oeffnungszeiten/sondertag/{sondertagId}`        | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
 | `{filialPfad}/einstellung/oeffnungszeiten/ausnahme/{datum}`               | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
-| `{filialPfad}/dienstplan/{monat}`                                         | R/C/U    | R/C/U    | R/C/U     | R             | –            |
+| `{filialPfad}/schichtmodell/{schichtmodellId}`                            | R/C/U    | R/C/U    | R/C/U     | –             | –            |
+| `{filialPfad}/schichtmodell/{schichtmodellId}/modellschicht/{id}`         | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
+| `{filialPfad}/dienstplan/{monat}`                                         | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
+| `{filialPfad}/dienstplan/{monat}/modellschicht/{modellschichtId}`         | R/C/D    | R/C/D    | R/C/D     | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/version/{versionId}`                     | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/version/{versionId}/schicht/{schichtId}` | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
+| `systemMigrationen/{purCustomerId}`                                       | R/C/U    | –        | –         | –             | –            |
+| `systemMigrationen/{purCustomerId}/datenbereiche/{datenbereichId}`        | R/C/U    | –        | –         | –             | –            |
 | `purCustomers/{document=**}`                                              | R        | –        | –         | –             | R/C/U/D      |
 | `purUser/{document=**}`                                                   | –        | –        | –         | –             | R/C/U/D      |
 
 ### Zusatzbedingungen
 
-- Das eigene Profil bleibt auch inaktiv lesbar; alle weiteren Rechte einer Pur-System-Rolle setzen ein aktives Profil voraus.
-- Was nicht in der Collection-Matrix steht, ist nicht erlaubt.
-- Die im Benutzerprofil hinterlegten `zugriffe` begrenzen erlaubte Aktionen zusätzlich auf die rollenspezifisch zugeordneten
-  Unternehmer, Firmen und Filialen.
-- Benutzerprofile werden nur durch die Cloud Function angelegt.
+#### Übergreifende Grundregel
+
+Bei jedem Datenzugriff gelten grundsätzlich diese vier Prüfungen:
+
+1. Das Benutzerprofil ist aktiv.
+2. Die Benutzerrolle ist für den Datenpfad berechtigt.
+3. Der Datenpfad liegt innerhalb der im Benutzerprofil hinterlegten `zugriffe`.
+4. Die Collection-Matrix erlaubt der Benutzerrolle die konkrete CRUD-Aktion.
+
+Was nicht in der Collection-Matrix erlaubt ist, bleibt gesperrt.
+
+#### Fachliche Validierung
+
+Die Firestore Rules prüfen keine Feldinhalte, Dokument-IDs, Referenzen oder Statuswechsel. Diese fachlichen Prüfungen übernimmt
+der TypeScript-Code.
+
+#### Technische Durchsetzung
+
+- Greift das Frontend direkt auf Firestore zu, erzwingen die Firestore Rules die vier Prüfungen.
+- Greift eine Cloud Function auf Firestore zu, werden die Firestore Rules technisch umgangen. Deshalb muss die Cloud Function die
+  erforderlichen Berechtigungen selbst prüfen.
+- Ausnahmen von den vier Grundprüfungen werden in den folgenden Bereichen ausdrücklich beschrieben.
+
+#### Benutzerprofile und Zugang
+
+- Das eigene Profil bleibt als ausdrückliche Ausnahme auch bei inaktivem Profil lesbar.
+- Benutzerprofile werden durch Cloud Functions angelegt, bearbeitet und gelöscht. Clientseitig sind sie nur lesbar.
+
+#### System und Unternehmensstruktur
+
+- `master` ist als ausdrückliche Ausnahme nicht durch `zugriffe` begrenzt.
 - Strukturdatensätze werden nur durch die Cloud Function rekursiv gelöscht; vorhandene Referenzen verhindern das Löschen.
-- Normale Datenzugriffe erfolgen clientseitig und werden durch Firestore Rules abgesichert. Technisch notwendige serverseitige
-  Aktionen prüfen ihre Berechtigungen in der jeweiligen Cloud Function.
-- `erlaubteBereiche` beeinflusst grundsätzlich keine Datenrechte. Filialeinstellungen bilden eine ausdrückliche Ausnahme:
-  Office- und Filialkonten benötigen zusätzlich den Bereich `einstellungen`; Masterkonten bleiben rollenbedingt berechtigt.
-- `office` darf nur Daten innerhalb der zugewiesenen Unternehmer, Firmen und Filialen verwenden.
 - Firmen- und Filialstammdaten dürfen ausschließlich von `master` angelegt oder bearbeitet werden. Für `office`, `filiale` und
   `mitarbeiter` sind diese Dokumente rein lesbar.
-- `office` verwaltet Mitarbeiter zugewiesener Firmen. `filiale` liest Mitarbeiter der eigenen Firma, lädt über `filialIds`
-  gezielt die Mitarbeiter der eigenen Filiale und darf nur diese anlegen oder bearbeiten.
+- `filiale` ist genau einem Unternehmer, einer Firma und einer Filiale zugeordnet.
+
+#### Mitarbeiter
+
+- `office` und `filiale` besitzen innerhalb zugewiesener Firmen die in der Matrix aufgeführten Rechte. Das Filial-Frontend lädt
+  und bearbeitet über `filialIds` ausschließlich Mitarbeiter der eigenen Filiale; Feldinhalte und Filialzuordnungen validiert
+  der TypeScript-Code.
 - Der Aktivstatus eines fachlichen Mitarbeiters schränkt diese Lese- und Bearbeitungsrechte nicht ein. `aktiv: false` beschreibt
   einen inaktiven Beschäftigungsstatus; berechtigte Rollen können den Mitarbeiter später wieder aktivieren.
 - Die betrieblichen Mitarbeiterrollen `filialkasse`, `servicekraft`, `administrator`, `kassierer`, `techniker` und
   `dienstplaner` werden als Array `rollen` gespeichert. Sie beschreiben Tätigkeiten und gewähren unabhängig von `TUserRole`
-  keine eigenen Firestore-Datenrechte. `dienstplaner` steuert ausschließlich im Filial-Frontend, ob ein aktiver
-  Firma-Mitarbeiter der eigenen Filiale die dort für das Filialkonto erlaubten Planungsaktionen bedienen darf.
+  keine eigenen Firestore-Datenrechte.
 - Nur Master dürfen Dubletten zusammenführen. Dabei wird das nicht mit einem Benutzerkonto verknüpfte Duplikat physisch
   gelöscht; eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten.
 - Mit einem Benutzerkonto verknüpfte Mitarbeiter dürfen weder gelöscht noch zusammengeführt werden.
-- `filiale` ist genau einem Unternehmer, einer Firma und einer Filiale zugeordnet.
-- Die frühere rekursive Filialregel ist entfernt. Filial-Untercollections benötigen konkrete Rules; Dienstplan, Version und
-  Schicht sind einzeln geregelt und verwenden gemeinsame Hilfsfunktionen.
-- Dienstplandokumente werden nicht gelöscht. Master, Office und Filiale lesen innerhalb ihres erlaubten Filialkontexts alle
-  Versionsstände. Neue Versionen werden nur als Entwurf angelegt; nie veröffentlichte Entwürfe und deren Schichten dürfen
-  bearbeitet und gelöscht werden. Veröffentlichte Versionen dürfen nur bei einer neuen Veröffentlichung atomar archiviert
-  werden; archivierte Versionen sowie veröffentlichte und archivierte Schichten bleiben unveränderlich.
-- `mitarbeiter` liest den zugeordneten Unternehmer sowie die direkte Firmenstruktur mit Firma, Filialen und fachlichen
-  Mitarbeitern. Von Dienstplänen zugeordneter Filialen liest er nur die aktuelle veröffentlichte Version und deren Schichten;
-  andere Filial-Untercollections und alle Schreibzugriffe bleiben gesperrt. Der Client lädt beim Sitzungsstart nur die über den
-  eigenen Mitarbeiterdatensatz zugeordneten Filialen und deren Mitarbeiter.
-- `master` verwaltet fachliche Mitarbeiter aller Firmen.
+
+#### Einstellungen
+
+- `erlaubteBereiche` beeinflusst grundsätzlich keine Datenrechte. Filialeinstellungen bilden eine ausdrückliche Ausnahme:
+  Office- und Filialkonten benötigen zusätzlich den Bereich `einstellungen`; Masterkonten bleiben rollenbedingt berechtigt.
+
+#### Schichtplan
+
+- `dienstplaner` steuert ausschließlich im Filial-Frontend, ob ein aktiver Firma-Mitarbeiter der eigenen Filiale die dort für
+  das Filialkonto erlaubten Planungsaktionen bedienen darf.
+- Die fachliche Steuerung von Entwürfen, Veröffentlichungen, Archivierungen, Revisionen, Referenzen und Löschvorgängen erfolgt
+  ausschließlich im TypeScript-Code. Die Rules prüfen dafür keine Felder oder Zustandswechsel.
+- `mitarbeiter` liest entsprechend der Matrix alle Dienstplanpfade einer zugeordneten Filiale und erhält keine Schreibrechte.
+  Weil Mitarbeiterprofile keine direkten Filialzugriffe enthalten, wird die Filialzuordnung als ausdrückliche Ausnahme über den
+  aktiven verknüpften Mitarbeiter und dessen `filialIds` bestimmt. Welche Planstände die Oberfläche lädt und anzeigt, steuert
+  das Frontend.
+- Schichtmodelle selbst besitzen gemäß Matrix kein Löschrecht. Modellschicht-Momentaufnahmen eines Dienstplans besitzen kein
+  Aktualisierungsrecht. Diese Einschränkungen sind Pfad-/CRUD-Rechte und keine fachliche Feldvalidierung.
+
+#### Datenmigration und Legacy-Konten
+
 - `master` liest `purCustomers` und dessen Untercollections ausschließlich für die Datenmigration; Schreibzugriffe bleiben
   gesperrt.
-- Legacy-Konten sind authentifizierte Konten ohne `benutzerprofil` und greifen ausschließlich auf `purCustomers` und `purUser`
-  einschließlich ihrer Untercollections zu.
+- Legacy-Konten sind als ausdrückliche Ausnahme authentifizierte Konten ohne `benutzerprofil` und greifen ausschließlich auf
+  `purCustomers` und `purUser` einschließlich ihrer Untercollections zu.
+
+
 
 ## 2. App-Bereich-Matrix
 
@@ -112,8 +153,17 @@ Die App-Bereich-Matrix zeigt, welche Benutzerrolle einen App-Bereich grundsätzl
 
 ### Zusatzbedingungen
 
+#### Übergreifende Regeln
+
 - Die Cloud Function ergänzt `verpflichtend` bei der Benutzeranlage; beim Bearbeiten erhält der Client diese Bereiche.
 - `optional` und `verboten` werden durch die rollenabhängigen Checkboxen im Client umgesetzt.
-- `erlaubteBereiche` steuert Navigation, Routenzugriff und sichtbare App-Funktionen. Nur bei Filialeinstellungen prüfen die Rules
-  für Office- und Filialkonten zusätzlich den Bereich `einstellungen`; für Master genügt die Rolle.
+- `erlaubteBereiche` steuert Navigation, Routenzugriff und sichtbare App-Funktionen.
+
+#### Mitarbeiter
+
 - `mitarbeiter` erfordert für `office` und `filiale` zusätzlich mindestens einen gültigen Firmen- und Filialzugriff.
+
+#### Einstellungen
+
+- Nur bei Filialeinstellungen prüfen die Rules für Office- und Filialkonten zusätzlich den Bereich `einstellungen`; für Master
+  genügt die Rolle.

@@ -592,8 +592,6 @@ export const DienstplanStore = signalStore(
           filialdatenTitelAusgegeben = true;
         }
         debugLogService.logDatenGeladen(`Dienstpläne | ${filialname}`, bestand.dienstplaene.length);
-        debugLogService.logDatenGeladen(`Versionen | ${filialname}`, bestand.versionen.length);
-        debugLogService.logDatenGeladen(`Schichten | ${filialname}`, bestand.schichten.length);
       }
 
       function hasWeiterenLadeauftrag(

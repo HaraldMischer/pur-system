@@ -54,6 +54,9 @@ export type TGesetzlicherFeiertagSchluessel =
 
 export interface IGeschlosseneOeffnungsregel {
   geoeffnet: false;
+  beginnLokalzeit?: string;
+  endeLokalzeit?: string;
+  endetAmFolgetag?: boolean;
 }
 
 export interface IGeoeffneteOeffnungsregel {

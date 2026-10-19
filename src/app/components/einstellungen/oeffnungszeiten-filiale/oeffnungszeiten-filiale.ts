@@ -1,6 +1,16 @@
 // pur-system/src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.ts
 
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  untracked,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormControl,
@@ -12,12 +22,8 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 
-import { SondertagBearbeitenDialog } from '../sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog';
-import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import {
   IFilialeinstellungAusnahmeEintrag,
@@ -30,6 +36,10 @@ import {
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IFilialeinstellungGrundlagen } from '../../../services/domain/filialeinstellung.service';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
+import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
+import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
+import { DatumsausnahmeBearbeitenDialog } from '../datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog';
+import { SondertagBearbeitenDialog } from '../sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog';
 
 // ===== Konstanten & Typen ===================
 
@@ -38,10 +48,6 @@ type TTagForm = FormGroup<{
   beginnLokalzeit: FormControl<string>;
   endeLokalzeit: FormControl<string>;
 }>;
-
-type TSondertagListeneintrag =
-  | { typ: 'wiederkehrend'; eintrag: IFilialeinstellungSondertagEintrag }
-  | { typ: 'einmalig'; eintrag: IFilialeinstellungAusnahmeEintrag };
 
 const WOCHENTAGE: ReadonlyArray<{ value: TWochentag; label: string }> = [
   { value: 'montag', label: 'Montag' },
@@ -64,22 +70,43 @@ function createTagForm(): TTagForm {
   return new FormGroup(
     {
       geoeffnet: new FormControl(false, { nonNullable: true }),
-      beginnLokalzeit: new FormControl('08:00', {
-        nonNullable: true,
-        validators: [Validators.required],
-      }),
-      endeLokalzeit: new FormControl('18:00', {
-        nonNullable: true,
-        validators: [Validators.required],
-      }),
+      beginnLokalzeit: new FormControl(
+        { value: '08:00', disabled: true },
+        {
+          nonNullable: true,
+          validators: [Validators.required],
+        },
+      ),
+      endeLokalzeit: new FormControl(
+        { value: '18:00', disabled: true },
+        {
+          nonNullable: true,
+          validators: [Validators.required],
+        },
+      ),
     },
     { validators: [oeffnungszeitValidator] },
   );
 }
 
+function updateZeitfelderStatus(form: TTagForm, geoeffnet: boolean): void {
+  const zeitfelder = [form.controls.beginnLokalzeit, form.controls.endeLokalzeit];
+  for (const zeitfeld of zeitfelder) {
+    if (geoeffnet && zeitfeld.disabled) zeitfeld.enable({ emitEvent: false });
+    if (!geoeffnet && zeitfeld.enabled) zeitfeld.disable({ emitEvent: false });
+  }
+}
+
 function getOeffnungsregel(form: TTagForm): TOeffnungsregel {
   const wert = form.getRawValue();
-  if (!wert.geoeffnet) return { geoeffnet: false };
+  if (!wert.geoeffnet) {
+    return {
+      geoeffnet: false,
+      beginnLokalzeit: wert.beginnLokalzeit,
+      endeLokalzeit: wert.endeLokalzeit,
+      endetAmFolgetag: wert.endeLokalzeit < wert.beginnLokalzeit,
+    };
+  }
   return {
     geoeffnet: true,
     beginnLokalzeit: wert.beginnLokalzeit,
@@ -93,9 +120,8 @@ function getOeffnungsregel(form: TTagForm): TOeffnungsregel {
   imports: [
     MatButtonModule,
     MatCheckboxModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
+    LokalzeitEingabe,
     ReactiveFormsModule,
   ],
   templateUrl: './oeffnungszeiten-filiale.html',
@@ -105,6 +131,7 @@ function getOeffnungsregel(form: TTagForm): TOeffnungsregel {
 export class OeffnungszeitenFiliale {
   // ===== Interne Dependency Injection =========
 
+  private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   readonly store = inject(FilialeinstellungStore);
 
@@ -141,33 +168,49 @@ export class OeffnungszeitenFiliale {
       }) ?? []
     );
   });
-  readonly sondertage = computed<TSondertagListeneintrag[]>(() => {
-    const bestand = this.bestand();
-    if (!bestand) return [];
-    const wiederkehrend: TSondertagListeneintrag[] = bestand.sondertage
-      .filter((sondertag) => {
-        return sondertag.datumsregel.typ === 'jaehrlichFestesDatum';
-      })
-      .map((sondertag) => {
-        return { typ: 'wiederkehrend', eintrag: sondertag };
-      });
-    const einmalig: TSondertagListeneintrag[] = bestand.ausnahmen.map((ausnahme) => {
-      return { typ: 'einmalig', eintrag: ausnahme };
-    });
-    return [...wiederkehrend, ...einmalig].sort((a, b) => {
-      return a.eintrag.bezeichnung.localeCompare(b.eintrag.bezeichnung, 'de');
+  readonly sondertage = computed(() => {
+    return (
+      this.bestand()
+        ?.sondertage.filter((sondertag) => {
+          return sondertag.datumsregel.typ === 'jaehrlichFestesDatum';
+        })
+        .sort((a, b) => {
+          return a.bezeichnung.localeCompare(b.bezeichnung, 'de');
+        }) ?? []
+    );
+  });
+  readonly ausnahmen = computed(() => {
+    const ausnahmen = [...(this.bestand()?.ausnahmen ?? [])];
+    return ausnahmen.sort((a, b) => {
+      return a.datum.localeCompare(b.datum);
     });
   });
 
   constructor() {
+    for (const { value } of WOCHENTAGE) {
+      const tagForm = this.getTagForm(value);
+      tagForm.controls.geoeffnet.valueChanges
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((geoeffnet) => {
+          updateZeitfelderStatus(tagForm, geoeffnet);
+        });
+    }
     effect(() => {
       const pfad = this.pfad();
-      void this.load(pfad);
+      untracked(() => {
+        void this.load(pfad);
+      });
     });
     effect(() => {
       const inProgress = this.kontext()?.inProgress ?? false;
       if (inProgress && this.form.enabled) this.form.disable({ emitEvent: false });
-      if (!inProgress && this.form.disabled) this.form.enable({ emitEvent: false });
+      if (!inProgress && this.form.disabled) {
+        this.form.enable({ emitEvent: false });
+        for (const { value } of WOCHENTAGE) {
+          const tagForm = this.getTagForm(value);
+          updateZeitfelderStatus(tagForm, tagForm.controls.geoeffnet.value);
+        }
+      }
     });
   }
 
@@ -189,7 +232,7 @@ export class OeffnungszeitenFiliale {
   }
 
   /**
-   * Öffnet den Dialog zum Anlegen eines einmaligen oder wiederkehrenden Sondertags.
+   * Öffnet den Dialog zum Anlegen eines jährlich wiederkehrenden Sondertags.
    */
   openSondertagAnlegen(): void {
     this.dialog.open(SondertagBearbeitenDialog, {
@@ -216,7 +259,7 @@ export class OeffnungszeitenFiliale {
       .open(BestaetigungDialog, {
         panelClass: ['pur-dialog__panel'],
         data: {
-          titel: 'Sondertag löschen',
+          titel: 'Jährlichen Sondertag löschen',
           nachricht: `„${sondertag.bezeichnung}“ wirklich löschen?`,
           bestaetigenText: 'Löschen',
         },
@@ -229,24 +272,34 @@ export class OeffnungszeitenFiliale {
   }
 
   /**
-   * Öffnet den Dialog zum Bearbeiten eines einmaligen Sondertags.
+   * Öffnet den Dialog zum Anlegen einer Datumsausnahme.
    */
-  openEinmaligenSondertagBearbeiten(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
-    this.dialog.open(SondertagBearbeitenDialog, {
+  openDatumsausnahmeAnlegen(): void {
+    this.dialog.open(DatumsausnahmeBearbeitenDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: { pfad: this.pfad() },
+    });
+  }
+
+  /**
+   * Öffnet den Dialog zum Bearbeiten einer Datumsausnahme.
+   */
+  openDatumsausnahmeBearbeiten(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
+    this.dialog.open(DatumsausnahmeBearbeitenDialog, {
       panelClass: ['pur-dialog__panel'],
       data: { pfad: this.pfad(), ausnahme },
     });
   }
 
   /**
-   * Löscht einen einmaligen Sondertag nach Bestätigung.
+   * Löscht eine Datumsausnahme nach Bestätigung.
    */
-  deleteEinmaligenSondertag(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
+  deleteDatumsausnahme(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
     this.dialog
       .open(BestaetigungDialog, {
         panelClass: ['pur-dialog__panel'],
         data: {
-          titel: 'Sondertag löschen',
+          titel: 'Einmaligen Sondertag löschen',
           nachricht: `„${ausnahme.bezeichnung}“ für den ${ausnahme.datum} wirklich löschen?`,
           bestaetigenText: 'Löschen',
         },
@@ -274,6 +327,23 @@ export class OeffnungszeitenFiliale {
     return `${datumsregel.tag}.${datumsregel.monat}.`;
   }
 
+  /**
+   * Formatiert das Datum eines einmaligen Sondertags für die Listendarstellung.
+   */
+  getEinmaligesDatum(ausnahme: IFilialeinstellungAusnahmeEintrag): string {
+    const [jahr, monat, tag] = ausnahme.datum.split('-');
+    return `${tag}.${monat}.${jahr}`;
+  }
+
+  /**
+   * Formatiert Aktiv- und Öffnungsstatus eines besonderen Tags für die Listendarstellung.
+   */
+  getOeffnungsstatus(oeffnungsregel: TOeffnungsregel, aktiv = true): string {
+    if (!aktiv) return 'Inaktiv · Wochentagsregel gilt';
+    if (!oeffnungsregel.geoeffnet) return 'Aktiv · Geschlossen';
+    return `Aktiv · Geöffnet ${oeffnungsregel.beginnLokalzeit}–${oeffnungsregel.endeLokalzeit} Uhr`;
+  }
+
   // ===== Interne Helfer =======================
 
   private async load(pfad: IFilialPfad): Promise<void> {
@@ -283,11 +353,16 @@ export class OeffnungszeitenFiliale {
       if (!bestand) return;
       for (const { value } of WOCHENTAGE) {
         const regel = bestand.oeffnungszeiten.wochenregeln[value];
-        this.getTagForm(value).reset({
-          geoeffnet: regel.geoeffnet,
-          beginnLokalzeit: regel.geoeffnet ? regel.beginnLokalzeit : '08:00',
-          endeLokalzeit: regel.geoeffnet ? regel.endeLokalzeit : '18:00',
-        });
+        const tagForm = this.getTagForm(value);
+        tagForm.reset(
+          {
+            geoeffnet: regel.geoeffnet,
+            beginnLokalzeit: regel.beginnLokalzeit ?? '08:00',
+            endeLokalzeit: regel.endeLokalzeit ?? '18:00',
+          },
+          { emitEvent: false },
+        );
+        updateZeitfelderStatus(tagForm, regel.geoeffnet);
       }
       this.form.markAsPristine();
     } catch {

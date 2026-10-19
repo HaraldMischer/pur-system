@@ -101,22 +101,25 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Datumsausnahmen sind festgelegt. Eine Öffnungsregel beschreibt genau einen durchgehenden Zeitraum und kann mit
   `endetAmFolgetag` über Mitternacht reichen; Pausen beziehungsweise mehrere Öffnungszeiträume je Tag sind nicht vorgesehen.
   Der lokale Feiertagskatalog berechnet feste und bewegliche gesetzliche Feiertage nach Jahr und Bundesland und erzeugt die
-  initial aktiven, geschlossenen Einträge einschließlich Heiligabend und Silvester. Die Oberfläche trennt Wochentage,
-  gesetzliche Feiertage und Sondertage; Heiligabend, Silvester sowie eigene einmalige und jährlich wiederkehrende Einträge
-  gehören zu den Sondertagen. Die Auflösung verwendet intern verbindlich
+  initial aktiven, geschlossenen Einträge einschließlich Heiligabend und Silvester. Die Oberfläche trennt die Bereiche
+  `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`. Heiligabend, Silvester und eigene
+  jährliche Sondertage besitzen einen Aktivstatus; einmalige Sondertage gelten für genau ein vollständiges Datum, besitzen
+  keinen Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Die Auflösung verwendet intern verbindlich
   `Ausnahme → Sondertag → Wochentag`, meldet kollidierende Sondertage und ordnet über Mitternacht reichende Regeln
   vollständig ihrem Startdatum zu. Der Abgleich nach einem Bundeslandwechsel erhält gemeinsame und benutzerdefinierte
   Sondertage. Der `FilialeinstellungService` lädt und schreibt vollständige Filialbestände, initialisiert bestehende Filialen
   nur mit ausdrücklich übergebenen Grundlagen und verwaltet Sondertage sowie Datumsausnahmen als einzelne Dokumente. Der
-  `FilialeinstellungStore` hält Lade-, Schreib- und Fehlerzustände je Filiale getrennt und stellt die Datumsauflösung
-  öffentlich bereit. Firestore Rules begrenzen den Zugriff auf Master beziehungsweise zugeordnete Office- und Filialkonten mit
-  dem Bereich `einstellungen` und validieren Dokument-IDs, Feldmengen, Datumsregeln und lokale Zeitwerte. Die geschützte
-  Einstellungsroute und Sidebar-Gruppe führen auf die Öffnungszeiten. Dort werden ausgewählte Filialen unabhängig geladen und
-  alle sieben Wochenregeln, gesetzliche Feiertage sowie einmalige und jährlich wiederkehrende Sondertage gepflegt.
+  `FilialeinstellungStore` hält Firestore-Rohdaten, validierte Bestände sowie Lade-, Schreib- und Fehlerzustände je Filiale
+  getrennt und stellt die Datumsauflösung öffentlich bereit. Die Rohdaten werden vor der fachlichen Validierung im Store
+  bereitgestellt und protokolliert. Firestore Rules begrenzen den Zugriff gemäß Berechtigungsmatrix auf Master beziehungsweise
+  zugeordnete Office- und Filialkonten mit dem Bereich `einstellungen`; die fachliche Datenvalidierung erfolgt im
+  TypeScript-Code. Die
+  geschützte Einstellungsroute und Sidebar-Gruppe führen auf die Öffnungszeiten. Dort werden ausgewählte Filialen unabhängig
+  geladen und alle sieben Wochenregeln, gesetzlichen Feiertage, jährlichen Sondertage und einmaligen Sondertage gepflegt.
   Nordrhein-Westfalen wird
   zunächst intern als Bundesland verwendet; die technische Zeitzone `Europe/Berlin` ist keine gespeicherte Filialeinstellung.
-  Die Oberfläche erläutert die Auflösungsreihenfolge mit den sichtbaren Begriffen einmaliger Sondertag, Feiertag,
-  wiederkehrender Sondertag und Wochentag.
+  Die Oberfläche erläutert die Auflösungsreihenfolge mit den sichtbaren Begriffen einmaliger Sondertag, gesetzlicher Feiertag,
+  jährlicher Sondertag und Wochentag.
 - Das Mitarbeiter-Domainmodell führt optional `farbkennung` im Firestore-Dokument und im Anwendungseintrag. Vorhandene Werte
   werden geladen und im Schichtraster sowie in der Mitarbeiterübersicht dargestellt. Eine Oberfläche zur Pflege der Farbkennung
   ist noch nicht umgesetzt.
@@ -126,10 +129,10 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Filialkonten auf ihre eigene Filiale begrenzt. In der Filial-App sollen Planungsaktionen im Frontend zusätzlich nur für einen
   aktiven Firma-Mitarbeiter der eigenen Filiale mit `dienstplaner` angeboten werden. Die Mitarbeiter-App bleibt unabhängig von
   dieser betrieblichen Rolle rein lesend und zeigt nur veröffentlichte Pläne aus den fachlichen `filialIds`.
-- `dienstplaner` ist lokal im Firma-Mitarbeiter-Modell, in Anlage und Bearbeitung, in der Card-Darstellung sowie in der
-  allgemeinen Rollenvalidierung der Firestore Rules ergänzt. Konkrete Rules für Dienstplan, Version und Schicht begrenzen
-  Filialkonten auf ihren Filialpfad, Mitarbeiterzugänge auf den aktuellen veröffentlichten Stand und Planungszugriffe auf
-  erlaubte Filialen, gültige Entwürfe und kontrollierte Zustandswechsel. Die frühere rekursive Filialregel ist entfernt. Die
+- `dienstplaner` ist lokal im Firma-Mitarbeiter-Modell, in Anlage und Bearbeitung sowie in der Card-Darstellung ergänzt.
+  Konkrete Rules für Dienstplan, Version und Schicht prüfen Rolle, Filialpfad und CRUD-Recht gemäß Berechtigungsmatrix.
+  Mitarbeiterzugänge lesen alle Dienstplanpfade ihrer über den verknüpften Mitarbeiter zugeordneten Filialen; das Frontend lädt
+  und zeigt weiterhin nur veröffentlichte Stände. Die frühere rekursive Filialregel ist entfernt. Die
   zusätzliche Prüfung des im Filial-Frontend geführten Firma-Mitarbeiters und seiner Rolle ist clientseitig, bei einem
   manipulierten Client umgehbar und noch nicht umgesetzt. Die aktuellen Rules sind durch Emulator-Tests abgesichert und wurden
   am 13.10.2026 produktiv deployed.
@@ -155,7 +158,7 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Mitarbeiterdokument aufgelöst. Der Mitarbeiter-Store verwendet bereits geladene Einträge und lädt nur eindeutige, im
   geöffneten Dienstplan referenzierte und noch fehlende Mitarbeiter mit `networkOnly` gezielt nach. Das Schichtmodell und neue
   Schreibzugriffe speichern ausschließlich `mitarbeiterId`; ein vorhandenes Legacy-Feld `mitarbeiterAnzeigename` wird beim Lesen
-  ignoriert. Die Firestore Rules lehnen neue Schichtdokumente mit diesem Legacy-Feld ab.
+  ignoriert. Neue Schichtdokumente mit diesem Legacy-Feld werden durch den TypeScript-Code abgelehnt.
 - Dienstplan, unveränderliche Modellschichten, Version und konkrete Schichten bleiben einzelne kleine Dokumente. Es werden keine
   über Jahre wachsenden Arrays gespeichert; mit der Historie steigen nur Dokumentanzahl und Lesezugriffe der vollständigen
   Filialladung.
@@ -166,8 +169,8 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Modell-Momentaufnahme und erster Entwurfsversion erfolgt atomar. Anlegen, Bearbeiten und Löschen einer Schicht erhöhen die
   Versionsrevision in einer Firestore-Transaktion. Eine abweichende Revision verhindert veraltete Schreibzugriffe. Die
   Transaktion für Veröffentlichung und Archivierung folgt in Todo 21.10.
-- Die zeitliche Konfliktprüfung bleibt eine Frontend-Fachprüfung. Firestore Rules sollen Rollen, Filialgrenzen, Entwurfsstatus,
-  Benutzer-UID und Revisionsfortschritt absichern, können Überschneidungen mehrerer Schichtdokumente aber nicht berechnen.
+- Die zeitliche Konfliktprüfung, Entwurfsstatus, Benutzer-UID und Revisionsfortschritt bleiben Frontend-Fachprüfungen. Firestore
+  Rules sichern ausschließlich Rolle, Filialgrenzen und CRUD-Rechte gemäß Berechtigungsmatrix.
 - Die technische Planung aus Todo 21.3 ist abgeschlossen. Domainmodell, deutsche Firestore-Pfade, Abfrage- und Cache-Strategien,
   Transaktionsablauf und Sicherheitsgrenzen sind festgelegt. Modelltestfälle für Monatsgrenzen, Zeitberechnung, Normalisierung
   und Zustandswechsel sowie ein Monatsplan mit mehreren Tagen, Mitarbeitern und Schichten sind als Grundlage für 21.4 und 21.5
@@ -222,12 +225,12 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Das für Desktop und Tablet
   ausgelegte Raster scrollt horizontal und behält dabei die Tagesspalte im sichtbaren Bereich. Das vertikale Scrollen bleibt beim
   umgebenden Dienstplanbereich.
-- Firestore Rules verlangen bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben Monatsplans.
-  Beim Bearbeiten sind Modellschicht, Beginn, Ende und Pause unveränderlich; nur die Mitarbeiterzuordnung darf zusammen mit den
-  technischen Aktualisierungsfeldern geändert werden.
+- Der TypeScript-Code verlangt bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben
+  Monatsplans. Beim Bearbeiten sind Modellschicht, Beginn, Ende und Pause unveränderlich; nur die Mitarbeiterzuordnung darf
+  zusammen mit den technischen Aktualisierungsfeldern geändert werden.
 - Das Löschen eines Monatsplans entfernt Dienstplan, leere Entwurfsversion und Modellschicht-Momentaufnahme gemeinsam. Der
-  Service lädt Dienstplan und Entwurfsschichten zuvor mit `networkOnly`; Firestore Rules verlangen einen noch nie
-  veröffentlichten Entwurf und dessen gleichzeitige Löschung.
+  Service lädt Dienstplan und Entwurfsschichten zuvor mit `networkOnly` und prüft einen noch nie veröffentlichten Entwurf sowie
+  dessen gemeinsame Löschung.
 - Die bisherige Schichtvorlagenstruktur mit Page, Components, Dialog, Service, Store, Domainmodell, Pfaden und Firestore Rules ist
   vollständig entfernt. Neue und bearbeitete Schichten verwenden ausschließlich `modellschichtId` aus der Momentaufnahme des
   Monatsplans.
@@ -463,16 +466,17 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Lade-, Abschluss- und Fehlerzustände; dadurch bleibt auch ein vollständig geladenes leeres Ergebnis eindeutig. Identische
   laufende oder bereits geladene Kontexte werden nicht erneut geladen. Ein zentraler Reset verwirft sämtliche
   Mitarbeiterkontexte und schützt bei einem Sitzungswechsel sowie nach einer Mitarbeitermigration vor veralteten Ladeergebnissen.
-- Die produktiven Firestore Rules erlauben Office- und Filialkonten die vereinbarten Lese-, Anlage- und Aktualisierungszugriffe
-  innerhalb ihres Firmen- beziehungsweise Filialbereichs. Filialkonten dürfen Mitarbeiter ihrer Firma lesen, laden mit ihrer
+- Die lokalen Firestore Rules erlauben Office- und Filialkonten gemäß Berechtigungsmatrix Lese-, Anlage- und
+  Aktualisierungszugriffe innerhalb zugewiesener Firmen. Filialkonten laden und bearbeiten mit ihrer
   Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
   Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
   `erlaubteBereiche`. Master können mehrere nicht verknüpfte Mitarbeiter atomar in einen Zielmitarbeiter zusammenführen; dabei
   werden die Duplikate innerhalb der atomaren Zusammenführung physisch entfernt. Eine eigenständige Löschfunktion stellen
   Service, Store und Oberfläche nicht bereit. Verknüpfte Mitarbeiter sind durch Rules vor dem Zusammenführen und Löschen
   geschützt. Der Aktivstatus beschreibt allein den Beschäftigungsstatus und begrenzt die Lese- und Bearbeitungsrechte nicht.
-  Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Die aktuellen Rules
-  einschließlich der Regeln für Rollen-Arrays und das Zusammenführen wurden am 13.10.2026 produktiv deployed.
+  Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Rollen-Arrays,
+  Feldinhalte und Filialzuordnungen werden im TypeScript-Code validiert. Die vereinfachten lokalen Rules sind noch nicht
+  produktiv deployed.
 - Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
   `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
   passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
@@ -842,12 +846,10 @@ Am 18.10.2026 für den aktuellen Stand geprüft:
   nach erneuter Aktivierung wechselt die Anwendung selbstständig zum Dashboard.
 - 88 Functions-Tests einschließlich technischer Anmeldedaten, doppelter Anmeldenamen, rekursiver Strukturlöschung, eindeutiger
   Mitarbeiterverknüpfung, Rückabwicklung, Rollenprüfung, Hierarchievalidierung und sicherer Kontoaktivierung.
-- 74 Firestore-Emulator-Tests für die Begrenzung der Rolle `mitarbeiter`, unveränderliche Mitarbeiterzuordnungen, fachliche
-  Mitarbeiterzugriffe einschließlich optionaler Master-CRUD-Rechte, eindeutige Filialprofile, direkte Strukturlöschsperren,
-  bestehende Rollen, neue Hierarchie, ausdrücklich erlaubte Untercollections, filialgefilterte Mitarbeiterabfragen,
-  Office-Schreibsperren für Strukturdaten, Profil-Selbstschutz, unveränderliche Profilfelder, Ablehnung nicht aufgeführter
-  Collections, Trennung vom Legacy-Zugriff auf `purCustomers` sowie alleinige Verwaltung der Migrationsstatus durch aktive
-  Master sowie erlaubte und abgewiesene Zugriffe auf Filialeinstellungen.
+- 57 Firestore-Emulator-Tests für aktive Profile, Rollen, hierarchische Zugriffe und die CRUD-Rechte der Berechtigungsmatrix.
+  Abgedeckt sind außerdem die ausdrücklich dokumentierten Ausnahmen für das eigene Profil, Masterzugriffe, den Bereich
+  `einstellungen`, Mitarbeiterzugriffe auf Dienstpläne, Legacy-Konten, strukturelle Cloud-Function-Operationen und den
+  Löschschutz verknüpfter Mitarbeiter. Nicht aufgeführte Collections und unzulässige Pfade werden abgewiesen.
 - Master-, Office-, Filial- und Mitarbeiter-Produktionsbuild sind als vollständige PWA-Ausgaben konfiguriert. Sie enthalten das
   jeweils passende Manifest, zehn erreichbare App-Icons, lokale Roboto- und Material-Icon-Schriften, `ngsw.json`,
   `ngsw-worker.js` und die Ressourcengruppen `app`, `fonts` und `assets`. Die Builds benötigen in der Codex-Umgebung Zugriff

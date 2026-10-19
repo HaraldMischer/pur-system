@@ -8,11 +8,10 @@
   &__item {
     min-width: 0;
 
-    // Reserviert Platz für eine Uhrzeit mit dem Suffix „Uhr“.
+    // Reserviert Platz für eine Uhrzeit mit einem Uhren-Icon.
     &--time {
-      width: 115px;
-      flex: 0 0 115px;
+      width: 140px;
+      flex: 0 0 140px;
     }
-
   }
 }

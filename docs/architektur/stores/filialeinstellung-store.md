@@ -8,9 +8,15 @@ bearbeitet werden, ohne Lade-, Fehler- oder Schreibzustände miteinander zu verm
 
 ## Kontextzustand
 
-Jeder Filialkontext enthält den vollständigen Einstellungsbestand oder `null` sowie `download`, `isLoaded`, `inProgress` und
-`error`. Gleichzeitige identische Ladeaufträge werden zusammengeführt. Generationen verhindern, dass verspätete Ergebnisse nach
-einem Sitzungsreset erneut in den Store geschrieben werden.
+Jeder Filialkontext enthält die unveränderten Firestore-Rohdaten unter `rohdaten`, den fachlich validierten Einstellungsbestand
+unter `bestand` sowie `download`, `isLoaded`, `inProgress` und `error`. `error` unterscheidet eine sichtbare Meldung von der
+konkreten fachlichen oder technischen Ursache. Gleichzeitige identische Ladeaufträge werden zusammengeführt. Generationen
+verhindern, dass verspätete Ergebnisse nach einem Sitzungsreset erneut in den Store geschrieben werden.
+
+Beim Laden schreibt und protokolliert der Store zuerst die empfangenen Rohdaten. Anschließend validiert und überführt der
+`FilialeinstellungService` sie in den fachlichen Bestand. Dadurch bleibt erkennbar, ob keine Daten empfangen wurden oder ob
+empfangene Daten fachlich ungültig sind. In diesem Fall bleiben die Rohdaten im Store und die Oberfläche zeigt sowohl den
+Ladeausgang als auch die konkrete Ursache an.
 
 ## Öffentliche Aktionen
 
@@ -33,5 +39,5 @@ werden sortiert in den lokalen Bestand übernommen; Fehler bleiben im Kontext f�
 sortiert, sondern als Konfigurationsfehler gemeldet. Über Mitternacht reichende Öffnungszeiten bleiben vollständig ihrem
 Startdatum zugeordnet.
 
-Der Store registriert eine nicht reaktiv verfolgte Momentaufnahme beim `StoreSnapshotService`, damit der technische Zustand in
-der vorhandenen Diagnoseausgabe sichtbar bleibt.
+Der Store registriert eine nicht reaktiv verfolgte Momentaufnahme beim `StoreSnapshotService`, damit Kontexte einschließlich
+Rohdaten, validiertem Bestand und Fehlerzustand in der vorhandenen Diagnoseausgabe sichtbar bleiben.

@@ -11,6 +11,15 @@
 - Jede neu angelegte Quelltext- oder Konfigurationsdatei beginnt, soweit der Dateityp Kommentare unterstützt, mit einem Kommentar,
   der den Projektpfad der Datei angibt.
 - Commit-Kommentare werden in diesem Projekt auf Deutsch formuliert.
+- Die Berechtigungsmatrix ist die verbindliche Quelle für Pfad- und CRUD-Rechte der Firestore Rules. Allgemein prüfen die Rules
+  ausschließlich ein aktives Profil, die Benutzerrolle, den Zugriff auf Unternehmer, Firma und Filiale sowie die laut Matrix
+  erlaubte CRUD-Aktion für den konkreten Pfad.
+- Abweichungen von dieser allgemeinen Regel müssen in den Zusatzbedingungen der Berechtigungsmatrix ausdrücklich beschrieben
+  sein, bevor sie in Rules und Rules-Tests umgesetzt werden.
+- Firestore Rules validieren keine fachlichen Felder, Dokument-IDs, Referenzen, Status- oder Zustandswechsel. Diese Validierung
+  erfolgt im TypeScript-Code und dessen Tests.
+- Rules-Tests decken bei wiederholten Strukturen realistische Maximalfälle ab, damit zulässige Schreibvorgänge nicht das
+  Firestore-Limit für Regelausdrücke überschreiten.
 
 ## Projektziel
 
@@ -235,6 +244,23 @@
 - Lokale Component-SCSS-Dateien bleiben als eingebundene Platzhalter bestehen und werden auch dann nicht entfernt, wenn aktuell
   alle Styles durch globale Klassen abgedeckt sind.
 - Beachte die vorhandenen Prettier-Einstellungen aus `package.json`.
+
+## Fehlerbehandlung
+
+- Eine sichtbare Fehlermeldung nennt zuerst die fehlgeschlagene Aktion, z. B. „Die Filialeinstellungen konnten nicht geladen
+  werden.“
+- Ist eine verständliche fachliche Ursache bekannt, wird sie zusätzlich zur fehlgeschlagenen Aktion angezeigt, z. B. „Die
+  Öffnungsregel enthält keine gültige Zeitfolge.“
+- Fachliche Validierungsfehler werden nicht durch eine allgemeine Firebase- oder Standardfehlermeldung ersetzt.
+- Bekannte technische Fehler, z. B. fehlende Berechtigungen oder Netzwerkfehler, werden in verständliche Meldungen übersetzt.
+- Bei unbekannten technischen Fehlern zeigt die Oberfläche nur eine allgemeine Meldung. Der ursprüngliche Fehler wird
+  vollständig über den `DebugLogService` protokolliert.
+- Nach einem Fehler wird der zugehörige Lade- oder Schreibzustand beendet. Die Fehlermeldung bleibt sichtbar und der Vorgang
+  wird nicht automatisch in einer Schleife wiederholt.
+- Bereits geladene gültige Daten und vorhandene Formulareingaben bleiben bei einem Fehler erhalten.
+- Beim Laden werden technischer Datenempfang und fachliche Validierung getrennt behandelt. Es muss erkennbar sein, ob keine Daten
+  empfangen wurden oder ob die empfangenen Daten fachlich ungültig sind.
+- Tests prüfen den sichtbaren Fehlerzustand sowie die Weitergabe oder Protokollierung der ursprünglichen Fehlerursache.
 
 ## Testregeln
 
