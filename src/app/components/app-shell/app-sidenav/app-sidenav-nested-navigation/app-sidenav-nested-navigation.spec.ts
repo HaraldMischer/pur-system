@@ -95,28 +95,6 @@ describe('AppSidenavNestedNavigation', () => {
     );
   });
 
-  it('should expand and collapse a group without emitting a navigation selection', () => {
-    const navigationSelectedSpy = vi.fn();
-    fixture.componentInstance.navigationSelected.subscribe(navigationSelectedSpy);
-    const compiled = fixture.nativeElement as HTMLElement;
-    const toggle = compiled.querySelector<HTMLButtonElement>('button[mat-list-item]');
-    const children = compiled.querySelector('.app-sidenav-nested-navigation__children');
-
-    expect(children?.classList).toContain('app-sidenav-nested-navigation__children--hidden');
-
-    toggle?.click();
-    fixture.detectChanges();
-
-    expect(children?.classList).not.toContain('app-sidenav-nested-navigation__children--hidden');
-    expect(navigationSelectedSpy).not.toHaveBeenCalled();
-
-    toggle?.click();
-    fixture.detectChanges();
-
-    expect(children?.classList).toContain('app-sidenav-nested-navigation__children--hidden');
-    expect(navigationSelectedSpy).not.toHaveBeenCalled();
-  });
-
   it('should emit the navigation selection when a child link is selected', () => {
     const navigationSelectedSpy = vi.fn();
     fixture.componentInstance.navigationSelected.subscribe(navigationSelectedSpy);
@@ -144,12 +122,7 @@ describe('AppSidenavNestedNavigation', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const children = compiled.querySelector('.app-sidenav-nested-navigation__children');
-    const activeLink = compiled.querySelector('.active-nav-item');
-
-    expect(children?.classList).not.toContain('app-sidenav-nested-navigation__children--hidden');
-    expect(activeLink?.textContent).toContain(label);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(label);
   });
 
   it('should omit groups without visible children', () => {

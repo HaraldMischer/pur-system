@@ -84,11 +84,11 @@ describe('BenutzerLoeschenDialog', () => {
 
     await component.deleteBenutzer();
     fixture.detectChanges();
-    const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
-
     expect(closeMock).not.toHaveBeenCalled();
     expect(dialogRefMock.disableClose).toBe(false);
-    expect(alert.textContent?.trim()).toBe('Das Benutzerkonto konnte nicht gelöscht werden.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Das Benutzerkonto konnte nicht gelöscht werden.',
+    );
   });
 
   it('should reject repeated deletion while a write operation is running', async () => {

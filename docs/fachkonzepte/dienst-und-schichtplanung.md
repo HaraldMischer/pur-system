@@ -37,11 +37,11 @@ den Schichten atomar gepflegte Prüfstruktur und ersetzt weder die Dienstplandok
 Die allgemeinen Filialeinstellungen speichern das Bundesland. Die Oberfläche verwendet zunächst fest Nordrhein-Westfalen
 (`DE-NW`) und bietet keine Bundeslandauswahl an. Die technische Zeitzone `Europe/Berlin` gilt anwendungsweit und wird nicht als
 Filialeinstellung gespeichert. Die regelmäßigen Öffnungszeiten enthalten genau eine Regel für jeden Wochentag. Eine geöffnete
-Regel besitzt eine lokale Beginn- und Endzeit sowie `endetAmFolgetag`; damit wird
-beispielsweise eine Montagsöffnung von 07:00 Uhr bis Dienstag 01:00 Uhr eindeutig dem Montag zugeordnet. Eine Öffnungsregel
-beschreibt immer einen durchgehenden Zeitraum. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht Teil des
-Modells. Eine geschlossene Regel darf Zeitwerte für eine spätere Wiederaktivierung behalten; solange sie geschlossen ist,
-werden diese Werte fachlich nicht berücksichtigt.
+Regel besitzt eine lokale Beginn- und Endzeit sowie `endetAmFolgetag`. Neue Filialeinstellungen belegen alle sieben
+Wochenregeln als geöffnet von `06:00` bis `01:00` Uhr am Folgetag vor. Damit wird beispielsweise die Montagsöffnung eindeutig
+dem Montag zugeordnet. Eine Öffnungsregel beschreibt immer einen durchgehenden Zeitraum. Pausen und mehrere
+Öffnungszeiträume innerhalb eines Tages sind nicht Teil des Modells. Eine geschlossene Regel darf Zeitwerte für eine spätere
+Wiederaktivierung behalten; solange sie geschlossen ist, werden diese Werte fachlich nicht berücksichtigt.
 
 Die Oberfläche unterscheidet die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und
 `Einmalige Sondertage`. Einmalige Sondertage werden technisch als konkrete Datumsausnahmen gespeichert. Heiligabend und
@@ -52,12 +52,19 @@ Wiederkehrende Sondertage besitzen eine sichtbare Bezeichnung, einen Aktivstatus
 entweder ein jährlich festes Datum oder einen zentral definierten gesetzlichen Feiertagsschlüssel. Systemdefinierte gesetzliche
 Feiertage werden aus einem lokalen Katalog bundeslandspezifisch berechnet. Lokal oder kommunal begrenzte Feiertage werden nicht
 allein aus dem Bundesland abgeleitet und müssen als eigener fester Sondertag gepflegt werden. Heiligabend und Silvester werden
-wie die landesweit geltenden gesetzlichen Feiertage bei der Initialisierung aktiv und geschlossen angelegt.
+wie die landesweit geltenden gesetzlichen Feiertage bei der Initialisierung inaktiv angelegt. Damit gilt zunächst die
+Wochentagsregel, bis ein abweichender besonderer Tag gezielt aktiviert wird. Die geschlossenen Regeln dieser systemdefinierten
+Tage benötigen initial keine Zeitwerte. Der Bearbeitungsdialog verwendet bei fehlenden Zeitwerten für Feiertage und jährliche
+Sondertage `06:00` bis `01:00` Uhr am Folgetag als Vorbelegung.
+
+Der Aktivstatus steuert ausschließlich, ob die besondere Öffnungsregel die Wochentagsregel überschreibt. Ein gesetzlicher
+Feiertag bleibt unabhängig davon kalendarisch ein gesetzlicher Feiertag. Diese Unterscheidung wird bei späteren Tagesprofilen,
+Feiertagszuschlägen und vergleichbaren fachlichen Auswertungen beibehalten.
 
 Bei einem Bundeslandwechsel bleiben gemeinsame systemdefinierte Feiertage mit ihrer angepassten Öffnungsregel erhalten. Nicht
-mehr landesweit geltende Feiertage werden entfernt, neu geltende aktiv und geschlossen ergänzt. Benutzerdefinierte Sondertage
-bleiben unverändert. Schlüssel, Bezeichnung und Datumsberechnung gesetzlicher Feiertage sind systemdefiniert; Benutzer ändern
-nur Aktivstatus und Öffnungsregel. Bei eigenen festen Sondertagen sind Bezeichnung, Monat, Tag, Aktivstatus und Öffnungsregel
+mehr landesweit geltende Feiertage werden entfernt, neu geltende inaktiv ergänzt. Benutzerdefinierte Sondertage bleiben
+unverändert. Schlüssel, Bezeichnung und Datumsberechnung gesetzlicher Feiertage sind systemdefiniert; Benutzer ändern nur
+Aktivstatus und Öffnungsregel. Bei eigenen festen Sondertagen sind Bezeichnung, Monat, Tag, Aktivstatus und Öffnungsregel
 bearbeitbar.
 
 Benutzerdefinierte Sondertage gelten immer jährlich und besitzen Monat und Tag ohne Jahresangabe. Werden sie nicht mehr

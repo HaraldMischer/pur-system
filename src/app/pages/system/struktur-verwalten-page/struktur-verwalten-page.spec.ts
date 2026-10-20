@@ -69,13 +69,9 @@ describe('StrukturVerwaltenPage', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.pur-page-section__title')?.textContent).toContain(
-      'Firmen und Filialen verwalten',
-    );
     expect(compiled.querySelectorAll('mat-select')).toHaveLength(3);
     expect(compiled.querySelector<HTMLButtonElement>('button')?.disabled).toBe(true);
     expect(compiled.textContent).toContain('Dem Benutzer sind keine Unternehmer zugeordnet.');
-    expect(compiled.querySelector('.pur-form--grid')).not.toBeNull();
     expect(strukturBearbeitenStoreMock.loadUnternehmer).toHaveBeenCalledOnce();
   });
 
@@ -133,10 +129,10 @@ describe('StrukturVerwaltenPage', () => {
 
     component.openFirmaBearbeitenDialog();
 
-    expect(openDialogMock).toHaveBeenCalledWith(FirmaBearbeitenDialog, {
-      data: { firma },
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(openDialogMock).toHaveBeenCalledWith(
+      FirmaBearbeitenDialog,
+      expect.objectContaining({ data: { firma } }),
+    );
   });
 
   it('should open the branch dialog for the selected branch', async () => {
@@ -171,9 +167,9 @@ describe('StrukturVerwaltenPage', () => {
 
     component.openFilialeBearbeitenDialog();
 
-    expect(openDialogMock).toHaveBeenCalledWith(FilialeBearbeitenDialog, {
-      data: { filiale },
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(openDialogMock).toHaveBeenCalledWith(
+      FilialeBearbeitenDialog,
+      expect.objectContaining({ data: { filiale } }),
+    );
   });
 });

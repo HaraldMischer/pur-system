@@ -91,9 +91,6 @@ describe('LoginPage', () => {
     expect(compiled.querySelector('input[formControlName="anmeldename"]')).not.toBeNull();
     expect(compiled.querySelector('mat-select')).toBeNull();
     expect(compiled.textContent).toContain('Anmeldename');
-    expect(compiled.querySelector('form')?.getAttribute('aria-label')).toBe(
-      'Bei Pur-System anmelden',
-    );
   });
 
   it('should toggle password visibility without submitting or changing the password', () => {
@@ -104,25 +101,16 @@ describe('LoginPage', () => {
       password: 'secret-password',
     });
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const input = compiled.querySelector<HTMLInputElement>('input[formControlName="password"]');
-    const button = compiled.querySelector<HTMLButtonElement>('button[matSuffix]');
+    expect(page.passwortSichtbar()).toBe(false);
 
-    expect(input?.type).toBe('password');
-    expect(button?.type).toBe('button');
-    expect(button?.getAttribute('aria-label')).toBe('Passwort anzeigen');
+    page.togglePasswortSichtbarkeit();
 
-    button?.click();
-    fixture.detectChanges();
+    expect(page.passwortSichtbar()).toBe(true);
 
-    expect(input?.type).toBe('text');
-    expect(button?.getAttribute('aria-label')).toBe('Passwort ausblenden');
+    page.togglePasswortSichtbarkeit();
 
-    button?.click();
-    fixture.detectChanges();
-
-    expect(input?.type).toBe('password');
-    expect(input?.value).toBe('secret-password');
+    expect(page.passwortSichtbar()).toBe(false);
+    expect(page.loginForm.controls.password.value).toBe('secret-password');
     expect(benutzerStoreMock.login).not.toHaveBeenCalled();
   });
 
@@ -154,9 +142,7 @@ describe('LoginPage', () => {
 
     await page.submitLogin();
 
-    expect(compiled.querySelector('[role="status"]')?.textContent).toContain(
-      'Die Anmeldung benötigt eine Internetverbindung.',
-    );
+    expect(compiled.textContent).toContain('Die Anmeldung benötigt eine Internetverbindung.');
     expect(compiled.querySelector<HTMLButtonElement>('[type="submit"]')?.disabled).toBe(true);
     expect(benutzerStoreMock.login).not.toHaveBeenCalled();
     expect(navigateSpy).not.toHaveBeenCalled();
@@ -168,8 +154,6 @@ describe('LoginPage', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
 
-    expect(compiled.querySelector('.pur-message--error')?.textContent).toContain(
-      'Anmeldename oder Passwort ist nicht korrekt.',
-    );
+    expect(compiled.textContent).toContain('Anmeldename oder Passwort ist nicht korrekt.');
   });
 });

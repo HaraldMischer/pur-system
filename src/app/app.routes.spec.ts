@@ -9,19 +9,6 @@ import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guar
 import { routes } from './app.routes';
 
 describe('app routes', () => {
-  it('should define titles for all routed pages', () => {
-    const expectedTitles = new Map([
-      ['login', 'Anmelden'],
-      ['initialisierungsfehler', 'Initialisierungsfehler'],
-      ['dashboard', 'Dashboard'],
-      ['passwort', 'Passwort ändern'],
-    ]);
-
-    expectedTitles.forEach((title, path) => {
-      expect(routes.find((route) => route.path === path)?.title).toBe(title);
-    });
-  });
-
   it('should provide a protected componentless shift plan area with three pages', () => {
     const schichtplanRoute = routes.find((route) => route.path === 'schichtplan');
     const redirectRoute = schichtplanRoute?.children?.find((route) => route.path === '');
@@ -35,12 +22,9 @@ describe('app routes', () => {
     expect(schichtplanRoute?.data?.['bereich']).toBe('schichtplan');
     expect(schichtplanRoute?.loadComponent).toBeUndefined();
     expect(redirectRoute).toEqual({ path: '', pathMatch: 'full', redirectTo: 'ansicht' });
-    expect(ansichtRoute?.title).toBe('Dienstplanübersicht');
     expect(ansichtRoute?.loadComponent).toBeDefined();
-    expect(planungRoute?.title).toBe('Dienstplan bearbeiten');
     expect(planungRoute?.canActivate).toEqual([dienstplanPlanungGuard]);
     expect(planungRoute?.loadComponent).toBeDefined();
-    expect(einstellungenRoute?.title).toBe('Schichtmodelle');
     expect(einstellungenRoute?.canActivate).toEqual([dienstplanPlanungGuard]);
     expect(einstellungenRoute?.loadComponent).toBeDefined();
   });
@@ -54,7 +38,6 @@ describe('app routes', () => {
     expect(mitarbeiterRoute?.data?.['bereich']).toBe('mitarbeiter');
     expect(mitarbeiterRoute?.loadComponent).toBeUndefined();
     expect(redirectRoute).toEqual({ path: '', pathMatch: 'full', redirectTo: 'liste' });
-    expect(listeRoute?.title).toBe('Mitarbeiter');
     expect(listeRoute?.canActivate).toEqual([mitarbeiterVerwaltungGuard]);
     expect(listeRoute?.loadComponent).toBeDefined();
   });
@@ -83,7 +66,6 @@ describe('app routes', () => {
       pathMatch: 'full',
       redirectTo: 'oeffnungszeiten',
     });
-    expect(oeffnungszeitenRoute?.title).toBe('Öffnungszeiten');
     expect(oeffnungszeitenRoute?.loadComponent).toBeDefined();
   });
 

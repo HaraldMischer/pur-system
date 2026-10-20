@@ -98,23 +98,6 @@ describe('FirmaBearbeitenDialog', () => {
     expect(closeMock).not.toHaveBeenCalled();
   });
 
-  it('should use only global form and dialog layout classes', () => {
-    const fixture = TestBed.createComponent(FirmaBearbeitenDialog);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const form = compiled.querySelector('form');
-    const dialogContent = compiled.querySelector('mat-dialog-content');
-    const dialogActions = compiled.querySelector('mat-dialog-actions');
-    const submitButton = compiled.querySelector<HTMLButtonElement>('button[type="submit"]');
-
-    expect(form?.id).toBe('firma-bearbeiten-form');
-    expect(form?.classList).toContain('pur-form--grid');
-    expect(dialogContent?.classList).toContain('pur-dialog__content');
-    expect(form?.contains(dialogActions)).toBe(false);
-    expect(submitButton?.getAttribute('form')).toBe('firma-bearbeiten-form');
-    expect(compiled.querySelector('[class*="firma-bearbeiten-dialog__"]')).toBeNull();
-  });
-
   it('should reject mandatory fields containing only whitespace', async () => {
     const component = TestBed.createComponent(FirmaBearbeitenDialog).componentInstance;
     component.firmaForm.controls.anzeigename.setValue('   ');

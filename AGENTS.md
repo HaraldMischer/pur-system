@@ -264,15 +264,21 @@
 
 ## Testregeln
 
-- Tests prüfen vorrangig fachliches Verhalten und öffentlich beobachtbare Ergebnisse statt interner Implementierungsdetails.
+- Tests prüfen ausschließlich fachliche und technische Funktionalität sowie deren öffentlich beobachtbare Ergebnisse statt
+  interner Implementierungsdetails.
 - Rollen, Berechtigungen, Validierung, erfolgreiche Abläufe und relevante Fehlerfälle werden gezielt abgesichert.
-- Template-Tests prüfen sichtbares oder interaktives Verhalten. Reine DOM-Verschachtelung, dekorative Elemente und CSS-Klassen
-  werden nur getestet, wenn sie für Funktion, Barrierefreiheit oder verbindliche Projektkonventionen relevant sind.
+- Template-Tests prüfen ausschließlich fachliche oder technische Interaktionen und deren Ergebnisse. DOM-Elemente dürfen zum
+  Auslösen einer Interaktion oder zum Erfassen eines funktionalen Ergebnisses ausgewählt werden; ihre Art, Verschachtelung oder
+  rein strukturelle Existenz ist kein eigener Testgegenstand.
+- Styling wird nicht durch Unit-Tests abgesichert. CSS-Klassen, Styling-Modifier, Farben, Abstände, Größen, Layouts,
+  dekorative Elemente und rein visuelle Varianten werden weder direkt noch indirekt getestet. Das gilt auch für verbindliche
+  Styling-Konventionen des Projekts.
+- Barrierefreiheitsmerkmale werden nicht durch Unit-Tests abgesichert. Dazu gehören insbesondere ARIA-Attribute, Rollen,
+  zugängliche Namen und reine Tastaturbedienung.
 - Reine UI-Texte wie Labels, Überschriften und Formulierungen werden nicht auf ihren exakten Wortlaut getestet. Ausnahmen gelten
-  nur, wenn der Text fachliche Bedeutung hat, für Barrierefreiheit erforderlich ist oder einen verbindlichen Fehler-, Status-
-  oder Bestätigungstext darstellt.
-- Selektoren und Erwartungen werden so gewählt, dass fachlich bedeutungslose Template- oder Styling-Änderungen keine Tests
-  brechen.
+  nur, wenn der Text fachliche Bedeutung hat oder einen verbindlichen Fehler-, Status- oder Bestätigungstext darstellt.
+- Selektoren und Erwartungen werden so gewählt, dass fachlich oder technisch bedeutungslose Template-, Struktur-, Styling- oder
+  Barrierefreiheitsänderungen keine Tests brechen.
 - Bestehende Tests werden bei einer Verhaltensänderung auf ihre fachliche Aussage geprüft und angepasst, wenn das zuvor erwartete
   Verhalten bewusst entfällt.
 - Redundante Tests und Tests, die ausschließlich die Testanzahl erhöhen, werden vermieden.

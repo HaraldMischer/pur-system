@@ -8,205 +8,6 @@
 - `[ ]` offen
 - `[-]` zurückgestellt
 
-## 20. Filialeinstellungen und Öffnungszeiten verwalten
-
-#### Ziel
-
-Filialbezogene Einstellungen werden unabhängig von einzelnen Fachbereichen als gemeinsame Grundlage je Filiale verwaltet. In der
-Hauptnavigation entsteht dafür die ausklappbare Gruppe `Einstellungen`. Ihr erster Unterpunkt `Öffnungszeiten` ist unter
-`/einstellungen/oeffnungszeiten` erreichbar; weitere Einstellungsseiten können später als gleichrangige Unterpunkte ergänzt
-werden. Die gesamte Gruppe wird über den App-Bereich `einstellungen` freigegeben.
-
-Der erste Ausbau umfasst die Feiertagsauflösung für Nordrhein-Westfalen sowie die Kundenöffnungszeiten. Die
-Konfiguration wird unterhalb der jeweiligen Filiale in der Collection `einstellung` gespeichert. Das Dokument `allgemein`
-enthält die dafür benötigten Grundlagen. Das Dokument `oeffnungszeiten` enthält die regelmäßigen Wochenregeln.
-Wiederkehrende oder berechnete besondere Tage werden mit sichtbarer Bezeichnung in der Subcollection `sondertag` verwaltet.
-Konkrete Abweichungen für ein einzelnes Datum liegen in der Subcollection `ausnahme`, damit die Listen nicht im zentralen
-Einstellungsdokument wachsen.
-
-Die Öffnungszeiten beschreiben ausschließlich den Kundenbetrieb der Filiale. Sie werden nicht mit den Arbeitszeiten eines
-Schichtmodells vermischt und begrenzen Mitarbeiterschichten nicht automatisch. Dadurch bleiben Vor- und Nachbereitung sowie
-Arbeiten an geschlossenen Tagen grundsätzlich fachlich abbildbar.
-
-#### Betroffene Dateien
-
-Änderungen:
-
-- functions/src/create-benutzer.ts
-- functions/src/create-benutzer.spec.ts
-- functions/src/update-benutzer-profil.ts
-- functions/src/update-benutzer-profil.spec.ts
-- src/app/app.routes.ts
-- src/app/app.routes.spec.ts
-- src/app/commons/constants/app-kontext-selector.constants.ts
-- src/app/commons/constants/app-kontext-selector.constants.spec.ts
-- src/app/commons/constants/firebase.constants.ts
-- src/app/commons/constants/firebase.constants.spec.ts
-- src/app/commons/constants/navigation.constants.ts
-- src/app/commons/constants/navigation.constants.spec.ts
-- src/app/commons/models/app/app-bereich.ts
-- src/app/commons/models/app/firestore-pfad.types.ts
-- src/app/commons/utils/benutzer/erlaubte-bereiche.ts
-- src/app/commons/utils/benutzer/erlaubte-bereiche.spec.ts
-- src/app/components/system/benutzer/benutzer-anlage/benutzer-anlage.ts
-- src/app/components/system/benutzer/benutzer-anlage/benutzer-anlage.spec.ts
-- src/app/components/system/benutzer/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.ts
-- src/app/components/system/benutzer/benutzer-verwaltung/benutzer-bearbeiten-dialog/benutzer-bearbeiten-dialog.spec.ts
-- src/assets/scss/modules/_list.scss
-- firestore.rules
-- rules-tests/firestore.rules.test.mjs
-- docs/fachkonzepte/dienst-und-schichtplanung.md
-- docs/matrizen/berechtigungen.md
-- docs/matrizen/kontextselektor.md
-- docs/projekt-plan.md
-- docs/projekt-stand.md
-- docs/todo_next.md
-
-Neu hinzuzufügen:
-
-- src/app/commons/models/domain/filialeinstellung.ts
-- src/app/commons/utils/filialeinstellung/feiertag.ts
-- src/app/commons/utils/filialeinstellung/feiertag.spec.ts
-- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.ts
-- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.spec.ts
-- src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.ts
-- src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.html
-- src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.scss
-- src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.spec.ts
-- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.ts
-- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.html
-- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.scss
-- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.spec.ts
-- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.ts
-- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.html
-- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.scss
-- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.spec.ts
-- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.ts
-- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.html
-- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.scss
-- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.spec.ts
-- src/app/components/shared/datum-eingabe/datum-eingabe.ts
-- src/app/components/shared/datum-eingabe/datum-eingabe.html
-- src/app/components/shared/datum-eingabe/datum-eingabe.scss
-- src/app/components/shared/datum-eingabe/datum-eingabe.spec.ts
-- src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.ts
-- src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.html
-- src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.scss
-- src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.spec.ts
-- docs/architektur/components/einstellungen.md
-- docs/architektur/services/filialeinstellung-service.md
-- docs/architektur/stores/filialeinstellung-store.md
-- src/app/services/domain/filialeinstellung.service.ts
-- src/app/services/domain/filialeinstellung.service.spec.ts
-- src/app/stores/domain/filialeinstellung.store.ts
-- src/app/stores/domain/filialeinstellung.store.spec.ts
-
-#### Schritt 1: Firestore-Struktur und Einstellungsmodell festlegen
-
-- [x] Die Collection `filiale/{filialeId}/einstellung` als gemeinsamen Ablageort für filialbezogene Konfiguration einführen.
-- [x] Im Dokument `einstellung/allgemein` das Bundesland speichern. Die Oberfläche verwendet zunächst fest
-      Nordrhein-Westfalen (`DE-NW`); eine Auswahl ist noch nicht vorgesehen. Die deutschlandweit einheitlich verwendete
-      Zeitzone `Europe/Berlin` bleibt eine technische Konstante und wird nicht als Filialeinstellung gespeichert.
-- [x] Im Dokument `einstellung/oeffnungszeiten` die festen Einträge `montag`, `dienstag`, `mittwoch`, `donnerstag`, `freitag`,
-      `samstag` und `sonntag` als regelmäßige Wochenregeln speichern.
-- [x] Jede geöffnete Öffnungsregel mit `beginnLokalzeit`, `endeLokalzeit` und `endetAmFolgetag` als genau einen durchgehenden
-      Zeitraum modellieren. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht vorgesehen. Geschlossene
-      Regeln dürfen für eine spätere Wiederaktivierung entweder keine Zeitwerte oder eine vollständige gültige Zeitfolge
-      enthalten. Solange sie geschlossen sind, werden vorhandene Zeitwerte fachlich nicht berücksichtigt.
-- [x] Besondere Tage unter `einstellung/oeffnungszeiten/sondertag/{sondertagId}` speichern. Jeder Eintrag enthält mindestens
-      `bezeichnung`, `aktiv`, eine diskriminierte `datumsregel` und eine eigene `oeffnungsregel`.
-- [x] Für `datumsregel` mindestens `jaehrlichFestesDatum` mit Monat und Tag sowie `gesetzlicherFeiertag` mit einem zentral
-      definierten Feiertagsschlüssel unterstützen. Dadurch lassen sich beispielsweise Heiligabend und Silvester ebenso wie
-      Karfreitag oder Ostermontag eindeutig benennen und auflösen.
-- [x] Datumsbezogene Abweichungen unter `einstellung/oeffnungszeiten/ausnahme/{YYYY-MM-DD}` speichern. Ein Ausnahmedokument
-      enthält Datum, Bezeichnung und eine vollständige Öffnungsregel für genau dieses Datum.
-
-#### Schritt 2: Auflösungsreihenfolge verbindlich definieren
-
-- [x] Einen zentralen Katalog und eine lokal ausführbare Berechnung für bundeslandspezifische feste und bewegliche gesetzliche
-      Feiertage bereitstellen. Feiertagsschlüssel, Bezeichnung und Datum dürfen keine unkontrollierte externe
-      Laufzeitabhängigkeit haben.
-- [x] Die bekannten gesetzlichen Feiertage sowie übliche feste Sondertage bei der Initialisierung einer Filiale als
-      erweiterbare Liste anlegen. Benutzer bearbeiten deren Öffnungsregel und Aktivstatus; berechnete Feiertagsdaten werden
-      nicht manuell gepflegt. Weitere feste jährliche Sondertage können ergänzt werden.
-- [x] Für ein konkretes Datum zuerst eine datumsbezogene Ausnahme, danach einen passenden aktiven Sondertag und zuletzt die
-      regelmäßige Wochenregel auswerten: `Ausnahme → Sondertag → Wochentag`.
-- [x] Kollisionen mehrerer aktiver Sondertage für dasselbe Datum als Konfigurationsfehler behandeln. Eine Datumsausnahme darf
-      eine solche Kollision bewusst überschreiben; ohne Ausnahme wird keine beliebige Reihenfolge verwendet.
-- [x] Eine über Mitternacht reichende Öffnungsregel vollständig dem Datum zuordnen, an dem sie beginnt. Die Regel des Folgetags
-      greift erst nach dem Ende dieses Zeitraums.
-- [x] Bei einem Bundeslandwechsel gemeinsame systemdefinierte Feiertage mit ihrer angepassten Öffnungsregel erhalten, nicht mehr
-      landesweit geltende entfernen und neu geltende aktiv sowie geschlossen ergänzen. Benutzerdefinierte Sondertage bleiben
-      unverändert.
-- [x] Fehlende oder unvollständige Einstellungen nicht stillschweigend als geöffnet interpretieren. Für Laden, Bearbeiten und
-      Dienstplananlage einen verständlichen Fehler- beziehungsweise Initialisierungszustand festlegen.
-- [x] Öffnungszeiten als Information behandeln. Ob eine konkrete Mitarbeiterschicht außerhalb der Öffnungszeit fachlich
-      zulässig ist, wird nicht allein aus der Öffnungsregel abgeleitet.
-
-#### Schritt 3: Service, Store und Sicherheit umsetzen
-
-- [x] Einen `FilialeinstellungService` für das Laden und Speichern der allgemeinen Einstellungen, Wochenregeln, Sondertage und
-      datumsbezogenen Ausnahmen einer konkreten Filiale bereitstellen.
-- [x] Einen `FilialeinstellungStore` mit getrennten Filialkontexten, Lade- und Schreibzuständen sowie einer öffentlichen
-      Auflösung der für ein Datum gültigen Öffnungsregel bereitstellen.
-- [x] Schreibvorgänge für die begrenzten Einstellungsdokumente atomar ausführen und Sondertage sowie Ausnahmen als einzelne
-      Dokumente unabhängig verwalten.
-- [x] Firestore Rules gemäß Berechtigungsmatrix auf berechtigte Rollen, aktive Profile, Filialzugriffe, den Bereich
-      `einstellungen` und die vorgesehenen Collection-Pfade begrenzen; fachliche Datenvalidierung im TypeScript-Code halten.
-- [x] Bestehende Filialen ohne Einstellungsdokumente kontrolliert initialisieren; Bundesland und Öffnungszeiten dürfen nicht aus
-      Postleitzahl oder Ortsname geraten werden.
-
-#### Schritt 4: Einstellungsoberfläche einordnen und umsetzen
-
-- [x] Die komponentenlose Elternroute `/einstellungen` mit dem App-Bereich `einstellungen` und die direkt routbare Page
-      `/einstellungen/oeffnungszeiten` anlegen. Die Sidebar zeigt `Einstellungen` als ausklappbare Gruppe und darunter zunächst
-      ausschließlich `Öffnungszeiten`.
-- [x] Öffnungszeiten je ausgewählter Filiale getrennt laden und bearbeiten; Änderungen einer Filiale dürfen keine andere
-      ausgewählte Filiale beeinflussen. Bundesland und Zeitzone werden nicht als Formularfelder dargestellt.
-- [x] Alle sieben Wochentage vollständig darstellen. Geschlossene Tage zeigen ihre gespeicherten Zeitfelder deaktiviert;
-      geöffnete Tage verlangen genau eine gültige Beginn- und Endzeit und können ausdrücklich am Folgetag enden.
-- [x] Die Oberfläche in `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage` gliedern.
-      Heiligabend und Silvester werden als jährliche Sondertage und nicht als gesetzliche Feiertage dargestellt.
-- [x] Eigene Sondertage mit Bezeichnung, Öffnungsstatus und gegebenenfalls abweichenden Zeiten anlegen, bearbeiten und löschen.
-      Sondertage gelten immer jährlich nach Monat und Tag und können deaktiviert werden. Einmalige Sondertage werden technisch
-      als konkrete Datumsausnahmen über eine getrennte Aktion ohne Aktivstatus angelegt, bearbeitet und gelöscht.
-- [x] Gesetzliche Feiertage aus dem zentralen Katalog anbieten; ihre Berechnungsregel ist nicht frei editierbar.
-- [x] Die wirksame Priorität `Ausnahme → Sondertag → Wochentag` in der Oberfläche verständlich erläutern.
-
-#### Tests und Abschluss
-
-- [x] Modell- und Validierungstests für alle Wochentage, über Mitternacht reichende Zeiten, geschlossene Regeln, beide
-      Datumsregeltypen, ungültige Zeiten, Sondertage und Ausnahmen ergänzen.
-- [x] Service- und Store-Tests für getrennte Filialkontexte, Initialisierung, Sondertagspflege, Speichern und Löschen von
-      Ausnahmen sowie die Datumsauflösung ergänzen.
-- [x] Component-Tests für allgemeine Grundlagen, vollständige Wochenöffnung, Sondertage und datumsbezogene Ausnahmen ergänzen.
-- [x] Navigation, Route Guard, Benutzeranlage und Profilbearbeitung für den App-Bereich `einstellungen` testen.
-- [x] Firestore-Emulator-Tests für erlaubte Filialzugriffe, bekannte Einstellungsdokumente und abgewiesene Fremd- oder
-      Fehlschreibzugriffe ergänzen.
-- [x] Manuell unterschiedliche Öffnungszeiten für jeden Wochentag, eine Öffnung bis zum Folgetag, einen festen Sondertag,
-      einen berechneten Feiertag und eine überschreibende datumsbezogene Ausnahme prüfen.
-- [x] Fachkonzept, Architektur, Projektstand und Datenübergang aktualisieren.
-- [x] Firestore Rules und Functions mit dem App-Bereich `einstellungen` produktiv deployen und die Profilbearbeitung mit einem
-      realen Masterkonto prüfen.
-- [ ] Die geänderten Firestore Rules ohne gespeichertes Feld `zeitzone` produktiv deployen. Vorhandene ältere
-      Einstellungsdokumente bleiben lesbar und entfernen das Feld beim nächsten Speichern.
-- [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich
-      ausführen.
-
-#### Erledigt, wenn
-
-- [ ] Jede Filiale besitzt genau eine verbindliche allgemeine Einstellung mit dem zunächst fest verwendeten Bundesland
-      Nordrhein-Westfalen.
-- [ ] Jede Filiale besitzt eine Öffnungsregel für jeden Wochentag und eine erweiterbare, bezeichnete Liste besonderer Tage.
-- [ ] Feste jährliche Sondertage und zentral berechnete gesetzliche Feiertage können unterschiedliche Öffnungsregeln besitzen.
-- [ ] Datumsbezogene Ausnahmen überschreiben Sondertags- und Wochentagsregeln nachvollziehbar.
-- [ ] Geschlossene und geöffnete Tage werden vollständig validiert und verständlich bearbeitet.
-- [ ] Der berechtigte Benutzer erreicht die Öffnungszeiten über `Einstellungen → Öffnungszeiten`; der App-Bereich
-      `einstellungen` schützt die gesamte Gruppe.
-- [ ] Öffnungszeiten bleiben von den Arbeitszeiten der Schichtmodelle fachlich und technisch getrennt.
-- [ ] Service, Store, UI und Firestore Rules arbeiten ausschließlich im konkreten Filialpfad.
-- [ ] Tests, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
-
 ## 21. Dienst- und Schichtplanung
 
 Der Schichtplan wird schrittweise aus filialbezogenen Monatsplänen aufgebaut, die in einer filialübergreifenden Arbeitsansicht
@@ -1048,12 +849,15 @@ Neu hinzuzufügen:
 
 - src/app/commons/models/domain/tagesprofil.ts
 
-#### Schritt 1: Fachliche Schicht-Tagesarten und Prioritäten festlegen
+#### [ ] Schritt 1: Fachliche Schicht-Tagesarten und Prioritäten festlegen
 
 - [ ] Mindestens die Tagesarten `Standard`, `Sonntag` und `Feiertag` definieren und entscheiden, ob Samstag als eigenes
       Tagesprofil benötigt wird.
 - [ ] Festlegen, dass ein gesetzlicher Feiertag gegenüber dem Sonntags- und Standardprofil Vorrang hat. Das Verhalten eines
       Feiertags, der auf einen Sonntag fällt, ausdrücklich dokumentieren.
+- [ ] Den kalendarischen Status als gesetzlicher Feiertag unabhängig vom Aktivstatus seiner besonderen Öffnungsregel ermitteln.
+      `aktiv` steuert nur die Überschreibung der Wochentagsregel und darf spätere Tagesprofile oder Zuschlagsbewertungen nicht
+      beeinflussen.
 - [ ] Die nach Todo 20 aufgelösten Ausnahmen und Sondertage einschließlich ihrer Priorität gegenüber der Wochenregel
       übernehmen.
 - [ ] Klären, ob alle gesetzlichen Feiertage und sonstigen Sondertage einem gemeinsamen Schicht-Tagesprofil zugeordnet werden
@@ -1061,7 +865,7 @@ Neu hinzuzufügen:
 - [ ] Die nach Todo 20 aufgelösten Öffnungszeiten ausschließlich als Betriebsinformation übernehmen. Schichtzeiten dürfen
       für Vor- und Nachbereitung außerhalb der Öffnungszeiten liegen und werden deshalb nicht automatisch auf diese begrenzt.
 
-#### Schritt 2: Datumsauflösung aus den Filialeinstellungen übernehmen
+#### [ ] Schritt 2: Datumsauflösung aus den Filialeinstellungen übernehmen
 
 - [ ] Bundesland und Öffnungsregeln ausschließlich über die nach Todo 20 bereitgestellte Filialeinstellung laden; für technische
       Zeitberechnungen zentral `Europe/Berlin` verwenden.
@@ -1072,7 +876,7 @@ Neu hinzuzufügen:
 - [ ] Den aufgelösten Tagestyp, eine vorhandene Sondertags-ID und deren Bezeichnung in die Monatsplan-Momentaufnahme übernehmen,
       damit spätere Regeländerungen bestehende Dienstpläne nicht verändern.
 
-#### Schritt 3: Schicht-Tagesprofile im Schichtmodell und in der Momentaufnahme abbilden
+#### [ ] Schritt 3: Schicht-Tagesprofile im Schichtmodell und in der Momentaufnahme abbilden
 
 - [ ] Jedes Schicht-Tagesprofil mit eigenen Modellschichten modellieren. Öffnungsstatus und Öffnungszeiten werden nicht im
       Schichtmodell dupliziert.
@@ -1085,7 +889,7 @@ Neu hinzuzufügen:
 - [ ] Spätere Änderungen an Öffnungszeiten, Tagesprofilen oder Feiertagsregeln dürfen einen bestehenden Monatsdienstplan nicht
       nachträglich verändern.
 
-#### Schritt 4: Verwaltung und Monatsplanung erweitern
+#### [ ] Schritt 4: Verwaltung und Monatsplanung erweitern
 
 - [ ] Im Schichtmodelldialog das Standard-, Sonntags- und Feiertagsprofil verständlich getrennt bearbeiten können. Nicht
       benötigte optionale Schichtprofile dürfen deaktiviert werden.
@@ -1098,7 +902,7 @@ Neu hinzuzufügen:
 - [ ] Geschlossene Tage eindeutig darstellen. Eine Schichtanlage wird dort nur durch das gültige Schicht-Tagesprofil bestimmt
       und nicht allein wegen der geschlossenen Kundenöffnung verhindert.
 
-#### Schritt 5: Services, Stores und Datenzugriffe absichern
+#### [ ] Schritt 5: Services, Stores und Datenzugriffe absichern
 
 - [ ] Schichtmodell- und Dienstplan-Service um die neuen Daten ergänzen, die Filialeinstellungen verbindlich laden und alle
       Schicht-Tagesprofile vor dem Schreiben erneut fachlich validieren.
@@ -1110,7 +914,7 @@ Neu hinzuzufügen:
 - [ ] Bestehende Schichtmodelle ohne Schicht-Tagesprofile kontrolliert migrieren oder bis zur erneuten Speicherung als reines
       Standardprofil interpretieren; den gewählten Übergang verbindlich dokumentieren.
 
-#### Tests und Abschluss
+#### [ ] Tests und Abschluss
 
 - [ ] Unit-Tests für feste und bewegliche Feiertage, unterschiedliche Bundesländer, Jahresgrenzen und einen Feiertag am Sonntag
       ergänzen.
@@ -1124,7 +928,7 @@ Neu hinzuzufügen:
 - [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich
       ausführen.
 
-#### Erledigt, wenn
+#### [ ] Erledigt, wenn
 
 - [ ] Jeder Kalendertag eines Monatsplans verwendet nachvollziehbar das fachlich richtige Tagesprofil.
 - [ ] Sonntage, gesetzliche Feiertage und sonstige Sondertage können andere Öffnungszeiten und andere Modellschichten als
@@ -1200,7 +1004,7 @@ Neu hinzuzufügen:
 - src/app/stores/domain/mitarbeiterbelegung.store.ts
 - src/app/stores/domain/mitarbeiterbelegung.store.spec.ts
 
-#### Schritt 1: Firmenweiten Belegungsindex aufbauen
+#### [ ] Schritt 1: Firmenweiten Belegungsindex aufbauen
 
 - [ ] Unterhalb der Firma einen Belegungsindex mit einem Dokument je Mitarbeiter und Kalendertag vorsehen, damit eine
       Konfliktprüfung keine vollständigen Dienstpläne aller berechtigten Filialen laden muss.
@@ -1217,7 +1021,7 @@ Neu hinzuzufügen:
 - [ ] Belegungseinträge im TypeScript-Code nur gemeinsam mit einer berechtigten Dienstplanänderung anlegen, ändern oder löschen;
       Rules gemäß Berechtigungsmatrix auf den zugehörigen Pfad und die CRUD-Aktion begrenzen.
 
-#### Schritt 2: Belegungsindex live in die Planung übernehmen
+#### [ ] Schritt 2: Belegungsindex live in die Planung übernehmen
 
 - [ ] Die für den ausgewählten Planungszeitraum und die sichtbaren Mitarbeiter relevanten Belegungstage mit begrenzten
       Firestore-Snapshot-Listenern beobachten, ohne einen unbeschränkten firmenweiten Listener zu öffnen.
@@ -1230,7 +1034,7 @@ Neu hinzuzufügen:
 - [ ] Live-Daten ausschließlich für aktuelle Darstellung und frühzeitige Konflikthinweise verwenden; vor jedem Schreibzugriff
       weiterhin die transaktionale Prüfung der gemeinsamen Tagesdokumente als verbindliche Absicherung ausführen.
 
-#### Schritt 3: Konflikte berechnen und darstellen
+#### [ ] Schritt 3: Konflikte berechnen und darstellen
 
 - [ ] Ungültige Zeitfolgen, Pausen und überlappende Schichten eines Mitarbeiters filialübergreifend erkennen.
 - [ ] Für Anlage, Änderung und Veröffentlichung die relevanten Belegungen aller Filialen des betroffenen Mitarbeiters über den
@@ -1244,7 +1048,7 @@ Neu hinzuzufügen:
 - [ ] Veröffentlichung bei blockierenden Konflikten verhindern und zusätzlich im Schreibablauf absichern.
 - [ ] Konfliktberechnung mit Schichten über Mitternacht und an Zeitraumgrenzen prüfen.
 
-#### Schritt 4: Bestehende Schichten verschieben
+#### [ ] Schritt 4: Bestehende Schichten verschieben
 
 - [ ] Schichtkarten in einem bearbeitbaren Entwurf als eigene Drag-Quellen kennzeichnen und beim Ablegen in einer anderen
       Rasterzelle Mitarbeiterzuordnung und Schicht-ID beibehalten.
@@ -1266,7 +1070,7 @@ Neu hinzuzufügen:
 - [ ] Zulässige und unzulässige Ablageziele während des Ziehens verständlich darstellen und Fehler am bisherigen
       Filialdienstplan anzeigen, ohne die bestehende Schicht bei einem fehlgeschlagenen Vorgang zu verändern.
 
-#### Schritt 5: Veröffentlichung umsetzen
+#### [ ] Schritt 5: Veröffentlichung umsetzen
 
 - [ ] Veröffentlichungsaktion nur für berechtigte Rollen und einen konfliktfreien aktuellen Entwurf anbieten.
 - [ ] Versionierung für jeden Filialdienstplan getrennt fortführen.
@@ -1278,7 +1082,7 @@ Neu hinzuzufügen:
 - [ ] Zurückziehen oder nachträgliche Änderung ausschließlich nach dem beschlossenen Zustandsablauf erlauben.
 - [ ] Gleichzeitige Änderungen zwischen Prüfung und Veröffentlichung zuverlässig erkennen.
 
-#### Schritt 6: Veröffentlichte Mitarbeiteransicht bereitstellen
+#### [ ] Schritt 6: Veröffentlichte Mitarbeiteransicht bereitstellen
 
 - [ ] Veröffentlichte Dienstpläne für Mitarbeiter aus allen ausgewählten und fachlich erlaubten Filialen laden und gemeinsam
       darstellen.
@@ -1348,13 +1152,13 @@ Komplexität belastet.
 - docs/fachkonzepte/dienst-und-schichtplanung.md
 - docs/projekt-stand.md
 
-#### Schritt 1: Betriebserfahrungen auswerten
+#### [ ] Schritt 1: Betriebserfahrungen auswerten
 
 - [ ] Rückmeldungen zu Planungsdauer, Bedienung, Konflikten und mobiler Mitarbeiteransicht sammeln.
 - [ ] Ermitteln, welche manuellen Arbeitsschritte häufig, fehleranfällig oder unnötig aufwendig sind.
 - [ ] Prüfen, ob mehrere Planer, größere Filialen oder längere Planungszeiträume zusätzliche Anforderungen erzeugen.
 
-#### Schritt 2: Erweiterungen fachlich priorisieren
+#### [ ] Schritt 2: Erweiterungen fachlich priorisieren
 
 - [ ] Bedarf für Verfügbarkeiten, Urlaub, Krankheit und sonstige Abwesenheiten bewerten.
 - [ ] Bedarf für Sollstunden, Arbeitszeitkonten und weitergehende gesetzliche Prüfregeln bewerten.
@@ -1362,10 +1166,11 @@ Komplexität belastet.
       die einen Dienstplan nicht unmittelbar verändern.
 - [ ] Bedarf für Änderungsbenachrichtigungen und Push-Nachrichten bewerten.
 - [ ] Bedarf für Schichtkopien, automatische Planung oder Optimierung bewerten.
-- [ ] Bedarf für Nacht-, Sonntags- und Feiertagszuschläge sowie die Ableitung von Lohnstunden aus der Lohnzeit bewerten.
+- [ ] Bedarf für Nacht-, Sonntags- und Feiertagszuschläge sowie die Ableitung von Lohnstunden aus der Lohnzeit bewerten. Dabei
+      den kalendarischen Feiertagsstatus unabhängig vom Aktivstatus der besonderen Öffnungsregel verwenden.
 - [ ] Bedarf für Zeiterfassung, Exporte und Anbindungen an Lohnabrechnung getrennt bewerten.
 
-#### Schritt 3: Abgegrenzte Folgetodos anlegen
+#### [ ] Schritt 3: Abgegrenzte Folgetodos anlegen
 
 - [ ] Nur Erweiterungen mit konkretem fachlichem Nutzen in `docs/todo_next.md` übernehmen.
 - [ ] Bewusst zurückgestellte Erweiterungen mit ihrem Entscheidungsstand in `docs/todo_spaeter.md` dokumentieren.

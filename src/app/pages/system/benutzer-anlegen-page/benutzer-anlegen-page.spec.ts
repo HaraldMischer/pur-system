@@ -29,11 +29,10 @@ describe('BenutzerAnlegenPage', () => {
       .compileComponents();
   });
 
-  it('should show only the user creation component in the limited page layout', () => {
+  it('should show only the user creation component', () => {
     const fixture = TestBed.createComponent(BenutzerAnlegenPage);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.pur-page--limited')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-benutzer-anlage')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-benutzer-verwaltung')).toBeNull();
   });

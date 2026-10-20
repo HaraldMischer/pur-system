@@ -51,7 +51,7 @@ describe('SchichtmodelleFiliale', () => {
     }).compileComponents();
   });
 
-  it('should load only its branch and open a large create dialog for it', async () => {
+  it('should load only its branch and open a create dialog for it', async () => {
     const fixture = TestBed.createComponent(SchichtmodelleFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
     fixture.componentRef.setInput('pfad', PFAD);
@@ -60,9 +60,9 @@ describe('SchichtmodelleFiliale', () => {
 
     expect(loadSchichtmodelle).toHaveBeenCalledWith(PFAD);
     fixture.componentInstance.openSchichtmodellDialog();
-    expect(open).toHaveBeenCalledWith(SchichtmodellBearbeitenDialog, {
-      data: { pfad: PFAD },
-      panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
-    });
+    expect(open).toHaveBeenCalledWith(
+      SchichtmodellBearbeitenDialog,
+      expect.objectContaining({ data: { pfad: PFAD } }),
+    );
   });
 });

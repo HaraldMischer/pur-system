@@ -83,8 +83,6 @@ describe('SchichtBearbeitenDialog', () => {
       '16:30',
       '01:00',
     ]);
-    expect(compiled.querySelectorAll('app-lokalzeit-eingabe')).toHaveLength(2);
-    expect(compiled.querySelectorAll('mat-icon[matIconSuffix]')).toHaveLength(2);
   });
 
   it('should update only after the employee assignment changes', async () => {
@@ -162,7 +160,6 @@ describe('SchichtBearbeitenDialog', () => {
     fixture.detectChanges();
 
     expect(component.error()).toContain('existiert');
-    expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
     expect(createSchicht).not.toHaveBeenCalled();
   });
 

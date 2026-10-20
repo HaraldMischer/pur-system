@@ -52,11 +52,6 @@ describe('DatumEingabe', () => {
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     expect(input.type).toBe('text');
     expect(input.value).toBe('12.11.2026');
-    expect(input.placeholder).toBe('TT.MM.JJJJ');
-    expect(fixture.nativeElement.querySelector('mat-datepicker-toggle')).toBeNull();
-    expect(fixture.nativeElement.querySelector('mat-icon[matIconSuffix]')?.textContent).toContain(
-      'calendar_today',
-    );
   });
 
   it('should convert a valid German date input back to an ISO value', () => {

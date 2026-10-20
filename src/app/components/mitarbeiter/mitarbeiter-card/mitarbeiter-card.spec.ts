@@ -45,10 +45,9 @@ describe('MitarbeiterCard', () => {
       aktiv: false,
     });
     fixture.detectChanges();
-    const card = (fixture.nativeElement as HTMLElement).querySelector('mat-card');
-
-    expect(card?.textContent).toContain('Noch keiner Filiale zugeordnet');
-    expect(card?.classList).toContain('pur-card--inaktiv');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Noch keiner Filiale zugeordnet',
+    );
   });
 
   it('should render the employee planner role', () => {

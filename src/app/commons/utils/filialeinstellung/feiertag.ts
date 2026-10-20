@@ -193,7 +193,7 @@ export function getGesetzlicherFeiertagDatum(
 }
 
 /**
- * Erstellt die initial aktiven und geschlossenen Sondertage einer Filiale.
+ * Erstellt die initial inaktiven Sondertage einer Filiale.
  *
  * @param bundesland - Bundesland der Filiale.
  * @returns Gesetzliche Feiertage des Bundeslands sowie Heiligabend und Silvester.
@@ -207,7 +207,7 @@ export function createInitialeSondertage(
     return {
       id: eintrag.schluessel,
       bezeichnung: eintrag.bezeichnung,
-      aktiv: true,
+      aktiv: false,
       herkunft: 'system' as const,
       datumsregel: {
         typ: 'gesetzlicherFeiertag' as const,
@@ -229,7 +229,7 @@ export function createInitialeSondertage(
  * Gleicht systemdefinierte Sondertage nach einem Bundeslandwechsel ab.
  *
  * Gemeinsame gesetzliche Feiertage behalten ihre angepassten Öffnungsregeln. Nicht mehr landesweit geltende gesetzliche
- * Feiertage werden entfernt, neu geltende aktiv und geschlossen ergänzt. Benutzerdefinierte Sondertage bleiben unverändert.
+ * Feiertage werden entfernt, neu geltende inaktiv ergänzt. Benutzerdefinierte Sondertage bleiben unverändert.
  *
  * @param vorhandeneSondertage - Bisherige Sondertagsvorlagen der Filiale.
  * @param bundesland - Neu ausgewähltes Bundesland.
@@ -295,7 +295,7 @@ function createFesterSondertag(
   return {
     id,
     bezeichnung,
-    aktiv: true,
+    aktiv: false,
     herkunft: 'system',
     datumsregel: {
       typ: 'jaehrlichFestesDatum',

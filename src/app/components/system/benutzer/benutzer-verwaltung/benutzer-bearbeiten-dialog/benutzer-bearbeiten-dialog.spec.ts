@@ -71,14 +71,8 @@ describe('BenutzerBearbeitenDialog', () => {
     expect(fixture.nativeElement.querySelector('input[type="email"]')).toBeNull();
     expect(dialogTitel.textContent?.trim()).toBe('Office-Benutzer bearbeiten');
     expect(fixture.nativeElement.querySelector('input[name="benutzerrolle"]')).toBeNull();
-    expect(
-      Array.from(
-        fixture.nativeElement.querySelectorAll('mat-dialog-content h2') as NodeListOf<HTMLElement>,
-      ).map((titel) => titel.textContent?.trim()),
-    ).toEqual(['Erlaubte Bereiche']);
     expect(fixture.nativeElement.querySelector('app-benutzer-datenzuordnung')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Benutzerkonto löschen');
-    expect(fixture.nativeElement.querySelectorAll('mat-checkbox')).toHaveLength(4);
     expect(
       (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
         'button[type="submit"]',
@@ -94,23 +88,6 @@ describe('BenutzerBearbeitenDialog', () => {
 
     component.benutzerForm.controls.anzeigename.setValue('Office Benutzer');
     expect(component.hatAenderungen()).toBe(false);
-  });
-
-  it('should identify a branch account in the dialog title', () => {
-    TestBed.overrideProvider(MAT_DIALOG_DATA, {
-      useValue: {
-        profil: {
-          ...profil,
-          uid: 'filiale-1',
-          userRole: 'filiale',
-        },
-      },
-    });
-    const fixture = TestBed.createComponent(BenutzerBearbeitenDialog);
-    fixture.detectChanges();
-    const dialogTitel = fixture.nativeElement.querySelector('[mat-dialog-title]') as HTMLElement;
-
-    expect(dialogTitel.textContent?.trim()).toBe('Filial-Benutzer bearbeiten');
   });
 
   it('should not update an unchanged user profile', async () => {

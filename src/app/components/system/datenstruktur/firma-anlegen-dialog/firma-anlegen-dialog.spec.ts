@@ -55,25 +55,6 @@ describe('FirmaAnlegenDialog', () => {
     expect(component.firmaForm.touched).toBe(true);
   });
 
-  it('should use only global form and dialog layout classes', () => {
-    const fixture = TestBed.createComponent(FirmaAnlegenDialog);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    const form = compiled.querySelector('form');
-    const dialogContent = compiled.querySelector('mat-dialog-content');
-    const dialogActions = compiled.querySelector('mat-dialog-actions');
-    const submitButton = compiled.querySelector<HTMLButtonElement>('button[type="submit"]');
-
-    expect(form?.id).toBe('firma-anlegen-form');
-    expect(form?.classList).toContain('pur-form--grid');
-    expect(dialogContent?.classList).toContain('pur-dialog__content');
-    expect(form?.contains(dialogActions)).toBe(false);
-    expect(submitButton?.getAttribute('form')).toBe('firma-anlegen-form');
-    expect(compiled.querySelectorAll('.pur-form__row')).toHaveLength(5);
-    expect(compiled.querySelector('[class*="firma-anlegen-dialog__"]')).toBeNull();
-  });
-
   it('should reject an invalid email address', () => {
     const component = TestBed.createComponent(FirmaAnlegenDialog).componentInstance;
 

@@ -514,10 +514,12 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
    ausgewählter Filiale die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`
    verwaltet. Jährliche Sondertage können deaktiviert werden; einmalige Sondertage gelten genau für ein vollständiges
    Kalenderdatum, werden getrennt angelegt und technisch als Datumsausnahmen gespeichert. Das Bundesland wird zunächst
-   fest mit Nordrhein-Westfalen (`DE-NW`) initialisiert und nicht zur Auswahl angeboten. Die technische Zeitzone
-   `Europe/Berlin` wird nicht als Filialeinstellung gespeichert. Weitere filialbezogene Einstellungsseiten können später als
-   gleichrangige Unterpunkte ergänzt werden. Sichtbarkeit und Route der gesamten Gruppe werden über den App-Bereich
-   `einstellungen` geschützt.
+   fest mit Nordrhein-Westfalen (`DE-NW`) initialisiert und nicht zur Auswahl angeboten. Die sieben Wochenregeln werden bei
+   einer neuen Filiale zunächst als geöffnet von `06:00` bis `01:00` Uhr am Folgetag vorbelegt. Die technische Zeitzone
+   `Europe/Berlin` wird nicht als Filialeinstellung gespeichert. Fehlende Zeitwerte von Feiertagen und jährlichen Sondertagen
+   werden im Bearbeitungsdialog ebenfalls mit `06:00` bis `01:00` Uhr vorbelegt. Weitere filialbezogene Einstellungsseiten
+   können später als gleichrangige Unterpunkte ergänzt werden. Sichtbarkeit und Route der gesamten Gruppe werden über den
+   App-Bereich `einstellungen` geschützt.
 
 5. **System (`/system`):** Administrativer Bereich für `master`, der in der Sidebar als `System` bezeichnet wird. Er umfasst die
    Page `StrukturAnlegenPage` unter `/system/struktur/anlegen`, die `StrukturVerwaltenPage` für vorhandene Firmen und
@@ -555,10 +557,11 @@ Mitarbeiterschichten nicht automatisch.
 
 Gesetzliche Feiertage werden ohne externe Laufzeitabhängigkeit aus einem zentralen Katalog nach Jahr und Bundesland berechnet.
 Lokal oder kommunal begrenzte Feiertage werden nicht allein aus dem Bundesland abgeleitet. Initiale gesetzliche Feiertage sowie
-Heiligabend und Silvester sind aktiv und geschlossen. Bei einem Bundeslandwechsel bleiben gemeinsame Feiertage einschließlich
-ihrer angepassten Öffnungsregel erhalten; nicht mehr geltende werden entfernt und neu geltende geschlossen ergänzt. Mehrere
-aktive Sondertage für dasselbe Datum bilden einen Konfigurationsfehler, sofern keine konkrete Datumsausnahme die Kollision
-bewusst überschreibt. Eine über Mitternacht reichende Öffnungsregel gehört vollständig zu ihrem Startdatum.
+Heiligabend und Silvester sind inaktiv, sodass zunächst die jeweilige Wochentagsregel gilt. Bei einem Bundeslandwechsel bleiben
+gemeinsame Feiertage einschließlich ihrer angepassten Öffnungsregel erhalten; nicht mehr geltende werden entfernt und neu
+geltende inaktiv ergänzt. Mehrere aktive Sondertage für dasselbe Datum bilden einen Konfigurationsfehler, sofern keine konkrete
+Datumsausnahme die Kollision bewusst überschreibt. Eine über Mitternacht reichende Öffnungsregel gehört vollständig zu ihrem
+Startdatum. Der Aktivstatus einer Feiertagsregel beeinflusst nicht die kalendarische Eigenschaft als gesetzlicher Feiertag.
 
 Ein fachlicher Service lädt und schreibt den vollständigen Einstellungsbestand ausschließlich im konkreten Filialpfad. Ein
 Store hält Firestore-Rohdaten, validierte Bestände sowie Lade-, Schreib- und Fehlerzustände je Filiale getrennt und bietet die

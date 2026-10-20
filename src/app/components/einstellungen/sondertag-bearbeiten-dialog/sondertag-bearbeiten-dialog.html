@@ -1,8 +1,6 @@
 <!-- pur-system/src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.html -->
 
-<h2 mat-dialog-title>
-  {{ daten.sondertag ? 'Jährlichen Sondertag bearbeiten' : 'Jährlichen Sondertag anlegen' }}
-</h2>
+<h2 mat-dialog-title>{{ dialogTitel }}</h2>
 <mat-dialog-content class="pur-dialog__content">
   @if (fehler(); as fehler) {
     <p class="pur-message pur-message--error pur-message--full" role="alert">

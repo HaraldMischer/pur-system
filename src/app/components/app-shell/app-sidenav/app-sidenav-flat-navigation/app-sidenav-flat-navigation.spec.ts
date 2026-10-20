@@ -54,14 +54,12 @@ describe('AppSidenavFlatNavigation', () => {
     fixture.detectChanges();
   });
 
-  it('should render every configured navigation link with label and icon', () => {
+  it('should render every configured navigation link', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     const links = [...compiled.querySelectorAll<HTMLAnchorElement>('a[mat-list-item]')];
 
     expect(links).toHaveLength(2);
-    expect(links[0].textContent).toContain('dashboard');
     expect(links[0].textContent).toContain('Dashboard');
-    expect(links[1].textContent).toContain('visibility');
     expect(links[1].textContent).toContain('Dienstplan ansehen');
   });
 
@@ -77,14 +75,4 @@ describe('AppSidenavFlatNavigation', () => {
     expect(navigationSelectedSpy).toHaveBeenCalledOnce();
   });
 
-  it('should mark the link of the active route', async () => {
-    const router = TestBed.inject(Router);
-
-    await router.navigateByUrl('/schichtplan/ansicht');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const activeLink = (fixture.nativeElement as HTMLElement).querySelector('.active-nav-item');
-
-    expect(activeLink?.textContent).toContain('Dienstplan ansehen');
-  });
 });

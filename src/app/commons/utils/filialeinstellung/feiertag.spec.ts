@@ -90,7 +90,7 @@ describe('Feiertagsauflösung', () => {
     expect(mariaHimmelfahrt.lokalBegrenzteBundeslaender).toEqual(['DE-BY']);
   });
 
-  it('should create active and closed initial holidays including Christmas Eve and New Years Eve', () => {
+  it('should create inactive initial holidays including Christmas Eve and New Years Eve', () => {
     const sondertage = createInitialeSondertage('DE-NW');
     const heiligabend = sondertage.find((sondertag) => {
       return sondertag.id === 'heiligabend';
@@ -99,7 +99,7 @@ describe('Feiertagsauflösung', () => {
       return sondertag.id === 'silvester';
     });
 
-    expect(sondertage.every((sondertag) => sondertag.aktiv)).toBe(true);
+    expect(sondertage.every((sondertag) => !sondertag.aktiv)).toBe(true);
     expect(sondertage.every((sondertag) => sondertag.herkunft === 'system')).toBe(true);
     expect(sondertage.every((sondertag) => !sondertag.oeffnungsregel.geoeffnet)).toBe(true);
     expect(heiligabend?.datumsregel).toEqual({
@@ -164,6 +164,18 @@ describe('Feiertagsauflösung', () => {
       }),
     ).toBe(false);
     expect(abgeglichen).toContain(eigenerSondertag);
+  });
+
+  it('should add newly applicable state holidays as inactive', () => {
+    const hessen = createInitialeSondertage('DE-HE');
+
+    const abgeglichen = reconcileInitialeSondertage(hessen, 'DE-BW');
+
+    expect(
+      abgeglichen.find((sondertag) => {
+        return sondertag.id === 'heiligeDreiKoenige';
+      })?.aktiv,
+    ).toBe(false);
   });
 
   it.each([1582, 10.5, 10_000])('should reject the invalid year %s', (jahr) => {

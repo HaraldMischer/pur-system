@@ -113,9 +113,7 @@ describe('BenutzerDatenzuordnung', () => {
       ...profil,
       zugriffe: { 'u-fehlt': { 'f-fehlt': ['b-fehlt'] } },
     });
-    const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
-
-    expect(alert.textContent?.replace(/\s+/g, ' ').trim()).toContain(
+    expect((fixture.nativeElement as HTMLElement).textContent?.replace(/\s+/g, ' ').trim()).toContain(
       'Unternehmer-ID: u-fehlt, Firmen-ID: f-fehlt, Filial-ID: b-fehlt',
     );
   });

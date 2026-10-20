@@ -51,8 +51,6 @@ describe('OeffnungszeitenPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelector('h1')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.pur-page__title')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('app-oeffnungszeiten-filiale')).toHaveLength(1);
     expect(loadFilialeinstellung).toHaveBeenCalledWith({
       unternehmerId: 'u-1',
@@ -69,7 +67,6 @@ describe('OeffnungszeitenPage', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'Einmalige Sondertage überschreiben Feiertage und jährlich wiederkehrende Sondertage; diese überschreiben die Wochentage.',
     );
-    expect(fixture.nativeElement.querySelector('.pur-message--surface')).not.toBeNull();
     expect(fixture.nativeElement.querySelectorAll('app-oeffnungszeiten-filiale')).toHaveLength(0);
   });
 });

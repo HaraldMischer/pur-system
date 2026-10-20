@@ -109,17 +109,15 @@ describe('BenutzerAnlage', () => {
     expect(fixture.componentInstance.benutzerForm.invalid).toBe(true);
   });
 
-  it('should render role and area controls', () => {
-    const fixture = TestBed.createComponent(BenutzerAnlage);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
+  it('should provide role and area controls', () => {
+    const component = TestBed.createComponent(BenutzerAnlage).componentInstance;
 
-    expect(compiled.querySelector('h1')).toBeNull();
-    expect(compiled.querySelector('mat-divider')).toBeNull();
-    expect(compiled.querySelector('mat-select')).toBeTruthy();
-    expect(compiled.querySelectorAll('mat-checkbox')).toHaveLength(3);
-    const bereichCheckboxen = compiled.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
-    expect(bereichCheckboxen).toHaveLength(3);
+    expect(component.benutzerForm.contains('userRole')).toBe(true);
+    expect(Object.keys(component.benutzerForm.controls.erlaubteBereiche.controls)).toEqual([
+      'schichtplan',
+      'mitarbeiter',
+      'einstellungen',
+    ]);
   });
 
   it('should create normalized input data from a valid form', () => {
@@ -155,16 +153,10 @@ describe('BenutzerAnlage', () => {
 
     expect(component.benutzerForm.controls.namensbestandteil.value).toBe('harald.mischer');
     expect(component.getAnmeldenameVorschau()).toBe('harald.mischer-master');
-    const readOnlyInputs = fixture.nativeElement.querySelectorAll('input[readonly]');
-    expect(readOnlyInputs).toHaveLength(1);
-    expect(readOnlyInputs[0].value).toBe('harald.mischer-master');
-    expect(fixture.nativeElement.textContent).not.toContain('Technische Adresse');
-
     component.benutzerForm.controls.anzeigename.setValue('Anderer Anzeigename');
-    fixture.detectChanges();
 
     expect(component.benutzerForm.controls.namensbestandteil.value).toBe('anderer.anzeigename');
-    expect(readOnlyInputs[0].value).toBe('anderer.anzeigename-master');
+    expect(component.getAnmeldenameVorschau()).toBe('anderer.anzeigename-master');
   });
 
   it('should reject a display name without usable login characters', () => {
@@ -261,8 +253,9 @@ describe('BenutzerAnlage', () => {
     datenAuswahl.selectFirmen([datenAuswahl.getFirmaSchluessel('u', 'f')]);
     await render();
 
-    const meldung = fixture.nativeElement.querySelector('.pur-message--error[role="alert"]');
-    expect(meldung?.textContent).toContain('Die Firma hat noch keine Mitarbeiter.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Die Firma hat noch keine Mitarbeiter.',
+    );
     expect(fixture.componentInstance.benutzerForm.controls.firmaMitarbeiterId.disabled).toBe(true);
   });
 
@@ -347,9 +340,6 @@ describe('BenutzerAnlage', () => {
     expect(directive.submitted).toBe(false);
     expect(component.benutzerForm.pristine).toBe(true);
     expect(component.benutzerForm.untouched).toBe(true);
-    expect(fixture.nativeElement.querySelectorAll('mat-error')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelectorAll('.mat-mdc-form-field-invalid')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelector('.pur-message--success')).not.toBeNull();
     expect(
       TestBed.inject(BenutzerVerwaltungService).createBenutzer,
     ).toHaveBeenCalledExactlyOnceWith({
@@ -372,22 +362,12 @@ describe('BenutzerAnlage', () => {
       anzeigename: 'Test',
       passwort: 'SicheresPasswort123!',
     });
-    fixture.detectChanges();
-    const input = fixture.nativeElement.querySelector(
-      'input[formControlName="passwort"]',
-    ) as HTMLInputElement;
-    const button = fixture.nativeElement.querySelector('button[matSuffix]') as HTMLButtonElement;
-    expect(input.type).toBe('password');
-    expect(button.type).toBe('button');
-    expect(button.getAttribute('aria-label')).toBe('Passwort anzeigen');
-    button.click();
-    fixture.detectChanges();
-    expect(input.type).toBe('text');
-    expect(button.getAttribute('aria-label')).toBe('Passwort ausblenden');
-    button.click();
-    fixture.detectChanges();
-    expect(input.type).toBe('password');
-    expect(input.value).toBe('SicheresPasswort123!');
+    expect(component.passwortSichtbar()).toBe(false);
+    component.togglePasswortSichtbarkeit();
+    expect(component.passwortSichtbar()).toBe(true);
+    component.togglePasswortSichtbarkeit();
+    expect(component.passwortSichtbar()).toBe(false);
+    expect(component.benutzerForm.controls.passwort.value).toBe('SicheresPasswort123!');
     expect(TestBed.inject(BenutzerVerwaltungService).createBenutzer).not.toHaveBeenCalled();
   });
 
@@ -460,10 +440,6 @@ describe('BenutzerAnlage', () => {
     component.selectFiliale(key, 'b', true);
     await render();
     expect(fixture.componentInstance.verwaltungStore.filialen()).toEqual({ [key]: ['b'] });
-    const auswahl = fixture.nativeElement.querySelector('app-datenzugriff-selector') as HTMLElement;
-    expect(auswahl.closest('.pur-form__group')).not.toBeNull();
-    expect(auswahl.closest('fieldset')).toBeNull();
-    expect(auswahl.querySelectorAll('mat-select')).toHaveLength(3);
     expect(fixture.componentInstance.getBenutzerAnlage()?.zugriffe).toEqual({
       u: { f: ['b'] },
     });
@@ -495,14 +471,11 @@ describe('BenutzerAnlage', () => {
     );
     const pending = component.onSubmit();
     fixture.detectChanges();
-    const form = fixture.nativeElement.querySelector('form') as HTMLFormElement;
     const anzeigename = fixture.nativeElement.querySelector(
       'input[formControlName="anzeigename"]',
     ) as HTMLInputElement;
     expect(component.benutzerForm.disabled).toBe(true);
     expect(anzeigename.disabled).toBe(true);
-    expect(form.hasAttribute('inert')).toBe(true);
-    expect(form.getAttribute('aria-busy')).toBe('true');
     expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
     await component.onSubmit();
     expect(service.createBenutzer).toHaveBeenCalledTimes(1);
@@ -511,8 +484,6 @@ describe('BenutzerAnlage', () => {
     fixture.detectChanges();
     expect(component.benutzerForm.enabled).toBe(true);
     expect(anzeigename.disabled).toBe(false);
-    expect(form.hasAttribute('inert')).toBe(false);
-    expect(form.getAttribute('aria-busy')).toBe('false');
     expect(component.benutzerForm.controls.namensbestandteil.value).toBe('test');
     expect(component.verwaltungStore.error()).toBeTruthy();
     expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(false);

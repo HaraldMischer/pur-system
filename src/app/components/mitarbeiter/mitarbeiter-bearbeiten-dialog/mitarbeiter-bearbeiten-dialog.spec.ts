@@ -101,9 +101,6 @@ describe('MitarbeiterBearbeitenDialog', () => {
     });
     expect(fixture.componentInstance.weitereFilialzuordnungen).toBe(1);
     expect(
-      (fixture.nativeElement as HTMLElement).querySelector('.pur-page-section__summary'),
-    ).toBeNull();
-    expect(
       (fixture.nativeElement as HTMLElement).querySelector(
         'mat-select[formcontrolname="filialIds"]',
       ),

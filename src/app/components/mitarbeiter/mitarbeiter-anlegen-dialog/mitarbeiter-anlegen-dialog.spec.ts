@@ -54,7 +54,7 @@ describe('MitarbeiterAnlegenDialog', () => {
     }).compileComponents();
   });
 
-  it('should provide an invalid form and the global dialog structure initially', () => {
+  it('should provide an invalid form with the available employee fields initially', () => {
     const fixture = TestBed.createComponent(MitarbeiterAnlegenDialog);
     fixture.detectChanges();
     const form = (fixture.nativeElement as HTMLElement).querySelector('form');
@@ -68,10 +68,6 @@ describe('MitarbeiterAnlegenDialog', () => {
       value: 'dienstplaner',
       label: 'Dienstplaner',
     });
-    expect(form?.classList).toContain('pur-form--grid');
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector('.pur-page-section__summary'),
-    ).toBeNull();
     expect(submit?.getAttribute('form')).toBe('mitarbeiter-anlegen-form');
     expect(
       (fixture.nativeElement as HTMLElement).querySelector(

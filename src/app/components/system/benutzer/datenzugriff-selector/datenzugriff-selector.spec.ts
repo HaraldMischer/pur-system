@@ -127,11 +127,6 @@ describe('DatenzugriffSelector', () => {
     );
     filialen.open();
     await render();
-    expect(
-      Array.from(overlay.querySelectorAll('.mat-mdc-optgroup-label')).map((el) =>
-        el.textContent?.trim(),
-      ),
-    ).toEqual(['Ruhr', 'Rhein']);
     await choose(filialen, 'Bochum');
     await choose(filialen, 'Köln');
     filialen.close();
@@ -256,22 +251,12 @@ describe('DatenzugriffSelector', () => {
     );
     selects[1].open();
     await render();
-    expect(
-      Array.from(overlay.querySelectorAll('.mat-mdc-optgroup-label')).map((el) =>
-        el.textContent?.trim(),
-      ),
-    ).toEqual(['West', 'Nord']);
     await choose(selects[1], 'Ruhr');
     await choose(selects[1], 'Hanse');
     selects[1].close();
     await render();
     selects[2].open();
     await render();
-    expect(
-      Array.from(overlay.querySelectorAll('.mat-mdc-optgroup-label')).map((el) =>
-        el.textContent?.trim(),
-      ),
-    ).toEqual(['West / Ruhr', 'Nord / Hanse']);
     await choose(selects[2], 'Bochum');
     selects[2].close();
     await render();

@@ -32,10 +32,19 @@ function formatLokalzeitEingabe(wert: string): string {
   const bereinigt = wert.trim();
   const eingabeMitDoppelpunkt = /^(\d{1,2}):(\d{0,2})$/.exec(bereinigt);
   if (eingabeMitDoppelpunkt) {
-    return `${eingabeMitDoppelpunkt[1].padStart(2, '0')}:${eingabeMitDoppelpunkt[2]}`;
+    return `${eingabeMitDoppelpunkt[1]}:${eingabeMitDoppelpunkt[2]}`;
   }
   const ziffern = bereinigt.replace(/\D/g, '').slice(0, 4);
   return ziffern.length > 2 ? `${ziffern.slice(0, 2)}:${ziffern.slice(2)}` : ziffern;
+}
+
+function normalisiereLokalzeitEingabe(wert: string): string {
+  const formatiert = formatLokalzeitEingabe(wert);
+  const vollstaendigeEingabe = /^(\d{1,2}):(\d{2})$/.exec(formatiert);
+  if (!vollstaendigeEingabe) {
+    return formatiert;
+  }
+  return `${vollstaendigeEingabe[1].padStart(2, '0')}:${vollstaendigeEingabe[2]}`;
 }
 
 function getLokalzeitFehler(wert: unknown, erforderlich: boolean): ValidationErrors | null {
@@ -112,7 +121,7 @@ export class LokalzeitEingabe implements ControlValueAccessor, Validator {
    * Übernimmt einen externen Formularwert in das Eingabefeld.
    */
   writeValue(wert: string | null): void {
-    this.eingabeControl.setValue(formatLokalzeitEingabe(wert ?? ''), { emitEvent: false });
+    this.eingabeControl.setValue(normalisiereLokalzeitEingabe(wert ?? ''), { emitEvent: false });
   }
 
   /**
@@ -156,9 +165,13 @@ export class LokalzeitEingabe implements ControlValueAccessor, Validator {
   }
 
   /**
-   * Markiert das übergeordnete Formularfeld nach Verlassen der Eingabe als berührt.
+   * Normalisiert eine vollständige Eingabe und markiert das Formularfeld als berührt.
    */
   handleBlur(): void {
+    const normalisiert = normalisiereLokalzeitEingabe(this.eingabeControl.value);
+    if (normalisiert !== this.eingabeControl.value) {
+      this.eingabeControl.setValue(normalisiert);
+    }
     this.onTouched();
   }
 }

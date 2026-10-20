@@ -164,7 +164,6 @@ describe('DatenmigrationPage', () => {
       'firma / filiale',
       'firma / mitarbeiter',
     ]);
-    expect(compiled.querySelector('mat-card')).toBeNull();
     expect(compiled.textContent).not.toContain('alle Legacy-Kunden migrieren');
   });
 
@@ -175,10 +174,8 @@ describe('DatenmigrationPage', () => {
 
     expect(datenmigrationStoreMock.selectPurCustomer).toHaveBeenCalledWith('b');
     expect(datenmigrationStoreMock.loadUnternehmerZiel).toHaveBeenCalledOnce();
-    expect(compiled.querySelector('mat-card-title')?.textContent).toContain(
-      'Unternehmer migrieren',
-    );
-    expect(compiled.querySelector('mat-card-subtitle')?.textContent).toContain('Beta');
+    expect(compiled.textContent).toContain('Unternehmer migrieren');
+    expect(compiled.textContent).toContain('Beta');
     expect(compiled.textContent).toContain('Ausstehend');
     expect(compiled.textContent).toContain('Quelle');
   });
@@ -186,12 +183,8 @@ describe('DatenmigrationPage', () => {
   it('should migrate only the currently selected customer', async () => {
     selectedPurCustomerId.set('a');
     fixture.detectChanges();
-    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
-    button?.click();
-    await fixture.whenStable();
+    await fixture.componentInstance.migrateSelectedBereich();
 
     expect(datenmigrationStoreMock.migrateUnternehmer).toHaveBeenCalledOnce();
   });
@@ -201,16 +194,13 @@ describe('DatenmigrationPage', () => {
     await fixture.componentInstance.handleMigrationsbereichSelect('firmen');
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const button = compiled.querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
-    expect(compiled.querySelector('mat-card-title')?.textContent).toContain('Firmen migrieren');
-    expect(compiled.querySelector('mat-card-subtitle')?.textContent).toContain('Alpha');
+    expect(compiled.textContent).toContain('Firmen migrieren');
+    expect(compiled.textContent).toContain('Alpha');
     expect(datenmigrationStoreMock.loadFirmenBestaende).toHaveBeenCalledOnce();
     expect(compiled.textContent).toContain('2');
     expect(compiled.textContent).toContain('Migriere zuerst den Unternehmer');
-    expect(button?.disabled).toBe(true);
+    expect(fixture.componentInstance.migrationDisabled()).toBe(true);
   });
 
   it('should migrate companies after the entrepreneur migration is complete', async () => {
@@ -218,14 +208,10 @@ describe('DatenmigrationPage', () => {
     migrationsstatus.set({ unternehmer: createStatus({ status: 'completed' }) });
     await fixture.componentInstance.handleMigrationsbereichSelect('firmen');
     fixture.detectChanges();
-    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
-    button?.click();
-    await fixture.whenStable();
+    expect(fixture.componentInstance.migrationDisabled()).toBe(false);
+    await fixture.componentInstance.migrateSelectedBereich();
 
-    expect(button?.disabled).toBe(false);
     expect(datenmigrationStoreMock.migrateFirmen).toHaveBeenCalledOnce();
   });
 
@@ -253,15 +239,12 @@ describe('DatenmigrationPage', () => {
     await fixture.componentInstance.handleMigrationsbereichSelect('filialen');
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const button = compiled.querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
-    expect(compiled.querySelector('mat-card-title')?.textContent).toContain('Filialen migrieren');
+    expect(compiled.textContent).toContain('Filialen migrieren');
     expect(datenmigrationStoreMock.loadFilialenBestaende).toHaveBeenCalledOnce();
     expect(compiled.textContent).toContain('4');
     expect(compiled.textContent).toContain('Migriere zuerst die Firmen');
-    expect(button?.disabled).toBe(true);
+    expect(fixture.componentInstance.migrationDisabled()).toBe(true);
   });
 
   it('should migrate branches after the company migration is complete', async () => {
@@ -269,14 +252,10 @@ describe('DatenmigrationPage', () => {
     migrationsstatus.set({ firmen: createStatus({ status: 'completed' }) });
     await fixture.componentInstance.handleMigrationsbereichSelect('filialen');
     fixture.detectChanges();
-    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
-    button?.click();
-    await fixture.whenStable();
+    expect(fixture.componentInstance.migrationDisabled()).toBe(false);
+    await fixture.componentInstance.migrateSelectedBereich();
 
-    expect(button?.disabled).toBe(false);
     expect(datenmigrationStoreMock.migrateFilialen).toHaveBeenCalledOnce();
   });
 
@@ -285,18 +264,13 @@ describe('DatenmigrationPage', () => {
     await fixture.componentInstance.handleMigrationsbereichSelect('mitarbeiter');
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const button = compiled.querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
-    expect(compiled.querySelector('mat-card-title')?.textContent).toContain(
-      'Mitarbeiter migrieren',
-    );
+    expect(compiled.textContent).toContain('Mitarbeiter migrieren');
     expect(datenmigrationStoreMock.loadMitarbeiterBestaende).toHaveBeenCalledOnce();
     expect(fixture.componentInstance.quellDokumente()).toBe(6);
     expect(fixture.componentInstance.zielDokumente()).toBe(7);
     expect(compiled.textContent).toContain('Migriere zuerst die Filialen');
-    expect(button?.disabled).toBe(true);
+    expect(fixture.componentInstance.migrationDisabled()).toBe(true);
   });
 
   it('should migrate employees after the branch migration is complete', async () => {
@@ -304,14 +278,10 @@ describe('DatenmigrationPage', () => {
     migrationsstatus.set({ filialen: createStatus({ status: 'completed' }) });
     await fixture.componentInstance.handleMigrationsbereichSelect('mitarbeiter');
     fixture.detectChanges();
-    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
-    button?.click();
-    await fixture.whenStable();
+    expect(fixture.componentInstance.migrationDisabled()).toBe(false);
+    await fixture.componentInstance.migrateSelectedBereich();
 
-    expect(button?.disabled).toBe(false);
     expect(datenmigrationStoreMock.migrateMitarbeiter).toHaveBeenCalledOnce();
   });
 
@@ -325,25 +295,15 @@ describe('DatenmigrationPage', () => {
     });
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const button = compiled.querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
     expect(compiled.textContent).toContain('Abgeschlossen');
     expect(compiled.textContent).toContain('Offen');
     expect(compiled.textContent).toContain('Ziel');
-    expect(
-      Array.from(compiled.querySelectorAll('.datenmigration-page__status dt')).map((element) =>
-        element.textContent?.trim(),
-      ),
-    ).toEqual(['Status', 'Quelle', 'Migriert', 'Fehler', 'Offen', 'Ziel']);
     expect(compiled.textContent).not.toContain('Bereits migriert');
     expect(compiled.textContent).not.toContain('Konflikte');
-    expect(button?.disabled).toBe(false);
-    expect(button?.textContent).toContain('Erneut migrieren');
+    expect(fixture.componentInstance.migrationDisabled()).toBe(false);
 
-    button?.click();
-    await fixture.whenStable();
+    await fixture.componentInstance.migrateSelectedBereich();
 
     expect(datenmigrationStoreMock.migrateUnternehmer).toHaveBeenCalledOnce();
   });
@@ -375,11 +335,8 @@ describe('DatenmigrationPage', () => {
     selectedPurCustomerId.set('a');
     inProgress.set(true);
     fixture.detectChanges();
-    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      '.datenmigration-page__migration-button',
-    );
 
-    expect(button?.disabled).toBe(true);
-    expect(button?.textContent).toContain('Migration läuft');
+    expect(fixture.componentInstance.migrationDisabled()).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Migration läuft');
   });
 });

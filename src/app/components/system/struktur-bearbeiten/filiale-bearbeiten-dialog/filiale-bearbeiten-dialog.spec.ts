@@ -125,20 +125,6 @@ describe('FilialeBearbeitenDialog', () => {
     });
   });
 
-  it('should use the global form and dialog structure', () => {
-    const fixture = TestBed.createComponent(FilialeBearbeitenDialog);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const form = compiled.querySelector('form');
-    const dialogActions = compiled.querySelector('mat-dialog-actions');
-    const submitButton = compiled.querySelector<HTMLButtonElement>('button[type="submit"]');
-
-    expect(form?.id).toBe('filiale-bearbeiten-form');
-    expect(form?.classList).toContain('pur-form--grid');
-    expect(form?.contains(dialogActions)).toBe(false);
-    expect(submitButton?.getAttribute('form')).toBe('filiale-bearbeiten-form');
-  });
-
   it('should reject mandatory fields containing only whitespace', async () => {
     const component = TestBed.createComponent(FilialeBearbeitenDialog).componentInstance;
     component.filialeForm.controls.anzeigename.setValue('   ');

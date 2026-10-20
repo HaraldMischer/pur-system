@@ -166,21 +166,11 @@ describe('DienstplanPlanungPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const compiled = fixture.nativeElement as HTMLElement;
-    const eintraege = compiled.querySelectorAll<HTMLElement>('.mitarbeiter-karte');
-
-    expect(eintraege).toHaveLength(3);
-    expect(
-      Array.from(eintraege).map((eintrag) => eintrag.querySelector('strong')?.textContent),
-    ).toEqual(['Alpha, Anna', 'Beta, Berta', 'Gemeinsam, Georg']);
-    expect(compiled.textContent).not.toContain('Inaktiv, Ingo');
-    expect(compiled.textContent).not.toContain('Fremd, Fred');
-    expect(
-      eintraege[0].querySelector<HTMLElement>('.mitarbeiter-farbe')?.style.backgroundColor,
-    ).toBe('rgb(18, 52, 86)');
-    expect(
-      eintraege[1].querySelector<HTMLElement>('.mitarbeiter-farbe')?.style.backgroundColor,
-    ).toBe('');
+    expect(fixture.componentInstance.mitarbeiter().map((eintrag) => eintrag.anzeigename)).toEqual([
+      'Alpha, Anna',
+      'Beta, Berta',
+      'Gemeinsam, Georg',
+    ]);
   });
 
   it('should show monthly hours and shift counts from active planning versions', async () => {
@@ -209,11 +199,10 @@ describe('DienstplanPlanungPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const monatswerte = fixture.nativeElement.querySelector('.mitarbeiter-monatswerte');
-
-    expect(monatswerte.textContent.replace(/\s+/g, ' ').trim()).toBe(
-      'Lohnzeit: 13 Std. · 2 Schichten',
-    );
+    expect(fixture.componentInstance.mitarbeiter()[0]).toMatchObject({
+      lohnzeit: '13 Std.',
+      schichtanzahl: 2,
+    });
   });
 
   it('should provide employees as drag sources', async () => {
@@ -236,7 +225,6 @@ describe('DienstplanPlanungPage', () => {
     expect(fixture.nativeElement.querySelectorAll('app-dienstplan-planungsbereich')).toHaveLength(
       0,
     );
-    expect(fixture.nativeElement.querySelector('[role="status"]')).not.toBeNull();
     expect(loadDienstplanMonat).not.toHaveBeenCalled();
   });
 

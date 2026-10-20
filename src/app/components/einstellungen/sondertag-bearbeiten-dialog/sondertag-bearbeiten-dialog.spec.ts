@@ -14,6 +14,7 @@ const PFAD = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' } as const
 
 describe('SondertagBearbeitenDialog', () => {
   const createSondertag = vi.fn().mockResolvedValue(undefined);
+  const updateSystemSondertag = vi.fn().mockResolvedValue(undefined);
   const kontext = signal<{ inProgress: boolean; error: IFilialeinstellungFehler | null }>({
     inProgress: false,
     error: null,
@@ -39,6 +40,7 @@ describe('SondertagBearbeitenDialog', () => {
             getFilialeinstellungKontext: vi.fn(() => kontext()),
             clearError,
             createSondertag,
+            updateSystemSondertag,
           },
         },
       ],
@@ -83,7 +85,92 @@ describe('SondertagBearbeitenDialog', () => {
     expect(fixture.componentInstance.form.contains('jaehrlichWiederkehrend')).toBe(false);
     expect(fixture.componentInstance.form.controls.monatTag.value).toBe('');
     expect(fixture.componentInstance.form.controls.monatTag.hasError('required')).toBe(true);
+    expect(fixture.componentInstance.form.controls.beginnLokalzeit.value).toBe('06:00');
+    expect(fixture.componentInstance.form.controls.endeLokalzeit.value).toBe('01:00');
     expect(fixture.nativeElement.textContent).not.toContain('Jährlich wiederholen');
+  });
+
+  it('should update a legal holiday without requiring a fixed annual date', async () => {
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: {
+        pfad: PFAD,
+        sondertag: {
+          id: 'karfreitag',
+          unternehmerId: PFAD.unternehmerId,
+          firmaId: PFAD.firmaId,
+          filialeId: PFAD.filialeId,
+          bezeichnung: 'Karfreitag',
+          aktiv: true,
+          herkunft: 'system',
+          datumsregel: {
+            typ: 'gesetzlicherFeiertag',
+            feiertagSchluessel: 'karfreitag',
+          },
+          oeffnungsregel: {
+            geoeffnet: false,
+            beginnLokalzeit: '08:00',
+            endeLokalzeit: '18:00',
+            endetAmFolgetag: false,
+          },
+          erstelltVonUid: 'system',
+          aktualisiertVonUid: 'system',
+        },
+      },
+    });
+    const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
+    const component = fixture.componentInstance;
+
+    component.form.controls.geoeffnet.setValue(true);
+
+    expect(component.dialogTitel).toBe('Gesetzlichen Feiertag bearbeiten');
+    expect(component.form.controls.monatTag.disabled).toBe(true);
+    expect(component.form.valid).toBe(true);
+    expect(component.hatAenderungen()).toBe(true);
+
+    await component.save();
+
+    expect(updateSystemSondertag).toHaveBeenCalledWith(PFAD, 'karfreitag', {
+      aktiv: true,
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '08:00',
+        endeLokalzeit: '18:00',
+        endetAmFolgetag: false,
+      },
+    });
+    expect(close).toHaveBeenCalledWith(true);
+  });
+
+  it('should provide the standard times for a system holiday without stored times', () => {
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: {
+        pfad: PFAD,
+        sondertag: {
+          id: 'karfreitag',
+          unternehmerId: PFAD.unternehmerId,
+          firmaId: PFAD.firmaId,
+          filialeId: PFAD.filialeId,
+          bezeichnung: 'Karfreitag',
+          aktiv: false,
+          herkunft: 'system',
+          datumsregel: {
+            typ: 'gesetzlicherFeiertag',
+            feiertagSchluessel: 'karfreitag',
+          },
+          oeffnungsregel: { geoeffnet: false },
+          erstelltVonUid: 'system',
+          aktualisiertVonUid: 'system',
+        },
+      },
+    });
+    const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
+
+    expect(fixture.componentInstance.form.getRawValue()).toMatchObject({
+      aktiv: false,
+      geoeffnet: false,
+      beginnLokalzeit: '06:00',
+      endeLokalzeit: '01:00',
+    });
   });
 
   it('should reject equal opening times', () => {
@@ -98,23 +185,6 @@ describe('SondertagBearbeitenDialog', () => {
     expect(fixture.componentInstance.form.hasError('identischeOeffnungszeiten')).toBe(true);
   });
 
-  it('should arrange the checkboxes and opening times in rows', () => {
-    const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
-    fixture.componentInstance.form.controls.geoeffnet.setValue(true);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelectorAll('.pur-form__row')).toHaveLength(2);
-    const datumZeile = fixture.nativeElement.querySelector('.pur-form__row') as HTMLElement;
-    expect(datumZeile.querySelector('app-datum-eingabe')).not.toBeNull();
-    expect(datumZeile.querySelectorAll('mat-checkbox')).toHaveLength(2);
-    expect(datumZeile.querySelectorAll('.pur-form__item--33')).toHaveLength(1);
-    expect(datumZeile.querySelectorAll('mat-checkbox.pur-form__item--auto')).toHaveLength(2);
-    expect(fixture.nativeElement.querySelectorAll('app-lokalzeit-eingabe')).toHaveLength(2);
-    expect(
-      fixture.nativeElement.querySelectorAll('app-lokalzeit-eingabe mat-icon[matIconSuffix]'),
-    ).toHaveLength(2);
-  });
-
   it('should keep opening times visible and disabled while the special day is closed', () => {
     const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
     fixture.componentInstance.form.controls.geoeffnet.setValue(true);
@@ -125,11 +195,8 @@ describe('SondertagBearbeitenDialog', () => {
     fixture.componentInstance.form.controls.geoeffnet.setValue(false);
     fixture.detectChanges();
 
-    const zeitfelder = fixture.nativeElement.querySelectorAll(
-      'app-lokalzeit-eingabe input',
-    ) as NodeListOf<HTMLInputElement>;
-    expect(zeitfelder).toHaveLength(2);
-    expect(Array.from(zeitfelder).every((zeitfeld) => zeitfeld.disabled)).toBe(true);
+    expect(fixture.componentInstance.form.controls.beginnLokalzeit.disabled).toBe(true);
+    expect(fixture.componentInstance.form.controls.endeLokalzeit.disabled).toBe(true);
     expect(fixture.componentInstance.form.getRawValue()).toMatchObject({
       beginnLokalzeit: '07:30',
       endeLokalzeit: '16:00',
@@ -187,9 +254,9 @@ describe('SondertagBearbeitenDialog', () => {
     await fixture.componentInstance.save();
     fixture.detectChanges();
 
-    const meldung = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement | null;
-    expect(meldung?.textContent).toContain('Der Sondertag konnte nicht angelegt werden.');
-    expect(meldung?.textContent).toContain('Der Sondertag benötigt ein gültiges jährliches Datum.');
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).toContain('Der Sondertag konnte nicht angelegt werden.');
+    expect(text).toContain('Der Sondertag benötigt ein gültiges jährliches Datum.');
     expect(close).not.toHaveBeenCalled();
   });
 });

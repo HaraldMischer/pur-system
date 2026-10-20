@@ -203,8 +203,8 @@ describe('BenutzerDatenzuordnungDialog', () => {
     verwaltungStoreMock.updateError.set('Die Zuordnung konnte nicht gespeichert werden.');
     const fixture = TestBed.createComponent(BenutzerDatenzuordnungDialog);
     fixture.detectChanges();
-    const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
-
-    expect(alert.textContent?.trim()).toBe('Die Zuordnung konnte nicht gespeichert werden.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Die Zuordnung konnte nicht gespeichert werden.',
+    );
   });
 });

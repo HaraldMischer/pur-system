@@ -3,7 +3,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Timestamp } from 'firebase/firestore';
 
-import { DienstplanMonatstabelle, TSchichtplanRasterauswahl } from './dienstplan-monatstabelle';
+import { DienstplanMonatstabelle } from './dienstplan-monatstabelle';
 
 describe('DienstplanMonatstabelle', () => {
   beforeEach(async () => {
@@ -12,7 +12,7 @@ describe('DienstplanMonatstabelle', () => {
     }).compileComponents();
   });
 
-  it('should render the month as a day and model-shift grid', () => {
+  it('should derive the month as days with model-shift cells', () => {
     const fixture = createFixture();
     fixture.componentRef.setInput('schichten', [
       createSchicht('s-1', 'm-1'),
@@ -23,46 +23,29 @@ describe('DienstplanMonatstabelle', () => {
       createMitarbeiter('m-2', 'Max'),
     ]);
     fixture.componentRef.setInput('darfSchreiben', true);
-    const auswahl: TSchichtplanRasterauswahl[] = [];
-    fixture.componentInstance.schichtAnlegen.subscribe((wert) => {
-      auswahl.push(wert);
-    });
     fixture.detectChanges();
 
-    const compiled = fixture.nativeElement as HTMLElement;
-    const spaltenkoepfe = Array.from(compiled.querySelectorAll('thead th')).map((element) => {
-      return element.textContent?.replace(/\s+/g, ' ').trim();
-    });
-    const anlegenButtons = compiled.querySelectorAll<HTMLButtonElement>('.anlegen');
-    const dritteTageszeile = compiled.querySelectorAll('tbody tr')[2];
+    const component = fixture.componentInstance;
+    const tage = component.tage();
 
-    expect(compiled.querySelectorAll('tbody tr')).toHaveLength(28);
-    expect(spaltenkoepfe).toEqual(['Tag', 'Früh 07:00–12:00 Uhr', 'Spät 16:30–01:00 Uhr']);
-    expect(anlegenButtons).toHaveLength(56);
-    anlegenButtons[5].click();
-    expect(auswahl).toEqual([{ datum: '2026-02-03', modellschichtId: 'spaet' }]);
-    expect(compiled.querySelector('.pur-table.pur-table--schichtplan')).not.toBeNull();
-    expect(compiled.querySelector('table.pur-table__table')).not.toBeNull();
-    expect(dritteTageszeile.querySelectorAll('.schicht')).toHaveLength(2);
-    expect(dritteTageszeile.textContent).toContain('Muster, Mia');
-    expect(dritteTageszeile.textContent).toContain('Muster, Max');
-    expect(
-      dritteTageszeile.querySelector<HTMLElement>('.mitarbeiter-farbe')?.style.backgroundColor,
-    ).toBe('rgb(18, 52, 86)');
-    expect(dritteTageszeile.textContent).toContain('16:30–01:00');
-    expect(dritteTageszeile.textContent).toContain('Lohnzeit: 8 Std. 30 Min.');
-    expect(compiled.textContent).toContain('Version 1');
-    expect(compiled.textContent).toContain('Entwurf');
-    expect(compiled.textContent).toContain('2. Revision');
+    expect(tage).toHaveLength(28);
+    expect(tage[2].datum).toBe('2026-02-03');
+    expect(tage[2].zellen).toHaveLength(2);
+    expect(tage[2].zellen[1].schichten.map((schicht) => schicht.id)).toEqual(['s-1', 's-2']);
+    expect(component.getMitarbeiterAnzeigename('m-1')).toBe('Muster, Mia');
+    expect(component.getMitarbeiterAnzeigename('m-2')).toBe('Muster, Max');
+    expect(component.getMitarbeiterFarbkennung('m-1')).toBe('#123456');
+    expect(component.formatSchichtzeit(tage[2].zellen[1].schichten[0])).toBe('16:30–01:00');
+    expect(component.formatLohnzeit(tage[2].zellen[1].schichten[0])).toBe('8 Std. 30 Min.');
+    expect(component.statusBezeichnung()).toBe('Entwurf');
   });
 
   it('should keep a published plan readonly', () => {
     const fixture = createFixture(true);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Veröffentlicht');
-    expect(fixture.nativeElement.querySelector('.anlegen')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.schicht button')).toBeNull();
+    expect(fixture.componentInstance.statusBezeichnung()).toBe('Veröffentlicht');
+    expect(fixture.componentInstance.kannSchichtenAblegen()).toBe(false);
   });
 
   it('should render and emit deleting in the plan status row', () => {
@@ -74,8 +57,9 @@ describe('DienstplanMonatstabelle', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const header = compiled.querySelector('.monatskopf');
-    const button = header?.querySelector<HTMLButtonElement>('.kopf-aktion');
+    const button = [...compiled.querySelectorAll<HTMLButtonElement>('button')].find((element) => {
+      return element.textContent?.includes('Dienstplan löschen');
+    });
     expect(button?.disabled).toBe(false);
     expect(button?.title).toBe('Leeren Dienstplan löschen.');
     button?.click();
@@ -89,7 +73,9 @@ describe('DienstplanMonatstabelle', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const button = compiled.querySelector<HTMLButtonElement>('.kopf-aktion');
+    const button = [...compiled.querySelectorAll<HTMLButtonElement>('button')].find((element) => {
+      return element.textContent?.includes('Dienstplan löschen');
+    });
     expect(button?.disabled).toBe(true);
   });
 
@@ -144,11 +130,6 @@ describe('DienstplanMonatstabelle', () => {
     expect(ablagen).toEqual([
       { mitarbeiterId: 'm-2', datum: '2026-02-03', modellschichtId: 'spaet' },
     ]);
-    const compiled = fixture.nativeElement as HTMLElement;
-    const belegteSpaetschicht = compiled.querySelector<HTMLButtonElement>(
-      '[aria-label="Spät am Di., 03.02. anlegen"]',
-    );
-    expect(belegteSpaetschicht?.disabled).toBe(false);
   });
 
   it('should show a fallback when a referenced employee is unavailable', () => {

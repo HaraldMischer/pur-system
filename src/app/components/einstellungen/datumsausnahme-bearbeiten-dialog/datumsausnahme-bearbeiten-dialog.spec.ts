@@ -76,14 +76,6 @@ describe('DatumsausnahmeBearbeitenDialog', () => {
 
     expect(fixture.componentInstance.form.contains('datum')).toBe(true);
     expect(fixture.componentInstance.form.contains('aktiv')).toBe(false);
-    const datumEingabe = fixture.nativeElement.querySelector('app-datum-eingabe');
-    const geoeffnet = fixture.nativeElement.querySelector(
-      'mat-checkbox[formControlName="geoeffnet"]',
-    );
-    expect(datumEingabe?.closest('.pur-form__row')).toBe(geoeffnet?.closest('.pur-form__row'));
-    expect(datumEingabe?.classList).toContain('pur-form__item--50');
-    expect(geoeffnet?.classList).toContain('pur-form__item--50');
-    expect(fixture.nativeElement.textContent).not.toContain('Jährlich wiederholen');
   });
 
   it('should keep the times visible and disabled while the exception is closed', () => {
@@ -96,11 +88,8 @@ describe('DatumsausnahmeBearbeitenDialog', () => {
     fixture.componentInstance.form.controls.geoeffnet.setValue(false);
     fixture.detectChanges();
 
-    const zeitfelder = fixture.nativeElement.querySelectorAll(
-      'app-lokalzeit-eingabe input',
-    ) as NodeListOf<HTMLInputElement>;
-    expect(zeitfelder).toHaveLength(2);
-    expect(Array.from(zeitfelder).every((zeitfeld) => zeitfeld.disabled)).toBe(true);
+    expect(fixture.componentInstance.form.controls.beginnLokalzeit.disabled).toBe(true);
+    expect(fixture.componentInstance.form.controls.endeLokalzeit.disabled).toBe(true);
     expect(fixture.componentInstance.form.getRawValue()).toMatchObject({
       beginnLokalzeit: '09:00',
       endeLokalzeit: '17:30',

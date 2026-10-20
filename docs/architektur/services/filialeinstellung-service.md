@@ -13,15 +13,18 @@ Subcollections `sondertag` und `ausnahme`. Fehlen beide Hauptdokumente, liefert 
 Existiert nur eines der beiden Dokumente, wird der unvollständige Zustand als Fehler behandelt.
 
 Die Initialisierung verlangt Bundesland und vollständige Wochenregeln für alle sieben Tage. Die Oberfläche übergibt zunächst
-fest Nordrhein-Westfalen (`DE-NW`). Der Service legt die dafür geltenden systemdefinierten Feiertage sowie die zentral
-vorgesehenen festen Sondertage an. Werte werden nicht aus Adresse oder Postleitzahl abgeleitet. Die anwendungsweit feste
-technische Zeitzone `Europe/Berlin` wird nicht in den Filialeinstellungen gespeichert.
+fest Nordrhein-Westfalen (`DE-NW`) und für alle Wochentage geöffnete Regeln von `06:00` bis `01:00` Uhr am Folgetag. Der
+Service legt die dafür geltenden systemdefinierten Feiertage sowie die zentral vorgesehenen festen Sondertage inaktiv an,
+sodass zunächst die Wochentagsregel gilt. Ihre geschlossenen Öffnungsregeln benötigen initial keine Zeitfelder; die Oberfläche
+verwendet bei fehlenden Zeitwerten `06:00` bis `01:00` Uhr am Folgetag als Formularvorbelegung. Werte werden nicht aus Adresse
+oder Postleitzahl abgeleitet. Die anwendungsweit feste technische Zeitzone `Europe/Berlin` wird nicht in den
+Filialeinstellungen gespeichert.
 
 ## Schreiben
 
 Allgemeine Einstellungen und Wochenregeln werden gemeinsam gespeichert. Ein Bundeslandwechsel gleicht die systemdefinierten
 Feiertage atomar ab: gemeinsame Einträge behalten ihre angepasste Öffnungsregel, nicht mehr geltende werden entfernt und neue
-geschlossen ergänzt. Benutzerdefinierte Sondertage bleiben erhalten.
+inaktiv ergänzt. Benutzerdefinierte Sondertage bleiben erhalten.
 
 Eigene jährliche Sondertage und konkrete Datumsausnahmen werden über getrennte Serviceaktionen angelegt, aktualisiert und
 gelöscht. Jährliche Sondertage besitzen Monat und Tag sowie einen Aktivstatus. Datumsausnahmen besitzen ein vollständiges

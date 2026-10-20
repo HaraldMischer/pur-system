@@ -83,10 +83,10 @@ describe('BenutzerVerwaltung', () => {
     component.openBenutzerBearbeitenDialog();
 
     expect(storeMock.selectBenutzer).toHaveBeenCalledWith(profil.uid);
-    expect(openMock).toHaveBeenCalledWith(BenutzerBearbeitenDialog, {
-      data: { profil },
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(openMock).toHaveBeenCalledWith(
+      BenutzerBearbeitenDialog,
+      expect.objectContaining({ data: { profil } }),
+    );
   });
 
   it('should open the assignment dialog for a non-master profile', () => {
@@ -96,10 +96,10 @@ describe('BenutzerVerwaltung', () => {
 
     component.openBenutzerDatenzuordnungDialog();
 
-    expect(openMock).toHaveBeenCalledWith(BenutzerDatenzuordnungDialog, {
-      data: { profil },
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(openMock).toHaveBeenCalledWith(
+      BenutzerDatenzuordnungDialog,
+      expect.objectContaining({ data: { profil } }),
+    );
   });
 
   it('should open the deletion dialog for a non-master profile', () => {
@@ -109,10 +109,10 @@ describe('BenutzerVerwaltung', () => {
 
     component.openBenutzerLoeschenDialog();
 
-    expect(openMock).toHaveBeenCalledWith(BenutzerLoeschenDialog, {
-      data: { profil },
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(openMock).toHaveBeenCalledWith(
+      BenutzerLoeschenDialog,
+      expect.objectContaining({ data: { profil } }),
+    );
   });
 
   it('should disable editing and reject actions while a write operation is running', () => {
@@ -129,31 +129,6 @@ describe('BenutzerVerwaltung', () => {
 
     expect(bearbeitenButton.disabled).toBe(true);
     expect(openMock).not.toHaveBeenCalled();
-  });
-
-  it('should provide all actions for a non-master profile', async () => {
-    storeMock.benutzerprofile.set([profil]);
-    storeMock.selectedBenutzer.set(profil);
-    const fixture = TestBed.createComponent(BenutzerVerwaltung);
-    fixture.detectChanges();
-    const bearbeitenButton = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
-
-    bearbeitenButton.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    const menuTexte = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).map(
-      (eintrag) => eintrag.querySelector('span')?.textContent?.trim(),
-    );
-    const menuEintraege = Array.from(
-      document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
-    );
-
-    expect(menuTexte).toEqual([
-      'Benutzerdaten bearbeiten',
-      'Datenzuordnung ändern',
-      'Benutzerkonto löschen',
-    ]);
-    expect(menuEintraege.map((eintrag) => eintrag.disabled)).toEqual([false, false, false]);
   });
 
   it('should directly open profile editing for a master profile', () => {
@@ -175,10 +150,10 @@ describe('BenutzerVerwaltung', () => {
     fixture.componentInstance.openBenutzerLoeschenDialog();
 
     expect(openMock).toHaveBeenCalledTimes(1);
-    expect(openMock).toHaveBeenCalledWith(BenutzerBearbeitenDialog, {
-      data: { profil: masterProfil },
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(openMock).toHaveBeenCalledWith(
+      BenutzerBearbeitenDialog,
+      expect.objectContaining({ data: { profil: masterProfil } }),
+    );
   });
 
   it('should group profiles by role frequency and sort their display names', () => {

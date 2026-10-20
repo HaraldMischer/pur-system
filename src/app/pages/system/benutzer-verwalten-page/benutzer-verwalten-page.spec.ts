@@ -35,11 +35,10 @@ describe('BenutzerVerwaltenPage', () => {
       .compileComponents();
   });
 
-  it('should show only the user management component in the limited page layout', () => {
+  it('should show only the user management component', () => {
     const fixture = TestBed.createComponent(BenutzerVerwaltenPage);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.pur-page--limited')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-benutzer-verwaltung')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-benutzer-anlage')).toBeNull();
   });

@@ -75,6 +75,11 @@ export class SondertagBearbeitenDialog {
   readonly istGesetzlicherFeiertag =
     this.daten.sondertag?.datumsregel.typ === 'gesetzlicherFeiertag';
   readonly istBestehenderEintrag = Boolean(this.daten.sondertag);
+  readonly dialogTitel = this.istGesetzlicherFeiertag
+    ? 'Gesetzlichen Feiertag bearbeiten'
+    : this.istBestehenderEintrag
+      ? 'Jährlichen Sondertag bearbeiten'
+      : 'Jährlichen Sondertag anlegen';
   readonly form = new FormGroup(
     {
       bezeichnung: new FormControl(this.daten.sondertag?.bezeichnung ?? '', {
@@ -180,12 +185,12 @@ export class SondertagBearbeitenDialog {
 
   private getBeginn(): string {
     const regel = this.daten.sondertag?.oeffnungsregel;
-    return regel?.beginnLokalzeit ?? '08:00';
+    return regel?.beginnLokalzeit ?? '06:00';
   }
 
   private getEnde(): string {
     const regel = this.daten.sondertag?.oeffnungsregel;
-    return regel?.endeLokalzeit ?? '18:00';
+    return regel?.endeLokalzeit ?? '01:00';
   }
 
   private buildOeffnungsregel(): TOeffnungsregel {
@@ -207,6 +212,10 @@ export class SondertagBearbeitenDialog {
   }
 
   private updateOeffnungszeitenStatus(): void {
+    if (this.istSystemtag) {
+      this.form.controls.bezeichnung.disable({ emitEvent: false });
+      this.form.controls.monatTag.disable({ emitEvent: false });
+    }
     const aktiv = this.form.controls.aktiv.getRawValue();
     const geoeffnet = this.form.controls.geoeffnet.getRawValue();
     if (aktiv) {

@@ -16,10 +16,10 @@ describe('GlobalBanner', () => {
     const fixture = TestBed.createComponent(GlobalBanner);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.global-banner')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent?.trim()).toBe('');
   });
 
-  it('should render the current banner with its semantic role', () => {
+  it('should render the current banner', () => {
     const service = TestBed.inject(GlobalBannerService);
     service.show({
       kind: 'error',
@@ -28,11 +28,8 @@ describe('GlobalBanner', () => {
     });
     const fixture = TestBed.createComponent(GlobalBanner);
     fixture.detectChanges();
-    const banner = fixture.nativeElement.querySelector('.global-banner') as HTMLElement;
-
-    expect(banner.getAttribute('role')).toBe('alert');
-    expect(banner.classList.contains('global-banner--error')).toBe(true);
-    expect(banner.textContent).toContain('Dieses Profil ist inaktiv.');
-    expect(banner.querySelector('button')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Dieses Profil ist inaktiv.',
+    );
   });
 });

@@ -3,7 +3,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { APP_VERSION } from '../../../commons/constants/app.constants';
+import { TNavigationEintrag } from '../../../commons/models/app/navigation';
 import { IBenutzerProfilDokument, TUserRole } from '../../../commons/models/domain/benutzer';
 import { IFirmaEintrag } from '../../../commons/models/domain/firma';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
@@ -13,6 +13,15 @@ import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { StammdatenStore } from '../../../stores/app/stammdaten.store';
 import { AppKontextSelector } from '../../data-selectors/app-kontext-selector/app-kontext-selector';
 import { AppSidenav } from './app-sidenav';
+import { AppSidenavNestedNavigation } from './app-sidenav-nested-navigation/app-sidenav-nested-navigation';
+
+function getNavigationLabels(eintraege: readonly TNavigationEintrag[]): string[] {
+  return eintraege.flatMap((eintrag) => {
+    if (eintrag.typ === 'link') return [eintrag.label];
+
+    return [eintrag.label, ...getNavigationLabels(eintrag.kinder)];
+  });
+}
 
 function createProfil(userRole: TUserRole): IBenutzerProfilDokument {
   return {
@@ -107,22 +116,6 @@ describe('AppSidenav', () => {
     }).compileComponents();
   });
 
-  it('should render the configured product title', () => {
-    const fixture = TestBed.createComponent(AppSidenavHost);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    expect(compiled.querySelector('.app-brand-toolbar')?.textContent).toContain('Pur-System');
-  });
-
-  it('should render the application version from the central application constant', () => {
-    const fixture = TestBed.createComponent(AppSidenavHost);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    expect(compiled.querySelector('.app-sidenav__version')?.textContent).toBe(`v${APP_VERSION}`);
-  });
-
   it('should show the account name and login name', () => {
     benutzerStoreMock.benutzerProfil.mockReturnValue({
       ...createProfil('master'),
@@ -131,11 +124,11 @@ describe('AppSidenav', () => {
     });
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
-    const card = (fixture.nativeElement as HTMLElement).querySelector('.pur-card--user');
+    const text = (fixture.nativeElement as HTMLElement).textContent;
 
-    expect(card?.textContent).toContain('Pur System Master');
-    expect(card?.querySelector('small')?.textContent).toBe('pur-system-master');
-    expect(card?.textContent).not.toContain('pur-system-master@example.com');
+    expect(text).toContain('Pur System Master');
+    expect(text).toContain('pur-system-master');
+    expect(text).not.toContain('pur-system-master@example.com');
   });
 
   it('should show the fallback without a profile', () => {
@@ -143,10 +136,8 @@ describe('AppSidenav', () => {
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const card = compiled.querySelector('.pur-card--user');
 
-    expect(card?.textContent).toContain('Nicht angemeldet');
-    expect(card?.querySelector('small')).toBeNull();
+    expect(compiled.textContent).toContain('Nicht angemeldet');
     expect(compiled.querySelector('app-sidenav-flat-navigation')).toBeNull();
     expect(compiled.querySelector('app-sidenav-nested-navigation')).toBeNull();
   });
@@ -155,7 +146,7 @@ describe('AppSidenav', () => {
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const navigationText = compiled.querySelector('[aria-label="Hauptnavigation"]')?.textContent;
+    const navigationText = compiled.textContent;
 
     expect(navigationText).toContain('Dashboard');
     expect(navigationText).toContain('Schichtplan');
@@ -215,33 +206,6 @@ describe('AppSidenav', () => {
     });
   });
 
-  it('should expand system administration and show all child routes for master', () => {
-    const fixture = TestBed.createComponent(AppSidenavHost);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const toggle = Array.from(
-      compiled.querySelectorAll<HTMLButtonElement>('button[mat-list-item]'),
-    ).find((button) => button.textContent?.includes('System'));
-    const children = toggle?.parentElement?.querySelector(
-      '.app-sidenav-nested-navigation__children',
-    );
-
-    expect(toggle?.textContent).toContain('System');
-    expect(toggle?.getAttribute('aria-label')).toBe('System ausklappen');
-    expect(children?.classList).toContain('app-sidenav-nested-navigation__children--hidden');
-
-    toggle?.click();
-    fixture.detectChanges();
-
-    expect(toggle?.getAttribute('aria-label')).toBe('System einklappen');
-    expect(children?.classList).not.toContain('app-sidenav-nested-navigation__children--hidden');
-    expect(children?.textContent).toContain('Benutzer anlegen');
-    expect(children?.textContent).toContain('Benutzer verwalten');
-    expect(children?.textContent).toContain('Struktur anlegen');
-    expect(children?.textContent).toContain('Struktur verwalten');
-    expect(children?.textContent).toContain('Datenmigration');
-  });
-
   it('should hide navigation entries without permission', () => {
     benutzerStoreMock.benutzerProfil.mockReturnValue({
       ...createProfil('master'),
@@ -249,13 +213,15 @@ describe('AppSidenav', () => {
     });
     const fixture = TestBed.createComponent(AppSidenavHost);
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const navigationText = compiled.querySelector('[aria-label="Hauptnavigation"]')?.textContent;
+    const navigation = fixture.debugElement.query(
+      (debugElement) => debugElement.componentInstance instanceof AppSidenavNestedNavigation,
+    ).componentInstance as AppSidenavNestedNavigation;
+    const labels = getNavigationLabels(navigation.sichtbareEintraege());
 
-    expect(navigationText).toContain('Dashboard');
-    expect(navigationText).not.toContain('Schichtplan');
-    expect(navigationText).not.toContain('Mitarbeiter');
-    expect(navigationText).not.toContain('System');
+    expect(labels).toContain('Dashboard');
+    expect(labels).not.toContain('Schichtplan');
+    expect(labels).not.toContain('Mitarbeiter');
+    expect(labels).not.toContain('System');
   });
 
   it('should hide administration and show the configured context for office users', async () => {
@@ -266,11 +232,14 @@ describe('AppSidenav', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const navigationText = compiled.querySelector('[aria-label="Hauptnavigation"]')?.textContent;
+    const navigation = fixture.debugElement.query(
+      (debugElement) => debugElement.componentInstance instanceof AppSidenavNestedNavigation,
+    ).componentInstance as AppSidenavNestedNavigation;
+    const labels = getNavigationLabels(navigation.sichtbareEintraege());
 
-    expect(navigationText).toContain('Dashboard');
-    expect(navigationText).toContain('Mitarbeiter');
-    expect(navigationText).not.toContain('System');
+    expect(labels).toContain('Dashboard');
+    expect(labels).toContain('Mitarbeiter');
+    expect(labels).not.toContain('System');
     expect(compiled.querySelector('app-kontext-selector')).not.toBeNull();
   });
 

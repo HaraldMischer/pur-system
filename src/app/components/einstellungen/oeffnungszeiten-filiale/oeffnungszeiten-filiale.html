@@ -33,7 +33,11 @@
             </p>
 
             <div class="pur-list__row-item">
-              <mat-checkbox formControlName="geoeffnet"> Geöffnet </mat-checkbox>
+              <mat-checkbox formControlName="geoeffnet">
+                {{
+                  getTagForm(wochentag.value).controls.geoeffnet.value ? 'Geöffnet' : 'Geschlossen'
+                }}
+              </mat-checkbox>
             </div>
 
             <div class="pur-list__row-item pur-list__row-item--end uhrzeitfelder">
@@ -61,7 +65,9 @@
         <button
           matButton="filled"
           type="submit"
-          [disabled]="form.invalid || form.pristine || kontext()?.inProgress"
+          [disabled]="
+            form.invalid || (bestand() !== null && form.pristine) || kontext()?.inProgress
+          "
         >
           {{ bestand() ? 'Öffnungszeiten speichern' : 'Öffnungszeiten initialisieren' }}
         </button>

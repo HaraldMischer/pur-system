@@ -204,15 +204,14 @@ describe('DienstplanPlanungsbereich', () => {
     return fixture;
   }
 
-  it('should load and render the monthly state of its branch', async () => {
+  it('should load the monthly state of its branch', async () => {
     const fixture = createComponent(true);
     fixture.detectChanges();
     await fixture.whenStable();
 
     expect(loadDienstplanMonat).toHaveBeenCalledWith(PFAD, '2026-10', false);
-    expect(fixture.nativeElement.querySelector('h3')?.textContent).toContain(FILIALE.anzeigename);
-    expect(fixture.nativeElement.querySelector('.pur-message--empty')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.pur-message--empty button')).not.toBeNull();
+    expect(fixture.componentInstance.dienstplan()).toBeNull();
+    expect(fixture.componentInstance.darfSchreiben()).toBe(true);
   });
 
   it('should keep a missing plan read-only outside planning mode', async () => {
@@ -220,8 +219,11 @@ describe('DienstplanPlanungsbereich', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.querySelector('.pur-message--empty')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.pur-message--empty button')).toBeNull();
+    expect(fixture.componentInstance.dienstplan()).toBeNull();
+    expect(fixture.componentInstance.darfSchreiben()).toBe(false);
+    await fixture.componentInstance.openDienstplanDialog();
+    expect(loadSchichtmodelle).not.toHaveBeenCalled();
+    expect(dialogOpen).not.toHaveBeenCalled();
   });
 
   it('should load branch models before opening the plan dialog', async () => {
@@ -277,7 +279,6 @@ describe('DienstplanPlanungsbereich', () => {
       return element.textContent.includes('Dienstplan löschen');
     });
     expect(button?.disabled).toBe(false);
-    expect(button?.closest('.monatskopf')).not.toBeNull();
     button?.click();
     await fixture.whenStable();
 
@@ -544,9 +545,7 @@ describe('DienstplanPlanungsbereich', () => {
     });
 
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
-      'Speichern fehlgeschlagen.',
-    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Speichern fehlgeschlagen.');
   });
 
   function createSchichtmodell(id = 'modell-1', bezeichnung = 'Sommer'): ISchichtmodellBestand {

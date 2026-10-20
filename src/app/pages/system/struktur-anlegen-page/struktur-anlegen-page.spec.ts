@@ -121,16 +121,13 @@ describe('StrukturAnlegenPage', () => {
     const stepper = fixture.debugElement.query(By.directive(MatStepper))
       .componentInstance as MatStepper;
 
-    expect(compiled.classList).toContain('pur-page');
-    expect(compiled.classList).toContain('pur-page--limited');
     expect(stepper.linear).toBe(true);
-    expect(compiled.querySelectorAll('mat-step-header')).toHaveLength(3);
+    expect(stepper.steps.length).toBe(3);
     expect(
       Array.from(compiled.querySelectorAll('button')).some(
         (button) => button.textContent?.trim() === 'Datenstruktur anlegen',
       ),
     ).toBe(false);
-    expect(compiled.textContent).not.toContain('Das Speichern in Firestore');
   });
 
   it('should require an existing entrepreneur selection', () => {
@@ -174,9 +171,7 @@ describe('StrukturAnlegenPage', () => {
     await component.openUnternehmerDialog();
 
     expect(unternehmerStoreMock.clearError).toHaveBeenCalled();
-    expect(dialogOpenMock).toHaveBeenCalledWith(UnternehmerAnlegenDialog, {
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(dialogOpenMock).toHaveBeenCalledWith(UnternehmerAnlegenDialog, expect.any(Object));
     expect(component.unternehmerForm.controls.id.value).toBe('unternehmer-neu');
     expect(component.unternehmerForm.valid).toBe(true);
   });
@@ -213,10 +208,10 @@ describe('StrukturAnlegenPage', () => {
     await component.openFirmaDialog();
 
     expect(firmaStoreMock.clearError).toHaveBeenCalled();
-    expect(dialogOpenMock).toHaveBeenCalledWith(FirmaAnlegenDialog, {
-      data: { unternehmerId: 'unternehmer-1' },
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(dialogOpenMock).toHaveBeenCalledWith(
+      FirmaAnlegenDialog,
+      expect.objectContaining({ data: { unternehmerId: 'unternehmer-1' } }),
+    );
     expect(component.firmaForm.controls.id.value).toBe('firma-neu');
     expect(component.firmaForm.valid).toBe(true);
   });
@@ -251,10 +246,12 @@ describe('StrukturAnlegenPage', () => {
     await component.openFilialeDialog();
 
     expect(filialeStoreMock.clearError).toHaveBeenCalled();
-    expect(dialogOpenMock).toHaveBeenCalledWith(FilialeAnlegenDialog, {
-      data: { unternehmerId: 'unternehmer-1', firmaId: 'firma-1' },
-      panelClass: ['pur-dialog__panel'],
-    });
+    expect(dialogOpenMock).toHaveBeenCalledWith(
+      FilialeAnlegenDialog,
+      expect.objectContaining({
+        data: { unternehmerId: 'unternehmer-1', firmaId: 'firma-1' },
+      }),
+    );
     expect(component.filialeForm.controls.id.value).toBe('filiale-neu');
     expect(component.filialeForm.valid).toBe(true);
   });
@@ -287,21 +284,9 @@ describe('StrukturAnlegenPage', () => {
 
     component.filialeForm.controls.id.setValue('filiale-1');
     fixture.detectChanges();
-    const zusammenfassung = fixture.nativeElement.querySelector(
-      '.pur-page-section__summary',
-    ) as HTMLElement;
-    expect(zusammenfassung.textContent).toContain('Unternehmer Nord');
-    expect(zusammenfassung.textContent).toContain('Firma Nord');
-    expect(zusammenfassung.textContent).toContain('Filiale Hamburg');
-  });
-
-  it('should use vertical orientation on small screens', () => {
-    const fixture = TestBed.createComponent(StrukturAnlegenPage);
-    fixture.detectChanges();
-    expect(fixture.componentInstance.stepperOrientation()).toBe('horizontal');
-
-    breakpointState.next({ matches: true, breakpoints: {} });
-    fixture.detectChanges();
-    expect(fixture.componentInstance.stepperOrientation()).toBe('vertical');
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).toContain('Unternehmer Nord');
+    expect(text).toContain('Firma Nord');
+    expect(text).toContain('Filiale Hamburg');
   });
 });

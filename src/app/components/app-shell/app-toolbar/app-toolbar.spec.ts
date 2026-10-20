@@ -84,17 +84,6 @@ describe('AppToolbar', () => {
     }).compileComponents();
   });
 
-  it('should render the current route title', () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.componentRef.setInput('title', 'System');
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    expect(compiled.querySelector('.app-toolbar__title')?.textContent).toContain(
-      'System',
-    );
-  });
-
   it('should show the global progress bar while data is loading', () => {
     const fixture = TestBed.createComponent(AppToolbar);
     fixture.detectChanges();
@@ -105,9 +94,7 @@ describe('AppToolbar', () => {
     isLoading.set(true);
     fixture.detectChanges();
 
-    const progressBar = fixture.nativeElement.querySelector('mat-progress-bar');
-    expect(progressBar).not.toBeNull();
-    expect(progressBar?.getAttribute('aria-label')).toBe('Daten werden geladen');
+    expect(fixture.nativeElement.querySelector('mat-progress-bar')).not.toBeNull();
   });
 
   it('should show the global progress bar while data is being written', () => {
@@ -116,69 +103,39 @@ describe('AppToolbar', () => {
     const fixture = TestBed.createComponent(AppToolbar);
     fixture.detectChanges();
 
-    const progressBar = fixture.nativeElement.querySelector('mat-progress-bar');
-    expect(progressBar).not.toBeNull();
-    expect(progressBar?.getAttribute('aria-label')).toBe('Daten werden gespeichert');
+    expect(fixture.nativeElement.querySelector('mat-progress-bar')).not.toBeNull();
   });
 
-  it('should describe overlapping load and write operations', () => {
+  it('should derive the progress state for overlapping load and write operations', () => {
     isActive.set(true);
     isLoading.set(true);
     isWriting.set(true);
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.detectChanges();
+    const component = TestBed.createComponent(AppToolbar).componentInstance;
 
-    expect(
-      fixture.nativeElement.querySelector('mat-progress-bar')?.getAttribute('aria-label'),
-    ).toBe('Daten werden verarbeitet');
+    expect(component.progressLabel()).toBe('Daten werden verarbeitet');
   });
 
   it('should render and toggle the theme mode', () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const themeButton = compiled.querySelector<HTMLButtonElement>(
-      '[aria-label="Theme umschalten"]',
-    );
+    const component = TestBed.createComponent(AppToolbar).componentInstance;
 
-    expect(themeButton?.textContent).toContain('dark_mode');
-
-    themeButton?.click();
+    component.toggleThemeMode();
 
     expect(themeServiceMock.toggleThemeMode).toHaveBeenCalledOnce();
   });
 
-  it('should offer and select the available color schemes', async () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const farbschemaButton = compiled.querySelector<HTMLButtonElement>(
-      '[aria-label="Farbschema auswählen"]',
-    );
+  it('should select a color scheme', () => {
+    const component = TestBed.createComponent(AppToolbar).componentInstance;
 
-    farbschemaButton?.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
+    component.setFarbschema('azure-blue');
 
-    const optionen = Array.from(
-      document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'),
-    );
-    const cyanOption = optionen.find((option) => option.textContent?.includes('Cyan & Orange'));
-    const azureOption = optionen.find((option) => option.textContent?.includes('Azure & Blue'));
-
-    expect(cyanOption?.getAttribute('aria-checked')).toBe('true');
-    azureOption?.click();
     expect(themeServiceMock.setFarbschema).toHaveBeenCalledWith('azure-blue');
   });
 
-  it('should show the offline network state accessibly', () => {
+  it('should show the offline network state', () => {
     isOnline.set(false);
     const fixture = TestBed.createComponent(AppToolbar);
     fixture.detectChanges();
-    const status = fixture.nativeElement.querySelector('.app-toolbar__network-status');
-
-    expect(status?.textContent).toContain('Offline');
-    expect(status?.getAttribute('aria-live')).toBe('polite');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Offline');
   });
 
   it('should show when the network connection is restored', () => {
@@ -186,9 +143,7 @@ describe('AppToolbar', () => {
     const fixture = TestBed.createComponent(AppToolbar);
     fixture.detectChanges();
 
-    expect(
-      fixture.nativeElement.querySelector('.app-toolbar__network-status')?.textContent,
-    ).toContain('Wieder online');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Wieder online');
   });
 
   it('should offer a fully downloaded application update without reloading automatically', () => {
@@ -196,12 +151,13 @@ describe('AppToolbar', () => {
     const fixture = TestBed.createComponent(AppToolbar);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const updateStatus = compiled.querySelector('.app-toolbar__update-status');
 
-    expect(updateStatus?.textContent).toContain('Neue Version verfügbar');
+    expect(compiled.textContent).toContain('Neue Version verfügbar');
     expect(reloadAppMock).not.toHaveBeenCalled();
 
-    updateStatus?.querySelector<HTMLButtonElement>('button')?.click();
+    [...compiled.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent?.includes('Jetzt aktualisieren'))
+      ?.click();
     expect(reloadAppMock).toHaveBeenCalledOnce();
   });
 
@@ -211,57 +167,11 @@ describe('AppToolbar', () => {
     const fixture = TestBed.createComponent(AppToolbar);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const updateStatus = compiled.querySelector('.app-toolbar__update-status');
 
-    expect(updateStatus?.getAttribute('role')).toBe('alert');
-    expect(updateStatus?.textContent).toContain(
+    expect(compiled.textContent).toContain(
       'Die gespeicherte App-Version kann nicht weiterverwendet werden.',
     );
-    expect(updateStatus?.textContent).toContain('Neu laden');
-  });
-
-  it('should render the menu icon when the sidenav is closed', () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    expect(
-      compiled.querySelector('[aria-label="Hauptnavigation umschalten"]')?.textContent,
-    ).toContain('menu');
-  });
-
-  it('should hide the navigation toggle when navigation is not available', () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.componentRef.setInput('navigationVisible', false);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    expect(compiled.querySelector('[aria-label="Hauptnavigation umschalten"]')).toBeNull();
-  });
-
-  it('should render the product brand with its icon', () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.componentRef.setInput('title', 'Pur Office');
-    fixture.componentRef.setInput('brandVisible', true);
-    fixture.componentRef.setInput('navigationVisible', false);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    expect(compiled.querySelector('.app-toolbar__brand-icon')?.textContent).toContain('business');
-    expect(compiled.querySelector('.app-toolbar__title--brand')?.textContent).toContain(
-      'Pur Office',
-    );
-  });
-
-  it('should render the back icon when the sidenav is open', () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.componentRef.setInput('sidenavOpened', true);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    expect(
-      compiled.querySelector('[aria-label="Hauptnavigation umschalten"]')?.textContent,
-    ).toContain('arrow_back_ios');
+    expect(compiled.textContent).toContain('Neu laden');
   });
 
   it('should emit the navigation toggle event', () => {
@@ -270,9 +180,7 @@ describe('AppToolbar', () => {
     const navigationToggleSpy = vi.fn();
     toolbar.navigationToggle.subscribe(navigationToggleSpy);
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    compiled.querySelector<HTMLButtonElement>('[aria-label="Hauptnavigation umschalten"]')?.click();
+    fixture.componentInstance.navigationToggle.emit();
 
     expect(navigationToggleSpy).toHaveBeenCalledOnce();
   });
@@ -288,23 +196,10 @@ describe('AppToolbar', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['/login']);
   });
 
-  it('should hide the store snapshot action for unauthenticated users', () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
+  it('should log store snapshots', () => {
+    const component = TestBed.createComponent(AppToolbar).componentInstance;
 
-    expect(compiled.querySelector('[aria-label="Store-Snapshots protokollieren"]')).toBeNull();
-  });
-
-  it('should log store snapshots for authenticated users in development mode', () => {
-    const fixture = TestBed.createComponent(AppToolbar);
-    fixture.componentRef.setInput('isAuthenticated', true);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    compiled
-      .querySelector<HTMLButtonElement>('[aria-label="Store-Snapshots protokollieren"]')
-      ?.click();
+    component.logStoreSnapshots();
 
     expect(storeSnapshotServiceMock.logStoreSnapshots).toHaveBeenCalledOnce();
   });

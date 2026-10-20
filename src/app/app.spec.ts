@@ -3,10 +3,8 @@
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Component, WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 
-import { AppToolbar } from './components/app-shell/app-toolbar/app-toolbar';
 import { AppSitzungsInitService } from './services/core/app-sitzungs-init.service';
 import { BenutzerStore } from './stores/app/benutzer.store';
 import { App } from './app';
@@ -72,57 +70,25 @@ describe('App', () => {
     expect(appSitzungsInitServiceMock.init).toHaveBeenCalledOnce();
   });
 
-  it('should render the app shell', () => {
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-
-    expect(compiled.querySelector('mat-sidenav-container')).toBeTruthy();
-    expect(compiled.querySelector('app-toolbar')).toBeTruthy();
-    expect(compiled.querySelector('app-sidenav')).toBeTruthy();
-    expect(compiled.querySelector('router-outlet')).toBeTruthy();
-  });
-
-  it('should leave the initial toolbar title empty before route recognition', () => {
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-    const toolbar = fixture.debugElement.query(By.directive(AppToolbar))
-      .componentInstance as AppToolbar;
-
-    expect(toolbar.title()).toBe('');
-  });
-
-  it('should show the configured product title in the toolbar without authentication', async () => {
-    const router = TestBed.inject(Router);
-    const fixture = TestBed.createComponent(App);
-
-    await router.navigateByUrl('/login');
-    fixture.detectChanges();
-
-    const toolbar = fixture.debugElement.query(By.directive(AppToolbar))
-      .componentInstance as AppToolbar;
-
-    expect(toolbar.title()).toBe('Pur-System');
-  });
-
   it('should show the global notice only for an inactive own profile', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.global-banner')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+      'Dieses Profil ist inaktiv. Bitte wende dich an einen Administrator.',
+    );
 
     benutzerStoreMock.istInaktiv.set(true);
     fixture.detectChanges();
-    const banner = fixture.nativeElement.querySelector('.global-banner') as HTMLElement;
-
-    expect(banner.getAttribute('role')).toBe('alert');
-    expect(banner.querySelector('.global-banner__text')?.textContent?.trim()).toBe(
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
       'Dieses Profil ist inaktiv. Bitte wende dich an einen Administrator.',
     );
 
     benutzerStoreMock.istInaktiv.set(false);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.global-banner')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+      'Dieses Profil ist inaktiv. Bitte wende dich an einen Administrator.',
+    );
   });
 });

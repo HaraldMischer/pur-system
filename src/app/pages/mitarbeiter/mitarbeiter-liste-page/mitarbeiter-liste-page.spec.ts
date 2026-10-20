@@ -166,7 +166,6 @@ describe('MitarbeiterListePage', () => {
       MitarbeiterAnlegenDialog,
       expect.objectContaining({
         data: expect.objectContaining({ unternehmerId: 'u-1', firmaId: 'f-1' }),
-        panelClass: ['pur-dialog__panel'],
       }),
     );
     expect(dialogMock.open).toHaveBeenNthCalledWith(
@@ -174,7 +173,6 @@ describe('MitarbeiterListePage', () => {
       MitarbeiterBearbeitenDialog,
       expect.objectContaining({
         data: expect.objectContaining({ mitarbeiter }),
-        panelClass: ['pur-dialog__panel'],
       }),
     );
   });

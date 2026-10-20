@@ -100,12 +100,15 @@ Das vollständige fachliche und architektonische Zielbild steht im
 - Das Domainmodell und die zentralen Firestore-Pfade für allgemeine Filialeinstellungen, Wochenöffnungszeiten, Sondertage und
   Datumsausnahmen sind festgelegt. Eine Öffnungsregel beschreibt genau einen durchgehenden Zeitraum und kann mit
   `endetAmFolgetag` über Mitternacht reichen; Pausen beziehungsweise mehrere Öffnungszeiträume je Tag sind nicht vorgesehen.
-  Der lokale Feiertagskatalog berechnet feste und bewegliche gesetzliche Feiertage nach Jahr und Bundesland und erzeugt die
-  initial aktiven, geschlossenen Einträge einschließlich Heiligabend und Silvester. Die Oberfläche trennt die Bereiche
-  `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`. Heiligabend, Silvester und eigene
-  jährliche Sondertage besitzen einen Aktivstatus; einmalige Sondertage gelten für genau ein vollständiges Datum, besitzen
-  keinen Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Die Auflösung verwendet intern verbindlich
-  `Ausnahme → Sondertag → Wochentag`, meldet kollidierende Sondertage und ordnet über Mitternacht reichende Regeln
+  Neue Filialeinstellungen werden für alle sieben Wochentage mit `06:00` bis `01:00` Uhr am Folgetag vorbelegt. Der lokale
+  Feiertagskatalog berechnet feste und bewegliche gesetzliche Feiertage nach Jahr und Bundesland und erzeugt die initial
+  inaktiven Einträge einschließlich Heiligabend und Silvester, sodass zunächst die Wochentagsregel gilt. Die Oberfläche trennt
+  die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`. Fehlende Zeitwerte von
+  Feiertagen und jährlichen Sondertagen werden im Bearbeitungsdialog mit `06:00` bis `01:00` Uhr am Folgetag vorbelegt.
+  Heiligabend, Silvester und eigene jährliche Sondertage besitzen einen Aktivstatus; einmalige Sondertage gelten für genau ein
+  vollständiges Datum, besitzen keinen Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Der Aktivstatus einer
+  Feiertagsregel verändert nicht die kalendarische Eigenschaft als gesetzlicher Feiertag. Die Auflösung verwendet intern
+  verbindlich `Ausnahme → Sondertag → Wochentag`, meldet kollidierende Sondertage und ordnet über Mitternacht reichende Regeln
   vollständig ihrem Startdatum zu. Der Abgleich nach einem Bundeslandwechsel erhält gemeinsame und benutzerdefinierte
   Sondertage. Der `FilialeinstellungService` lädt und schreibt vollständige Filialbestände, initialisiert bestehende Filialen
   nur mit ausdrücklich übergebenen Grundlagen und verwaltet Sondertage sowie Datumsausnahmen als einzelne Dokumente. Der
@@ -119,7 +122,8 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Nordrhein-Westfalen wird
   zunächst intern als Bundesland verwendet; die technische Zeitzone `Europe/Berlin` ist keine gespeicherte Filialeinstellung.
   Die Oberfläche erläutert die Auflösungsreihenfolge mit den sichtbaren Begriffen einmaliger Sondertag, gesetzlicher Feiertag,
-  jährlicher Sondertag und Wochentag.
+  jährlicher Sondertag und Wochentag. Ein noch nicht initialisierter gültiger Bestand kann ohne vorherige Formularänderung
+  gespeichert werden; bestehende Einstellungen erfordern weiterhin eine fachliche Änderung.
 - Das Mitarbeiter-Domainmodell führt optional `farbkennung` im Firestore-Dokument und im Anwendungseintrag. Vorhandene Werte
   werden geladen und im Schichtraster sowie in der Mitarbeiterübersicht dargestellt. Eine Oberfläche zur Pflege der Farbkennung
   ist noch nicht umgesetzt.
@@ -710,9 +714,9 @@ Das vollständige fachliche und architektonische Zielbild steht im
   `system` ausschließlich für Master. Bei Änderungen bestehender Profile stellt der Client die Pflichtbereiche
   wieder her. Nur bei Filialeinstellungen verwenden die Rules `einstellungen` für Office- und Filialkonten zusätzlich als
   Datenzugriffsvoraussetzung; Masterkonten sind rollenbedingt berechtigt.
-- Der neue optionale Bereich `einstellungen` wird nicht automatisch in vorhandene Benutzerprofile migriert. Die vier bestehenden
-  Profile werden wie vereinbart manuell geprüft und bei Bedarf um die Freigabe ergänzt. Das Masterprofil `harry-master` wurde am
-  15.10.2026 erfolgreich aktualisiert; die übrigen Profile bleiben manuell zu prüfen.
+- Der neue optionale Bereich `einstellungen` wird nicht automatisch in vorhandene Benutzerprofile migriert. Die bestehenden
+  Profile wurden manuell geprüft und bei Bedarf um die Freigabe ergänzt. Office- und Filialkonten können den Bereich verwenden;
+  für Mitarbeiterkonten ist er rollenbedingt nicht verfügbar und ein direkter Aufruf der Einstellungsroute führt zum Dashboard.
 - Das Backend verlangt für jeden Zugriff eine Unternehmer-ID und prüft vor der Auth-Anlage die Existenz von Unternehmer, Firma und
   Filialen unter ihren vollständigen Pfaden. Fehlende Dokumente, ungültige IDs oder fehlgeschlagene Prüfabfragen brechen die
   Anlage ab. Doppelte Firmenzugriffe werden nur innerhalb desselben Unternehmers zusammengeführt.
@@ -815,27 +819,25 @@ Das vollständige fachliche und architektonische Zielbild steht im
 - Die Firestore Rules für Filialeinstellungen und die Functions mit dem neuen optionalen Bereich `einstellungen` wurden am
   15.10.2026 produktiv deployed. Die Profilbearbeitung des Masterkontos wurde anschließend erfolgreich geprüft. Ein Hosting-
   Deployment der neuen Einstellungsoberfläche ist damit nicht verbunden und wurde für diesen Stand noch nicht bestätigt.
-- Die am 18.10.2026 lokal geprüfte Vereinfachung entfernt `zeitzone` aus den Filialeinstellungen und verwendet in der Oberfläche
-  fest Nordrhein-Westfalen. Die angepassten Firestore Rules sind noch nicht produktiv deployt. Vorhandene Dokumente mit dem
-  bisherigen Feld bleiben lesbar; der Service entfernt das Feld beim nächsten Speichern.
+- Die Vereinfachung ohne gespeichertes Feld `zeitzone` verwendet in der Oberfläche fest Nordrhein-Westfalen. Die angepassten
+  Firestore Rules sind produktiv deployed. Vorhandene Dokumente mit dem bisherigen Feld bleiben lesbar; der Service entfernt das
+  Feld beim nächsten Speichern.
 - Der Git-Push der aktuellen Änderungen ist kein Firebase-Deployment.
 
 ## Tests und Build
 
-Am 18.10.2026 für den aktuellen Stand geprüft:
+Am 20.10.2026 für den aktuellen Stand geprüft:
 
-- 889 von 891 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben,
+- 891 von 891 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben,
   konsistenter Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Strukturanlage, zentraler Stammdateninitialisierung sowie Firmen-,
   Filial- und Benutzerprofil-Bearbeitung, fachlichem Mitarbeiter-Service und -Store, Mitarbeiterlistenroute, Rollenprüfung und
   Mitarbeiter-Cards, Anlage- und Bearbeitungsdialogen, mehreren gleichzeitig gehaltenen Mitarbeiterkontexten,
   benutzerabhängigen Stammdatenladeplänen für alle vier Rollen, Echtzeitbeobachtung des eigenen Profils, zentralem
   Sitzungsstart mit Initialisierungszustand, wartender Navigation, Fehlerseite, Wiederholung und Rücknavigation sowie globalem
-  Banner-Service, Inaktivhinweis, sichtbarer Anwendungsversion, allen vier Firestore-Lesestrategien, buildabhängiger Cache-Art,
+  Banner-Service, Inaktivhinweis, allen vier Firestore-Lesestrategien, buildabhängiger Cache-Art,
   erzwungenem Server-Neuladen, Benutzertrennung, Unternehmer-, Firmen-, Filial- und Mitarbeitermigration sowie
-  Namensähnlichkeitsfilter, atomarer Mehrfach-Zusammenführung von Mitarbeiterduplikaten sowie Filialeinstellungen. Zwei bereits
-  bekannte, von den Filialeinstellungen unabhängige Tests sind offen: Der Schichtmodelltest erwartet eine nicht gesetzte
-  Large-Dialogklasse und der Dashboardtest eine nicht vorhandene Vorschauaktion.
+  Namensähnlichkeitsfilter, atomarer Mehrfach-Zusammenführung von Mitarbeiterduplikaten sowie Filialeinstellungen.
 - Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
 - „Struktur anlegen“ und die Benutzerfunktionen wurden unter den Systemrouten auf Desktop und einem kleinen
   Viewport erfolgreich manuell geprüft.
@@ -854,8 +856,8 @@ Am 18.10.2026 für den aktuellen Stand geprüft:
   jeweils passende Manifest, zehn erreichbare App-Icons, lokale Roboto- und Material-Icon-Schriften, `ngsw.json`,
   `ngsw-worker.js` und die Ressourcengruppen `app`, `fonts` und `assets`. Die Builds benötigen in der Codex-Umgebung Zugriff
   außerhalb der Sandbox, weil der native `esbuild`-Prozess innerhalb der eingeschränkten Umgebung mit Exit-Code 134 beendet wird.
-  Master-, Office- und Filial-Build sind für den aktuellen Stand erfolgreich. Der Mitarbeiter-Build wurde nach der letzten
-  Änderung nicht erneut ausgeführt. Das initiale Bundle der geprüften Varianten liegt bei rund 1,26 MB.
+  Master-, Office-, Filial- und Mitarbeiter-Build sind für den aktuellen Stand erfolgreich. Das initiale Bundle der geprüften
+  Varianten liegt bei rund 1,26 MB.
 - Rollenladepläne, Zustandswechsel, Benutzertrennung, Cache-Auswahl und Lesestrategien sind automatisiert geprüft. Die manuelle
   Abnahme mit realen Master-, Office-, Filial- und Mitarbeiterkonten war erfolgreich. Pur Filiale wurde zusätzlich mit
   persistentem Cache, Offline-Neustart, fehlendem Cache, verständlicher Fehleranzeige und erzwungenem Server-Neuladen geprüft.

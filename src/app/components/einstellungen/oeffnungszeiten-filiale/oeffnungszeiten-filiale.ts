@@ -58,6 +58,8 @@ const WOCHENTAGE: ReadonlyArray<{ value: TWochentag; label: string }> = [
   { value: 'samstag', label: 'Samstag' },
   { value: 'sonntag', label: 'Sonntag' },
 ];
+const STANDARD_BEGINN_LOKALZEIT = '06:00';
+const STANDARD_ENDE_LOKALZEIT = '01:00';
 
 function oeffnungszeitValidator(control: AbstractControl): ValidationErrors | null {
   const geoeffnet = control.get('geoeffnet')?.value;
@@ -69,21 +71,15 @@ function oeffnungszeitValidator(control: AbstractControl): ValidationErrors | nu
 function createTagForm(): TTagForm {
   return new FormGroup(
     {
-      geoeffnet: new FormControl(false, { nonNullable: true }),
-      beginnLokalzeit: new FormControl(
-        { value: '08:00', disabled: true },
-        {
-          nonNullable: true,
-          validators: [Validators.required],
-        },
-      ),
-      endeLokalzeit: new FormControl(
-        { value: '18:00', disabled: true },
-        {
-          nonNullable: true,
-          validators: [Validators.required],
-        },
-      ),
+      geoeffnet: new FormControl(true, { nonNullable: true }),
+      beginnLokalzeit: new FormControl(STANDARD_BEGINN_LOKALZEIT, {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+      endeLokalzeit: new FormControl(STANDARD_ENDE_LOKALZEIT, {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
     },
     { validators: [oeffnungszeitValidator] },
   );
@@ -220,7 +216,12 @@ export class OeffnungszeitenFiliale {
    * Speichert die allgemeinen Einstellungen und die Wochenöffnungszeiten.
    */
   async saveGrundlagen(): Promise<void> {
-    if (this.form.invalid || this.kontext()?.inProgress) return;
+    if (
+      this.form.invalid ||
+      this.kontext()?.inProgress ||
+      (this.bestand() !== null && this.form.pristine)
+    )
+      return;
     const grundlagen = this.buildGrundlagen();
     try {
       if (this.bestand()) await this.store.saveGrundlagen(this.pfad(), grundlagen);
@@ -357,8 +358,8 @@ export class OeffnungszeitenFiliale {
         tagForm.reset(
           {
             geoeffnet: regel.geoeffnet,
-            beginnLokalzeit: regel.beginnLokalzeit ?? '08:00',
-            endeLokalzeit: regel.endeLokalzeit ?? '18:00',
+            beginnLokalzeit: regel.beginnLokalzeit ?? STANDARD_BEGINN_LOKALZEIT,
+            endeLokalzeit: regel.endeLokalzeit ?? STANDARD_ENDE_LOKALZEIT,
           },
           { emitEvent: false },
         );
