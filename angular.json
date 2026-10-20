@@ -27,7 +27,18 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "public",
+                "ignore": ["manifests/**", "icon-varianten/**", "icons/**", "favicon.png"]
+              },
+              {
+                "glob": "favicon.png",
+                "input": "public/icon-varianten/pur-office",
+                "output": "/"
+              },
+              {
+                "glob": "**/*",
+                "input": "public/icon-varianten/pur-office/icons",
+                "output": "/icons"
               }
             ],
             "styles": ["src/styles.scss"]
@@ -40,7 +51,17 @@
                 {
                   "glob": "**/*",
                   "input": "public",
-                  "ignore": ["manifests/**"]
+                  "ignore": ["manifests/**", "icon-varianten/**", "icons/**", "favicon.png"]
+                },
+                {
+                  "glob": "favicon.png",
+                  "input": "public/icon-varianten/pur-office",
+                  "output": "/"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "public/icon-varianten/pur-office/icons",
+                  "output": "/icons"
                 }
               ],
               "budgets": [
@@ -65,16 +86,36 @@
             },
             "master": {
               "outputPath": "dist/pur-master",
+              "index": {
+                "input": "src/index.master.html",
+                "output": "index.html"
+              },
               "assets": [
                 {
                   "glob": "**/*",
                   "input": "public",
-                  "ignore": ["manifest.webmanifest", "manifests/**"]
+                  "ignore": [
+                    "manifest.webmanifest",
+                    "manifests/**",
+                    "icon-varianten/**",
+                    "icons/**",
+                    "favicon.png"
+                  ]
                 },
                 {
                   "glob": "manifest.webmanifest",
                   "input": "public/manifests/pur-master",
                   "output": "/"
+                },
+                {
+                  "glob": "favicon.png",
+                  "input": "public/icon-varianten/pur-master",
+                  "output": "/"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "public/icon-varianten/pur-master/icons",
+                  "output": "/icons"
                 }
               ],
               "fileReplacements": [
@@ -86,17 +127,37 @@
             },
             "filiale": {
               "outputPath": "dist/pur-filiale",
+              "index": {
+                "input": "src/index.filiale.html",
+                "output": "index.html"
+              },
               "serviceWorker": "ngsw-config.json",
               "assets": [
                 {
                   "glob": "**/*",
                   "input": "public",
-                  "ignore": ["manifest.webmanifest", "manifests/**"]
+                  "ignore": [
+                    "manifest.webmanifest",
+                    "manifests/**",
+                    "icon-varianten/**",
+                    "icons/**",
+                    "favicon.png"
+                  ]
                 },
                 {
                   "glob": "manifest.webmanifest",
                   "input": "public/manifests/pur-filiale",
                   "output": "/"
+                },
+                {
+                  "glob": "favicon.png",
+                  "input": "public/icon-varianten/pur-filiale",
+                  "output": "/"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "public/icon-varianten/pur-filiale/icons",
+                  "output": "/icons"
                 }
               ],
               "fileReplacements": [
@@ -108,17 +169,37 @@
             },
             "mitarbeiter": {
               "outputPath": "dist/pur-mitarbeiter",
+              "index": {
+                "input": "src/index.mitarbeiter.html",
+                "output": "index.html"
+              },
               "serviceWorker": "ngsw-config.json",
               "assets": [
                 {
                   "glob": "**/*",
                   "input": "public",
-                  "ignore": ["manifest.webmanifest", "manifests/**"]
+                  "ignore": [
+                    "manifest.webmanifest",
+                    "manifests/**",
+                    "icon-varianten/**",
+                    "icons/**",
+                    "favicon.png"
+                  ]
                 },
                 {
                   "glob": "manifest.webmanifest",
                   "input": "public/manifests/pur-mitarbeiter",
                   "output": "/"
+                },
+                {
+                  "glob": "favicon.png",
+                  "input": "public/icon-varianten/pur-mitarbeiter",
+                  "output": "/"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "public/icon-varianten/pur-mitarbeiter/icons",
+                  "output": "/icons"
                 }
               ],
               "fileReplacements": [

@@ -760,8 +760,14 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Hosting-Ziele; Firestore Rules und Functions bleiben davon unberührt.
 - Master, Office, Filiale und Mitarbeiter wurden am 26.09.2026 mit ihren getrennten PWA-Builds erfolgreich auf die jeweils
   zugehörige Firebase-Hosting-Site veröffentlicht.
-- Master-, Office-, Filial- und Mitarbeiter-Build verwenden jeweils eine eigene Produktkennung im Web-App-Manifest. Die
-  vorhandenen PWA- und Maskable-Icons werden gemeinsam genutzt.
+- Master-, Office-, Filial- und Mitarbeiter-Build verwenden jeweils eine eigene Produktkennung im Web-App-Manifest und einen
+  eigenen Icon-Satz. Das gemeinsame weiße Pur-`P` wird für Master durch Violett/Magenta, für Office durch Blau/Türkis, für Filiale
+  durch Grün/Türkis und für Mitarbeiter durch Orange/Rot ergänzt. Jeder Produktionsbuild liefert ausschließlich seinen
+  zugehörigen Icon-Satz aus. Indexdatei und Manifest verwenden je Variante dieselbe PWA-Rahmenfarbe: Master `#3C0384`, Office
+  `#013676`, Filiale `#014A33` und Mitarbeiter `#AD2604`. Die Farben werden zentral in `config/pwa-theme-colors.mjs` gepflegt und
+  vor Development-Server und Varianten-Builds automatisch synchronisiert. Browseraktionen in der Titelleiste einer installierten
+  Desktop-PWA, beispielsweise „Deinstallieren“, Erweiterungen und das Drei-Punkte-Menü, werden vom Browser bereitgestellt und sind
+  durch die Anwendung nicht ausblendbar.
 - Die neue Angular-Konfiguration `mitarbeiter` ergänzt die Office-Basiskonfiguration zur Kombination `office,mitarbeiter`. Sie erzeugt
   `dist/pur-mitarbeiter/browser` mit aktiviertem Angular Service Worker, eigenem Produktions-Environment und dem Manifest „Pur
   Mitarbeiter“. `npm run pwa:pur-mitarbeiter` stellt den Build lokal auf Port `8083` bereit.
