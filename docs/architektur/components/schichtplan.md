@@ -53,13 +53,18 @@ mehrfach belegbare Modellschicht dargestellt werden. Auch bei einer Mehrfachbele
 eigene konkrete Schicht.
 
 Jede Schicht löst Anzeigename und optionale `farbkennung` über die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf
-und zeigt Zeitspanne und Lohnzeit. Die Pause wird nicht mehr einer einzelnen Schicht zugeordnet. Für eine nicht mehr auflösbare
-Mitarbeiter-ID erscheint ein verständlicher Ersatztext.
+und zeigt Zeitspanne und Lohnzeit. Die chronologisch letzte Schicht eines Arbeitsblocks zeigt zusätzlich dessen gespeicherte
+bezahlte `pauseMinuten`. Diese Darstellung ist ein Anker für den Gesamtwert und legt nicht fest, während welcher Schicht die
+Pause genommen wird. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher Ersatztext.
 Schreibaktionen werden nur für eine bearbeitbare Entwurfsversion angeboten. Dann ist jede Rasterzelle ein Ablageziel und besitzt
 zusätzlich eine Anlageaktion als Tastatur- und Mobilalternative. Beide Wege verwenden das bereits festgelegte Datum und die
 festgelegte Modellschicht. Eine Ablage ist nur für einen aktiven, der Zielfiliale zugeordneten Mitarbeiter zulässig und wird
 während eines Schreibvorgangs gesperrt. Derselbe Mitarbeiter kann nicht erneut in dieselbe Rasterzelle abgelegt werden. Bei
 deaktivierter Mehrfachbelegung werden Anlageaktion und Ablageziel nach der ersten Belegung gesperrt.
+
+Die Tabelle zeigt in der Tagesspalte Wochentag, Datum, Öffnungszeiten und vorhandene Kalendermerkmale wie Sonntag, Feiertag
+oder Sondertag. Jede Rasterzelle zeigt die automatisch aus Öffnungsregel sowie Vor- und Nachbereitungsminuten abgeleitete
+Rasterzeit. An geschlossenen Tagen werden Anlageaktion und Ablageziel deaktiviert.
 
 Nach einer gültigen Ablage übergibt `DienstplanPlanungsbereich` Datum, Modellschicht-ID und Mitarbeiter-ID. Die für die
 Bedienprüfung benötigten Zeitwerte liest der Bereich aus der Tagesmomentaufnahme; der Service leitet die zu speichernden
@@ -80,6 +85,8 @@ und Momentaufnahme entstehen gemeinsam in einem atomaren Schreibvorgang. Soll da
 veröffentlichten Plans geändert werden, wird der Plan gelöscht und anschließend mit dem gewünschten Modell neu angelegt.
 Vor der Modellwahl zeigt ein verpflichtendes Auswahlfeld die Planungsart. `Schichtraster` ist vorausgewählt und filtert die
 angebotenen Modelle; `Schichtbausteine` ist bis zur Umsetzung sichtbar, aber deaktiviert.
+Einmalige Sondertage werden nicht zusätzlich im Dialog konfiguriert. Ihre Öffnungsregel bestimmt bei der Dienstplananlage
+automatisch die äußeren Rastergrenzen; die inneren Grenzen des gewählten Schichtmodells bleiben unverändert.
 
 `SchichtBearbeitenDialog` ordnet der bereits gewählten Rasterzelle einen aktiven Mitarbeiter zu. Datum, Modellschicht sowie der
 für diesen Kalendertag wirksame Beginn und das Ende werden schreibgeschützt angezeigt. Der Dialog übergibt keine freien
@@ -92,6 +99,12 @@ die standardmäßig deaktivierte Option `Mehrfachbelegung`.
 Mindestens eine Modellschicht bleibt erhalten; weitere können ergänzt und entfernt werden. Die Reihenfolge wird automatisch nach
 der lokalen Beginnzeit bestimmt. Neue Modelle sind immer aktiv, vorhandene Modelle können deaktiviert oder erneut aktiviert
 werden.
+
+An der ersten Modellschicht können Vorbereitungsminuten und an der letzten Modellschicht Nachbereitungsminuten gepflegt werden.
+Bei einer einzelnen Modellschicht zeigt der Dialog beide Werte. Bei vorhandenen stabilen Modellschicht-IDs zeigt der Dialog
+zusätzlich alle aktiven geöffneten Sondertage der Filiale. Für sie lassen sich optional nur die inneren Schichtgrenzen
+überschreiben; Öffnungsbeginn und Öffnungsende sowie Vor- und Nachbereitungsminuten bleiben die verbindlichen äußeren Grenzen.
+Inaktive oder geschlossene Sondertage werden nicht zur Bearbeitung angeboten, vorhandene Konfigurationen bleiben aber erhalten.
 
 Die routbare `SchichtmodellePage` ersetzt in der Navigation die bisherige Vorlagenverwaltung. Sie rendert pro ausgewählter
 Filiale eine `SchichtmodelleFiliale`, die ausschließlich Modelle dieses Filialpfads lädt und bearbeitet. Die

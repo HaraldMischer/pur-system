@@ -9,6 +9,7 @@ import { Timestamp } from 'firebase/firestore';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IBenutzerProfilDokument } from '../../../commons/models/domain/benutzer';
+import { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
@@ -18,6 +19,7 @@ import {
   DienstplanStore,
   TDienstplanKontextBestand,
 } from '../../../stores/domain/dienstplan.store';
+import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { MonatSelector } from '../../../components/date-selectors/monat-selector/monat-selector';
@@ -96,6 +98,13 @@ describe('DienstplanPlanungPage', () => {
             loadSchichtmodelle: vi.fn(),
             getSchichtmodellKontext: vi.fn().mockReturnValue(null),
             error: signal(null),
+          },
+        },
+        {
+          provide: FilialeinstellungStore,
+          useValue: {
+            loadFilialeinstellung: vi.fn().mockResolvedValue(undefined),
+            getFilialeinstellungKontext: vi.fn().mockReturnValue({ bestand: { ausnahmen: [] } }),
           },
         },
         { provide: MatDialog, useValue: { open: vi.fn() } },
@@ -265,7 +274,7 @@ describe('DienstplanPlanungPage', () => {
       filialeId,
       dienstplaene: [
         {
-          kalendertage: [],
+          kalendertage: createKalendertage(),
           id: '2026-10',
           unternehmerId: 'u-1',
           firmaId: 'f-1',
@@ -325,6 +334,25 @@ describe('DienstplanPlanungPage', () => {
       isLoaded: true,
       error: null,
     };
+  }
+
+  function createKalendertage(): IDienstplanKalendertag[] {
+    return Array.from({ length: 31 }, (_, index) => {
+      return {
+        datum: `2026-10-${String(index + 1).padStart(2, '0')}`,
+        wochentag: 'montag',
+        istSonntag: false,
+        aktiveSondertage: [],
+        oeffnungsregelQuelle: 'wochentag',
+        oeffnungsregel: {
+          geoeffnet: true,
+          beginnLokalzeit: '08:00',
+          endeLokalzeit: '18:00',
+          endetAmFolgetag: false,
+        },
+        rasterzeiten: [],
+      };
+    });
   }
 
   function createSchicht(

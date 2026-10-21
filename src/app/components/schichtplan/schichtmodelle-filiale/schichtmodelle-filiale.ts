@@ -18,6 +18,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { ISchichtrastermodellBestand } from '../../../commons/models/domain/schichtmodell';
+import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
   SchichtmodellBearbeitenDialog,
@@ -35,6 +36,7 @@ export class SchichtmodelleFiliale {
   // ===== Interne Dependency Injection =========
 
   readonly schichtmodellStore = inject(SchichtmodellStore);
+  readonly filialeinstellungStore = inject(FilialeinstellungStore);
   private readonly dialog = inject(MatDialog);
 
   // ===== Öffentliche API ======================
@@ -56,6 +58,15 @@ export class SchichtmodelleFiliale {
   readonly kontext = computed(() => {
     return this.schichtmodellStore.getSchichtmodellKontext(this.pfad());
   });
+  readonly aktiveGeoeffneteSondertage = computed(() => {
+    return (
+      this.filialeinstellungStore
+        .getFilialeinstellungKontext(this.pfad())
+        ?.bestand?.sondertage.filter((sondertag) => {
+          return sondertag.aktiv && sondertag.oeffnungsregel.geoeffnet;
+        }) ?? []
+    );
+  });
 
   // ===== Öffentliche Aktionen =================
 
@@ -74,11 +85,12 @@ export class SchichtmodelleFiliale {
   openSchichtrastermodellDialog(bestand?: ISchichtrastermodellBestand): void {
     const daten: TSchichtmodellBearbeitenDialogDaten = {
       pfad: this.pfad(),
+      sondertage: this.aktiveGeoeffneteSondertage(),
       ...(bestand ? { bestand } : {}),
     };
     this.dialog.open(SchichtmodellBearbeitenDialog, {
       data: daten,
-      panelClass: ['pur-dialog__panel'],
+      panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
     });
   }
 
@@ -86,7 +98,10 @@ export class SchichtmodelleFiliale {
 
   private async loadSchichtmodelle(pfad: IFilialPfad): Promise<void> {
     try {
-      await this.schichtmodellStore.loadSchichtmodelle(pfad);
+      await Promise.all([
+        this.schichtmodellStore.loadSchichtmodelle(pfad),
+        this.filialeinstellungStore.loadFilialeinstellung(pfad),
+      ]);
     } catch {
       // Der Store stellt die benutzerfreundliche Fehlermeldung im Filialkontext bereit.
     }

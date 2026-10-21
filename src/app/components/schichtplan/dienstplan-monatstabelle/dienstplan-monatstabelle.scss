@@ -27,13 +27,43 @@
   margin-left: auto;
 }
 
-.anlegen {
-  //margin-bottom: 8px;
+.tag {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+
+  > * {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.tagzelle {
+  &--sonntag {
+    background: var(--pur-sys-tag-sonntag);
+  }
+
+  &--feiertag {
+    background: var(--pur-sys-tag-feiertag);
+  }
+
+  &--sondertag {
+    background: var(--pur-sys-tag-sondertag);
+  }
+}
+
+.zellenkopf {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .rasterzeit {
   display: block;
-  margin-bottom: 6px;
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-label-medium);
 }
@@ -46,6 +76,7 @@
   background: var(--mat-sys-surface-container);
   overflow-wrap: anywhere;
 
+  .zellenkopf + &,
   & + & {
     margin-top: 8px;
   }
@@ -54,11 +85,6 @@
     color: var(--mat-sys-on-surface-variant);
     font: var(--mat-sys-body-medium);
   }
-}
-
-.nicht-besetzt {
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-body-medium);
 }
 
 .mitarbeiter-farbe {

@@ -277,11 +277,12 @@ describe('FilialeinstellungService', () => {
       oeffnungsregel: { geoeffnet: false } as const,
     };
 
-    const sondertag = await service.createSondertag(pfad, anlage, 'uid-1');
+    const sondertag = await service.createSondertag(pfad, anlage, [], 'uid-1');
     const aktualisiert = await service.updateSondertag(
       pfad,
       sondertag,
       { ...anlage, bezeichnung: ' Inventurtag ' },
+      [sondertag],
       'uid-2',
     );
     await service.deleteSondertag(pfad, aktualisiert);
@@ -291,6 +292,26 @@ describe('FilialeinstellungService', () => {
     expect(firestoreDbServiceMock.deleteDocument).toHaveBeenCalledWith(
       'unternehmer/u-1/firma/f-1/filiale/b-1/einstellung/oeffnungszeiten/sondertag/sondertag-neu',
     );
+  });
+
+  it('should reject an active annual date collision before writing', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+
+    await expect(
+      service.createSondertag(
+        pfad,
+        {
+          bezeichnung: 'Betriebsruhe',
+          aktiv: true,
+          datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
+          oeffnungsregel: { geoeffnet: false },
+        },
+        [createSondertag('heiligabend', 'system')],
+        'uid-1',
+      ),
+    ).rejects.toThrow('Betriebsruhe');
+
+    expect(firestoreDbServiceMock.updateDocument).not.toHaveBeenCalled();
   });
 
   it('should preserve system-defined special-day identity during updates', async () => {
@@ -309,6 +330,7 @@ describe('FilialeinstellungService', () => {
           endetAmFolgetag: false,
         },
       },
+      [sondertag],
       'uid-2',
     );
 

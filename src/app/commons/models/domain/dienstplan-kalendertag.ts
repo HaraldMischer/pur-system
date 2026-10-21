@@ -25,11 +25,6 @@ export interface IDienstplanRasterzeit {
   endetAmFolgetag: boolean;
 }
 
-export interface IDienstplanDatumRasterzeiten {
-  datum: string;
-  rasterzeiten: readonly IDienstplanRasterzeit[];
-}
-
 export interface IDienstplanKalendertag {
   datum: string;
   wochentag: TWochentag;

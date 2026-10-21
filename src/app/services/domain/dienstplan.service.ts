@@ -21,7 +21,6 @@ import {
   IDienstplanVersionDokument,
   IDienstplanVersionEintrag,
 } from '../../commons/models/domain/dienstplan';
-import { IDienstplanDatumRasterzeiten } from '../../commons/models/domain/dienstplan-kalendertag';
 import {
   ISchichtAktualisierung,
   ISchichtAnlage,
@@ -44,7 +43,11 @@ import { createSchichtZeitstempelAusLokalzeiten } from '../../commons/utils/dien
 import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { calculateSchichtLohnzeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
-import { FilialeinstellungService } from './filialeinstellung.service';
+import {
+  FilialeinstellungFachfehler,
+  FilialeinstellungService,
+  IFilialeinstellungBestand,
+} from './filialeinstellung.service';
 
 // ===== Top-Level Helper =====================
 
@@ -53,6 +56,20 @@ function assertSchichtrasterPlanungsart(
 ): asserts planungsart is 'schichtraster' {
   if (planungsart !== 'schichtraster') {
     throw new Error('Die Planungsart des Dienstplans wird noch nicht unterstützt.');
+  }
+}
+
+export function createDienstplanAnlageFehler(ursache: string): DienstplanFachfehler {
+  const prefix = 'Der Dienstplan konnte nicht angelegt werden.';
+  return new DienstplanFachfehler(ursache.startsWith(prefix) ? ursache : `${prefix} ${ursache}`);
+}
+
+// ===== Konstanten & Typen ===================
+
+export class DienstplanFachfehler extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DienstplanFachfehler';
   }
 }
 
@@ -151,7 +168,6 @@ export class DienstplanService {
    * @param monat - Monat im Format `YYYY-MM` und Dokument-ID des Dienstplans.
    * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
    * @param benutzerUid - UID des ändernden Benutzers.
-   * @param datumRasterzeiten - Optionale Rasterzeitüberschreibungen einmaliger Datumsausnahmen.
    * @returns Die lokal abbildbaren Einträge des neuen Dienstplans und seiner Version.
    */
   async createDienstplan(
@@ -159,16 +175,23 @@ export class DienstplanService {
     monat: string,
     schichtmodell: ISchichtrastermodellBestand,
     benutzerUid: string,
-    datumRasterzeiten: readonly IDienstplanDatumRasterzeiten[] = [],
   ): Promise<IDienstplanAnlageErgebnis> {
     validateSchichtmodell(pfad, schichtmodell);
-    const filialeinstellungen = await this.filialeinstellungService.loadFilialeinstellung(
-      pfad,
-      'networkOnly',
-    );
+    let filialeinstellungen: IFilialeinstellungBestand | null;
+    try {
+      filialeinstellungen = await this.filialeinstellungService.loadFilialeinstellung(
+        pfad,
+        'networkOnly',
+      );
+    } catch (error: unknown) {
+      if (error instanceof FilialeinstellungFachfehler) {
+        throw createDienstplanAnlageFehler(error.message);
+      }
+      throw error;
+    }
     if (!filialeinstellungen) {
-      throw new Error(
-        'Der Dienstplan konnte nicht angelegt werden, weil die Filialeinstellungen fehlen.',
+      throw createDienstplanAnlageFehler(
+        'Die Öffnungszeiten der Filiale müssen zuerst initialisiert werden.',
       );
     }
     const dienstplanPfad: IDienstplanPfad = { ...pfad, dienstplanId: monat };
@@ -176,16 +199,24 @@ export class DienstplanService {
       FIRESTORE_COLLECTION_PATHS.dienstplanVersionen(dienstplanPfad),
     );
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
-    const zeitraum = createDienstplanZeitraum(monat);
-    const kalendertage = createDienstplanKalendertage({
-      monat,
-      wochenregeln: filialeinstellungen.oeffnungszeiten.wochenregeln,
-      sondertage: filialeinstellungen.sondertage,
-      ausnahmen: filialeinstellungen.ausnahmen,
-      modellschichten: schichtmodell.modellschichten,
-      besondereRasterzeiten: schichtmodell.schichtmodell.besondereRasterzeiten,
-      datumRasterzeiten,
-    });
+    let zeitraum: ReturnType<typeof createDienstplanZeitraum>;
+    let kalendertage: ReturnType<typeof createDienstplanKalendertage>;
+    try {
+      zeitraum = createDienstplanZeitraum(monat);
+      kalendertage = createDienstplanKalendertage({
+        monat,
+        wochenregeln: filialeinstellungen.oeffnungszeiten.wochenregeln,
+        sondertage: filialeinstellungen.sondertage,
+        ausnahmen: filialeinstellungen.ausnahmen,
+        modellschichten: schichtmodell.modellschichten,
+        besondereRasterzeiten: schichtmodell.schichtmodell.besondereRasterzeiten,
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw createDienstplanAnlageFehler(error.message);
+      }
+      throw error;
+    }
     const dienstplanDaten: IDienstplanDokument = {
       ...zeitraum,
       kalendertage,
@@ -210,34 +241,53 @@ export class DienstplanService {
       .map((modellschicht) => {
         return mapModellschichtMomentaufnahme(dienstplanPfad, modellschicht.id, modellschicht);
       });
-    await this.firestoreDbService.updateDocumentsAtomically([
-      {
-        documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
-        daten: { ...dienstplanDaten, erstelltAm: zeitstempel, aktualisiertAm: zeitstempel },
-      },
-      {
-        documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion({
-          ...dienstplanPfad,
-          versionId,
-        }),
-        daten: { ...versionDaten, erstelltAm: zeitstempel, aktualisiertAm: zeitstempel },
-      },
-      ...modellschichten.map((modellschicht) => {
+    await this.firestoreDbService.executeDocumentTransaction<IDienstplanDokument, void>(
+      FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
+      (vorhandenerDienstplan) => {
+        if (vorhandenerDienstplan) {
+          throw createDienstplanAnlageFehler(
+            'Für diesen Monat ist bereits ein Dienstplan vorhanden. Bitte lade den Monat erneut.',
+          );
+        }
         return {
-          documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
-            ...dienstplanPfad,
-            modellschichtId: modellschicht.id,
-          }),
-          daten: {
-            bezeichnung: modellschicht.bezeichnung,
-            beginnLokalzeit: modellschicht.beginnLokalzeit,
-            endeLokalzeit: modellschicht.endeLokalzeit,
-            endetAmFolgetag: modellschicht.endetAmFolgetag,
-            mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
-          },
+          ergebnis: undefined,
+          operationen: [
+            {
+              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
+              daten: {
+                ...dienstplanDaten,
+                erstelltAm: zeitstempel,
+                aktualisiertAm: zeitstempel,
+              },
+            },
+            {
+              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion({
+                ...dienstplanPfad,
+                versionId,
+              }),
+              daten: { ...versionDaten, erstelltAm: zeitstempel, aktualisiertAm: zeitstempel },
+            },
+            ...modellschichten.map((modellschicht) => {
+              return {
+                documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
+                  ...dienstplanPfad,
+                  modellschichtId: modellschicht.id,
+                }),
+                daten: {
+                  bezeichnung: modellschicht.bezeichnung,
+                  beginnLokalzeit: modellschicht.beginnLokalzeit,
+                  endeLokalzeit: modellschicht.endeLokalzeit,
+                  endetAmFolgetag: modellschicht.endetAmFolgetag,
+                  mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
+                  vorbereitungsminuten: modellschicht.vorbereitungsminuten ?? 0,
+                  nachbereitungsminuten: modellschicht.nachbereitungsminuten ?? 0,
+                },
+              };
+            }),
+          ],
         };
-      }),
-    ]);
+      },
+    );
 
     return {
       dienstplan: mapDienstplan(dienstplanPfad, monat, dienstplanDaten),
@@ -683,24 +733,30 @@ function mapModellschichtMomentaufnahme(
     endeLokalzeit: daten.endeLokalzeit,
     endetAmFolgetag: daten.endetAmFolgetag,
     mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt,
+    vorbereitungsminuten: daten.vorbereitungsminuten ?? 0,
+    nachbereitungsminuten: daten.nachbereitungsminuten ?? 0,
   };
 }
 
 function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtrastermodellBestand): void {
   const schichtmodell = bestand.schichtmodell;
-  assertSchichtrasterPlanungsart(schichtmodell.planungsart);
+  if (schichtmodell.planungsart !== 'schichtraster') {
+    throw createDienstplanAnlageFehler(
+      'Die Planungsart des Schichtmodells wird noch nicht unterstützt.',
+    );
+  }
   const gleicherPfad =
     schichtmodell.unternehmerId === pfad.unternehmerId &&
     schichtmodell.firmaId === pfad.firmaId &&
     schichtmodell.filialeId === pfad.filialeId;
   if (!gleicherPfad) {
-    throw new Error('Das Schichtmodell gehört nicht zu dieser Filiale.');
+    throw createDienstplanAnlageFehler('Das Schichtmodell gehört nicht zu dieser Filiale.');
   }
   if (!schichtmodell.aktiv) {
-    throw new Error('Für einen neuen Dienstplan muss das Schichtmodell aktiv sein.');
+    throw createDienstplanAnlageFehler('Das gewählte Schichtmodell ist nicht mehr aktiv.');
   }
   if (bestand.modellschichten.length === 0) {
-    throw new Error('Das Schichtmodell enthält keine Schichten.');
+    throw createDienstplanAnlageFehler('Das gewählte Schichtmodell enthält keine Schichten.');
   }
 }
 

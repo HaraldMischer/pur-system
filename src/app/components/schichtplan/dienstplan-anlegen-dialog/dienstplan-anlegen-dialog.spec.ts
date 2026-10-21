@@ -80,6 +80,25 @@ describe('DienstplanAnlegenDialog', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
+  it('should show the known plan creation error', async () => {
+    const fehlermeldung =
+      'Der Dienstplan konnte nicht angelegt werden. Die Öffnungszeiten der Filiale müssen zuerst initialisiert werden.';
+    createDienstplan.mockImplementationOnce(async () => {
+      error.set(fehlermeldung);
+      throw new Error(fehlermeldung);
+    });
+    fixture.componentInstance.dienstplanForm.controls.schichtmodellId.setValue('modell-1');
+
+    await fixture.componentInstance.saveDienstplan();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.error()).toBe(fehlermeldung);
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+      fehlermeldung,
+    );
+    expect(close).not.toHaveBeenCalled();
+  });
+
   function createSchichtmodell(): ISchichtrastermodellBestand {
     return {
       schichtmodell: {

@@ -3,7 +3,14 @@
 @use 'colorVars' as colors;
 
 :root {
+
+  // Standardfarben
   --pur-sys-info: light-dark(#{colors.$info-light}, #{colors.$info-dark});
   --pur-sys-success: light-dark(#{colors.$success-light}, #{colors.$success-dark});
   --pur-sys-warning: light-dark(#{colors.$warning-light}, #{colors.$warning-dark});
+
+  // Kalenderfarben
+  --pur-sys-tag-sonntag: light-dark(#{colors.$tag-sonntag-light}, #{colors.$tag-sonntag-dark});
+  --pur-sys-tag-feiertag: light-dark(#{colors.$tag-feiertag-light}, #{colors.$tag-feiertag-dark});
+  --pur-sys-tag-sondertag: light-dark(#{colors.$tag-sondertag-light},#{colors.$tag-sondertag-dark});
 }

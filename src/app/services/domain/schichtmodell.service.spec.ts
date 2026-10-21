@@ -22,6 +22,7 @@ describe('SchichtmodellService', () => {
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
         mehrfachbelegungErlaubt: true,
+        nachbereitungsminuten: 15,
       },
       {
         bezeichnung: ' Früh ',
@@ -29,6 +30,7 @@ describe('SchichtmodellService', () => {
         endeLokalzeit: '12:00',
         endetAmFolgetag: false,
         mehrfachbelegungErlaubt: false,
+        vorbereitungsminuten: 30,
       },
     ],
   };
@@ -129,6 +131,12 @@ describe('SchichtmodellService', () => {
       'Früh',
       'Spät',
     ]);
+    expect(ergebnis.modellschichten[0]).toEqual(
+      expect.objectContaining({ vorbereitungsminuten: 30, nachbereitungsminuten: 0 }),
+    );
+    expect(ergebnis.modellschichten[1]).toEqual(
+      expect.objectContaining({ vorbereitungsminuten: 0, nachbereitungsminuten: 15 }),
+    );
     expect(updateDocumentsAtomically).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
@@ -191,7 +199,7 @@ describe('SchichtmodellService', () => {
       {
         bezeichnung: 'Sommer neu',
         aktiv: false,
-        besondereRasterzeiten: bestand.schichtmodell.besondereRasterzeiten,
+        besondereRasterzeiten: [bestand.schichtmodell.besondereRasterzeiten[0]],
         modellschichten: [{ ...anlage.modellschichten[0], id: 'alt-1' }],
       },
       'uid-2',
@@ -221,6 +229,48 @@ describe('SchichtmodellService', () => {
         },
       ]),
     );
+  });
+
+  it('should reject special raster times for an unknown or removed model shift', async () => {
+    const service = TestBed.inject(SchichtmodellService);
+    const bestand = {
+      schichtmodell: {
+        ...pfad,
+        id: 'modell-1',
+        ...createSchichtmodellDokument('Sommer'),
+      },
+      modellschichten: [
+        {
+          ...pfad,
+          schichtmodellId: 'modell-1',
+          id: 'alt-1',
+          ...createModellschichtDokument('Früh', '07:00', '12:00'),
+        },
+      ],
+    };
+
+    await expect(
+      service.updateSchichtmodell(
+        pfad,
+        bestand,
+        {
+          bezeichnung: 'Sommer',
+          aktiv: true,
+          besondereRasterzeiten: [
+            {
+              sondertagId: 'heiligabend',
+              modellschichtId: 'entfernt',
+              beginnLokalzeit: '09:00',
+              endeLokalzeit: '12:00',
+              endetAmFolgetag: false,
+            },
+          ],
+          modellschichten: [{ ...anlage.modellschichten[0], id: 'alt-1' }],
+        },
+        'uid-2',
+      ),
+    ).rejects.toThrow('Die besondere Rasterzeit ist nicht eindeutig oder fachlich ungültig.');
+    expect(updateDocumentsAtomically).not.toHaveBeenCalled();
   });
 
   it('should reject a model without model shifts and deactivate without deleting it', async () => {

@@ -22,17 +22,6 @@
 
     &--kopf {
       background: var(--mat-sys-surface-container-low);
-
-      strong,
-      span {
-        display: block;
-      }
-
-      span {
-        margin-top: 4px;
-        color: var(--mat-sys-on-surface-variant);
-        font: var(--mat-sys-body-medium);
-      }
     }
   }
 

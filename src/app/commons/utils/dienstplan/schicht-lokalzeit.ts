@@ -14,6 +14,53 @@ export interface ISchichtZeitstempel {
 }
 
 /**
+ * Wandelt eine lokale Uhrzeit in die seit Tagesbeginn vergangenen Minuten um.
+ *
+ * @param lokalzeit - Lokale Uhrzeit im Format `HH:mm`.
+ * @returns Minuten seit Tagesbeginn oder `null` bei einer ungültigen Uhrzeit.
+ */
+export function getLokalzeitMinuten(lokalzeit: string): number | null {
+  const treffer = /^(\d{2}):(\d{2})$/.exec(lokalzeit);
+  if (!treffer) return null;
+  const stunden = Number(treffer[1]);
+  const minuten = Number(treffer[2]);
+  return stunden <= 23 && minuten <= 59 ? stunden * 60 + minuten : null;
+}
+
+/**
+ * Verschiebt eine lokale Uhrzeit um eine Anzahl Minuten und formatiert sie wieder als `HH:mm`.
+ *
+ * @param lokalzeit - Lokale Uhrzeit im Format `HH:mm`.
+ * @param versatzMinuten - Positiver oder negativer Minutenversatz.
+ * @returns Verschobene Uhrzeit oder `null` bei einer ungültigen Uhrzeit beziehungsweise mehr als einem Tagesversatz.
+ */
+export function addLokalzeitMinuten(lokalzeit: string, versatzMinuten: number): string | null {
+  const minuten = getLokalzeitMinuten(lokalzeit);
+  const ergebnis = minuten === null ? null : minuten + versatzMinuten;
+  if (ergebnis === null || !Number.isInteger(versatzMinuten) || ergebnis < 0 || ergebnis >= 2880) {
+    return null;
+  }
+  const minutenImTag = ergebnis % 1440;
+  return `${String(Math.floor(minutenImTag / 60)).padStart(2, '0')}:${String(minutenImTag % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Berechnet die Dauer zwischen zwei lokalen Schichtzeiten.
+ *
+ * Ein Ende vor dem Beginn wird als Ende am Folgetag behandelt.
+ *
+ * @param beginn - Lokale Beginnzeit im Format `HH:mm`.
+ * @param ende - Lokale Endzeit im Format `HH:mm`.
+ * @returns Schichtdauer in Minuten oder `null` bei ungültigen beziehungsweise gleichen Zeiten.
+ */
+export function calculateSchichtdauerMinuten(beginn: string, ende: string): number | null {
+  const beginnMinuten = getLokalzeitMinuten(beginn);
+  const endeMinuten = getLokalzeitMinuten(ende);
+  if (beginnMinuten === null || endeMinuten === null || beginnMinuten === endeMinuten) return null;
+  return endeMinuten + (endeMinuten < beginnMinuten ? 24 * 60 : 0) - beginnMinuten;
+}
+
+/**
  * Erzeugt absolute Zeitpunkte aus einem Datum und lokalen Schichtzeiten.
  *
  * @param datum - Lokales Schichtdatum im Format `YYYY-MM-DD`.

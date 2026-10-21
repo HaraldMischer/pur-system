@@ -521,6 +521,81 @@ for (const role of ['master', 'office', 'filiale']) {
   });
 }
 
+test('allows an authorized atomic monthly snapshot with model-shift references', async () => {
+  const db = await seedProfile('office');
+  const batch = writeBatch(db);
+  const zeitpunkt = new Date('2026-10-01T08:00:00.000Z');
+  batch.set(doc(db, dienstplanPath), {
+    zeitraumStart: '2026-10-01',
+    zeitraumEnde: '2026-10-31',
+    zeitzone: 'Europe/Berlin',
+    schichtmodellId: 'standard',
+    schichtmodellBezeichnung: 'Standard',
+    planungsart: 'schichtraster',
+    kalendertage: [
+      {
+        datum: '2026-10-05',
+        wochentag: 'montag',
+        istSonntag: false,
+        aktiveSondertage: [],
+        oeffnungsregelQuelle: 'wochentag',
+        oeffnungsregel: {
+          geoeffnet: true,
+          beginnLokalzeit: '08:00',
+          endeLokalzeit: '18:00',
+          endetAmFolgetag: false,
+        },
+        rasterzeiten: [
+          {
+            modellschichtId: 'frueh',
+            beginnLokalzeit: '08:00',
+            endeLokalzeit: '16:30',
+            endetAmFolgetag: false,
+          },
+        ],
+      },
+    ],
+    entwurfVersionId: 'v2',
+    naechsteVersionsnummer: 2,
+    erstelltAm: zeitpunkt,
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: zeitpunkt,
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.set(doc(db, dienstplanModellschichtPath), {
+    ...modellschichtDaten({ beginnLokalzeit: '08:00', endeLokalzeit: '16:30' }),
+    vorbereitungsminuten: 0,
+    nachbereitungsminuten: 0,
+  });
+  batch.set(doc(db, entwurfVersionPath), {
+    nummer: 1,
+    revision: 0,
+    status: 'entwurf',
+    erstelltAm: zeitpunkt,
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: zeitpunkt,
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.set(doc(db, entwurfSchichtPath), {
+    datum: '2026-10-05',
+    mitarbeiterId: 'm-1',
+    modellschichtId: 'frueh',
+    beginn: new Date('2026-10-05T06:00:00.000Z'),
+    ende: new Date('2026-10-05T14:30:00.000Z'),
+    erstelltAm: zeitpunkt,
+    erstelltVonUid: 'scoped',
+    aktualisiertAm: zeitpunkt,
+    aktualisiertVonUid: 'scoped',
+  });
+
+  await assertSucceeds(batch.commit());
+  const plan = await assertSucceeds(getDoc(doc(db, dienstplanPath)));
+  const schicht = await assertSucceeds(getDoc(doc(db, entwurfSchichtPath)));
+
+  assert.equal(plan.data()?.['kalendertage'][0].rasterzeiten[0].modellschichtId, 'frueh');
+  assert.equal(schicht.data()?.['modellschichtId'], 'frueh');
+});
+
 test('service-plan writes require an allowed branch and an authorized role', async () => {
   const officeDb = await seedProfile('office');
   await assertFails(

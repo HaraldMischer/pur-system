@@ -17,7 +17,6 @@ import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter'
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
-import { getDienstplanRasterzeit } from '../../../commons/utils/dienstplan/dienstplan-kalendertage';
 import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 
 export type TSchichtplanRasterauswahl = {
@@ -31,7 +30,7 @@ export type TSchichtplanMitarbeiterAblage = TSchichtplanRasterauswahl & {
 
 type TSchichtplanZelle = {
   readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
-  readonly rasterzeit: IDienstplanRasterzeit;
+  readonly rasterzeit: IDienstplanRasterzeit | null;
   readonly schichten: readonly ISchichtEintrag[];
   readonly mitarbeiterIds: readonly string[];
 };
@@ -39,11 +38,16 @@ type TSchichtplanZelle = {
 type TSchichtplanAblageziel = TSchichtplanRasterauswahl & {
   readonly mitarbeiterIds: readonly string[];
   readonly mehrfachbelegungErlaubt: boolean;
+  readonly verfuegbar: boolean;
 };
 
 type TSchichtplanTag = {
   readonly datum: string;
-  readonly bezeichnung: string;
+  readonly datumBezeichnung: string;
+  readonly wochentagBezeichnung: string;
+  readonly oeffnungszeitBezeichnung: string;
+  readonly kalendereigenschaftBezeichnung: string | null;
+  readonly hervorhebung: 'sonntag' | 'feiertag' | 'sondertag' | null;
   readonly zellen: readonly TSchichtplanZelle[];
 };
 
@@ -132,6 +136,7 @@ export class DienstplanMonatstabelle {
     const mitarbeiterId = drag.data;
     return (
       this.kannSchichtenAblegen() &&
+      drop.data.verfuegbar &&
       this.erlaubteMitarbeiterIds().includes(mitarbeiterId) &&
       (drop.data.mehrfachbelegungErlaubt || drop.data.mitarbeiterIds.length === 0) &&
       !drop.data.mitarbeiterIds.includes(mitarbeiterId)
@@ -148,6 +153,7 @@ export class DienstplanMonatstabelle {
     const ziel = event.container.data;
     if (
       !this.kannSchichtenAblegen() ||
+      !ziel.verfuegbar ||
       !this.erlaubteMitarbeiterIds().includes(mitarbeiterId) ||
       (!ziel.mehrfachbelegungErlaubt && ziel.mitarbeiterIds.length > 0) ||
       ziel.mitarbeiterIds.includes(mitarbeiterId)
@@ -159,22 +165,6 @@ export class DienstplanMonatstabelle {
       datum: ziel.datum,
       modellschichtId: ziel.modellschichtId,
     });
-  }
-
-  /**
-   * Formatiert den Zeitraum einer Schicht in der Dienstplan-Zeitzone.
-   *
-   * @param schicht - Darzustellende Schicht.
-   * @returns Formatierter Beginn und formatiertes Ende.
-   */
-  formatSchichtzeit(schicht: ISchichtEintrag): string {
-    const zeitzone = this.dienstplan().zeitzone;
-    const formatter = new Intl.DateTimeFormat('de-DE', {
-      timeZone: zeitzone,
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    return `${formatter.format(schicht.beginn.toDate())}–${formatter.format(schicht.ende.toDate())}`;
   }
 
   /**
@@ -233,20 +223,32 @@ function createTage(
   const ende = new Date(`${zeitraumEnde}T12:00:00Z`);
   while (datum <= ende) {
     const isoDatum = datum.toISOString().slice(0, 10);
+    const kalendertag = kalendertageNachDatum.get(isoDatum);
+    if (!kalendertag) {
+      throw new Error('Der Kalendertag wurde im Monatsplan nicht gefunden.');
+    }
     tage.push({
       datum: isoDatum,
-      bezeichnung: new Intl.DateTimeFormat('de-DE', {
+      wochentagBezeichnung: new Intl.DateTimeFormat('de-DE', {
         timeZone: 'UTC',
-        weekday: 'short',
+        weekday: 'long',
+      }).format(datum),
+      datumBezeichnung: new Intl.DateTimeFormat('de-DE', {
+        timeZone: 'UTC',
         day: '2-digit',
         month: '2-digit',
+        year: 'numeric',
       }).format(datum),
+      oeffnungszeitBezeichnung: kalendertag.oeffnungsregel.geoeffnet
+        ? `${kalendertag.oeffnungsregel.beginnLokalzeit}–${kalendertag.oeffnungsregel.endeLokalzeit}`
+        : 'Geschlossen',
+      kalendereigenschaftBezeichnung: getKalendereigenschaftBezeichnung(kalendertag),
+      hervorhebung: getKalendertagHervorhebung(kalendertag),
       zellen: modellschichten.map((modellschicht) => {
-        const kalendertag = kalendertageNachDatum.get(isoDatum);
-        if (!kalendertag) {
-          throw new Error('Der Kalendertag wurde im Monatsplan nicht gefunden.');
-        }
-        const rasterzeit = getDienstplanRasterzeit(kalendertag, modellschicht.id);
+        const rasterzeit =
+          kalendertag.rasterzeiten.find((eintrag) => {
+            return eintrag.modellschichtId === modellschicht.id;
+          }) ?? null;
         const zellenschichten = (
           schichtenNachZelle.get(getZellenschluessel(isoDatum, modellschicht.id)) ?? []
         )
@@ -263,6 +265,28 @@ function createTage(
     datum.setUTCDate(datum.getUTCDate() + 1);
   }
   return tage;
+}
+
+function getKalendereigenschaftBezeichnung(kalendertag: IDienstplanKalendertag): string | null {
+  const bezeichnungen = new Set<string>();
+  if (kalendertag.gesetzlicherFeiertag) {
+    bezeichnungen.add(kalendertag.gesetzlicherFeiertag.bezeichnung);
+  }
+  if (kalendertag.bezeichnung) bezeichnungen.add(kalendertag.bezeichnung);
+  for (const sondertag of kalendertag.aktiveSondertage) {
+    bezeichnungen.add(sondertag.bezeichnung);
+  }
+  return bezeichnungen.size > 0 ? [...bezeichnungen].join(' · ') : null;
+}
+
+function getKalendertagHervorhebung(
+  kalendertag: IDienstplanKalendertag,
+): TSchichtplanTag['hervorhebung'] {
+  if (kalendertag.gesetzlicherFeiertag) return 'feiertag';
+  if (kalendertag.oeffnungsregelQuelle !== 'wochentag' || kalendertag.aktiveSondertage.length > 0) {
+    return 'sondertag';
+  }
+  return kalendertag.istSonntag ? 'sonntag' : null;
 }
 
 function getZellenschluessel(datum: string, modellschichtId: string): string {

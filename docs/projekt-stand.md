@@ -183,6 +183,12 @@ Das vollständige fachliche und architektonische Zielbild steht im
   geschrieben; spätere Änderungen der Filialeinstellungen oder Schichtmodelle verändern den gespeicherten Monatsstand nicht.
   Tages- und Rasterzeitmomentaufnahmen sind verbindlicher Bestandteil jedes Monatsdienstplans. Unvollständige Dokumente werden
   nicht mit Ersatzwerten ergänzt, weil Schichtmodelle und Monatspläne in dieser Ausbaustufe neu angelegt werden.
+- Fachlich ist inzwischen festgelegt, dass die wirksame Öffnungsregel die äußeren Rastergrenzen automatisch bestimmt: Der erste
+  Rasterplatz beginnt am Öffnungsbeginn, der letzte endet am Öffnungsende. Ausdrückliche Vorbereitungsminuten der ersten und
+  Nachbereitungsminuten der letzten Modellschicht erweitern diese Grenzen. Ableitung, Minutenfelder und die Sperre geschlossener
+  Tage sind umgesetzt. Der Schichtmodelldialog bietet für aktive geöffnete Sondertage optionale innere Rastergrenzen an. Bei der
+  Monatsplananlage können dieselben inneren Grenzen für einmalige Sondertage ausschließlich in diesem Monatsplan überschrieben
+  werden.
 - Die zeitliche Konfliktprüfung, Entwurfsstatus, Benutzer-UID und Revisionsfortschritt bleiben Frontend-Fachprüfungen. Firestore
   Rules sichern ausschließlich Rolle, Filialgrenzen und CRUD-Rechte gemäß Berechtigungsmatrix.
 - Die technische Planung aus Todo 21.3 ist abgeschlossen. Domainmodell, deutsche Firestore-Pfade, Abfrage- und Cache-Strategien,
@@ -230,15 +236,20 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Dienstplan kann nach Bestätigung vollständig gelöscht und anschließend mit einem anderen aktiven Modell neu angelegt werden.
   Sobald eine Schicht vorhanden ist, bleibt die Löschaktion bis zum Löschen aller Schichten deaktiviert; nach der ersten
   Veröffentlichung wird sie dauerhaft ausgeblendet. Spätere Änderungen oder die Deaktivierung des Quellmodells verändern
-  bestehende Pläne nicht.
+  bestehende Pläne nicht. Fehlen bei der Monatsplananlage die initialisierten Filialeinstellungen, fordert die Oberfläche
+  konkret dazu auf, zuerst die Öffnungszeiten der Filiale zu initialisieren. Unvollständige Filialeinstellungen,
+  widersprüchliche Kalenderregeln und zwischenzeitlich ungültige Schichtmodelle werden mit der konkreten Ursache statt mit einer
+  allgemeinen Fehlermeldung angezeigt. Die Anlage liest den Monatsplanpfad innerhalb einer Firestore-Transaktion und verhindert
+  dadurch auch bei parallelen Aufrufen eine zweite Anlage desselben Filialmonats.
 - Die Monatsplanung wird als horizontal bedienbares Schichtraster dargestellt: Kalendertage bilden die Zeilen, die geordneten
   Modellschichten der Momentaufnahme bilden die Spalten. Ohne freigegebene Mehrfachbelegung kann jede Zelle höchstens eine
   Mitarbeiterschicht enthalten; bei freigegebener Mehrfachbelegung sind mehrere erlaubt. Die Oberfläche sperrt weitere Anlagen
   und Ablagen einer belegten Einfachschicht, der Service prüft dies zusätzlich vor dem Schreiben. Beim Anlegen stehen Datum,
   Modellschicht und die tagesabhängigen lokalen Rasterzeiten bereits fest; nur der Mitarbeiter wird ausgewählt. Beim Bearbeiten
-  bleibt die Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Das für Desktop und Tablet
-  ausgelegte Raster scrollt horizontal und behält dabei die Tagesspalte im sichtbaren Bereich. Das vertikale Scrollen bleibt beim
-  umgebenden Dienstplanbereich.
+  bleibt die Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Die Tagesspalte zeigt neben Datum
+  und Öffnungszeiten auch gespeicherte Eigenschaften und Bezeichnungen für Sonntage, Feiertage und Sondertage. Das für Desktop
+  und Tablet ausgelegte Raster scrollt horizontal und behält dabei die Tagesspalte im sichtbaren Bereich. Das vertikale
+  Scrollen bleibt beim umgebenden Dienstplanbereich.
 - Schichtmodelle und Monatsdienstpläne speichern die verpflichtende Planungsart. Neue Modelle werden automatisch als
   `schichtraster` angelegt; der Monatsplan übernimmt diesen Wert aus dem gewählten Modell. Die Services weisen fehlende oder noch
   nicht unterstützte Planungsarten zurück. Eine diskriminierte Union trennt gemeinsame Metadaten, Schichtrastermodell und das
@@ -246,8 +257,9 @@ Das vollständige fachliche und architektonische Zielbild steht im
   ist verfügbar, während `Schichtbausteine` bis zur Umsetzung der fachlichen Bausteinfelder deaktiviert bleibt.
 - Der TypeScript-Code verlangt bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben
   Monatsplans. Beginn und Ende werden ausschließlich aus der Tagesrasterzeit abgeleitet. Eine Pause wird nicht mehr in einer
-  Modellschicht oder konkreten Schicht gespeichert; die zentrale Arbeitsblockberechnung ermittelt 0, 30 oder 45 bezahlte
-  Pausenminuten aus der summierten Arbeitszeit. Die verbindliche filialübergreifende Neuberechnung folgt in Todo 21.9 Schritt 5.
+  Modellschicht vorgegeben; die zentrale Arbeitsblockberechnung ermittelt 0, 30 oder 45 bezahlte Pausenminuten aus der
+  summierten Arbeitszeit. Die verbindliche filialübergreifende Neuberechnung und Speicherung auf der chronologisch letzten
+  Blockschicht folgt gemeinsam mit dem firmenweiten Belegungsindex in Todo 21.10.
 - Das Löschen eines Monatsplans entfernt Dienstplan, leere Entwurfsversion und Modellschicht-Momentaufnahme gemeinsam. Der
   Service lädt Dienstplan und Entwurfsschichten zuvor mit `networkOnly` und prüft einen noch nie veröffentlichten Entwurf sowie
   dessen gemeinsame Löschung.

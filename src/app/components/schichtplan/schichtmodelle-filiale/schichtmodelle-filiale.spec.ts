@@ -7,6 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatMenuTrigger } from '@angular/material/menu';
 
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import {
   SchichtmodellStore,
   TSchichtmodellKontext,
@@ -48,6 +49,13 @@ describe('SchichtmodelleFiliale', () => {
             inProgress: signal(false),
           },
         },
+        {
+          provide: FilialeinstellungStore,
+          useValue: {
+            loadFilialeinstellung: vi.fn().mockResolvedValue(undefined),
+            getFilialeinstellungKontext: vi.fn().mockReturnValue({ bestand: { sondertage: [] } }),
+          },
+        },
         { provide: MatDialog, useValue: { open } },
       ],
     }).compileComponents();
@@ -86,7 +94,7 @@ describe('SchichtmodelleFiliale', () => {
     menueintraege[0].click();
     expect(open).toHaveBeenCalledWith(
       SchichtmodellBearbeitenDialog,
-      expect.objectContaining({ data: { pfad: PFAD } }),
+      expect.objectContaining({ data: { pfad: PFAD, sondertage: [] } }),
     );
   });
 });

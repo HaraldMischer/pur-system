@@ -15,6 +15,12 @@ describe('getFirebaseErrorMessage', () => {
     expect(message).toBe('Du hast keine Berechtigung für diese Aktion.');
   });
 
+  it('should request a new login for an unauthenticated Firestore access', () => {
+    const message = getFirebaseErrorMessage({ code: 'unauthenticated' });
+
+    expect(message).toBe('Bitte melde dich erneut an und versuche es noch einmal.');
+  });
+
   it('should return a friendly message for an offline action', () => {
     const message = getFirebaseErrorMessage({ code: 'app/offline' });
 

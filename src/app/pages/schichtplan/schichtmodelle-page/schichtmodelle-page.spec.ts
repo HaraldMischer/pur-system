@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
+import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { SchichtmodellePage } from './schichtmodelle-page';
 
@@ -41,6 +42,13 @@ describe('SchichtmodellePage', () => {
             getSchichtmodellKontext: vi.fn(() => null),
             loadSchichtmodelle,
             inProgress: signal(false),
+          },
+        },
+        {
+          provide: FilialeinstellungStore,
+          useValue: {
+            loadFilialeinstellung: vi.fn().mockResolvedValue(undefined),
+            getFilialeinstellungKontext: vi.fn().mockReturnValue({ bestand: { sondertage: [] } }),
           },
         },
       ],

@@ -555,32 +555,39 @@ besitzen ein festes Datum ohne Jahresangabe und einen Aktivstatus; einmalige Son
 Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Technisch unterscheiden die Sondertags-Datumsregeln jährlich
 feste Daten von zentral berechneten gesetzlichen Feiertagen. Die wirksame
 Öffnungsregel wird weiterhin in der Reihenfolge
-`Ausnahme → Sondertag → Wochentag` bestimmt. Öffnungszeiten beschreiben den Kundenbetrieb und bleiben von den Arbeitszeiten
-der Schichtmodelle getrennt. Beim Anlegen eines Monatsdienstplans werden Wochentag, Kalendereigenschaften, Sondertags-ID und
--Bezeichnung sowie die für seine Kalendertage aufgelösten Öffnungsregeln als unveränderliche Momentaufnahme übernommen. Sie
-begrenzen Mitarbeiterschichten nicht automatisch.
+`Ausnahme → Sondertag → Wochentag` bestimmt. Beim Anlegen eines Monatsdienstplans werden Wochentag, Kalendereigenschaften,
+Sondertags-ID und -Bezeichnung sowie die für seine Kalendertage aufgelösten Öffnungsregeln als unveränderliche Momentaufnahme
+übernommen. Die Öffnungsregel bestimmt dabei die äußeren Grenzen des tagesabhängigen Schichtrasters.
 
 Die Modellschichten eines Schichtmodells bilden ein festes Raster für alle Kalendertage. IDs, Bezeichnungen, Reihenfolge und
 Mehrfachbelegung bleiben an Werktagen, Sonntagen, Feiertagen und sonstigen Sondertagen identisch. Ein Modell mit Früh-, Mittel-
 und Spätschicht bleibt durchgehend dreispaltig; ein Modell mit Früh- und Spätschicht bleibt durchgehend zweispaltig.
 
-Jeder Feiertag und Sondertag mit aktiver abweichender Öffnungsregel kann im jeweiligen Schichtmodell optional abweichende
-Beginn- und Endzeiten für die vorhandenen Rasterplätze erhalten. Eine Zeitüberschreibung fügt keine Modellschicht hinzu,
-entfernt keine und ändert ihre Reihenfolge nicht. Nicht überschriebene Rasterplätze verwenden ihre regulären Modellzeiten. Die
-Öffnungszeiten werden als Anhaltspunkt angezeigt, begrenzen die Schichtzeiten aber nicht und erzeugen keine Mitarbeiterschichten
-automatisch. Sie passen die Rasterzeiten ebenfalls nicht automatisch an. Für den Schichtbetrieb werden keine zusätzlichen
-Tag-Start- oder Tag-Stopp-Zeiten gepflegt. Benötigte Abweichungen werden ausschließlich über Beginn und Ende der vorhandenen
-Rasterplätze festgelegt und dürfen für Vor- oder Nachbereitungsarbeiten außerhalb der Kundenöffnungszeiten liegen. Wird die
-besondere Öffnungsregel deaktiviert, bleiben hinterlegte Rasterzeiten erhalten, werden aber für neue Monatspläne nicht
-verwendet. Eine unabhängige Zeitabweichung bei unveränderter Öffnungsregel ist nicht Teil der ersten Ausbaustufe.
+Die Modellzeiten bleiben frei konfigurierbare Grundzeiten. Für jeden Kalendertag wird der Beginn des ersten Rasterplatzes an den
+wirksamen Öffnungsbeginn und das Ende des letzten Rasterplatzes an das wirksame Öffnungsende angepasst; bei nur einem
+Rasterplatz gelten beide Anpassungen. Innere Schichtgrenzen bleiben unverändert. Die erste Modellschicht kann nicht negative
+Vorbereitungsminuten und die letzte Modellschicht nicht negative Nachbereitungsminuten festlegen. Diese Minuten erweitern die
+äußeren Rastergrenzen ausdrücklich vor beziehungsweise nach der Kundenöffnungszeit.
 
-Pausen werden nicht als feste Eigenschaft einer Modellschicht oder einzelnen konkreten Schicht behandelt. Alle relevanten
-Schichten eines Mitarbeiters mit demselben Dienstplandatum werden filialübergreifend zu Arbeitsblöcken gruppiert. Direkt
-aufeinanderfolgende Schichten und Unterbrechungen unter 30 Minuten bilden einen gemeinsamen Block; eine Unterbrechung ab
-30 Minuten trennt die Blöcke. Die Arbeitsdauer ist die Summe der enthaltenen Schichtdauern ohne dazwischenliegende Lücken. Bis
-einschließlich 6 Stunden beträgt die bezahlte Pause 0 Minuten, bei mehr als 6 bis einschließlich 9 Stunden 30 Minuten und bei
-mehr als 9 Stunden 45 Minuten. Die Pause bleibt ein Gesamtwert des Arbeitsblocks und wird nicht auf einzelne Rasterplätze
-verteilt.
+Feiertage, Sondertage und Datumsausnahmen beeinflussen das Raster über ihre wirksame Öffnungsregel automatisch. Besondere
+Rasterzeiten eines Schichtmodells werden nur für abweichende innere Schichtgrenzen jährlich wiederkehrender Sondertage benötigt.
+Einmalige Datumsausnahmen verändern ausschließlich die äußeren Rastergrenzen; die inneren Modellgrenzen bleiben unverändert.
+Besondere Rasterzeiten fügen keine Modellschicht hinzu, entfernen keine und ändern ihre Reihenfolge nicht. Ergibt die
+Tagesanpassung für einen Rasterplatz keine positive Dauer, ist das Modell mit der Öffnungsregel unvereinbar und die
+Konfiguration oder Dienstplananlage wird verhindert. An geschlossenen Tagen können keine Schichten angelegt werden.
+Öffnungszeiten erzeugen weiterhin keine Mitarbeiterschichten automatisch.
+
+Pausen werden nicht als feste Eigenschaft einer Modellschicht behandelt. Alle relevanten Schichten eines Mitarbeiters mit
+demselben Dienstplandatum werden filialübergreifend zu Arbeitsblöcken gruppiert. Direkt aufeinanderfolgende Schichten und
+Unterbrechungen unter 30 Minuten bilden einen gemeinsamen Block; eine Unterbrechung ab 30 Minuten trennt die Blöcke. Die
+Arbeitsdauer ist die Summe der enthaltenen Schichtdauern ohne dazwischenliegende Lücken. Bis einschließlich 6 Stunden beträgt
+die bezahlte Pause 0 Minuten, bei mehr als 6 bis einschließlich 9 Stunden 30 Minuten und bei mehr als 9 Stunden 45 Minuten.
+
+Die Pause bleibt ein Gesamtwert des Arbeitsblocks. Ausschließlich seine chronologisch letzte konkrete Schicht speichert den
+berechneten Wert als `pauseMinuten`; die übrigen Schichten speichern `0`. Diese technische Zuordnung legt keinen Zeitpunkt der
+Pause fest. Der Wert wird bei Änderungen des Entwurfs neu berechnet, auf der letzten Schicht angezeigt und mit der
+veröffentlichten Dienstplanversion als Planungsmomentaufnahme festgehalten. Eine spätere Zeiterfassung übernimmt den Wert und
+dokumentiert getrennt, ob die Pause tatsächlich genommen wurde. Die vollständig bezahlte Pause reduziert die Lohnzeit nicht.
 
 Die kalendarischen Eigenschaften als Sonntag, gesetzlicher Feiertag oder sonstiger Sondertag bleiben unabhängig von der
 wirksamen Öffnungsregel und den Rasterzeiten in der Monatsplan-Momentaufnahme erkennbar. Nacht-, Sonntags- und

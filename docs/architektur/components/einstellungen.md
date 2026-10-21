@@ -38,5 +38,7 @@ Die Listen zeigen neben dem Aktivstatus auch den Öffnungszustand, beispielsweis
 dargestellt; ihre Datumsangabe bleibt sichtbar.
 
 Die Oberfläche erläutert die Priorität als `einmaliger Sondertag → Feiertag oder jährlich wiederkehrender Sondertag →
-Wochentag`. Intern entspricht dies weiterhin `Ausnahme → Sondertag → Wochentag`. Öffnungszeiten
-bleiben dabei Kundenbetriebszeiten und werden nicht als automatische Begrenzung von Mitarbeiterschichten behandelt.
+Wochentag`. Intern entspricht dies weiterhin `Ausnahme → Sondertag → Wochentag`. Beim Speichern oder Aktivieren eines
+jährlich festen Sondertags verhindert die Verwaltung eine direkte Kollision mit einem anderen aktiven festen Sondertag und
+benennt beide Einträge. Öffnungszeiten bleiben Kundenbetriebszeiten; in einem Schichtraster bestimmen sie zugleich die
+automatisch abgeleiteten äußeren Rastergrenzen. Vor- und Nachbereitungsminuten können diese Grenzen ausdrücklich erweitern.

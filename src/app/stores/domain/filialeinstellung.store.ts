@@ -14,6 +14,7 @@ import {
   IAufgeloesteOeffnungsregel,
   resolveOeffnungsregel,
 } from '../../commons/utils/filialeinstellung/oeffnungsregel-aufloesung';
+import { SondertagDatumskollisionFehler } from '../../commons/utils/filialeinstellung/sondertag-kollision';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
@@ -76,7 +77,11 @@ function createFehler(meldung: string, error: unknown): IFilialeinstellungFehler
 }
 
 function getFehlerursache(error: unknown): string | null {
-  if (error instanceof FilialeinstellungFachfehler) return error.message;
+  if (
+    error instanceof FilialeinstellungFachfehler ||
+    error instanceof SondertagDatumskollisionFehler
+  )
+    return error.message;
   if (
     typeof error === 'object' &&
     error !== null &&
@@ -245,6 +250,7 @@ export const FilialeinstellungStore = signalStore(
             const sondertag = await filialeinstellungService.createSondertag(
               pfad,
               anlage,
+              bestand.sondertage,
               benutzerUid,
             );
             return {
@@ -276,6 +282,7 @@ export const FilialeinstellungStore = signalStore(
               pfad,
               sondertag,
               aktualisierung,
+              bestand.sondertage,
               benutzerUid,
             );
             return {
@@ -307,6 +314,7 @@ export const FilialeinstellungStore = signalStore(
               pfad,
               sondertag,
               aktualisierung,
+              bestand.sondertage,
               benutzerUid,
             );
             return {

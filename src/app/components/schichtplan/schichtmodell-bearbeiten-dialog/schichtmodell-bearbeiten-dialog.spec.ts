@@ -120,6 +120,123 @@ describe('SchichtmodellBearbeitenDialog', () => {
     expect(anlage.modellschichten[0].mehrfachbelegungErlaubt).toBe(true);
   });
 
+  it('should submit preparation and follow-up minutes on the outer model shifts', async () => {
+    const fixture = await createComponent({ pfad });
+    const component = fixture.componentInstance;
+    component.schichtmodellForm.controls.bezeichnung.setValue('Standard');
+    const schicht = component.schichtmodellForm.controls.modellschichten.at(0);
+    schicht.patchValue({
+      bezeichnung: 'Tag',
+      beginnLokalzeit: '08:00',
+      endeLokalzeit: '18:00',
+      vorbereitungsminuten: 30,
+      nachbereitungsminuten: 15,
+    });
+
+    await component.saveSchichtmodell();
+
+    const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtrastermodellAnlage;
+    expect(anlage.modellschichten[0]).toEqual(
+      expect.objectContaining({ vorbereitungsminuten: 30, nachbereitungsminuten: 15 }),
+    );
+  });
+
+  it('should save optional inner raster limits for an active special day', async () => {
+    const bestand = {
+      schichtmodell: {
+        ...pfad,
+        id: 'modell-1',
+        bezeichnung: 'Standard',
+        aktiv: true,
+        planungsart: 'schichtraster' as const,
+        besondereRasterzeiten: [],
+        erstelltVonUid: 'uid-1',
+        aktualisiertVonUid: 'uid-1',
+      },
+      modellschichten: [
+        {
+          ...pfad,
+          id: 'frueh',
+          schichtmodellId: 'modell-1',
+          bezeichnung: 'Früh',
+          beginnLokalzeit: '07:00',
+          endeLokalzeit: '16:30',
+          endetAmFolgetag: false,
+          mehrfachbelegungErlaubt: false,
+        },
+        {
+          ...pfad,
+          id: 'spaet',
+          schichtmodellId: 'modell-1',
+          bezeichnung: 'Spät',
+          beginnLokalzeit: '16:30',
+          endeLokalzeit: '01:00',
+          endetAmFolgetag: true,
+          mehrfachbelegungErlaubt: false,
+        },
+      ],
+    };
+    const fixture = await createComponent({
+      pfad,
+      bestand,
+      sondertage: [
+        {
+          ...pfad,
+          id: 'heiligabend',
+          bezeichnung: 'Heiligabend',
+          aktiv: true,
+          herkunft: 'system',
+          datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
+          oeffnungsregel: {
+            geoeffnet: true,
+            beginnLokalzeit: '07:00',
+            endeLokalzeit: '18:00',
+            endetAmFolgetag: false,
+          },
+          erstelltVonUid: 'uid-1',
+          aktualisiertVonUid: 'uid-1',
+        },
+      ],
+    });
+    fixture.componentInstance.updateBesondereRasterzeiten([
+      {
+        tagId: 'heiligabend',
+        modellschichtId: 'frueh',
+        beginnLokalzeit: '07:00',
+        endeLokalzeit: '14:00',
+        endetAmFolgetag: false,
+      },
+      {
+        tagId: 'heiligabend',
+        modellschichtId: 'spaet',
+        beginnLokalzeit: '14:00',
+        endeLokalzeit: '18:00',
+        endetAmFolgetag: false,
+      },
+    ]);
+
+    await fixture.componentInstance.saveSchichtmodell();
+
+    expect(updateSchichtmodell).toHaveBeenCalledWith(
+      pfad,
+      'modell-1',
+      expect.objectContaining({
+        besondereRasterzeiten: [
+          expect.objectContaining({
+            sondertagId: 'heiligabend',
+            modellschichtId: 'frueh',
+            endeLokalzeit: '14:00',
+          }),
+          expect.objectContaining({
+            sondertagId: 'heiligabend',
+            modellschichtId: 'spaet',
+            beginnLokalzeit: '14:00',
+          }),
+        ],
+      }),
+    );
+  });
+
   it('should reject equal times and infer a shift ending on the following day', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;

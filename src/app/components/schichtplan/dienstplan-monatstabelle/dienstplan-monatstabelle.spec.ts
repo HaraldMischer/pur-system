@@ -31,15 +31,19 @@ describe('DienstplanMonatstabelle', () => {
 
     expect(tage).toHaveLength(28);
     expect(tage[2].datum).toBe('2026-02-03');
+    expect(tage[2].wochentagBezeichnung).toBe('Dienstag');
+    expect(tage[2].datumBezeichnung).toBe('03.02.2026');
+    expect(tage[2].oeffnungszeitBezeichnung).toBe('08:00–18:00');
     expect(tage[2].zellen).toHaveLength(2);
     expect(tage[2].zellen[1].schichten.map((schicht) => schicht.id)).toEqual(['s-1', 's-2']);
     expect(component.getMitarbeiterAnzeigename('m-1')).toBe('Muster, Mia');
     expect(component.getMitarbeiterAnzeigename('m-2')).toBe('Muster, Max');
     expect(component.getMitarbeiterFarbkennung('m-1')).toBe('#123456');
-    expect(component.formatSchichtzeit(tage[2].zellen[1].schichten[0])).toBe('16:30–01:00');
     expect(component.formatLohnzeit(tage[2].zellen[1].schichten[0])).toBe('8 Std. 30 Min.');
     expect(component.statusBezeichnung()).toBe('Entwurf');
     expect(fixture.nativeElement.textContent).toContain('18:00–23:00 Uhr');
+    expect(fixture.nativeElement.textContent).toContain('07:00–12:00 Uhr');
+    expect(fixture.nativeElement.textContent).not.toContain('(+1 Tag)');
   });
 
   it('should keep a published plan readonly', () => {
@@ -48,6 +52,18 @@ describe('DienstplanMonatstabelle', () => {
 
     expect(fixture.componentInstance.statusBezeichnung()).toBe('Veröffentlicht');
     expect(fixture.componentInstance.kannSchichtenAblegen()).toBe(false);
+  });
+
+  it('should emit creating for the selected model cell', () => {
+    const fixture = createFixture();
+    const anlegen = vi.fn();
+    fixture.componentInstance.schichtAnlegen.subscribe(anlegen);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    compiled.querySelector<HTMLButtonElement>('td button')?.click();
+
+    expect(anlegen).toHaveBeenCalledWith({ datum: '2026-02-01', modellschichtId: 'frueh' });
   });
 
   it('should render and emit deleting in the plan status row', () => {
@@ -140,6 +156,56 @@ describe('DienstplanMonatstabelle', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Mitarbeiter nicht verfügbar');
+  });
+
+  it('should show closed cells without offering shift creation', () => {
+    const fixture = createFixture();
+    const dienstplan = fixture.componentInstance.dienstplan();
+    const [ersterTag, ...weitereTage] = dienstplan.kalendertage;
+    fixture.componentRef.setInput('dienstplan', {
+      ...dienstplan,
+      kalendertage: [
+        {
+          ...ersterTag,
+          oeffnungsregel: { geoeffnet: false },
+          rasterzeiten: [],
+        },
+        ...weitereTage,
+      ],
+    });
+    fixture.detectChanges();
+
+    const ersteZeile = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
+    expect(ersteZeile.textContent).toContain('Geschlossen');
+    expect(fixture.componentInstance.tage()[0].oeffnungszeitBezeichnung).toBe('Geschlossen');
+    expect(ersteZeile.querySelector('td button')).toBeNull();
+  });
+
+  it('should show the stored holiday and special-day properties', () => {
+    const fixture = createFixture();
+    const dienstplan = fixture.componentInstance.dienstplan();
+    const [ersterTag, ...weitereTage] = dienstplan.kalendertage;
+    fixture.componentRef.setInput('dienstplan', {
+      ...dienstplan,
+      kalendertage: [
+        {
+          ...ersterTag,
+          istSonntag: true,
+          bezeichnung: 'Sonderöffnung',
+          aktiveSondertage: [{ id: 'sondertag-1', bezeichnung: 'Sonderöffnung' }],
+          gesetzlicherFeiertag: {
+            schluessel: 'ersterWeihnachtstag',
+            bezeichnung: '1. Weihnachtstag',
+          },
+        },
+        ...weitereTage,
+      ],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.tage()[0].kalendereigenschaftBezeichnung).toBe(
+      '1. Weihnachtstag · Sonderöffnung',
+    );
   });
 
   function createFixture(veroeffentlicht = false): ComponentFixture<DienstplanMonatstabelle> {
@@ -281,11 +347,18 @@ describe('DienstplanMonatstabelle', () => {
     modellschichtId: string,
     mitarbeiterIds: string[],
     mehrfachbelegungErlaubt = false,
+    verfuegbar = true,
   ): Parameters<DienstplanMonatstabelle['handleMitarbeiterDrop']>[0] {
     return {
       item: { data: mitarbeiterId },
       container: {
-        data: { datum, modellschichtId, mitarbeiterIds, mehrfachbelegungErlaubt },
+        data: {
+          datum,
+          modellschichtId,
+          mitarbeiterIds,
+          mehrfachbelegungErlaubt,
+          verfuegbar,
+        },
       },
     } as unknown as Parameters<DienstplanMonatstabelle['handleMitarbeiterDrop']>[0];
   }

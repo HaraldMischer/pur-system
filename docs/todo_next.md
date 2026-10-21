@@ -799,7 +799,7 @@ bei fachlichem Bedarf ausdrücklich für Mehrfachbelegungen freigegeben werden.
 - [x] Eine Modellschicht erlaubt standardmäßig nur einen Mitarbeiter je Rasterzelle; eine aktivierte Mehrfachbelegung lässt
       weitere Mitarbeiter in derselben Rasterzelle zu.
 
-### [ ] 21.9 Tagesabhängige Öffnungs- und Rasterzeiten abbilden
+### [x] 21.9 Tagesabhängige Öffnungs- und Rasterzeiten abbilden
 
 #### Ziel
 
@@ -808,16 +808,16 @@ Spätschicht behält diese drei Rasterplätze an Werktagen, Sonntagen, Feiertage
 Früh- und Spätschicht bleibt durchgehend zweispaltig. Die Modellschichten behalten dabei ihre IDs, Bezeichnungen, Reihenfolge
 und Mehrfachbelegung.
 
-Ein Feiertag oder Sondertag mit aktiver abweichender Öffnungsregel darf für die vorhandenen Rasterplätze abweichende Beginn-
-und Endzeiten hinterlegen. Er fügt keine Modellschichten hinzu, entfernt keine und ändert ihre Reihenfolge nicht. Ohne
-abweichende Rasterzeiten gelten die regulären Zeiten des Schichtmodells. Dasselbe gilt für eine einmalige Datumsausnahme, deren
-abweichende Rasterzeiten ausschließlich im betroffenen Monatsdienstplan festgelegt werden.
+Die Zeiten der Modellschichten sind frei konfigurierbare Grundzeiten. Die wirksame Öffnungsregel passt den Beginn des ersten
+Rasterplatzes und das Ende des letzten Rasterplatzes für jeden Kalendertag automatisch an. Bei nur einem Rasterplatz gelten
+beide Anpassungen; innere Schichtgrenzen bleiben unverändert. Die erste Modellschicht kann zusätzliche Vorbereitungsminuten und
+die letzte zusätzliche Nachbereitungsminuten enthalten, die die angepassten Grenzen ausdrücklich erweitern.
 
-Die wirksamen Öffnungszeiten stammen aus den Filialeinstellungen nach Todo 20 und werden als Anhaltspunkt angezeigt. Sie
-begrenzen Mitarbeiterschichten nicht automatisch, damit Vor- und Nachbereitungszeiten außerhalb der Kundenöffnungszeiten
-weiterhin möglich sind. Eine abweichende Öffnungsregel passt die Rasterzeiten nicht automatisch an. Für den Schichtbetrieb
-werden keine zusätzlichen Tag-Start- oder Tag-Stopp-Zeiten gepflegt; bei Bedarf werden nur die Zeiten der vorhandenen
-Rasterplätze ausdrücklich überschrieben.
+Feiertage, Sondertage und einmalige Datumsausnahmen wirken über ihre jeweils gültige Öffnungsregel automatisch auf die äußeren
+Rastergrenzen. Besondere Rasterzeiten bleiben nur für abweichende innere Schichtgrenzen jährlich wiederkehrender Sondertage
+erforderlich. Einmalige Datumsausnahmen behalten die inneren Modellgrenzen unverändert. Besondere Rasterzeiten fügen keine
+Modellschichten hinzu, entfernen keine und ändern ihre Reihenfolge nicht. Ergibt die Anpassung keine positive Dauer, ist das
+Modell für die Öffnungsregel ungeeignet. An geschlossenen Tagen ist keine Schichtanlage möglich.
 
 Die kalendarischen Eigenschaften als Sonntag, gesetzlicher Feiertag oder sonstiger Sondertag bleiben unabhängig von den
 verwendeten Rasterzeiten erkennbar. Nacht-, Sonntags- und Feiertagszuschläge werden in dieser Ausbaustufe weder konfiguriert noch
@@ -895,16 +895,16 @@ Neu hinzuzufügen:
 - [x] Nacht-, Sonntags- und Feiertagszuschläge von dieser Ausbaustufe abgrenzen. Eine spätere Zuschlagsbewertung verwendet die
       tatsächlichen Schichtzeiten und Kalendereigenschaften und wird nicht aus einem Schichtprofil abgeleitet.
 - [x] Die nach Todo 20 aufgelösten Ausnahmen und Sondertage einschließlich ihrer Priorität gegenüber der Wochentagsregel
-      übernehmen. Ein Feiertag am Sonntag bleibt kalendarisch Feiertag; ohne abweichende Rasterzeiten gelten die regulären
-      Zeiten der Modellschichten.
-- [x] Feiertagen und Sondertagen mit aktiver abweichender Öffnungsregel ausschließlich abweichende Beginn- und Endzeiten für
-      die vorhandenen Rasterplätze erlauben. Anzahl, IDs, Bezeichnungen, Reihenfolge und Mehrfachbelegung bleiben unverändert.
+      übernehmen. Ein Feiertag am Sonntag bleibt kalendarisch Feiertag und verwendet die für ihn wirksame Öffnungsregel.
+- [x] Öffnungsbeginn und Öffnungsende als verbindliche äußere Grenzen des tagesabhängigen Rasters festlegen. Anzahl, IDs,
+      Bezeichnungen, Reihenfolge und Mehrfachbelegung der Rasterplätze bleiben dabei unverändert.
 - [x] Eine unabhängige Schichtabweichung bei unveränderter Öffnungsregel aus der ersten Ausbaustufe ausschließen und erst bei
       einem konkreten fachlichen Bedarf ergänzen.
-- [x] Die nach Todo 20 aufgelösten Öffnungszeiten ausschließlich als Betriebsinformation übernehmen. Schichtzeiten dürfen
-      für Vor- und Nachbereitung außerhalb der Öffnungszeiten liegen und werden deshalb nicht automatisch auf diese begrenzt.
-- [x] Keine zusätzlichen Tag-Start- oder Tag-Stopp-Zeiten für den Schichtbetrieb einführen. Eine abweichende Öffnungsregel
-      verändert Rasterzeiten nicht automatisch; notwendige Abweichungen werden je vorhandenem Rasterplatz festgelegt.
+- [x] Vorbereitungsminuten an der ersten und Nachbereitungsminuten an der letzten Modellschicht als ausdrückliche Erweiterung
+      der äußeren Öffnungsgrenzen festlegen. Bei nur einem Rasterplatz dürfen beide Werte gelten.
+- [x] Besondere Rasterzeiten nur für abweichende innere Schichtgrenzen jährlich wiederkehrender Sondertage verwenden.
+      Einmalige Datumsausnahmen behalten die inneren Modellgrenzen unverändert. Öffnungsbeginn und Öffnungsende werden nicht
+      redundant als zusätzliche Tag-Start- oder Tag-Stopp-Zeiten gespeichert.
 - [x] Die Planungsart in Schichtmodell und Monatsdienstplan verpflichtend speichern. Solange nur das Schichtraster umgesetzt ist,
       `schichtraster` automatisch setzen und fehlende oder nicht unterstützte Planungsarten in den Services zurückweisen.
 - [x] In Modellanlage und Monatsplananlage die Auswahl der Planungsart vorbereiten. `Schichtraster` ausführbar anbieten und den
@@ -935,13 +935,21 @@ Neu hinzuzufügen:
 
 - [x] Anzahl, IDs, Bezeichnungen, Reihenfolge und Mehrfachbelegung der Modellschichten über alle Kalendertage hinweg als festes
       Raster beibehalten. Unterschiedliche Wochentage erhalten keine eigenen Modellschichten.
-- [x] Für Feiertage und sonstige Sondertage mit aktiver abweichender Öffnungsregel ausschließlich optionale Beginn- und
-      Endzeiten je vorhandenem Rasterplatz vorsehen. Diese dürfen für Vor- und Nachbereitung vor dem Öffnungsbeginn oder nach
-      dem Öffnungsende liegen. Nicht überschriebene Rasterplätze verwenden ihre regulären Modellzeiten.
-- [x] Eine einmalige Datumsausnahme ausschließlich im betroffenen Monatsdienstplan optional mit abweichenden Beginn- und
-      Endzeiten der vorhandenen Rasterplätze abbilden. Sie verändert das dauerhaft wiederverwendbare Schichtmodell nicht.
+- [x] Die erste Modellschicht um nicht negative Vorbereitungsminuten und die letzte Modellschicht um nicht negative
+      Nachbereitungsminuten erweitern. Bei nur einem Rasterplatz beide Werte zulassen und mittlere Rasterplätze von diesen
+      äußeren Minutenwerten ausschließen.
+- [x] Für jeden geöffneten Kalendertag den ersten Rasterbeginn aus Öffnungsbeginn abzüglich Vorbereitungsminuten und das
+      letzte Rasterende aus Öffnungsende zuzüglich Nachbereitungsminuten ableiten. Bei nur einem Rasterplatz beide Grenzen
+      anwenden.
+- [x] Innere Schichtgrenzen aus den Modellzeiten übernehmen und besondere Rasterzeiten nur für ihre ausdrückliche Abweichung
+      an jährlich wiederkehrenden Sondertagen anwenden. Anzahl, IDs, Bezeichnungen und Reihenfolge bleiben unverändert.
+- [x] Eine einmalige Datumsausnahme ausschließlich über ihre Öffnungsregel auf die äußeren Rastergrenzen des betroffenen
+      Monatsdienstplans anwenden. Die inneren Grenzen und das dauerhaft wiederverwendbare Schichtmodell bleiben unverändert.
 - [x] Das bestehende Monatsraster mit seinen festen Modellschichtspalten beibehalten. Abweichende Uhrzeiten werden in der
       jeweiligen Tageszeile angezeigt, ohne die Spaltenstruktur zu verändern.
+- [x] Geschlossene Tage ohne wirksame Rasterzeiten speichern und dort keine Schichtanlage zulassen. Für Rasterplätze, die nach
+      der Anpassung keine positive Dauer besitzen, die Modellpflege beziehungsweise Dienstplananlage mit verständlicher
+      fachlicher Ursache verhindern.
 - [x] Die Pause aus den zusammenhängenden Arbeitsblöcken eines Mitarbeiters am selben Dienstplantag berechnen. Direkt
       aufeinanderfolgende Schichten und Unterbrechungen unter 30 Minuten gehören zu einem Arbeitsblock; eine Unterbrechung ab
       30 Minuten trennt die Arbeitsblöcke. Je Block gelten 0 Minuten bis einschließlich 6 Stunden, 30 Minuten bei mehr als 6 bis
@@ -952,89 +960,90 @@ Neu hinzuzufügen:
       mit den Kalendereigenschaften und der aufgelösten Öffnungsregel vollständig als Momentaufnahme speichern.
 - [x] Beginn und Ende einer konkreten Schicht aus ihrem Datum, der stabilen Modellschicht-ID und den für diese Tageszeile
       aufgelösten Rasterzeiten ableiten.
-- [x] Die bisherige verbindliche Standardpause der Modellschicht und die Pause je konkreter Schicht durch die abgeleitete
-      Gesamtpause des Arbeitsblocks ersetzen. Lücken zwischen den zugehörigen Schichten zählen nicht zur Arbeitsdauer; die
-      Pause wird nicht künstlich auf einzelne Schichten verteilt.
-- [x] Spätere Änderungen an Öffnungszeiten, regulären Modellzeiten, besonderen Rasterzeiten oder Feiertagsregeln dürfen einen
-      bestehenden Monatsdienstplan nicht nachträglich verändern.
+- [x] Festlegen, dass die abgeleitete Gesamtpause des Arbeitsblocks die bisherige verbindliche Standardpause der Modellschicht
+      ersetzt. Lücken zwischen den zugehörigen Schichten zählen nicht zur Arbeitsdauer. Ausschließlich die chronologisch letzte
+      Schicht soll den Gesamtwert später als technischen Anker speichern; dies legt keinen tatsächlichen Pausenzeitpunkt fest.
+- [x] Spätere Änderungen an Öffnungszeiten, regulären Modellzeiten, Vor- und Nachbereitungsminuten, besonderen Rasterzeiten
+      oder Feiertagsregeln dürfen einen bestehenden Monatsdienstplan nicht nachträglich verändern.
 
-#### [ ] Schritt 4: Verwaltung und Monatsplanung erweitern
+#### [x] Schritt 4: Verwaltung und Monatsplanung erweitern
 
-- [ ] Beim Speichern oder Aktivieren jährlich fester Sondertage direkte Datumskollisionen verhindern und die betroffenen
+- [x] Beim Speichern oder Aktivieren jährlich fester Sondertage direkte Datumskollisionen verhindern und die betroffenen
       Sondertage in der sichtbaren Fehlermeldung benennen.
-- [ ] Im Schichtmodelldialog das feste Raster wie bisher bearbeiten können. Feiertage und Sondertage mit aktiver abweichender
-      Öffnungsregel werden davon getrennt und einzeln für optionale Beginn- und Endzeiten der vorhandenen Rasterplätze
-      angeboten.
-- [ ] Bei der Anlage eines Monatsdienstplans einmalige Datumsausnahmen des Monats anzeigen und für jedes betroffene Datum
-      optional abweichende Beginn- und Endzeiten der vorhandenen Rasterplätze konfigurieren können.
-- [ ] Die wirksamen Öffnungszeiten aus den Filialeinstellungen neben den Modellschichten anzeigen. Die Bedienung muss deutlich
-      machen, dass Öffnungszeiten weder eine automatische Grenze noch eine automatische Anpassung der Arbeitszeiten bewirken.
-- [ ] Keine gesonderten Tag-Start- oder Tag-Stopp-Felder für Schichten anbieten. Abweichungen werden ausschließlich über Beginn
-      und Ende der vorhandenen Rasterplätze gepflegt.
-- [ ] Im Monatsraster je Datum den Wochentag, die Kalendereigenschaften, eine vorhandene Sondertags- oder Feiertagsbezeichnung,
+- [x] Im Schichtmodelldialog das feste Raster wie bisher bearbeiten können. Feiertage und Sondertage mit aktiver abweichender
+      Öffnungsregel werden davon getrennt und nur für optionale Abweichungen innerer Schichtgrenzen angeboten.
+- [x] An der ersten Modellschicht Vorbereitungsminuten und an der letzten Modellschicht Nachbereitungsminuten bearbeiten können.
+      Bei einer einzelnen Modellschicht beide Felder anbieten und bei einer geänderten Reihenfolge die äußeren Rollen eindeutig
+      aktualisieren.
+- [x] Bei der Anlage eines Monatsdienstplans einmalige Datumsausnahmen automatisch aus den Filialeinstellungen übernehmen,
+      ohne im Anlegen-Dialog zusätzliche datumsbezogene Schichtgrenzen anzubieten.
+- [x] Die wirksamen Öffnungszeiten aus den Filialeinstellungen neben den Modellschichten anzeigen. Die Bedienung muss deutlich
+      machen, dass sie die äußeren Rastergrenzen automatisch bestimmen und Vor- beziehungsweise Nachbereitungsminuten diese
+      Grenzen ausdrücklich erweitern.
+- [x] Keine gesonderten Tag-Start- oder Tag-Stopp-Felder für Schichten anbieten. Die äußeren Grenzen werden aus der
+      Öffnungsregel und den Minutenwerten der äußeren Modellschichten abgeleitet.
+- [x] Im Monatsraster je Datum den Wochentag, die Kalendereigenschaften, eine vorhandene Sondertags- oder Feiertagsbezeichnung,
       die Öffnungszeiten sowie die für diese Tageszeile wirksamen Zeiten der festen Modellschichtspalten darstellen.
-- [ ] Anlage, Drag-and-drop, Bearbeitung und spätere Verschiebung einer Schicht auf die stabile Modellschicht-ID und die für das
-      konkrete Datum gespeicherten Rasterzeiten begrenzen.
-- [ ] Geschlossene Tage eindeutig darstellen. Eine Schichtanlage wird dort durch die vorhandenen Rasterplätze und ihre
-      wirksamen Zeiten bestimmt und nicht allein wegen der geschlossenen Kundenöffnung verhindert.
+- [x] Anlage, Drag-and-drop und Bearbeitung einer Schicht auf die stabile Modellschicht-ID und die für das konkrete Datum
+      gespeicherten Rasterzeiten begrenzen.
+- [x] Geschlossene Tage eindeutig darstellen und die Schichtanlage dort deaktivieren.
 
-#### [ ] Schritt 5: Services, Stores und Datenzugriffe absichern
+#### [x] Schritt 5: Services, Stores und Datenzugriffe absichern
 
-- [ ] Schichtmodell- und Dienstplan-Service um besondere Rasterzeiten ergänzen, die Filialeinstellungen verbindlich laden und
-      alle Zeitüberschreibungen vor dem Schreiben erneut fachlich validieren.
-- [ ] Die konkrete Schichtzeit ausschließlich aus Datum, stabiler Modellschicht-ID und der für diesen Tag gespeicherten
+- [x] Die Anlage eines Monatsdienstplans über eine Transaktion gegen eine parallele zweite Anlage desselben Filialmonats
+      absichern. Existiert der Monatsplan bereits, den Schreibvorgang ohne Änderungen abbrechen und zum erneuten Laden des Monats
+      auffordern.
+- [x] Schichtmodell- und Dienstplan-Service um Vor- und Nachbereitungsminuten sowie die automatische Anpassung der äußeren
+      Rastergrenzen erweitern, die Filialeinstellungen verbindlich laden und alle Zeiten vor dem Schreiben fachlich validieren.
+- [x] Die konkrete Schichtzeit ausschließlich aus Datum, stabiler Modellschicht-ID und der für diesen Tag gespeicherten
       Rasterzeit ableiten.
-- [ ] Stores so erweitern, dass Kalendereigenschaften, wirksame Rasterzeiten und Feiertagsinformationen ohne erneute Berechnung
+- [x] Stores so erweitern, dass Kalendereigenschaften, wirksame Rasterzeiten und Feiertagsinformationen ohne erneute Berechnung
       aus dem geladenen Monatsplan bereitgestellt werden.
-- [ ] Arbeitsblöcke und Pausen eines Mitarbeiters bei Anlage, Löschung und Verschiebung aus allen für den Dienstplantag
-      relevanten filialübergreifenden Schichten neu ableiten.
-- [ ] Zeitüberschreibungen nur für vorhandene Modellschicht-IDs zulassen und im TypeScript-Code validieren. Rules bleiben
+- [x] Zeitüberschreibungen nur für vorhandene Modellschicht-IDs zulassen und im TypeScript-Code validieren. Rules bleiben
       gemäß Berechtigungsmatrix auf Profil, Rolle, Filialpfad und CRUD-Aktion begrenzt.
 - [x] Schichtmodelle in der neuen Struktur anlegen und besondere Rasterzeiten auch ohne konfigurierte Abweichung als leere Liste
       speichern. Eine Kompatibilitätsbehandlung für ältere Schichtmodelle oder Monatspläne ist nicht erforderlich.
 
-#### [ ] Tests und Abschluss
+#### [x] Tests und Abschluss
 
-- [ ] Unit-Tests für feste und bewegliche Feiertage, unterschiedliche Bundesländer, Jahresgrenzen und einen Feiertag am Sonntag
+- [x] Unit-Tests für feste und bewegliche Feiertage, unterschiedliche Bundesländer, Jahresgrenzen und einen Feiertag am Sonntag
       ergänzen.
-- [ ] Model-, Service- und Store-Tests für stabile Rasterplätze, besondere Rasterzeiten sowie unterschiedliche Öffnungs- und
-      Schichtzeiten ergänzen.
-- [ ] Pausentests für einzelne Schichten, unmittelbar folgende Schichten, Lücken unter 30 Minuten, Lücken ab 30 Minuten,
-      Schwellenwerte von 6 und 9 Stunden sowie filialübergreifende Arbeitsblöcke ergänzen.
-- [ ] Die Öffnungszeitenverwaltung auf direkte Kollisionen jährlich fester aktiver Sondertage testen und die Dienstplananlage
+- [x] Model-, Service- und Store-Tests für stabile Rasterplätze, automatische äußere Zeitanpassung, Vor- und
+      Nachbereitungsminuten, besondere innere Rasterzeiten sowie unterschiedliche Öffnungs- und Schichtzeiten ergänzen.
+- [x] Die Öffnungszeitenverwaltung auf direkte Kollisionen jährlich fester aktiver Sondertage testen und die Dienstplananlage
       bei einer jahresabhängigen Kollision ohne überschreibende Datumsausnahme prüfen.
-- [ ] Component-Tests für Rasterzeitverwaltung, tagesabhängige Zeitdarstellung und Schichtanlagen bei geöffneter sowie
-      geschlossener Kundenöffnung ergänzen.
-- [ ] Firestore-Emulator-Tests für Rasterzeit-Momentaufnahmen sowie datumsgültige Modellschichtreferenzen ergänzen.
-- [ ] Manuell einen Monat mit Werktagen, Sonntagen, einem Feiertag am Werktag und einem Feiertag am Sonntag prüfen.
-- [ ] Fachkonzept, Architektur, Projektstand und Datenübergang nach der Umsetzungsentscheidung aktualisieren.
-- [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich
+- [x] Component-Tests für Rasterzeitverwaltung, tagesabhängige Zeitdarstellung, Vor- und Nachbereitungsminuten sowie gesperrte
+      Schichtanlagen bei geschlossener Kundenöffnung ergänzen.
+- [x] Firestore-Emulator-Tests für die laut Berechtigungsmatrix erlaubten atomaren Schreibzugriffe auf Monatsplan,
+      Rasterzeit-Momentaufnahme, Version und Schicht ergänzen. Datumsgültige Modellschichtreferenzen im TypeScript-Code testen.
+- [x] Manuell einen Monat mit Werktagen, Sonntagen, einem Feiertag am Werktag und einem Feiertag am Sonntag prüfen.
+- [x] Fachkonzept, Architektur, Projektstand und Datenübergang nach der Umsetzungsentscheidung aktualisieren.
+- [x] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich
       ausführen.
 
-#### [ ] Erledigt, wenn
+#### [x] Erledigt, wenn
 
-- [ ] Jeder Kalendertag eines Monatsplans verwendet dieselben stabilen Modellschichtspalten und nachvollziehbar aufgelöste
+- [x] Jeder Kalendertag eines Monatsplans verwendet dieselben stabilen Modellschichtspalten und nachvollziehbar aufgelöste
       Beginn- und Endzeiten für seine Tageszeile.
-- [ ] Sonntag wird im festen Raster wie jeder andere Kalendertag behandelt; Feiertage und Sondertage mit aktiver abweichender
-      Öffnungsregel können nur die Zeiten vorhandener Rasterplätze überschreiben.
-- [ ] Ein Feiertag am Sonntag bleibt kalendarisch Feiertag und verwendet eindeutig seine besonderen oder regulären Rasterzeiten.
-- [ ] Öffnungszeiten und Arbeitszeiten bleiben getrennt; zulässige Vor- und Nachbereitungszeiten werden nicht abgeschnitten.
-- [ ] Abweichende Öffnungszeiten verändern die Rasterzeiten nicht automatisch und erfordern keine zusätzlichen Tag-Start- oder
-      Tag-Stopp-Zeiten für den Schichtbetrieb.
-- [ ] Geschlossene Kundenöffnungen und vorhandene Mitarbeiterschichten können unabhängig voneinander abgebildet werden.
-- [ ] Bundesland, Feiertagsauflösung und Monatsplan-Momentaufnahme führen auch nach späteren Stammdatenänderungen zu stabilen
+- [x] Sonntag wird im festen Raster wie jeder andere Kalendertag behandelt; Feiertage und Sondertage mit aktiver abweichender
+      Öffnungsregel verändern automatisch die äußeren Grenzen der vorhandenen Rasterplätze.
+- [x] Ein Feiertag am Sonntag bleibt kalendarisch Feiertag und verwendet eindeutig die aus seiner wirksamen Öffnungsregel
+      abgeleiteten Rasterzeiten.
+- [x] Der erste Rasterplatz beginnt am Öffnungsbeginn abzüglich seiner Vorbereitungsminuten; der letzte endet am Öffnungsende
+      zuzüglich seiner Nachbereitungsminuten. Innere Schichtgrenzen bleiben ohne ausdrückliche Abweichung unverändert.
+- [x] Abweichende Öffnungszeiten verändern die äußeren Rasterzeiten automatisch und erfordern keine zusätzlichen Tag-Start-
+      oder Tag-Stopp-Zeiten für den Schichtbetrieb.
+- [x] An geschlossenen Tagen kann keine Mitarbeiterschicht angelegt werden.
+- [x] Bundesland, Feiertagsauflösung und Monatsplan-Momentaufnahme führen auch nach späteren Stammdatenänderungen zu stabilen
       historischen Dienstplänen.
-- [ ] UI, Services und Stores akzeptieren nur die stabilen Modellschicht-IDs des Monatsrasters und die für das konkrete Datum
+- [x] UI, Services und Stores akzeptieren nur die stabilen Modellschicht-IDs des Monatsrasters und die für das konkrete Datum
       gespeicherten Rasterzeiten; Rules sichern ausschließlich die Rechte der Berechtigungsmatrix.
-- [ ] Nacht-, Sonntags- und Feiertagszuschläge werden nicht berechnet; die für eine spätere Bewertung notwendigen
+- [x] Nacht-, Sonntags- und Feiertagszuschläge werden nicht berechnet; die für eine spätere Bewertung notwendigen
       tatsächlichen Schichtzeiten und Kalendereigenschaften bleiben eindeutig erhalten.
-- [ ] Eine besondere Öffnungsregel erzeugt keine Mitarbeiterschichten automatisch. Ohne hinterlegte besondere Rasterzeiten
-      gelten die regulären Modellzeiten.
-- [ ] Eine einmalige Datumsausnahme kann ausschließlich im betroffenen Monatsdienstplan die Zeiten vorhandener Rasterplätze
-      überschreiben und verändert das dauerhaft wiederverwendbare Schichtmodell nicht.
-- [ ] Die bezahlte Pause wird je zusammenhängendem Arbeitsblock eines Mitarbeiters und Dienstplantags berechnet; freie Zeiten ab
-      30 Minuten trennen die Arbeitsblöcke, ohne eine Pause einzelnen Schichten zuzuordnen.
-- [ ] Tests, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
+- [x] Eine besondere Öffnungsregel erzeugt keine Mitarbeiterschichten automatisch, bestimmt aber die äußeren Rastergrenzen.
+- [x] Eine einmalige Datumsausnahme bestimmt über ihre Öffnungsregel ausschließlich die äußeren Rastergrenzen. Die inneren
+      Grenzen und das wiederverwendbare Schichtmodell bleiben unverändert.
+- [x] Tests, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
 
 ### [ ] 21.10 Konfliktprüfung, Verschieben und Veröffentlichung umsetzen
 
@@ -1131,6 +1140,13 @@ Neu hinzuzufügen:
 #### [ ] Schritt 3: Konflikte berechnen und darstellen
 
 - [ ] Ungültige Zeitfolgen, Pausen und überlappende Schichten eines Mitarbeiters filialübergreifend erkennen.
+- [ ] Arbeitsblöcke und bezahlte Pausen eines Mitarbeiters bei Anlage, Löschung und Verschiebung aus allen relevanten
+      filialübergreifenden Belegungen des Dienstplantags neu ableiten. Freie Zeiten ab 30 Minuten trennen die Arbeitsblöcke.
+- [ ] Den berechneten Pausenwert ausschließlich auf der chronologisch letzten konkreten Schicht jedes Arbeitsblocks als
+      `pauseMinuten` speichern und die Werte aller anderen Blockschichten auf `0` setzen. Alle betroffenen Schichten innerhalb
+      des berechtigten Schreibablaufs atomar aktualisieren.
+- [ ] Die berechnete bezahlte Gesamtpause auf der letzten Blockschicht anzeigen, ohne damit einen tatsächlichen Pausenzeitpunkt
+      festzulegen.
 - [ ] Für Anlage, Änderung und Veröffentlichung die relevanten Belegungen aller Filialen des betroffenen Mitarbeiters über den
       firmenweiten Belegungsindex berücksichtigen, auch wenn die sichtbare Filialauswahl zuvor eingeschränkt wurde.
 - [ ] Überschneidungen mit einem veröffentlichten Plan und mit einem relevanten Entwurf fachlich eindeutig behandeln; den zu
@@ -1148,7 +1164,7 @@ Neu hinzuzufügen:
       Rasterzelle Mitarbeiterzuordnung und Schicht-ID beibehalten.
 - [ ] Den Zieltag und die stabile Modellschicht-ID aus der Rasterzelle übernehmen und Beginn, Ende sowie Folgetag aus den für
       die Zielzeile gespeicherten Rasterzeiten neu ableiten. Anschließend die Arbeitsblöcke und Pausen des Mitarbeiters für
-      Ausgangs- und Zieltag nach Todo 21.9 neu berechnen; eine freie Eingabe dieser Werte bleibt ausgeschlossen.
+      Ausgangs- und Zieltag neu berechnen; eine freie Eingabe dieser Werte bleibt ausgeschlossen.
 - [ ] Das Ablegen in der bisherigen Rasterzelle ohne Schreibzugriff beenden und Schichten veröffentlichter oder archivierter
       Versionen nicht als verschiebbar anbieten.
 - [ ] Vor dem Verschieben die Zielzelle auf Einfach- oder Mehrfachbelegung sowie den Mitarbeiter auf zeitliche Konflikte prüfen.
@@ -1171,6 +1187,8 @@ Neu hinzuzufügen:
 - [ ] Versionierung für jeden Filialdienstplan getrennt fortführen.
 - [ ] Veröffentlichung einschließlich Benutzer, Zeitpunkt und Version ausschließlich für den betreffenden Filialdienstplan
       gemäß Datenkonzept atomar speichern.
+- [ ] Die berechneten Pausenwerte mit der veröffentlichten Dienstplanversion als Planungsmomentaufnahme festhalten. Eine
+      tatsächliche Pausenbestätigung wird im Dienstplan nicht vorweggenommen.
 - [ ] Beim Erzeugen einer neuen Entwurfsversion die Schichten des veröffentlichten Stands kopieren und die bestehende
       Modell-Momentaufnahme des Monatsplans unverändert weiterverwenden.
 - [ ] Bestätigung vor der Veröffentlichung und verständliche Rückmeldung bei Erfolg oder Fehler anzeigen.
@@ -1193,6 +1211,9 @@ Neu hinzuzufügen:
 - [ ] Das Erzeugen einer neuen Entwurfsversion als Kopie des veröffentlichten Stands mit unveränderter Modell-Momentaufnahme
       testen.
 - [ ] Unit-Tests für alle blockierenden Konflikte und Hinweise ergänzen.
+- [ ] Pausentests für einzelne Schichten, unmittelbar folgende Schichten, Lücken unter 30 Minuten, Lücken ab 30 Minuten,
+      Schwellenwerte von 6 und 9 Stunden, filialübergreifende Arbeitsblöcke sowie die Speicherung ausschließlich auf der letzten
+      Blockschicht ergänzen.
 - [ ] Service- und Firestore-Emulator-Tests für Anlage, Änderung und Entfernung der täglichen Belegungseinträge
       einschließlich Schichten über Mitternacht ergänzen.
 - [ ] Mit konkurrierenden Schreibzugriffen prüfen, dass ein Mitarbeiter nicht gleichzeitig in zwei Filialen eingeplant werden
@@ -1224,6 +1245,9 @@ Neu hinzuzufügen:
       Neuladen zeitnah sichtbar.
 - [ ] Eine bestehende Entwurfsschicht kann per Drag-and-drop oder über die alternative Aktion in eine zulässige Rasterzelle
       verschoben werden; Mitarbeiterzuordnung und Schicht-ID bleiben dabei erhalten.
+- [ ] Die bezahlte Pause wird je zusammenhängendem filialübergreifendem Arbeitsblock eines Mitarbeiters und Dienstplantags
+      berechnet. Ausschließlich die letzte Blockschicht speichert und zeigt den berechneten Gesamtwert, ohne damit einen
+      tatsächlichen Pausenzeitpunkt festzulegen.
 - [ ] Ein unzulässiges Verschieben verändert weder die bestehende Schicht noch Version oder Belegungsindex.
 - [ ] Eine unvollständige filialübergreifende Konfliktprüfung verhindert die Veröffentlichung.
 - [ ] Ein berechtigter Benutzer kann einen konfliktfreien aktuellen Entwurf nachvollziehbar veröffentlichen.

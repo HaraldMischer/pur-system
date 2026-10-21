@@ -63,6 +63,39 @@ describe('Feiertagsauflösung', () => {
     expect(berlin).not.toContain('pfingstsonntag');
   });
 
+  it('should apply state-specific holidays only in their configured states', () => {
+    const berlin = getGesetzlicheFeiertage(2026, 'DE-BE').map((feiertag) => {
+      return feiertag.schluessel;
+    });
+    const thueringen = getGesetzlicheFeiertage(2026, 'DE-TH').map((feiertag) => {
+      return feiertag.schluessel;
+    });
+    const nordrheinWestfalen = getGesetzlicheFeiertage(2026, 'DE-NW').map((feiertag) => {
+      return feiertag.schluessel;
+    });
+
+    expect(berlin).toContain('internationalerFrauentag');
+    expect(thueringen).toContain('weltkindertag');
+    expect(nordrheinWestfalen).not.toContain('internationalerFrauentag');
+    expect(nordrheinWestfalen).not.toContain('weltkindertag');
+  });
+
+  it('should resolve fixed holidays independently across a year boundary', () => {
+    const dezember2026 = getGesetzlicheFeiertage(2026, 'DE-NW');
+    const januar2027 = getGesetzlicheFeiertage(2027, 'DE-NW');
+
+    expect(dezember2026.at(-1)).toEqual({
+      schluessel: 'zweiterWeihnachtstag',
+      bezeichnung: '2. Weihnachtstag',
+      datum: '2026-12-26',
+    });
+    expect(januar2027[0]).toEqual({
+      schluessel: 'neujahr',
+      bezeichnung: 'Neujahr',
+      datum: '2027-01-01',
+    });
+  });
+
   it('should handle the one-time Berlin holiday only in 2028', () => {
     expect(getGesetzlicherFeiertagDatum(2027, 'aufstand17Juni2028')).toBeNull();
     expect(getGesetzlicherFeiertagDatum(2028, 'aufstand17Juni2028')).toBe('2028-06-17');

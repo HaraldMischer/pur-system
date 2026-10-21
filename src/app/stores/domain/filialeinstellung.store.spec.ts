@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import { TWochenoeffnungszeiten } from '../../commons/models/domain/filialeinstellung';
+import { SondertagDatumskollisionFehler } from '../../commons/utils/filialeinstellung/sondertag-kollision';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import {
@@ -242,6 +243,29 @@ describe('FilialeinstellungStore', () => {
     expect(store.getFilialeinstellungKontext(pfad)?.bestand?.sondertage).toHaveLength(2);
     expect(store.getFilialeinstellungKontext(pfad)?.bestand?.ausnahmen).toHaveLength(1);
     expect(store.getFilialeinstellungKontext(andererPfad)?.bestand).toEqual(andererBestand);
+  });
+
+  it('should reject an active annual special day colliding with an existing one', async () => {
+    const ursache =
+      'Die aktiven Sondertage „Betriebsruhe“ und „Heiligabend“ verwenden beide den 24.12.';
+    createSondertag.mockRejectedValueOnce(new SondertagDatumskollisionFehler(ursache));
+    const store = TestBed.inject(FilialeinstellungStore);
+    await store.loadFilialeinstellung(pfad);
+
+    await expect(
+      store.createSondertag(pfad, {
+        bezeichnung: 'Betriebsruhe',
+        aktiv: true,
+        datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
+        oeffnungsregel: { geoeffnet: false },
+      }),
+    ).rejects.toThrow('Betriebsruhe');
+
+    expect(createSondertag).toHaveBeenCalled();
+    expect(store.getFilialeinstellungKontext(pfad)?.error).toEqual({
+      meldung: 'Der Sondertag konnte nicht angelegt werden.',
+      ursache,
+    });
   });
 
   it('should resolve an exception before a system special day and the weekly rule', async () => {

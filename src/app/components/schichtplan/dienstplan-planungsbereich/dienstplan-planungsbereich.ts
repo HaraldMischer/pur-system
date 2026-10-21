@@ -198,7 +198,11 @@ export class DienstplanPlanungsbereich {
     if (!schichtmodelle) return;
     this.dialog.open(DienstplanAnlegenDialog, {
       panelClass: ['pur-dialog__panel'],
-      data: { pfad: this.pfad(), monat: this.monat(), schichtmodelle },
+      data: {
+        pfad: this.pfad(),
+        monat: this.monat(),
+        schichtmodelle,
+      },
     });
   }
 

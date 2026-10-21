@@ -26,6 +26,7 @@ import {
   createInitialeSondertage,
   reconcileInitialeSondertage,
 } from '../../commons/utils/filialeinstellung/feiertag';
+import { assertKeineAktiveSondertagDatumskollision } from '../../commons/utils/filialeinstellung/sondertag-kollision';
 import {
   FirestoreDbService,
   IFirestoreDokument,
@@ -490,9 +491,11 @@ export class FilialeinstellungService {
   async createSondertag(
     pfad: IFilialPfad,
     anlage: IFilialeinstellungSondertagAnlage,
+    bestehendeSondertage: readonly IFilialeinstellungSondertagEintrag[],
     benutzerUid: string,
   ): Promise<IFilialeinstellungSondertagEintrag> {
     this.assertSondertagAnlage(anlage);
+    assertKeineAktiveSondertagDatumskollision(bestehendeSondertage, anlage);
     const id = this.firestoreDbService.createDocumentId(
       FIRESTORE_COLLECTION_PATHS.filialeinstellungSondertage(pfad),
     );
@@ -518,6 +521,7 @@ export class FilialeinstellungService {
     pfad: IFilialPfad,
     sondertag: IFilialeinstellungSondertagEintrag,
     aktualisierung: IFilialeinstellungSondertagAktualisierung,
+    bestehendeSondertage: readonly IFilialeinstellungSondertagEintrag[],
     benutzerUid: string,
   ): Promise<IFilialeinstellungSondertagEintrag> {
     if (sondertag.herkunft !== 'benutzer') {
@@ -526,6 +530,7 @@ export class FilialeinstellungService {
       );
     }
     this.assertSondertagAnlage(aktualisierung);
+    assertKeineAktiveSondertagDatumskollision(bestehendeSondertage, aktualisierung, sondertag.id);
     const daten = { ...aktualisierung, bezeichnung: aktualisierung.bezeichnung.trim() };
     await this.firestoreDbService.updateDocument(
       FIRESTORE_DOCUMENT_PATHS.filialeinstellungSondertag({
@@ -548,12 +553,24 @@ export class FilialeinstellungService {
     pfad: IFilialPfad,
     sondertag: IFilialeinstellungSondertagEintrag,
     aktualisierung: IFilialeinstellungSystemSondertagAktualisierung,
+    bestehendeSondertage: readonly IFilialeinstellungSondertagEintrag[],
     benutzerUid: string,
   ): Promise<IFilialeinstellungSondertagEintrag> {
     if (sondertag.herkunft !== 'system') {
       throw new FilialeinstellungFachfehler('Der Sondertag ist nicht systemdefiniert.');
     }
     assertOeffnungsregel(aktualisierung.oeffnungsregel);
+    if (sondertag.datumsregel.typ === 'jaehrlichFestesDatum') {
+      assertKeineAktiveSondertagDatumskollision(
+        bestehendeSondertage,
+        {
+          bezeichnung: sondertag.bezeichnung,
+          aktiv: aktualisierung.aktiv,
+          datumsregel: sondertag.datumsregel,
+        },
+        sondertag.id,
+      );
+    }
     await this.firestoreDbService.updateDocument(
       FIRESTORE_DOCUMENT_PATHS.filialeinstellungSondertag({
         ...pfad,

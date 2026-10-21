@@ -23,6 +23,7 @@ import {
   TSchichtmodellDokument,
 } from '../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
+import { calculateSchichtdauerMinuten } from '../../commons/utils/dienstplan/schicht-lokalzeit';
 import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
 
 // ===== Top-Level Helper =====================
@@ -63,6 +64,8 @@ function normalizeModellschicht(
     endeLokalzeit: modellschicht.endeLokalzeit,
     endetAmFolgetag: modellschicht.endeLokalzeit < modellschicht.beginnLokalzeit,
     mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
+    vorbereitungsminuten: normalizeRandminuten(modellschicht.vorbereitungsminuten),
+    nachbereitungsminuten: normalizeRandminuten(modellschicht.nachbereitungsminuten),
   };
 }
 
@@ -73,22 +76,37 @@ function mapModellschichtDokument(daten: IModellschichtDaten): IModellschichtDok
     endeLokalzeit: daten.endeLokalzeit,
     endetAmFolgetag: daten.endetAmFolgetag,
     mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt,
+    vorbereitungsminuten: daten.vorbereitungsminuten ?? 0,
+    nachbereitungsminuten: daten.nachbereitungsminuten ?? 0,
   };
 }
 
-function calculateSchichtdauerMinuten(beginn: string, ende: string): number | null {
-  const beginnMinuten = getLokalzeitMinuten(beginn);
-  const endeMinuten = getLokalzeitMinuten(ende);
-  if (beginnMinuten === null || endeMinuten === null || beginnMinuten === endeMinuten) return null;
-  return endeMinuten + (endeMinuten < beginnMinuten ? 24 * 60 : 0) - beginnMinuten;
+function normalizeRandminuten(wert: number | undefined): number {
+  const minuten = wert ?? 0;
+  if (!Number.isInteger(minuten) || minuten < 0) {
+    throw new Error('Vor- und Nachbereitungsminuten müssen nicht negative ganze Zahlen sein.');
+  }
+  return minuten;
 }
 
-function getLokalzeitMinuten(lokalzeit: string): number | null {
-  const treffer = /^(\d{2}):(\d{2})$/.exec(lokalzeit);
-  if (!treffer) return null;
-  const stunden = Number(treffer[1]);
-  const minuten = Number(treffer[2]);
-  return stunden <= 23 && minuten <= 59 ? stunden * 60 + minuten : null;
+function validateRandminuten(
+  modellschichten: readonly Pick<
+    IModellschichtDaten,
+    'vorbereitungsminuten' | 'nachbereitungsminuten'
+  >[],
+): void {
+  modellschichten.forEach((modellschicht, index) => {
+    const istErste = index === 0;
+    const istLetzte = index === modellschichten.length - 1;
+    if (
+      (!istErste && (modellschicht.vorbereitungsminuten ?? 0) !== 0) ||
+      (!istLetzte && (modellschicht.nachbereitungsminuten ?? 0) !== 0)
+    ) {
+      throw new Error(
+        'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Modellschicht erlaubt.',
+      );
+    }
+  });
 }
 
 function normalizeBesondereRasterzeiten(
@@ -221,6 +239,7 @@ export class SchichtmodellService {
         };
       })
       .sort(compareModellschichtenNachBeginn);
+    validateRandminuten(modellschichten);
     const besondereRasterzeiten = normalizeBesondereRasterzeiten(
       anlage.besondereRasterzeiten,
       new Set(modellschichten.map((modellschicht) => modellschicht.id)),
@@ -294,10 +313,9 @@ export class SchichtmodellService {
         };
       })
       .sort(compareModellschichtenNachBeginn);
+    validateRandminuten(modellschichten);
     const besondereRasterzeiten = normalizeBesondereRasterzeiten(
-      aktualisierung.besondereRasterzeiten.filter((rasterzeit) => {
-        return verwendeteIds.has(rasterzeit.modellschichtId);
-      }),
+      aktualisierung.besondereRasterzeiten,
       verwendeteIds,
     );
     const operationen: TFirestoreBatchOperation[] = [

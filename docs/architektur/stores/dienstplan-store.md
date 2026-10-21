@@ -9,7 +9,8 @@ Zusätzlich speichert er den aktuell ausgewählten Filial- und Monatskontext.
 
 Jeder Filialkontext enthält den geladenen Bestand sowie `download`, `isLoaded`, `vollstaendigGeladen` und eine mögliche
 Fehlermeldung. App-weite Schreibvorgänge werden über `inProgress` und `error` abgebildet. Die öffentlichen Ableitungen liefern
-den ausgewählten Dienstplan, seine Versionen und deren Schichten.
+den ausgewählten Dienstplan, seine Versionen, deren Schichten und die unverändert gespeicherten Kalendertage mit
+Kalendereigenschaften, Öffnungsregeln und wirksamen Rasterzeiten.
 
 ## Öffentliche API
 
@@ -23,7 +24,9 @@ den ausgewählten Dienstplan, seine Versionen und deren Schichten.
   Zustand und erhöhen die lokale Versionsrevision. Eine Schicht wird über ihre `modellschichtId` einer Zelle der geladenen
   Modell-Momentaufnahme zugeordnet.
 - `selectDienstplan()` wechselt den aktiven Filial- und Monatskontext.
-- `getDienstplanKontext()`, `snapshot()`, `clearError()` und `resetDienstplaene()` stellen Lese- und Sitzungsaktionen bereit.
+- `getDienstplanKontext()` und `getDienstplanKalendertag()` stellen den geladenen Filialbestand beziehungsweise eine konkrete
+  Tagesmomentaufnahme ohne erneute Kalender- oder Rasterberechnung bereit.
+- `snapshot()`, `clearError()` und `resetDienstplaene()` stellen weitere Lese- und Sitzungsaktionen bereit.
 
 Parallele Ladeaufträge werden je Kontext zusammengeführt. Bereits im Mitarbeiter-Store vorhandene Einträge werden
 wiederverwendet. Ergebnisse einer bereits zurückgesetzten Sitzung werden verworfen. Schreibvorgänge benötigen einen

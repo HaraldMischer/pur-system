@@ -7,8 +7,12 @@ import { IDienstplanVersionDokument } from '../../commons/models/domain/dienstpl
 import { ISchichtAnlage, ISchichtEintrag } from '../../commons/models/domain/schicht';
 import { ISchichtrastermodellBestand } from '../../commons/models/domain/schichtmodell';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
-import { DienstplanService } from './dienstplan.service';
-import { FilialeinstellungService, IFilialeinstellungBestand } from './filialeinstellung.service';
+import { DienstplanFachfehler, DienstplanService } from './dienstplan.service';
+import {
+  FilialeinstellungFachfehler,
+  FilialeinstellungService,
+  IFilialeinstellungBestand,
+} from './filialeinstellung.service';
 
 describe('DienstplanService', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
@@ -49,7 +53,10 @@ describe('DienstplanService', () => {
     createServerTimestampMock.mockReturnValue('server-zeitstempel');
     updateDocumentsAtomicallyMock.mockResolvedValue(undefined);
     executeDocumentTransactionMock.mockImplementation(
-      async (_path: string, aktion: (version: unknown) => unknown) => {
+      async (path: string, aktion: (version: unknown) => unknown) => {
+        if (/\/dienstplan\/\d{4}-\d{2}$/.test(path)) {
+          return (aktion(null) as { ergebnis: unknown }).ergebnis;
+        }
         return (
           aktion({
             id: 'v-1',
@@ -197,11 +204,12 @@ describe('DienstplanService', () => {
     expect(ergebnis.version).toEqual(
       expect.objectContaining({ id: 'neu-1', nummer: 1, revision: 0, status: 'entwurf' }),
     );
-    expect(updateDocumentsAtomicallyMock).toHaveBeenCalledOnce();
     expect(ergebnis.modellschichten).toEqual([
       expect.objectContaining({ id: 'frueh', dienstplanId: '2024-02' }),
     ]);
-    expect(updateDocumentsAtomicallyMock.mock.calls[0][0]).toEqual([
+    const transaktion = executeDocumentTransactionMock.mock.calls[0];
+    expect(transaktion[0]).toBe('unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2024-02');
+    expect(transaktion[1](null).operationen).toEqual([
       expect.objectContaining({
         documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2024-02',
       }),
@@ -216,13 +224,76 @@ describe('DienstplanService', () => {
     ]);
   });
 
+  it('should reject a parallel second monthly plan creation transactionally', async () => {
+    executeDocumentTransactionMock.mockImplementationOnce(
+      async (_path: string, aktion: (dienstplan: unknown) => unknown) => {
+        return aktion({ id: '2026-10', daten: createDienstplanDokument() });
+      },
+    );
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(
+      service.createDienstplan(pfad, '2026-10', createSchichtmodell(), 'uid-1'),
+    ).rejects.toThrow(
+      'Der Dienstplan konnte nicht angelegt werden. Für diesen Monat ist bereits ein Dienstplan vorhanden. Bitte lade den Monat erneut.',
+    );
+  });
+
   it('should reject plan creation when branch settings are missing', async () => {
     loadFilialeinstellungMock.mockResolvedValue(null);
     const service = TestBed.inject(DienstplanService);
 
     await expect(
       service.createDienstplan(pfad, '2026-10', createSchichtmodell(), 'uid-1'),
-    ).rejects.toThrow('weil die Filialeinstellungen fehlen');
+    ).rejects.toMatchObject({
+      name: DienstplanFachfehler.name,
+      message:
+        'Der Dienstplan konnte nicht angelegt werden. Die Öffnungszeiten der Filiale müssen zuerst initialisiert werden.',
+    });
+    expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
+  });
+
+  it('should describe invalid branch settings as a plan creation error', async () => {
+    loadFilialeinstellungMock.mockRejectedValueOnce(
+      new FilialeinstellungFachfehler(
+        'Die Filialeinstellungen sind unvollständig und müssen repariert werden.',
+      ),
+    );
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(
+      service.createDienstplan(pfad, '2026-10', createSchichtmodell(), 'uid-1'),
+    ).rejects.toThrow(
+      'Der Dienstplan konnte nicht angelegt werden. Die Filialeinstellungen sind unvollständig und müssen repariert werden.',
+    );
+    expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
+  });
+
+  it('should describe conflicting special days as a plan creation error', async () => {
+    const filialeinstellungen = createFilialeinstellungen();
+    const sondertag = {
+      ...pfad,
+      aktiv: true,
+      herkunft: 'benutzer' as const,
+      datumsregel: { typ: 'jaehrlichFestesDatum' as const, monat: 10, tag: 3 },
+      oeffnungsregel: { geoeffnet: false as const },
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    };
+    loadFilialeinstellungMock.mockResolvedValueOnce({
+      ...filialeinstellungen,
+      sondertage: [
+        { ...sondertag, id: 'sondertag-1', bezeichnung: 'Sondertag 1' },
+        { ...sondertag, id: 'sondertag-2', bezeichnung: 'Sondertag 2' },
+      ],
+    });
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(
+      service.createDienstplan(pfad, '2026-10', createSchichtmodell(), 'uid-1'),
+    ).rejects.toThrow(
+      'Der Dienstplan konnte nicht angelegt werden. Für 2026-10-03 sind mehrere aktive Sondertage konfiguriert: Sondertag 1, Sondertag 2.',
+    );
     expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
   });
 
@@ -239,7 +310,9 @@ describe('DienstplanService', () => {
 
     await expect(
       service.createDienstplan(pfad, '2026-10', nichtUnterstuetztesSchichtmodell, 'uid-1'),
-    ).rejects.toThrow('Die Planungsart des Dienstplans wird noch nicht unterstützt.');
+    ).rejects.toThrow(
+      'Der Dienstplan konnte nicht angelegt werden. Die Planungsart des Schichtmodells wird noch nicht unterstützt.',
+    );
     await expect(
       service.createDienstplan(
         pfad,
@@ -250,10 +323,14 @@ describe('DienstplanService', () => {
         },
         'uid-1',
       ),
-    ).rejects.toThrow('Für einen neuen Dienstplan muss das Schichtmodell aktiv sein.');
+    ).rejects.toThrow(
+      'Der Dienstplan konnte nicht angelegt werden. Das gewählte Schichtmodell ist nicht mehr aktiv.',
+    );
     await expect(
       service.createDienstplan(pfad, '2026-10', { ...schichtmodell, modellschichten: [] }, 'uid-1'),
-    ).rejects.toThrow('Das Schichtmodell enthält keine Schichten.');
+    ).rejects.toThrow(
+      'Der Dienstplan konnte nicht angelegt werden. Das gewählte Schichtmodell enthält keine Schichten.',
+    );
     await expect(
       service.createDienstplan(
         pfad,
@@ -264,7 +341,9 @@ describe('DienstplanService', () => {
         },
         'uid-1',
       ),
-    ).rejects.toThrow('Das Schichtmodell gehört nicht zu dieser Filiale.');
+    ).rejects.toThrow(
+      'Der Dienstplan konnte nicht angelegt werden. Das Schichtmodell gehört nicht zu dieser Filiale.',
+    );
     expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
   });
 
@@ -341,6 +420,12 @@ describe('DienstplanService', () => {
       expect.objectContaining({
         documentPath:
           'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1/schicht/neu-1',
+        daten: expect.objectContaining({
+          datum: '2026-10-05',
+          modellschichtId: 'frueh',
+          beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+          ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+        }),
       }),
     ]);
   });
@@ -530,6 +615,8 @@ describe('DienstplanService', () => {
       endeLokalzeit: '12:00',
       endetAmFolgetag: false,
       mehrfachbelegungErlaubt: false,
+      vorbereitungsminuten: 0,
+      nachbereitungsminuten: 0,
     };
   }
 

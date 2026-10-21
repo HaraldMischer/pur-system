@@ -35,6 +35,11 @@ Eindeutigkeit. Beim normalen Bearbeiten und beim Deaktivieren bleiben diese Eint
 Modellschicht werden ihre Zeitüberschreibungen mit entfernt. Besondere Rasterzeiten sind auch dann als leere Liste Bestandteil
 jedes neu angelegten Schichtmodells, wenn keine Abweichungen konfiguriert sind.
 
+Die in Todo 21.9 noch offene Erweiterung ergänzt die erste Modellschicht um nicht negative Vorbereitungsminuten und die letzte
+Modellschicht um nicht negative Nachbereitungsminuten. Der Service muss die Werte normalisieren und sicherstellen, dass sie nur
+an den äußeren Rasterplätzen verwendet werden. Besondere Rasterzeiten bleiben für abweichende innere Schichtgrenzen erhalten;
+Öffnungsbeginn und Öffnungsende werden nicht als redundante Rasterzeitüberschreibungen im Schichtmodell gespeichert.
+
 ## Beteiligte Dateien
 
 - `src/app/services/domain/schichtmodell.service.ts`

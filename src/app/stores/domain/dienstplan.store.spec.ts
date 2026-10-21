@@ -9,7 +9,7 @@ import { ISchichtAnlage } from '../../commons/models/domain/schicht';
 import { ISchichtrastermodellBestand } from '../../commons/models/domain/schichtmodell';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { DebugLogService } from '../../services/core/debug-log.service';
-import { DienstplanService } from '../../services/domain/dienstplan.service';
+import { DienstplanFachfehler, DienstplanService } from '../../services/domain/dienstplan.service';
 import { BenutzerStore } from '../app/benutzer.store';
 import { StammdatenStore } from '../app/stammdaten.store';
 import { DienstplanStore } from './dienstplan.store';
@@ -37,6 +37,7 @@ describe('DienstplanStore', () => {
     deleteSchicht: deleteSchichtMock,
   };
   const debugLogServiceMock = {
+    log: vi.fn(),
     logDatenflussTitel: vi.fn(),
     logDatenGeladen: vi.fn(),
   };
@@ -109,6 +110,15 @@ describe('DienstplanStore', () => {
       expect.objectContaining({ id: 'v-1', status: 'entwurf' }),
     ]);
     expect(store.selectedSchichten()).toEqual([expect.objectContaining({ id: 's-1' })]);
+    expect(store.selectedKalendertage()).toEqual([
+      expect.objectContaining({ datum: '2026-10-05', wochentag: 'montag' }),
+    ]);
+    expect(store.getDienstplanKalendertag(pfad, '2026-10', '2026-10-05')).toEqual(
+      expect.objectContaining({
+        oeffnungsregelQuelle: 'wochentag',
+        rasterzeiten: [expect.objectContaining({ modellschichtId: 'frueh' })],
+      }),
+    );
     expect(store.isLoaded()).toBe(true);
     expect(store.download()).toBe(false);
     expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith('3. FILIALDATEN ');
@@ -233,7 +243,7 @@ describe('DienstplanStore', () => {
     const schichtmodell = createSchichtmodell();
     await store.createDienstplan(pfad, '2026-10', schichtmodell);
 
-    expect(createDienstplanMock).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell, 'uid-1', []);
+    expect(createDienstplanMock).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell, 'uid-1');
     expect(store.getDienstplanKontext(pfad)?.dienstplaene).toEqual([
       expect.objectContaining({ id: '2026-10' }),
     ]);
@@ -241,6 +251,52 @@ describe('DienstplanStore', () => {
     expect(store.getDienstplanKontext(pfad)?.modellschichten).toEqual(
       createBestand().modellschichten,
     );
+  });
+
+  it('should expose a known plan creation error unchanged', async () => {
+    const fehlermeldung =
+      'Der Dienstplan konnte nicht angelegt werden. Die Öffnungszeiten der Filiale müssen zuerst initialisiert werden.';
+    loadDienstplanMonatMock.mockResolvedValueOnce({
+      dienstplaene: [],
+      versionen: [],
+      schichten: [],
+      modellschichten: [],
+    });
+    createDienstplanMock.mockRejectedValueOnce(new DienstplanFachfehler(fehlermeldung));
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+
+    await expect(store.createDienstplan(pfad, '2026-10', createSchichtmodell())).rejects.toThrow(
+      fehlermeldung,
+    );
+
+    expect(store.error()).toBe(fehlermeldung);
+    expect(debugLogServiceMock.log).not.toHaveBeenCalled();
+  });
+
+  it('should expose a stale inactive model as a known plan creation error', async () => {
+    const fehlermeldung =
+      'Der Dienstplan konnte nicht angelegt werden. Das gewählte Schichtmodell ist nicht mehr aktiv.';
+    loadDienstplanMonatMock.mockResolvedValueOnce({
+      dienstplaene: [],
+      versionen: [],
+      schichten: [],
+      modellschichten: [],
+    });
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+    const schichtmodell = createSchichtmodell();
+
+    await expect(
+      store.createDienstplan(pfad, '2026-10', {
+        ...schichtmodell,
+        schichtmodell: { ...schichtmodell.schichtmodell, aktiv: false },
+      }),
+    ).rejects.toThrow(fehlermeldung);
+
+    expect(store.error()).toBe(fehlermeldung);
+    expect(store.inProgress()).toBe(false);
+    expect(createDienstplanMock).not.toHaveBeenCalled();
   });
 
   it('should create, update and delete shifts while advancing the local revision', async () => {
@@ -304,7 +360,7 @@ describe('DienstplanStore', () => {
     const store = TestBed.inject(DienstplanStore);
 
     await expect(store.createDienstplan(pfad, '2026-10', createSchichtmodell())).rejects.toThrow(
-      'Der vollständige Dienstplanmonat muss vor dem Schreiben geladen werden.',
+      'Der Dienstplan konnte nicht angelegt werden. Der vollständige Dienstplanmonat muss vor dem Schreiben geladen werden.',
     );
     await store.loadDienstplanMonat(pfad, '2026-10', false);
     benutzerId.set(null);
@@ -333,12 +389,52 @@ describe('DienstplanStore', () => {
     expect(store.error()).toBeNull();
   });
 
+  it('should expose a general message and log an unknown writing error', async () => {
+    const technischerFehler = new Error('Interne Ursache');
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+    createSchichtMock.mockRejectedValueOnce(technischerFehler);
+
+    await expect(store.createSchicht(versionsPfad, createSchichtAnlage())).rejects.toBe(
+      technischerFehler,
+    );
+
+    expect(store.error()).toBe('Die Aktion konnte nicht ausgeführt werden.');
+    expect(debugLogServiceMock.log).toHaveBeenCalledWith(
+      'Store',
+      'Dienstplan-Schreibvorgang fehlgeschlagen.',
+      technischerFehler,
+    );
+  });
+
   function createBestand(): IDienstplanBestand {
     return {
       dienstplaene: [
         {
           ...pfad,
-          kalendertage: [],
+          kalendertage: [
+            {
+              datum: '2026-10-05',
+              wochentag: 'montag',
+              istSonntag: false,
+              aktiveSondertage: [],
+              oeffnungsregelQuelle: 'wochentag',
+              oeffnungsregel: {
+                geoeffnet: true,
+                beginnLokalzeit: '07:00',
+                endeLokalzeit: '18:00',
+                endetAmFolgetag: false,
+              },
+              rasterzeiten: [
+                {
+                  modellschichtId: 'frueh',
+                  beginnLokalzeit: '07:00',
+                  endeLokalzeit: '12:00',
+                  endetAmFolgetag: false,
+                },
+              ],
+            },
+          ],
           id: '2026-10',
           zeitraumStart: '2026-10-01',
           zeitraumEnde: '2026-10-31',

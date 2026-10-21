@@ -90,6 +90,57 @@
             <span matTextSuffix>Std.</span>
           </mat-form-field>
 
+          @if (index === 0 || index === schichtmodellForm.controls.modellschichten.length - 1) {
+            <div class="pur-form__row">
+              @if (index === 0) {
+                <mat-form-field
+                  appearance="outline"
+                  class="pur-form__item pur-form__item--field pur-form__item--50"
+                >
+                  <mat-label>Vorbereitung</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="0"
+                    step="1"
+                    [formControl]="modellschicht.controls.vorbereitungsminuten"
+                  />
+                  <span matTextSuffix>Min.</span>
+                  @if (modellschicht.controls.vorbereitungsminuten.hasError('pattern')) {
+                    <mat-error>Die Vorbereitung muss in ganzen Minuten angegeben werden.</mat-error>
+                  }
+                  @if (modellschicht.controls.vorbereitungsminuten.hasError('min')) {
+                    <mat-error>Die Vorbereitung darf nicht negativ sein.</mat-error>
+                  }
+                </mat-form-field>
+              }
+              @if (index === schichtmodellForm.controls.modellschichten.length - 1) {
+                <mat-form-field
+                  appearance="outline"
+                  class="pur-form__item pur-form__item--field pur-form__item--50"
+                >
+                  <mat-label>Nachbereitung</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="0"
+                    step="1"
+                    [formControl]="modellschicht.controls.nachbereitungsminuten"
+                  />
+                  <span matTextSuffix>Min.</span>
+                  @if (modellschicht.controls.nachbereitungsminuten.hasError('pattern')) {
+                    <mat-error
+                      >Die Nachbereitung muss in ganzen Minuten angegeben werden.</mat-error
+                    >
+                  }
+                  @if (modellschicht.controls.nachbereitungsminuten.hasError('min')) {
+                    <mat-error>Die Nachbereitung darf nicht negativ sein.</mat-error>
+                  }
+                </mat-form-field>
+              }
+            </div>
+          }
+
           @if (modellschicht.hasError('ungueltigeZeitfolge')) {
             <p class="pur-message pur-message--error pur-message--full" role="alert">
               Beginn und Ende dürfen nicht gleich sein.
@@ -98,6 +149,35 @@
         </section>
       }
     </div>
+
+    @if (istBearbeitung && schichtmodellForm.controls.modellschichten.length > 1) {
+      <div class="pur-form__group">
+        <h3 class="pur-form__group-titel">Abweichende Sondertagszeiten</h3>
+        <p class="pur-text pur-text--secondary">
+          Öffnungszeiten bestimmen Beginn und Ende des Rasters automatisch. Optional können
+          ausschließlich die inneren Schichtgrenzen angepasst werden.
+        </p>
+        @if (besondereTage.length > 0) {
+          <app-rasterzeit-abweichungen
+            [tage]="besondereTage"
+            [modellschichten]="daten.bestand?.modellschichten ?? []"
+            [abweichungen]="initialeRasterzeitAbweichungen"
+            [deaktiviert]="schichtmodellStore.inProgress()"
+            (abweichungenChange)="updateBesondereRasterzeiten($event)"
+            (gueltigChange)="rasterzeitAbweichungenGueltig.set($event)"
+          />
+        } @else {
+          <p class="pur-message pur-message--surface pur-message--full">
+            Es sind keine aktiven geöffneten Sondertage mit eigener Öffnungsregel vorhanden.
+          </p>
+        }
+      </div>
+    } @else if (!istBearbeitung) {
+      <p class="pur-text pur-text--secondary">
+        Sondertagszeiten können nach dem ersten Speichern anhand der stabilen Schicht-IDs ergänzt
+        werden.
+      </p>
+    }
 
     @if (schichtmodellStore.error(); as fehlermeldung) {
       <p class="pur-message pur-message--error pur-message--full" role="alert">
@@ -117,6 +197,7 @@
     form="schichtmodell-form"
     [disabled]="
       schichtmodellForm.invalid ||
+      !rasterzeitAbweichungenGueltig() ||
       schichtmodellStore.inProgress() ||
       (istBearbeitung && !hatAenderungen())
     "

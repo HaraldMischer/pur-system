@@ -24,14 +24,11 @@
       <thead class="pur-table__kopf">
         <tr>
           <th class="pur-table__cell pur-table__cell--kopf pur-table__cell--fixiert" scope="col">
-            Tag
+            <span class="pur-text pur-text--label">Wochentag</span>
           </th>
           @for (modellschicht of geordneteModellschichten(); track modellschicht.id) {
             <th class="pur-table__cell pur-table__cell--kopf" scope="col">
-              <strong>{{ modellschicht.bezeichnung }}</strong>
-              <span>
-                {{ modellschicht.beginnLokalzeit }}–{{ modellschicht.endeLokalzeit }} Uhr
-              </span>
+              <span class="pur-text pur-text--label">{{ modellschicht.bezeichnung }}</span>
             </th>
           }
         </tr>
@@ -39,8 +36,25 @@
       <tbody>
         @for (tag of tage(); track tag.datum) {
           <tr>
-            <th class="pur-table__cell pur-table__cell--fixiert" scope="row">
-              <time [attr.datetime]="tag.datum">{{ tag.bezeichnung }}</time>
+            <th
+              class="pur-table__cell pur-table__cell--fixiert tagzelle"
+              scope="row"
+              [class.tagzelle--sonntag]="tag.hervorhebung === 'sonntag'"
+              [class.tagzelle--feiertag]="tag.hervorhebung === 'feiertag'"
+              [class.tagzelle--sondertag]="tag.hervorhebung === 'sondertag'"
+            >
+              <time class="tag" [attr.datetime]="tag.datum">
+                <span class="pur-text pur-text--label">{{ tag.wochentagBezeichnung }}</span>
+                <span class="pur-text pur-text--secondary">{{ tag.datumBezeichnung }}</span>
+                <span class="pur-text pur-text--small pur-text--secondary">
+                  {{ tag.oeffnungszeitBezeichnung }}
+                </span>
+                @if (tag.kalendereigenschaftBezeichnung; as bezeichnung) {
+                  <span class="pur-text pur-text--small" [attr.title]="bezeichnung">
+                    {{ bezeichnung }}
+                  </span>
+                }
+              </time>
             </th>
             @for (zelle of tag.zellen; track zelle.modellschicht.id) {
               <td
@@ -51,43 +65,54 @@
                   modellschichtId: zelle.modellschicht.id,
                   mitarbeiterIds: zelle.mitarbeiterIds,
                   mehrfachbelegungErlaubt: zelle.modellschicht.mehrfachbelegungErlaubt,
+                  verfuegbar: zelle.rasterzeit !== null,
                 }"
                 [cdkDropListDisabled]="
                   !kannSchichtenAblegen() ||
+                  !zelle.rasterzeit ||
                   (!zelle.modellschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
                 "
                 [cdkDropListEnterPredicate]="darfMitarbeiterAblegen"
                 [cdkDropListSortingDisabled]="true"
                 (cdkDropListDropped)="handleMitarbeiterDrop($event)"
               >
-                <span class="rasterzeit">
-                  {{ zelle.rasterzeit.beginnLokalzeit }}–{{ zelle.rasterzeit.endeLokalzeit }} Uhr
-                  @if (zelle.rasterzeit.endetAmFolgetag) {
-                    (+1 Tag)
+                <div class="zellenkopf">
+                  <span class="rasterzeit">
+                    @if (zelle.rasterzeit; as rasterzeit) {
+                      {{ rasterzeit.beginnLokalzeit }}–{{ rasterzeit.endeLokalzeit }} Uhr
+                    } @else {
+                      Geschlossen
+                    }
+                  </span>
+                  @if (
+                    zelle.rasterzeit && darfSchreiben() && aktiveVersion()?.status === 'entwurf'
+                  ) {
+                    <button
+                      matIconButton
+                      type="button"
+                      [disabled]="
+                        schreibvorgang() ||
+                        (!zelle.modellschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
+                      "
+                      [attr.aria-label]="
+                        zelle.modellschicht.bezeichnung +
+                        ' am ' +
+                        tag.wochentagBezeichnung +
+                        ', ' +
+                        tag.datumBezeichnung +
+                        ' anlegen'
+                      "
+                      (click)="
+                        schichtAnlegen.emit({
+                          datum: tag.datum,
+                          modellschichtId: zelle.modellschicht.id,
+                        })
+                      "
+                    >
+                      <mat-icon aria-hidden="true">add</mat-icon>
+                    </button>
                   }
-                </span>
-                @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
-                  <button
-                    matButton
-                    type="button"
-                    class="anlegen"
-                    [disabled]="
-                      schreibvorgang() ||
-                      (!zelle.modellschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
-                    "
-                    [attr.aria-label]="
-                      zelle.modellschicht.bezeichnung + ' am ' + tag.bezeichnung + ' anlegen'
-                    "
-                    (click)="
-                      schichtAnlegen.emit({
-                        datum: tag.datum,
-                        modellschichtId: zelle.modellschicht.id,
-                      })
-                    "
-                  >
-                    <mat-icon aria-hidden="true">add</mat-icon>Anlegen
-                  </button>
-                }
+                </div>
                 @for (schicht of zelle.schichten; track schicht.id) {
                   <div class="schicht">
                     <strong>
@@ -100,16 +125,14 @@
                       }
                       {{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}
                     </strong>
-                    <span>{{ formatSchichtzeit(schicht) }}</span>
                     <span>Lohnzeit: {{ formatLohnzeit(schicht) }}</span>
+                    <span>Bezahlte Pause: 00 Min.</span>
                     @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                       <button matButton type="button" (click)="schichtBearbeiten.emit(schicht)">
                         Bearbeiten
                       </button>
                     }
                   </div>
-                } @empty {
-                  <span class="nicht-besetzt">Nicht besetzt</span>
                 }
               </td>
             }

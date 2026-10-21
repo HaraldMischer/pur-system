@@ -145,6 +145,12 @@
 
 ## Coding-Stil
 
+- Auslagerbare Helferfunktionen werden direkt bei ihrer Erstellung unter `src/app/commons` in den fachlich passenden Bereich
+  wie `utils`, `validators` oder `mapper` eingeordnet. Vor dem Anlegen wird geprüft, ob dort bereits eine passende gemeinsame
+  Funktion vorhanden ist.
+- Auslagerbare Helferfunktionen werden nicht zunächst als lokale Top-Level Helper in einer Component, Page, einem Service oder
+  Store angelegt. Der Abschnitt `Top-Level Helper` ist ausschließlich für eindeutig dateispezifische Funktionen vorgesehen,
+  deren Wiederverwendung fachlich nicht sinnvoll ist.
 - Imports werden nach Herkunft gruppiert, innerhalb der Importliste aber ohne Leerzeilen: Angular und Frameworks, Commons, Stores
   und Services, lokale relative Imports.
 - Gleichartige Deklarationen werden innerhalb eines Abschnitts kompakt ohne Leerzeilen gruppiert.

@@ -9,6 +9,7 @@ const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
   'app/invalid-user-profile':
     'Das Benutzerprofil enthält unvollständige oder widersprüchliche Datenzugriffe.',
   unavailable: 'Die Daten sind gerade nicht erreichbar. Bitte versuche es erneut.',
+  unauthenticated: 'Bitte melde dich erneut an und versuche es noch einmal.',
   'auth/invalid-credential': 'Anmeldename oder Passwort ist nicht korrekt.',
   'auth/invalid-email': 'Anmeldename oder Passwort ist nicht korrekt.',
   'auth/requires-recent-login': 'Bitte melde dich erneut an und versuche es noch einmal.',

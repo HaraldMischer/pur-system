@@ -12,6 +12,8 @@ export interface IModellschichtDaten {
   endeLokalzeit: string;
   endetAmFolgetag: boolean;
   mehrfachbelegungErlaubt: boolean;
+  vorbereitungsminuten?: number;
+  nachbereitungsminuten?: number;
 }
 
 export interface IBesondereRasterzeit {

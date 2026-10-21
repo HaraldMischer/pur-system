@@ -2684,6 +2684,10 @@ Die Öffnungszeiten beschreiben ausschließlich den Kundenbetrieb der Filiale. S
 Schichtmodells vermischt und begrenzen Mitarbeiterschichten nicht automatisch. Dadurch bleiben Vor- und Nachbereitung sowie
 Arbeiten an geschlossenen Tagen grundsätzlich fachlich abbildbar.
 
+Diese damalige Abgrenzung wird für das spätere Schichtraster durch die in Todo 21.9 festgelegte Ableitung konkretisiert und
+teilweise ersetzt: Öffnungsbeginn und Öffnungsende bestimmen dort automatisch die äußeren Rastergrenzen; Vor- und
+Nachbereitung werden über ausdrückliche Minutenwerte der äußeren Modellschichten abgebildet.
+
 #### Betroffene Dateien
 
 Änderungen:
