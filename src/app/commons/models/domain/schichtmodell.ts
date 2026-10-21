@@ -4,13 +4,22 @@ import { Timestamp } from 'firebase/firestore';
 
 // ===== Anwendungs-Typen ====================
 
+export type TPlanungsart = 'schichtraster' | 'schichtbausteine';
+
 export interface IModellschichtDaten {
   bezeichnung: string;
   beginnLokalzeit: string;
   endeLokalzeit: string;
   endetAmFolgetag: boolean;
-  standardpauseMinuten: number;
   mehrfachbelegungErlaubt: boolean;
+}
+
+export interface IBesondereRasterzeit {
+  sondertagId: string;
+  modellschichtId: string;
+  beginnLokalzeit: string;
+  endeLokalzeit: string;
+  endetAmFolgetag: boolean;
 }
 
 export interface IModellschichtEintrag extends IModellschichtDaten {
@@ -25,24 +34,36 @@ export interface IModellschichtSchreibdaten extends IModellschichtDaten {
   id?: string;
 }
 
-export interface ISchichtmodellAnlage {
+export interface ISchichtrastermodellAnlage {
   bezeichnung: string;
   modellschichten: readonly IModellschichtSchreibdaten[];
+  besondereRasterzeiten: readonly IBesondereRasterzeit[];
 }
 
-export interface ISchichtmodellAktualisierung extends ISchichtmodellAnlage {
+export interface ISchichtrastermodellAktualisierung extends ISchichtrastermodellAnlage {
   aktiv: boolean;
 }
 
-export interface ISchichtmodellEintrag extends ISchichtmodellDokument {
+export interface ISchichtmodellEintragBasis extends ISchichtmodellDokumentBasis {
   id: string;
   unternehmerId: string;
   firmaId: string;
   filialeId: string;
 }
 
-export interface ISchichtmodellBestand {
-  schichtmodell: ISchichtmodellEintrag;
+export interface ISchichtrastermodellEintrag extends ISchichtmodellEintragBasis {
+  planungsart: 'schichtraster';
+  besondereRasterzeiten: readonly IBesondereRasterzeit[];
+}
+
+export interface ISchichtbausteinmodellEintrag extends ISchichtmodellEintragBasis {
+  planungsart: 'schichtbausteine';
+}
+
+export type TSchichtmodellEintrag = ISchichtrastermodellEintrag | ISchichtbausteinmodellEintrag;
+
+export interface ISchichtrastermodellBestand {
+  schichtmodell: ISchichtrastermodellEintrag;
   modellschichten: readonly IModellschichtEintrag[];
 }
 
@@ -58,7 +79,7 @@ export interface IModellschichtMomentaufnahmeEintrag extends IModellschichtDaten
 
 export interface IModellschichtDokument extends IModellschichtDaten {}
 
-export interface ISchichtmodellDokument {
+export interface ISchichtmodellDokumentBasis {
   bezeichnung: string;
   aktiv: boolean;
   erstelltAm?: Timestamp;
@@ -66,5 +87,16 @@ export interface ISchichtmodellDokument {
   aktualisiertAm?: Timestamp;
   aktualisiertVonUid: string;
 }
+
+export interface ISchichtrastermodellDokument extends ISchichtmodellDokumentBasis {
+  planungsart: 'schichtraster';
+  besondereRasterzeiten: readonly IBesondereRasterzeit[];
+}
+
+export interface ISchichtbausteinmodellDokument extends ISchichtmodellDokumentBasis {
+  planungsart: 'schichtbausteine';
+}
+
+export type TSchichtmodellDokument = ISchichtrastermodellDokument | ISchichtbausteinmodellDokument;
 
 export interface IModellschichtMomentaufnahmeDokument extends IModellschichtDaten {}

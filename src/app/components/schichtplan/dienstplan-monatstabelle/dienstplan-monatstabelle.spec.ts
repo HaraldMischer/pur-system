@@ -3,6 +3,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Timestamp } from 'firebase/firestore';
 
+import { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
 import { DienstplanMonatstabelle } from './dienstplan-monatstabelle';
 
 describe('DienstplanMonatstabelle', () => {
@@ -38,6 +39,7 @@ describe('DienstplanMonatstabelle', () => {
     expect(component.formatSchichtzeit(tage[2].zellen[1].schichten[0])).toBe('16:30–01:00');
     expect(component.formatLohnzeit(tage[2].zellen[1].schichten[0])).toBe('8 Std. 30 Min.');
     expect(component.statusBezeichnung()).toBe('Entwurf');
+    expect(fixture.nativeElement.textContent).toContain('18:00–23:00 Uhr');
   });
 
   it('should keep a published plan readonly', () => {
@@ -150,6 +152,7 @@ describe('DienstplanMonatstabelle', () => {
       zeitraumStart: '2026-02-01',
       zeitraumEnde: '2026-02-28',
       zeitzone: 'Europe/Berlin',
+      kalendertage: createKalendertage(),
       schichtmodellId: 'modell-1',
       schichtmodellBezeichnung: 'Sommer',
       ...(veroeffentlicht ? { veroeffentlichteVersionId: 'v-1' } : { entwurfVersionId: 'v-1' }),
@@ -182,7 +185,6 @@ describe('DienstplanMonatstabelle', () => {
         beginnLokalzeit: '16:30',
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
-        standardpauseMinuten: 30,
         mehrfachbelegungErlaubt: true,
       },
       {
@@ -195,7 +197,6 @@ describe('DienstplanMonatstabelle', () => {
         beginnLokalzeit: '07:00',
         endeLokalzeit: '12:00',
         endetAmFolgetag: false,
-        standardpauseMinuten: 0,
         mehrfachbelegungErlaubt: false,
       },
     ]);
@@ -213,11 +214,11 @@ describe('DienstplanMonatstabelle', () => {
       unternehmerId: 'u-1',
       firmaId: 'f-1',
       filialeId: 'b-1',
+      datum: '2026-02-03',
       mitarbeiterId,
       modellschichtId: 'spaet',
       beginn: Timestamp.fromDate(new Date('2026-02-03T16:30:00+01:00')),
       ende: Timestamp.fromDate(new Date('2026-02-04T01:00:00+01:00')),
-      pauseMinuten: 30,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     };
@@ -239,6 +240,39 @@ describe('DienstplanMonatstabelle', () => {
       aktiv: true,
       ...(farbkennung ? { farbkennung } : {}),
     };
+  }
+
+  function createKalendertage(): IDienstplanKalendertag[] {
+    return Array.from({ length: 28 }, (_, index) => {
+      const datum = `2026-02-${String(index + 1).padStart(2, '0')}`;
+      return {
+        datum,
+        wochentag: 'montag',
+        istSonntag: false,
+        aktiveSondertage: [],
+        oeffnungsregelQuelle: 'wochentag',
+        oeffnungsregel: {
+          geoeffnet: true,
+          beginnLokalzeit: '08:00',
+          endeLokalzeit: '18:00',
+          endetAmFolgetag: false,
+        },
+        rasterzeiten: [
+          {
+            modellschichtId: 'frueh',
+            beginnLokalzeit: '07:00',
+            endeLokalzeit: '12:00',
+            endetAmFolgetag: false,
+          },
+          {
+            modellschichtId: 'spaet',
+            beginnLokalzeit: datum === '2026-02-03' ? '18:00' : '16:30',
+            endeLokalzeit: datum === '2026-02-03' ? '23:00' : '01:00',
+            endetAmFolgetag: datum !== '2026-02-03',
+          },
+        ],
+      };
+    });
   }
 
   function createDropEvent(

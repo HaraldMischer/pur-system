@@ -242,11 +242,11 @@ async function seedDienstplan() {
     await setDoc(doc(db, dienstplanModellschichtPath), modellschichtDaten());
     for (const path of [veroeffentlichteSchichtPath, entwurfSchichtPath]) {
       await setDoc(doc(db, path), {
+        datum: '2026-10-05',
         mitarbeiterId: 'm-1',
         modellschichtId: 'frueh',
         beginn: new Date('2026-10-05T08:00:00.000Z'),
         ende: new Date('2026-10-05T16:00:00.000Z'),
-        pauseMinuten: 30,
         erstelltAm: zeitpunkt,
         erstelltVonUid: 'scoped',
         aktualisiertAm: zeitpunkt,
@@ -262,7 +262,6 @@ function modellschichtDaten(overrides = {}) {
     beginnLokalzeit: '07:00',
     endeLokalzeit: '12:00',
     endetAmFolgetag: false,
-    standardpauseMinuten: 0,
     mehrfachbelegungErlaubt: false,
     ...overrides,
   };

@@ -1,8 +1,10 @@
 // pur-system/src/app/components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale.spec.ts
 
 import { signal } from '@angular/core';
+import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatMenuTrigger } from '@angular/material/menu';
 
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import {
@@ -51,7 +53,7 @@ describe('SchichtmodelleFiliale', () => {
     }).compileComponents();
   });
 
-  it('should load only its branch and open a create dialog for it', async () => {
+  it('should load only its branch', async () => {
     const fixture = TestBed.createComponent(SchichtmodelleFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
     fixture.componentRef.setInput('pfad', PFAD);
@@ -59,7 +61,29 @@ describe('SchichtmodelleFiliale', () => {
     await fixture.whenStable();
 
     expect(loadSchichtmodelle).toHaveBeenCalledWith(PFAD);
-    fixture.componentInstance.openSchichtmodellDialog();
+  });
+
+  it('should offer the available planning type and keep the later type disabled', async () => {
+    const fixture = TestBed.createComponent(SchichtmodelleFiliale);
+    fixture.componentRef.setInput('filiale', FILIALE);
+    fixture.componentRef.setInput('pfad', PFAD);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const trigger = fixture.debugElement
+      .query(By.directive(MatMenuTrigger))
+      .injector.get(MatMenuTrigger);
+    trigger.openMenu();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const menueintraege = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('button[mat-menu-item]'),
+    );
+
+    expect(menueintraege).toHaveLength(2);
+    expect(menueintraege[0].disabled).toBe(false);
+    expect(menueintraege[1].disabled).toBe(true);
+    menueintraege[0].click();
     expect(open).toHaveBeenCalledWith(
       SchichtmodellBearbeitenDialog,
       expect.objectContaining({ data: { pfad: PFAD } }),

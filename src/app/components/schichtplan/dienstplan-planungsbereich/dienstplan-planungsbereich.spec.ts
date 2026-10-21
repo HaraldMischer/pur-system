@@ -11,11 +11,12 @@ import {
   IDienstplanEintrag,
   IDienstplanVersionEintrag,
 } from '../../../commons/models/domain/dienstplan';
+import { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import {
   IModellschichtMomentaufnahmeEintrag,
-  ISchichtmodellBestand,
+  ISchichtrastermodellBestand,
 } from '../../../commons/models/domain/schichtmodell';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import {
@@ -40,12 +41,14 @@ const FILIALE: IFilialeEintrag = {
 };
 const DIENSTPLAN: IDienstplanEintrag = {
   ...PFAD,
+  kalendertage: createKalendertage(),
   id: '2026-10',
   zeitraumStart: '2026-10-01',
   zeitraumEnde: '2026-10-31',
   zeitzone: 'Europe/Berlin',
   schichtmodellId: 'modell-1',
   schichtmodellBezeichnung: 'Sommer',
+  planungsart: 'schichtraster',
   entwurfVersionId: 'v-1',
   naechsteVersionsnummer: 2,
   erstelltVonUid: 'uid-1',
@@ -75,6 +78,43 @@ const MITARBEITER: IMitarbeiterEintrag = {
     kontakt: {},
   },
 };
+
+function createKalendertage(): IDienstplanKalendertag[] {
+  const wochentage = [
+    'sonntag',
+    'montag',
+    'dienstag',
+    'mittwoch',
+    'donnerstag',
+    'freitag',
+    'samstag',
+  ] as const;
+  return Array.from({ length: 31 }, (_, index) => {
+    const datum = `2026-10-${String(index + 1).padStart(2, '0')}`;
+    const wochentag = wochentage[new Date(`${datum}T12:00:00Z`).getUTCDay()];
+    return {
+      datum,
+      wochentag,
+      istSonntag: wochentag === 'sonntag',
+      aktiveSondertage: [],
+      oeffnungsregelQuelle: 'wochentag',
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '08:00',
+        endeLokalzeit: '18:00',
+        endetAmFolgetag: false,
+      },
+      rasterzeiten: [
+        {
+          modellschichtId: 'frueh',
+          beginnLokalzeit: '07:00',
+          endeLokalzeit: '12:00',
+          endetAmFolgetag: false,
+        },
+      ],
+    };
+  });
+}
 const MODELLSCHICHT: IModellschichtMomentaufnahmeEintrag = {
   ...PFAD,
   id: 'frueh',
@@ -83,7 +123,6 @@ const MODELLSCHICHT: IModellschichtMomentaufnahmeEintrag = {
   beginnLokalzeit: '07:00',
   endeLokalzeit: '12:00',
   endetAmFolgetag: false,
-  standardpauseMinuten: 0,
   mehrfachbelegungErlaubt: false,
 };
 
@@ -124,7 +163,7 @@ describe('DienstplanPlanungsbereich', () => {
   const loadSchichtmodelle = vi.fn().mockResolvedValue(undefined);
   const dialogOpen = vi.fn();
   const getMitarbeiter = vi.fn().mockReturnValue([]);
-  const schichtmodelle = signal<readonly ISchichtmodellBestand[]>([createSchichtmodell()]);
+  const schichtmodelle = signal<readonly ISchichtrastermodellBestand[]>([createSchichtmodell()]);
 
   beforeEach(async () => {
     benutzerProfil.set({
@@ -310,11 +349,11 @@ describe('DienstplanPlanungsbereich', () => {
             id: 's-1',
             dienstplanId: '2026-10',
             versionId: 'v-1',
+            datum: '2026-10-05',
             mitarbeiterId: 'm-1',
             modellschichtId: 'frueh',
             beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
             ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
-            pauseMinuten: 0,
             erstelltVonUid: 'uid-1',
             aktualisiertVonUid: 'uid-1',
           },
@@ -407,14 +446,11 @@ describe('DienstplanPlanungsbereich', () => {
     expect(createSchicht).toHaveBeenCalledWith(
       { ...PFAD, dienstplanId: '2026-10', versionId: 'v-1' },
       expect.objectContaining({
+        datum: '2026-10-05',
         mitarbeiterId: 'm-1',
         modellschichtId: 'frueh',
-        pauseMinuten: 0,
       }),
     );
-    const anlage = createSchicht.mock.calls[0][1];
-    expect(anlage.beginn.toDate().toISOString()).toBe('2026-10-05T05:00:00.000Z');
-    expect(anlage.ende.toDate().toISOString()).toBe('2026-10-05T10:00:00.000Z');
   });
 
   it('should reject a drop for an employee without branch assignment', async () => {
@@ -452,11 +488,11 @@ describe('DienstplanPlanungsbereich', () => {
             id: 's-1',
             dienstplanId: '2026-10',
             versionId: 'v-1',
+            datum: '2026-10-05',
             mitarbeiterId: 'm-1',
             modellschichtId: 'frueh',
             beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
             ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
-            pauseMinuten: 0,
             erstelltVonUid: 'uid-1',
             aktualisiertVonUid: 'uid-1',
           },
@@ -499,11 +535,11 @@ describe('DienstplanPlanungsbereich', () => {
             id: 's-2',
             dienstplanId: '2026-10',
             versionId: 'v-2',
+            datum: '2026-10-05',
             mitarbeiterId: 'm-1',
             modellschichtId: 'frueh',
             beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
             ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
-            pauseMinuten: 0,
             erstelltVonUid: 'uid-1',
             aktualisiertVonUid: 'uid-1',
           },
@@ -545,16 +581,23 @@ describe('DienstplanPlanungsbereich', () => {
     });
 
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Speichern fehlgeschlagen.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Speichern fehlgeschlagen.',
+    );
   });
 
-  function createSchichtmodell(id = 'modell-1', bezeichnung = 'Sommer'): ISchichtmodellBestand {
+  function createSchichtmodell(
+    id = 'modell-1',
+    bezeichnung = 'Sommer',
+  ): ISchichtrastermodellBestand {
     return {
       schichtmodell: {
         ...PFAD,
         id,
         bezeichnung,
         aktiv: true,
+        planungsart: 'schichtraster',
+        besondereRasterzeiten: [],
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },
@@ -567,7 +610,6 @@ describe('DienstplanPlanungsbereich', () => {
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,
-          standardpauseMinuten: 0,
           mehrfachbelegungErlaubt: false,
         },
       ],

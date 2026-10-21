@@ -21,9 +21,11 @@ import {
   IDienstplanVersionDokument,
   IDienstplanVersionEintrag,
 } from '../../commons/models/domain/dienstplan';
+import { IDienstplanDatumRasterzeiten } from '../../commons/models/domain/dienstplan-kalendertag';
 import {
   ISchichtAktualisierung,
   ISchichtAnlage,
+  ISchichtDaten,
   ISchichtDokument,
   ISchichtEintrag,
   ISchichtSchreibergebnis,
@@ -31,18 +33,35 @@ import {
 import {
   IModellschichtMomentaufnahmeDokument,
   IModellschichtMomentaufnahmeEintrag,
-  ISchichtmodellBestand,
+  ISchichtrastermodellBestand,
 } from '../../commons/models/domain/schichtmodell';
 import { createDienstplanZeitraum } from '../../commons/utils/dienstplan/dienstplan-zeitraum';
+import {
+  createDienstplanKalendertage,
+  getDienstplanRasterzeit,
+} from '../../commons/utils/dienstplan/dienstplan-kalendertage';
+import { createSchichtZeitstempelAusLokalzeiten } from '../../commons/utils/dienstplan/schicht-lokalzeit';
 import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { calculateSchichtLohnzeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
+import { FilialeinstellungService } from './filialeinstellung.service';
+
+// ===== Top-Level Helper =====================
+
+function assertSchichtrasterPlanungsart(
+  planungsart: unknown,
+): asserts planungsart is 'schichtraster' {
+  if (planungsart !== 'schichtraster') {
+    throw new Error('Die Planungsart des Dienstplans wird noch nicht unterstützt.');
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class DienstplanService {
   // ===== Interne Dependency Injection =========
 
   private readonly firestoreDbService = inject(FirestoreDbService);
+  private readonly filialeinstellungService = inject(FilialeinstellungService);
 
   // ===== Öffentliche Aktionen =================
 
@@ -132,25 +151,47 @@ export class DienstplanService {
    * @param monat - Monat im Format `YYYY-MM` und Dokument-ID des Dienstplans.
    * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
    * @param benutzerUid - UID des ändernden Benutzers.
+   * @param datumRasterzeiten - Optionale Rasterzeitüberschreibungen einmaliger Datumsausnahmen.
    * @returns Die lokal abbildbaren Einträge des neuen Dienstplans und seiner Version.
    */
   async createDienstplan(
     pfad: IFilialPfad,
     monat: string,
-    schichtmodell: ISchichtmodellBestand,
+    schichtmodell: ISchichtrastermodellBestand,
     benutzerUid: string,
+    datumRasterzeiten: readonly IDienstplanDatumRasterzeiten[] = [],
   ): Promise<IDienstplanAnlageErgebnis> {
     validateSchichtmodell(pfad, schichtmodell);
+    const filialeinstellungen = await this.filialeinstellungService.loadFilialeinstellung(
+      pfad,
+      'networkOnly',
+    );
+    if (!filialeinstellungen) {
+      throw new Error(
+        'Der Dienstplan konnte nicht angelegt werden, weil die Filialeinstellungen fehlen.',
+      );
+    }
     const dienstplanPfad: IDienstplanPfad = { ...pfad, dienstplanId: monat };
     const versionId = this.firestoreDbService.createDocumentId(
       FIRESTORE_COLLECTION_PATHS.dienstplanVersionen(dienstplanPfad),
     );
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
     const zeitraum = createDienstplanZeitraum(monat);
+    const kalendertage = createDienstplanKalendertage({
+      monat,
+      wochenregeln: filialeinstellungen.oeffnungszeiten.wochenregeln,
+      sondertage: filialeinstellungen.sondertage,
+      ausnahmen: filialeinstellungen.ausnahmen,
+      modellschichten: schichtmodell.modellschichten,
+      besondereRasterzeiten: schichtmodell.schichtmodell.besondereRasterzeiten,
+      datumRasterzeiten,
+    });
     const dienstplanDaten: IDienstplanDokument = {
       ...zeitraum,
+      kalendertage,
       schichtmodellId: schichtmodell.schichtmodell.id,
       schichtmodellBezeichnung: schichtmodell.schichtmodell.bezeichnung,
+      planungsart: schichtmodell.schichtmodell.planungsart,
       entwurfVersionId: versionId,
       naechsteVersionsnummer: 2,
       erstelltVonUid: benutzerUid,
@@ -192,7 +233,6 @@ export class DienstplanService {
             beginnLokalzeit: modellschicht.beginnLokalzeit,
             endeLokalzeit: modellschicht.endeLokalzeit,
             endetAmFolgetag: modellschicht.endetAmFolgetag,
-            standardpauseMinuten: modellschicht.standardpauseMinuten,
             mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
           },
         };
@@ -293,13 +333,14 @@ export class DienstplanService {
     anlage: ISchichtAnlage,
     benutzerUid: string,
   ): Promise<ISchichtSchreibergebnis> {
-    calculateSchichtLohnzeitMinuten(anlage);
-    await this.assertWeitereBelegungErlaubt(pfad, anlage);
+    const schichtDaten = await this.createSchichtDaten(pfad, anlage);
+    calculateSchichtLohnzeitMinuten(schichtDaten);
+    await this.assertWeitereBelegungErlaubt(pfad, schichtDaten);
     const schichtId = this.firestoreDbService.createDocumentId(
       FIRESTORE_COLLECTION_PATHS.schichten(pfad),
     );
     const schicht: ISchichtEintrag = {
-      ...anlage,
+      ...schichtDaten,
       ...pfad,
       id: schichtId,
       erstelltVonUid: benutzerUid,
@@ -311,7 +352,7 @@ export class DienstplanService {
       schichtId,
       benutzerUid,
       {
-        ...anlage,
+        ...schichtDaten,
         erstelltVonUid: benutzerUid,
         aktualisiertVonUid: benutzerUid,
       },
@@ -336,11 +377,12 @@ export class DienstplanService {
     aktualisierung: ISchichtAktualisierung,
     benutzerUid: string,
   ): Promise<ISchichtSchreibergebnis> {
-    calculateSchichtLohnzeitMinuten(aktualisierung);
-    await this.assertWeitereBelegungErlaubt(pfad, aktualisierung, schicht.id);
+    const schichtDaten = await this.createSchichtDaten(pfad, aktualisierung);
+    calculateSchichtLohnzeitMinuten(schichtDaten);
+    await this.assertWeitereBelegungErlaubt(pfad, schichtDaten, schicht.id);
     const aktualisierteSchicht: ISchichtEintrag = {
       ...schicht,
-      ...aktualisierung,
+      ...schichtDaten,
       aktualisiertVonUid: benutzerUid,
     };
     return this.writeSchicht(
@@ -349,7 +391,7 @@ export class DienstplanService {
       schicht.id,
       benutzerUid,
       {
-        ...aktualisierung,
+        ...schichtDaten,
         aktualisiertVonUid: benutzerUid,
       },
       aktualisierteSchicht,
@@ -505,12 +547,58 @@ export class DienstplanService {
     });
   }
 
+  private async createSchichtDaten(
+    pfad: IDienstplanVersionPfad,
+    anlage: ISchichtAnlage,
+  ): Promise<ISchichtDaten> {
+    const dienstplanPfad: IDienstplanPfad = pfad;
+    const [dienstplanDokument, modellschichtDokument] = await Promise.all([
+      this.firestoreDbService.loadDocument<IDienstplanDokument>(
+        FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
+        'networkOnly',
+      ),
+      this.firestoreDbService.loadDocument<IModellschichtMomentaufnahmeDokument>(
+        FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
+          ...dienstplanPfad,
+          modellschichtId: anlage.modellschichtId,
+        }),
+        'networkOnly',
+      ),
+    ]);
+    if (!dienstplanDokument || !modellschichtDokument) {
+      throw new Error('Der Kalendertag oder die Modellschicht wurde im Monatsplan nicht gefunden.');
+    }
+    const dienstplan = mapDienstplan(
+      dienstplanPfad,
+      dienstplanDokument.id,
+      dienstplanDokument.daten,
+    );
+    const kalendertag = dienstplan.kalendertage.find((eintrag) => {
+      return eintrag.datum === anlage.datum;
+    });
+    if (!kalendertag) {
+      throw new Error('Der Kalendertag wurde im Monatsplan nicht gefunden.');
+    }
+    const modellschicht = mapModellschichtMomentaufnahme(
+      dienstplanPfad,
+      modellschichtDokument.id,
+      modellschichtDokument.daten,
+    );
+    const rasterzeit = getDienstplanRasterzeit(kalendertag, modellschicht.id);
+    const zeitdaten = createSchichtZeitstempelAusLokalzeiten(
+      anlage.datum,
+      rasterzeit,
+      dienstplan.zeitzone,
+    );
+    return { ...anlage, ...zeitdaten };
+  }
+
   /**
    * Verhindert eine weitere Belegung derselben Rasterzelle, wenn die Modellschicht sie nicht erlaubt.
    */
   private async assertWeitereBelegungErlaubt(
     pfad: IDienstplanVersionPfad,
-    schicht: ISchichtAnlage,
+    schicht: ISchichtDaten,
     ausgenommeneSchichtId?: string,
   ): Promise<void> {
     const dienstplanPfad: IDienstplanPfad = pfad;
@@ -532,7 +620,7 @@ export class DienstplanService {
       return (
         eintrag.id !== ausgenommeneSchichtId &&
         eintrag.modellschichtId === schicht.modellschichtId &&
-        eintrag.beginn.toMillis() === schicht.beginn.toMillis()
+        eintrag.datum === schicht.datum
       );
     });
     if (istBereitsBelegt) {
@@ -546,7 +634,12 @@ function mapDienstplan(
   id: string,
   daten: IDienstplanDokument,
 ): IDienstplanEintrag {
-  return { ...daten, ...pfad, id };
+  assertSchichtrasterPlanungsart(daten.planungsart);
+  return {
+    ...daten,
+    ...pfad,
+    id,
+  };
 }
 
 function mapVersion(
@@ -565,11 +658,11 @@ function mapSchicht(
   return {
     ...pfad,
     id,
+    datum: daten.datum,
     mitarbeiterId: daten.mitarbeiterId,
     modellschichtId: daten.modellschichtId,
     beginn: daten.beginn,
     ende: daten.ende,
-    pauseMinuten: daten.pauseMinuten,
     erstelltVonUid: daten.erstelltVonUid,
     aktualisiertVonUid: daten.aktualisiertVonUid,
     ...(daten.erstelltAm ? { erstelltAm: daten.erstelltAm } : {}),
@@ -589,13 +682,13 @@ function mapModellschichtMomentaufnahme(
     beginnLokalzeit: daten.beginnLokalzeit,
     endeLokalzeit: daten.endeLokalzeit,
     endetAmFolgetag: daten.endetAmFolgetag,
-    standardpauseMinuten: daten.standardpauseMinuten,
-    mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt ?? false,
+    mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt,
   };
 }
 
-function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtmodellBestand): void {
+function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtrastermodellBestand): void {
   const schichtmodell = bestand.schichtmodell;
+  assertSchichtrasterPlanungsart(schichtmodell.planungsart);
   const gleicherPfad =
     schichtmodell.unternehmerId === pfad.unternehmerId &&
     schichtmodell.firmaId === pfad.firmaId &&

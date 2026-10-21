@@ -4,8 +4,8 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import {
-  ISchichtmodellAnlage,
-  ISchichtmodellBestand,
+  ISchichtrastermodellAnlage,
+  ISchichtrastermodellBestand,
 } from '../../commons/models/domain/schichtmodell';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { SchichtmodellService } from '../../services/domain/schichtmodell.service';
@@ -16,8 +16,9 @@ describe('SchichtmodellStore', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
   const andererPfad = { ...pfad, filialeId: 'b-2' };
   const benutzerId = signal<string | null>('uid-1');
-  const anlage: ISchichtmodellAnlage = {
+  const anlage: ISchichtrastermodellAnlage = {
     bezeichnung: 'Sommer',
+    besondereRasterzeiten: [],
     modellschichten: [createModellschicht()],
   };
   const sommer = createBestand('sommer', pfad);
@@ -116,7 +117,6 @@ function createModellschicht() {
     beginnLokalzeit: '07:00',
     endeLokalzeit: '12:00',
     endetAmFolgetag: false,
-    standardpauseMinuten: 0,
     mehrfachbelegungErlaubt: false,
   };
 }
@@ -124,13 +124,15 @@ function createModellschicht() {
 function createBestand(
   id: string,
   pfad: { unternehmerId: string; firmaId: string; filialeId: string },
-): ISchichtmodellBestand {
+): ISchichtrastermodellBestand {
   return {
     schichtmodell: {
       ...pfad,
       id,
       bezeichnung: id === 'sommer' ? 'Sommer' : 'Winter',
       aktiv: true,
+      planungsart: 'schichtraster',
+      besondereRasterzeiten: [],
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },

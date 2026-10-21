@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 15.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 20.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -173,6 +173,16 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Modell-Momentaufnahme und erster Entwurfsversion erfolgt atomar. Anlegen, Bearbeiten und Löschen einer Schicht erhöhen die
   Versionsrevision in einer Firestore-Transaktion. Eine abweichende Revision verhindert veraltete Schreibzugriffe. Die
   Transaktion für Veröffentlichung und Archivierung folgt in Todo 21.10.
+- Beim Anlegen eines Monatsdienstplans lädt der Dienstplan-Service die vollständigen Filialeinstellungen verbindlich vom Server.
+  Fehlende, unvollständige oder für den Zielmonat widersprüchliche Einstellungen verhindern die Anlage. Die bestehende
+  Öffnungsregel- und Feiertagsauflösung aus Todo 20 erzeugt für alle 28 bis 31 Tage die begrenzte Liste `kalendertage` direkt im
+  Monatsdienstplandokument. Jede Tagesmomentaufnahme enthält Datum, Wochentag, wirksame Öffnungsregel, deren Quelle und
+  vorhandene Quellangaben, alle aktiven Sondertage sowie die wirksamen Zeiten der festen Rasterplätze. Aktive Sondertage können
+  je Schichtmodell eigene Rasterzeiten verwenden; einmalige Datumsüberschreibungen haben Vorrang. Gesetzliche Feiertage bleiben
+  unabhängig vom Aktivstatus ihrer besonderen Öffnungsregel erkennbar. Dienstplan und Tagesmomentaufnahmen werden atomar
+  geschrieben; spätere Änderungen der Filialeinstellungen oder Schichtmodelle verändern den gespeicherten Monatsstand nicht.
+  Tages- und Rasterzeitmomentaufnahmen sind verbindlicher Bestandteil jedes Monatsdienstplans. Unvollständige Dokumente werden
+  nicht mit Ersatzwerten ergänzt, weil Schichtmodelle und Monatspläne in dieser Ausbaustufe neu angelegt werden.
 - Die zeitliche Konfliktprüfung, Entwurfsstatus, Benutzer-UID und Revisionsfortschritt bleiben Frontend-Fachprüfungen. Firestore
   Rules sichern ausschließlich Rolle, Filialgrenzen und CRUD-Rechte gemäß Berechtigungsmatrix.
 - Die technische Planung aus Todo 21.3 ist abgeschlossen. Domainmodell, deutsche Firestore-Pfade, Abfrage- und Cache-Strategien,
@@ -195,22 +205,22 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Containerbreite werden beide Bereiche untereinander angeordnet und innerhalb der gemeinsamen Arbeitsfläche gescrollt.
 - In der Planungsseite sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente umgesetzt.
   Bearbeitbare Rasterzellen nehmen nur aktive, der jeweiligen Filiale zugeordnete Mitarbeiter an und legen beim Ablegen
-  unmittelbar eine Schicht mit Datum, Modellschicht, Zeitwerten und Standardpause der Modell-Momentaufnahme an. Laufende
-  Schreibvorgänge sperren weitere Ablagen; Fehler werden im betroffenen Filialabschnitt angezeigt. Die bisherige Anlageaktion
-  bleibt als Tastatur- und Mobilalternative erhalten.
+  unmittelbar eine Schicht für Datum, Modellschicht und Mitarbeiter an. Der Service leitet die absoluten Zeitwerte verbindlich
+  aus der gespeicherten Tagesrasterzeit ab. Laufende Schreibvorgänge sperren weitere Ablagen; Fehler werden im betroffenen
+  Filialabschnitt angezeigt. Die bisherige Anlageaktion bleibt als Tastatur- und Mobilalternative erhalten.
 - Die direkte Ablage prüft bereits die aktiven Planungsstände aller im Dienstplan-Store geladenen Filialkontexte auf zeitliche
   Überschneidungen. Nicht geladene Filialpläne und konkurrierende Schreibzugriffe sind damit noch nicht verbindlich abgedeckt.
   Der firmenweite Belegungsindex, seine Live-Aktualisierung und die transaktionale Konfliktabsicherung folgen in Todo 21.10.
 - Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
   bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, Modellschicht
-  und lokale Uhrzeiten werden schreibgeschützt angezeigt; die Standardpause wird ohne eigenes Dialogfeld aus der
-  Modellschicht übernommen. Datum, lokale Uhrzeiten, Folgetag und Pause werden vor dem Schreiben validiert und in
-  `Europe/Berlin` in Firestore-Zeitstempel umgewandelt. Während eines Schreibvorgangs ist das vollständige Formular deaktiviert.
+  und die für den Tag wirksamen lokalen Rasterzeiten werden schreibgeschützt angezeigt. Der Service validiert Datum,
+  Modellschicht und Zeitfolge und wandelt die Rasterzeit in `Europe/Berlin` in Firestore-Zeitstempel um. Während eines
+  Schreibvorgangs ist das vollständige Formular deaktiviert.
   Filialkonten bleiben bis zur Umsetzung des betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser
   Sitzungszustand einen aktiven Firma-Mitarbeiter mit `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
 - Die Route und Navigation für die Schichtplaneinstellungen führen auf die neue filialbezogene Schichtmodellverwaltung. Ein
   Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer eigenen Modellschicht. Modellschichten können ergänzt und
-  entfernt werden; Beginn, Ende, Folgetag, Dauer und automatische Standardpause folgen den bestehenden Zeitregeln. Pro
+  entfernt werden; Beginn, Ende, Folgetag und Dauer folgen den bestehenden Zeitregeln. Pro
   Modellschicht kann eine standardmäßig deaktivierte Mehrfachbelegung freigegeben werden. Ihre Reihenfolge wird automatisch nach
   der lokalen Beginnzeit bestimmt. Modell und Modellschichten werden atomar gespeichert.
   Vorhandene Modelle werden nicht gelöscht, sondern bei Bedarf
@@ -225,13 +235,19 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Modellschichten der Momentaufnahme bilden die Spalten. Ohne freigegebene Mehrfachbelegung kann jede Zelle höchstens eine
   Mitarbeiterschicht enthalten; bei freigegebener Mehrfachbelegung sind mehrere erlaubt. Die Oberfläche sperrt weitere Anlagen
   und Ablagen einer belegten Einfachschicht, der Service prüft dies zusätzlich vor dem Schreiben. Beim Anlegen stehen Datum,
-  Modellschicht, lokale Zeiten und Standardpause bereits fest; nur der Mitarbeiter wird ausgewählt. Beim Bearbeiten bleibt die
-  Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Das für Desktop und Tablet
+  Modellschicht und die tagesabhängigen lokalen Rasterzeiten bereits fest; nur der Mitarbeiter wird ausgewählt. Beim Bearbeiten
+  bleibt die Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Das für Desktop und Tablet
   ausgelegte Raster scrollt horizontal und behält dabei die Tagesspalte im sichtbaren Bereich. Das vertikale Scrollen bleibt beim
   umgebenden Dienstplanbereich.
+- Schichtmodelle und Monatsdienstpläne speichern die verpflichtende Planungsart. Neue Modelle werden automatisch als
+  `schichtraster` angelegt; der Monatsplan übernimmt diesen Wert aus dem gewählten Modell. Die Services weisen fehlende oder noch
+  nicht unterstützte Planungsarten zurück. Eine diskriminierte Union trennt gemeinsame Metadaten, Schichtrastermodell und das
+  vorbereitete Schichtbausteinmodell. Modellanlage und Monatsplananlage zeigen bereits eine Variantenauswahl; das Schichtraster
+  ist verfügbar, während `Schichtbausteine` bis zur Umsetzung der fachlichen Bausteinfelder deaktiviert bleibt.
 - Der TypeScript-Code verlangt bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben
-  Monatsplans. Beim Bearbeiten sind Modellschicht, Beginn, Ende und Pause unveränderlich; nur die Mitarbeiterzuordnung darf
-  zusammen mit den technischen Aktualisierungsfeldern geändert werden.
+  Monatsplans. Beginn und Ende werden ausschließlich aus der Tagesrasterzeit abgeleitet. Eine Pause wird nicht mehr in einer
+  Modellschicht oder konkreten Schicht gespeichert; die zentrale Arbeitsblockberechnung ermittelt 0, 30 oder 45 bezahlte
+  Pausenminuten aus der summierten Arbeitszeit. Die verbindliche filialübergreifende Neuberechnung folgt in Todo 21.9 Schritt 5.
 - Das Löschen eines Monatsplans entfernt Dienstplan, leere Entwurfsversion und Modellschicht-Momentaufnahme gemeinsam. Der
   Service lädt Dienstplan und Entwurfsschichten zuvor mit `networkOnly` und prüft einen noch nie veröffentlichten Entwurf sowie
   dessen gemeinsame Löschung.

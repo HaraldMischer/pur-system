@@ -799,18 +799,40 @@ bei fachlichem Bedarf ausdrücklich für Mehrfachbelegungen freigegeben werden.
 - [x] Eine Modellschicht erlaubt standardmäßig nur einen Mitarbeiter je Rasterzelle; eine aktivierte Mehrfachbelegung lässt
       weitere Mitarbeiter in derselben Rasterzelle zu.
 
-### [ ] 21.9 Tagesabhängige Öffnungs- und Schichtzeiten abbilden
+### [ ] 21.9 Tagesabhängige Öffnungs- und Rasterzeiten abbilden
 
 #### Ziel
 
-Ein Schichtmodell bildet neben dem regulären Betrieb auch abweichende Schichtzeiten für Sonntage und gesetzliche Feiertage ab.
-Für jeden Kalendertag wird nachvollziehbar das zutreffende Schicht-Tagesprofil ermittelt. Die wirksamen Öffnungszeiten stammen
-aus den Filialeinstellungen nach Todo 20 und bleiben von den Mitarbeiterschichten getrennt, damit Vor- und Nachbereitungszeiten
-außerhalb der Kundenöffnungszeiten weiterhin möglich sind.
+Ein Schichtmodell gibt mit seinen Modellschichten ein festes Raster für alle Kalendertage vor. Ein Modell mit Früh-, Mittel- und
+Spätschicht behält diese drei Rasterplätze an Werktagen, Sonntagen, Feiertagen und sonstigen Sondertagen bei; ein Modell mit
+Früh- und Spätschicht bleibt durchgehend zweispaltig. Die Modellschichten behalten dabei ihre IDs, Bezeichnungen, Reihenfolge
+und Mehrfachbelegung.
+
+Ein Feiertag oder Sondertag mit aktiver abweichender Öffnungsregel darf für die vorhandenen Rasterplätze abweichende Beginn-
+und Endzeiten hinterlegen. Er fügt keine Modellschichten hinzu, entfernt keine und ändert ihre Reihenfolge nicht. Ohne
+abweichende Rasterzeiten gelten die regulären Zeiten des Schichtmodells. Dasselbe gilt für eine einmalige Datumsausnahme, deren
+abweichende Rasterzeiten ausschließlich im betroffenen Monatsdienstplan festgelegt werden.
+
+Die wirksamen Öffnungszeiten stammen aus den Filialeinstellungen nach Todo 20 und werden als Anhaltspunkt angezeigt. Sie
+begrenzen Mitarbeiterschichten nicht automatisch, damit Vor- und Nachbereitungszeiten außerhalb der Kundenöffnungszeiten
+weiterhin möglich sind. Eine abweichende Öffnungsregel passt die Rasterzeiten nicht automatisch an. Für den Schichtbetrieb
+werden keine zusätzlichen Tag-Start- oder Tag-Stopp-Zeiten gepflegt; bei Bedarf werden nur die Zeiten der vorhandenen
+Rasterplätze ausdrücklich überschrieben.
+
+Die kalendarischen Eigenschaften als Sonntag, gesetzlicher Feiertag oder sonstiger Sondertag bleiben unabhängig von den
+verwendeten Rasterzeiten erkennbar. Nacht-, Sonntags- und Feiertagszuschläge werden in dieser Ausbaustufe weder konfiguriert noch
+berechnet; sie werden erst bei einem späteren fachlichen Bedarf auf Grundlage der tatsächlichen Schichtzeiten und
+Kalendereigenschaften geplant.
 
 Die tagesabhängigen Daten werden beim Anlegen des Monatsdienstplans als unveränderliche Momentaufnahme übernommen. Dadurch
 bleiben Entwürfe, veröffentlichte Versionen und historische Ansichten auch dann stabil, wenn das zugrunde liegende
 Schichtmodell, Feiertagsregeln oder Filialeinstellungen später geändert werden.
+
+Eine spätere alternative Dienstplanvariante mit je Tag frei veränderbarer Anzahl, Identität und Reihenfolge der Schichten ist
+nicht Teil dieser Rasterplanung und wird gesondert in `docs/todo_spaeter.md` geführt.
+
+Die in Todo 21.6 umgesetzte Standardpause je Modellschicht bildet den bisherigen technischen Stand. Todo 21.9 ersetzt sie
+durch eine mitarbeiterbezogene Pausenberechnung je zusammenhängendem Arbeitsblock eines Dienstplantags.
 
 #### Betroffene Dateien
 
@@ -818,7 +840,18 @@ Schichtmodell, Feiertagsregeln oder Filialeinstellungen später geändert werden
 
 - src/app/commons/constants/firebase.constants.ts
 - src/app/commons/models/domain/dienstplan.ts
+- src/app/commons/models/domain/schicht.ts
 - src/app/commons/models/domain/schichtmodell.ts
+- src/app/commons/utils/dienstplan/schicht-zeit.ts
+- src/app/commons/utils/dienstplan/schicht-zeit.spec.ts
+- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.ts
+- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.spec.ts
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.ts
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.html
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.spec.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.html
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.spec.ts
 - src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.ts
 - src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.html
 - src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
@@ -827,6 +860,8 @@ Schichtmodell, Feiertagsregeln oder Filialeinstellungen später geändert werden
 - src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
 - src/app/services/domain/dienstplan.service.ts
 - src/app/services/domain/dienstplan.service.spec.ts
+- src/app/services/domain/filialeinstellung.service.ts
+- src/app/services/domain/filialeinstellung.service.spec.ts
 - src/app/services/domain/schichtmodell.service.ts
 - src/app/services/domain/schichtmodell.service.spec.ts
 - src/app/stores/domain/filialeinstellung.store.ts
@@ -847,82 +882,130 @@ Schichtmodell, Feiertagsregeln oder Filialeinstellungen später geändert werden
 
 Neu hinzuzufügen:
 
-- src/app/commons/models/domain/tagesprofil.ts
+- src/app/commons/models/domain/dienstplan-kalendertag.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.spec.ts
 
-#### [ ] Schritt 1: Fachliche Schicht-Tagesarten und Prioritäten festlegen
+#### [x] Schritt 1: Festes Raster, besondere Tage und Abgrenzung festlegen
 
-- [ ] Mindestens die Tagesarten `Standard`, `Sonntag` und `Feiertag` definieren und entscheiden, ob Samstag als eigenes
-      Tagesprofil benötigt wird.
-- [ ] Festlegen, dass ein gesetzlicher Feiertag gegenüber dem Sonntags- und Standardprofil Vorrang hat. Das Verhalten eines
-      Feiertags, der auf einen Sonntag fällt, ausdrücklich dokumentieren.
-- [ ] Den kalendarischen Status als gesetzlicher Feiertag unabhängig vom Aktivstatus seiner besonderen Öffnungsregel ermitteln.
-      `aktiv` steuert nur die Überschreibung der Wochentagsregel und darf spätere Tagesprofile oder Zuschlagsbewertungen nicht
-      beeinflussen.
-- [ ] Die nach Todo 20 aufgelösten Ausnahmen und Sondertage einschließlich ihrer Priorität gegenüber der Wochenregel
-      übernehmen.
-- [ ] Klären, ob alle gesetzlichen Feiertage und sonstigen Sondertage einem gemeinsamen Schicht-Tagesprofil zugeordnet werden
-      oder einzelne Sondertage ein eigenes beziehungsweise ausdrücklich zugewiesenes Profil verwenden können müssen.
-- [ ] Die nach Todo 20 aufgelösten Öffnungszeiten ausschließlich als Betriebsinformation übernehmen. Schichtzeiten dürfen
+- [x] Die Modellschichten eines Schichtmodells als festes Raster für alle Kalendertage verwenden. Sonntag und Samstag sind
+      reguläre Kalendertage im selben Raster und benötigen keine eigenen Modellschichten.
+- [x] Die kalendarischen Eigenschaften als Sonntag, gesetzlicher Feiertag oder sonstiger Sondertag unabhängig von der für diesen
+      Tag wirksamen Rasterzeit ermitteln und in der Monatsplan-Momentaufnahme erkennbar halten.
+- [x] Nacht-, Sonntags- und Feiertagszuschläge von dieser Ausbaustufe abgrenzen. Eine spätere Zuschlagsbewertung verwendet die
+      tatsächlichen Schichtzeiten und Kalendereigenschaften und wird nicht aus einem Schichtprofil abgeleitet.
+- [x] Die nach Todo 20 aufgelösten Ausnahmen und Sondertage einschließlich ihrer Priorität gegenüber der Wochentagsregel
+      übernehmen. Ein Feiertag am Sonntag bleibt kalendarisch Feiertag; ohne abweichende Rasterzeiten gelten die regulären
+      Zeiten der Modellschichten.
+- [x] Feiertagen und Sondertagen mit aktiver abweichender Öffnungsregel ausschließlich abweichende Beginn- und Endzeiten für
+      die vorhandenen Rasterplätze erlauben. Anzahl, IDs, Bezeichnungen, Reihenfolge und Mehrfachbelegung bleiben unverändert.
+- [x] Eine unabhängige Schichtabweichung bei unveränderter Öffnungsregel aus der ersten Ausbaustufe ausschließen und erst bei
+      einem konkreten fachlichen Bedarf ergänzen.
+- [x] Die nach Todo 20 aufgelösten Öffnungszeiten ausschließlich als Betriebsinformation übernehmen. Schichtzeiten dürfen
       für Vor- und Nachbereitung außerhalb der Öffnungszeiten liegen und werden deshalb nicht automatisch auf diese begrenzt.
+- [x] Keine zusätzlichen Tag-Start- oder Tag-Stopp-Zeiten für den Schichtbetrieb einführen. Eine abweichende Öffnungsregel
+      verändert Rasterzeiten nicht automatisch; notwendige Abweichungen werden je vorhandenem Rasterplatz festgelegt.
+- [x] Die Planungsart in Schichtmodell und Monatsdienstplan verpflichtend speichern. Solange nur das Schichtraster umgesetzt ist,
+      `schichtraster` automatisch setzen und fehlende oder nicht unterstützte Planungsarten in den Services zurückweisen.
+- [x] In Modellanlage und Monatsplananlage die Auswahl der Planungsart vorbereiten. `Schichtraster` ausführbar anbieten und den
+      Einstieg `Schichtbausteine` bis zu dessen fachlicher Umsetzung sichtbar, aber deaktiviert darstellen.
 
-#### [ ] Schritt 2: Datumsauflösung aus den Filialeinstellungen übernehmen
+#### [x] Schritt 2: Datumsauflösung aus den Filialeinstellungen übernehmen
 
-- [ ] Bundesland und Öffnungsregeln ausschließlich über die nach Todo 20 bereitgestellte Filialeinstellung laden; für technische
-      Zeitberechnungen zentral `Europe/Berlin` verwenden.
-- [ ] Die dort festgelegte Berechnungsregel für bundeslandspezifische feste und bewegliche Feiertage wiederverwenden und keine
+- [x] Festlegen, dass die Dienstplananlage ohne vollständig geladene und fachlich gültige Filialeinstellungen verhindert wird.
+      Mehrere für ein konkretes Datum wirksame aktive Sondertage gelten ohne vorrangige Datumsausnahme als
+      Konfigurationsfehler.
+- [x] Festlegen, dass eindeutige Kollisionen jährlich fester aktiver Sondertage bereits beim Speichern oder Aktivieren verhindert
+      und jahresabhängige Kollisionen mit beweglichen Feiertagen spätestens bei der Monatsauflösung gemeldet werden.
+- [x] Für jeden Kalendertag eine vollständig aufgelöste Tagesmomentaufnahme mit Datum, Wochentag, wirksamer Öffnungsregel,
+      Quelle, vorhandenen Quell-IDs und Bezeichnungen sowie unabhängigen Kalendereigenschaften festlegen. Die Liste bleibt auf
+      die höchstens 31 Tage des Monats begrenzt.
+- [x] Die Tagesmomentaufnahmen als begrenzte Liste `kalendertage` direkt im Monatsdienstplandokument speichern. Dadurch werden
+      Dienstplan und Kalendertage atomar angelegt und ohne zusätzliche Dokumentlesevorgänge gemeinsam geladen.
+- [x] Bundesland und Öffnungsregeln ausschließlich über die nach Todo 20 bereitgestellte Filialeinstellung laden; für
+      technische Zeitberechnungen zentral `Europe/Berlin` verwenden.
+- [x] Die dort festgelegte Berechnungsregel für bundeslandspezifische feste und bewegliche Feiertage wiederverwenden und keine
       zweite unabhängige Feiertagsauflösung im Dienstplan einführen.
-- [ ] Feiertage immer in der verbindlichen Filial- beziehungsweise Dienstplan-Zeitzone auflösen und Jahres- sowie Monatsgrenzen
+- [x] Feiertage immer in der verbindlichen Filial- beziehungsweise Dienstplan-Zeitzone auflösen und Jahres- sowie Monatsgrenzen
       eindeutig behandeln.
-- [ ] Den aufgelösten Tagestyp, eine vorhandene Sondertags-ID und deren Bezeichnung in die Monatsplan-Momentaufnahme übernehmen,
-      damit spätere Regeländerungen bestehende Dienstpläne nicht verändern.
+- [x] Die vollständig aufgelösten Tagesmomentaufnahmen als `kalendertage` in den Monatsdienstplan übernehmen, damit spätere
+      Änderungen an Öffnungszeiten, Sondertagen, Datumsausnahmen oder Feiertagsregeln bestehende Dienstpläne nicht verändern.
 
-#### [ ] Schritt 3: Schicht-Tagesprofile im Schichtmodell und in der Momentaufnahme abbilden
+#### [x] Schritt 3: Festes Schichtraster und tagesabhängige Rasterzeiten abbilden
 
-- [ ] Jedes Schicht-Tagesprofil mit eigenen Modellschichten modellieren. Öffnungsstatus und Öffnungszeiten werden nicht im
-      Schichtmodell dupliziert.
-- [ ] Entscheiden, ob Modellschichten über Tagesprofile hinweg stabile fachliche Plätze teilen oder je Profil eigenständig sind.
-      Die Entscheidung muss unterschiedliche Zeiten, eine unterschiedliche Schichtanzahl und Mehrfachbelegung unterstützen.
-- [ ] Die Darstellung variabler Modellschichten im Monatsraster festlegen. Globale Spaltenzeiten dürfen nicht verwendet werden,
-      wenn die tatsächlichen Zeiten vom Tagestyp abhängen.
-- [ ] Beim Anlegen eines Monatsdienstplans alle benötigten Schicht-Tagesprofile, die Zuordnung der Kalendertage und die jeweils
-      aufgelöste Öffnungsregel vollständig als Momentaufnahme speichern.
-- [ ] Spätere Änderungen an Öffnungszeiten, Tagesprofilen oder Feiertagsregeln dürfen einen bestehenden Monatsdienstplan nicht
-      nachträglich verändern.
+- [x] Anzahl, IDs, Bezeichnungen, Reihenfolge und Mehrfachbelegung der Modellschichten über alle Kalendertage hinweg als festes
+      Raster beibehalten. Unterschiedliche Wochentage erhalten keine eigenen Modellschichten.
+- [x] Für Feiertage und sonstige Sondertage mit aktiver abweichender Öffnungsregel ausschließlich optionale Beginn- und
+      Endzeiten je vorhandenem Rasterplatz vorsehen. Diese dürfen für Vor- und Nachbereitung vor dem Öffnungsbeginn oder nach
+      dem Öffnungsende liegen. Nicht überschriebene Rasterplätze verwenden ihre regulären Modellzeiten.
+- [x] Eine einmalige Datumsausnahme ausschließlich im betroffenen Monatsdienstplan optional mit abweichenden Beginn- und
+      Endzeiten der vorhandenen Rasterplätze abbilden. Sie verändert das dauerhaft wiederverwendbare Schichtmodell nicht.
+- [x] Das bestehende Monatsraster mit seinen festen Modellschichtspalten beibehalten. Abweichende Uhrzeiten werden in der
+      jeweiligen Tageszeile angezeigt, ohne die Spaltenstruktur zu verändern.
+- [x] Die Pause aus den zusammenhängenden Arbeitsblöcken eines Mitarbeiters am selben Dienstplantag berechnen. Direkt
+      aufeinanderfolgende Schichten und Unterbrechungen unter 30 Minuten gehören zu einem Arbeitsblock; eine Unterbrechung ab
+      30 Minuten trennt die Arbeitsblöcke. Je Block gelten 0 Minuten bis einschließlich 6 Stunden, 30 Minuten bei mehr als 6 bis
+      einschließlich 9 Stunden und 45 Minuten bei mehr als 9 Stunden. Die Pause bleibt bezahlt.
+- [x] Beim Deaktivieren einer besonderen Öffnungsregel ihre im Schichtmodell hinterlegten Rasterzeiten erhalten, aber für neu
+      angelegte Monatspläne nicht anwenden. Eine spätere Reaktivierung stellt die Konfiguration wieder bereit.
+- [x] Beim Anlegen eines Monatsdienstplans für jeden Kalendertag die wirksamen Beginn- und Endzeiten aller Rasterplätze zusammen
+      mit den Kalendereigenschaften und der aufgelösten Öffnungsregel vollständig als Momentaufnahme speichern.
+- [x] Beginn und Ende einer konkreten Schicht aus ihrem Datum, der stabilen Modellschicht-ID und den für diese Tageszeile
+      aufgelösten Rasterzeiten ableiten.
+- [x] Die bisherige verbindliche Standardpause der Modellschicht und die Pause je konkreter Schicht durch die abgeleitete
+      Gesamtpause des Arbeitsblocks ersetzen. Lücken zwischen den zugehörigen Schichten zählen nicht zur Arbeitsdauer; die
+      Pause wird nicht künstlich auf einzelne Schichten verteilt.
+- [x] Spätere Änderungen an Öffnungszeiten, regulären Modellzeiten, besonderen Rasterzeiten oder Feiertagsregeln dürfen einen
+      bestehenden Monatsdienstplan nicht nachträglich verändern.
 
 #### [ ] Schritt 4: Verwaltung und Monatsplanung erweitern
 
-- [ ] Im Schichtmodelldialog das Standard-, Sonntags- und Feiertagsprofil verständlich getrennt bearbeiten können. Nicht
-      benötigte optionale Schichtprofile dürfen deaktiviert werden.
+- [ ] Beim Speichern oder Aktivieren jährlich fester Sondertage direkte Datumskollisionen verhindern und die betroffenen
+      Sondertage in der sichtbaren Fehlermeldung benennen.
+- [ ] Im Schichtmodelldialog das feste Raster wie bisher bearbeiten können. Feiertage und Sondertage mit aktiver abweichender
+      Öffnungsregel werden davon getrennt und einzeln für optionale Beginn- und Endzeiten der vorhandenen Rasterplätze
+      angeboten.
+- [ ] Bei der Anlage eines Monatsdienstplans einmalige Datumsausnahmen des Monats anzeigen und für jedes betroffene Datum
+      optional abweichende Beginn- und Endzeiten der vorhandenen Rasterplätze konfigurieren können.
 - [ ] Die wirksamen Öffnungszeiten aus den Filialeinstellungen neben den Modellschichten anzeigen. Die Bedienung muss deutlich
-      machen, dass Öffnungszeiten keine automatische Grenze für Arbeitszeiten sind.
-- [ ] Im Monatsraster je Datum den ermittelten Tagestyp, eine vorhandene Sondertags- oder Feiertagsbezeichnung, die
-      Öffnungszeiten und ausschließlich die an diesem Tag gültigen Modellschichten darstellen.
-- [ ] Anlage, Drag-and-drop, Bearbeitung und spätere Verschiebung einer Schicht auf die für das konkrete Datum gültige
-      Modellschicht-Momentaufnahme begrenzen.
-- [ ] Geschlossene Tage eindeutig darstellen. Eine Schichtanlage wird dort nur durch das gültige Schicht-Tagesprofil bestimmt
-      und nicht allein wegen der geschlossenen Kundenöffnung verhindert.
+      machen, dass Öffnungszeiten weder eine automatische Grenze noch eine automatische Anpassung der Arbeitszeiten bewirken.
+- [ ] Keine gesonderten Tag-Start- oder Tag-Stopp-Felder für Schichten anbieten. Abweichungen werden ausschließlich über Beginn
+      und Ende der vorhandenen Rasterplätze gepflegt.
+- [ ] Im Monatsraster je Datum den Wochentag, die Kalendereigenschaften, eine vorhandene Sondertags- oder Feiertagsbezeichnung,
+      die Öffnungszeiten sowie die für diese Tageszeile wirksamen Zeiten der festen Modellschichtspalten darstellen.
+- [ ] Anlage, Drag-and-drop, Bearbeitung und spätere Verschiebung einer Schicht auf die stabile Modellschicht-ID und die für das
+      konkrete Datum gespeicherten Rasterzeiten begrenzen.
+- [ ] Geschlossene Tage eindeutig darstellen. Eine Schichtanlage wird dort durch die vorhandenen Rasterplätze und ihre
+      wirksamen Zeiten bestimmt und nicht allein wegen der geschlossenen Kundenöffnung verhindert.
 
 #### [ ] Schritt 5: Services, Stores und Datenzugriffe absichern
 
-- [ ] Schichtmodell- und Dienstplan-Service um die neuen Daten ergänzen, die Filialeinstellungen verbindlich laden und alle
-      Schicht-Tagesprofile vor dem Schreiben erneut fachlich validieren.
-- [ ] Die konkrete Schichtzeit ausschließlich aus Datum und der für diesen Tag gültigen Modellschicht-Momentaufnahme ableiten.
-- [ ] Stores so erweitern, dass Tagesprofile, Tageszuordnungen und Feiertagsinformationen ohne erneute Berechnung aus dem
-      geladenen Monatsplan bereitgestellt werden.
-- [ ] Gültige Felder, zulässige Tagesprofile und die zum konkreten Datum gehörende Modellschichtreferenz im TypeScript-Code
-      validieren. Rules bleiben gemäß Berechtigungsmatrix auf Profil, Rolle, Filialpfad und CRUD-Aktion begrenzt.
-- [ ] Bestehende Schichtmodelle ohne Schicht-Tagesprofile kontrolliert migrieren oder bis zur erneuten Speicherung als reines
-      Standardprofil interpretieren; den gewählten Übergang verbindlich dokumentieren.
+- [ ] Schichtmodell- und Dienstplan-Service um besondere Rasterzeiten ergänzen, die Filialeinstellungen verbindlich laden und
+      alle Zeitüberschreibungen vor dem Schreiben erneut fachlich validieren.
+- [ ] Die konkrete Schichtzeit ausschließlich aus Datum, stabiler Modellschicht-ID und der für diesen Tag gespeicherten
+      Rasterzeit ableiten.
+- [ ] Stores so erweitern, dass Kalendereigenschaften, wirksame Rasterzeiten und Feiertagsinformationen ohne erneute Berechnung
+      aus dem geladenen Monatsplan bereitgestellt werden.
+- [ ] Arbeitsblöcke und Pausen eines Mitarbeiters bei Anlage, Löschung und Verschiebung aus allen für den Dienstplantag
+      relevanten filialübergreifenden Schichten neu ableiten.
+- [ ] Zeitüberschreibungen nur für vorhandene Modellschicht-IDs zulassen und im TypeScript-Code validieren. Rules bleiben
+      gemäß Berechtigungsmatrix auf Profil, Rolle, Filialpfad und CRUD-Aktion begrenzt.
+- [x] Schichtmodelle in der neuen Struktur anlegen und besondere Rasterzeiten auch ohne konfigurierte Abweichung als leere Liste
+      speichern. Eine Kompatibilitätsbehandlung für ältere Schichtmodelle oder Monatspläne ist nicht erforderlich.
 
 #### [ ] Tests und Abschluss
 
 - [ ] Unit-Tests für feste und bewegliche Feiertage, unterschiedliche Bundesländer, Jahresgrenzen und einen Feiertag am Sonntag
       ergänzen.
-- [ ] Model-, Service- und Store-Tests für Standard-, Sonntags- und Feiertagsprofile sowie unterschiedliche Öffnungs- und
+- [ ] Model-, Service- und Store-Tests für stabile Rasterplätze, besondere Rasterzeiten sowie unterschiedliche Öffnungs- und
       Schichtzeiten ergänzen.
-- [ ] Component-Tests für Profilverwaltung, tagesabhängige Rasterdarstellung und Schichtanlagen bei geöffneter sowie
+- [ ] Pausentests für einzelne Schichten, unmittelbar folgende Schichten, Lücken unter 30 Minuten, Lücken ab 30 Minuten,
+      Schwellenwerte von 6 und 9 Stunden sowie filialübergreifende Arbeitsblöcke ergänzen.
+- [ ] Die Öffnungszeitenverwaltung auf direkte Kollisionen jährlich fester aktiver Sondertage testen und die Dienstplananlage
+      bei einer jahresabhängigen Kollision ohne überschreibende Datumsausnahme prüfen.
+- [ ] Component-Tests für Rasterzeitverwaltung, tagesabhängige Zeitdarstellung und Schichtanlagen bei geöffneter sowie
       geschlossener Kundenöffnung ergänzen.
-- [ ] Firestore-Emulator-Tests für Tagesprofil-Momentaufnahmen und datumsgültige Modellschichtreferenzen ergänzen.
+- [ ] Firestore-Emulator-Tests für Rasterzeit-Momentaufnahmen sowie datumsgültige Modellschichtreferenzen ergänzen.
 - [ ] Manuell einen Monat mit Werktagen, Sonntagen, einem Feiertag am Werktag und einem Feiertag am Sonntag prüfen.
 - [ ] Fachkonzept, Architektur, Projektstand und Datenübergang nach der Umsetzungsentscheidung aktualisieren.
 - [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich
@@ -930,16 +1013,27 @@ Neu hinzuzufügen:
 
 #### [ ] Erledigt, wenn
 
-- [ ] Jeder Kalendertag eines Monatsplans verwendet nachvollziehbar das fachlich richtige Tagesprofil.
-- [ ] Sonntage, gesetzliche Feiertage und sonstige Sondertage können andere Öffnungszeiten und andere Modellschichten als
-      Standardtage besitzen.
-- [ ] Ein Feiertag am Sonntag verwendet eindeutig die festgelegte Priorität und erzeugt keine widersprüchliche Zuordnung.
+- [ ] Jeder Kalendertag eines Monatsplans verwendet dieselben stabilen Modellschichtspalten und nachvollziehbar aufgelöste
+      Beginn- und Endzeiten für seine Tageszeile.
+- [ ] Sonntag wird im festen Raster wie jeder andere Kalendertag behandelt; Feiertage und Sondertage mit aktiver abweichender
+      Öffnungsregel können nur die Zeiten vorhandener Rasterplätze überschreiben.
+- [ ] Ein Feiertag am Sonntag bleibt kalendarisch Feiertag und verwendet eindeutig seine besonderen oder regulären Rasterzeiten.
 - [ ] Öffnungszeiten und Arbeitszeiten bleiben getrennt; zulässige Vor- und Nachbereitungszeiten werden nicht abgeschnitten.
+- [ ] Abweichende Öffnungszeiten verändern die Rasterzeiten nicht automatisch und erfordern keine zusätzlichen Tag-Start- oder
+      Tag-Stopp-Zeiten für den Schichtbetrieb.
 - [ ] Geschlossene Kundenöffnungen und vorhandene Mitarbeiterschichten können unabhängig voneinander abgebildet werden.
 - [ ] Bundesland, Feiertagsauflösung und Monatsplan-Momentaufnahme führen auch nach späteren Stammdatenänderungen zu stabilen
       historischen Dienstplänen.
-- [ ] UI, Services und Stores akzeptieren nur Modellschichten des für das konkrete Datum gültigen Tagesprofils; Rules sichern
-      ausschließlich die Rechte der Berechtigungsmatrix.
+- [ ] UI, Services und Stores akzeptieren nur die stabilen Modellschicht-IDs des Monatsrasters und die für das konkrete Datum
+      gespeicherten Rasterzeiten; Rules sichern ausschließlich die Rechte der Berechtigungsmatrix.
+- [ ] Nacht-, Sonntags- und Feiertagszuschläge werden nicht berechnet; die für eine spätere Bewertung notwendigen
+      tatsächlichen Schichtzeiten und Kalendereigenschaften bleiben eindeutig erhalten.
+- [ ] Eine besondere Öffnungsregel erzeugt keine Mitarbeiterschichten automatisch. Ohne hinterlegte besondere Rasterzeiten
+      gelten die regulären Modellzeiten.
+- [ ] Eine einmalige Datumsausnahme kann ausschließlich im betroffenen Monatsdienstplan die Zeiten vorhandener Rasterplätze
+      überschreiben und verändert das dauerhaft wiederverwendbare Schichtmodell nicht.
+- [ ] Die bezahlte Pause wird je zusammenhängendem Arbeitsblock eines Mitarbeiters und Dienstplantags berechnet; freie Zeiten ab
+      30 Minuten trennen die Arbeitsblöcke, ohne eine Pause einzelnen Schichten zuzuordnen.
 - [ ] Tests, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
 
 ### [ ] 21.10 Konfliktprüfung, Verschieben und Veröffentlichung umsetzen
@@ -1052,8 +1146,9 @@ Neu hinzuzufügen:
 
 - [ ] Schichtkarten in einem bearbeitbaren Entwurf als eigene Drag-Quellen kennzeichnen und beim Ablegen in einer anderen
       Rasterzelle Mitarbeiterzuordnung und Schicht-ID beibehalten.
-- [ ] Den Zieltag und die Zielmodellschicht ausschließlich aus der Rasterzelle übernehmen und Beginn, Ende, Folgetag sowie
-      Standardpause aus der Modellschicht-Momentaufnahme neu ableiten. Eine freie Eingabe dieser Werte bleibt ausgeschlossen.
+- [ ] Den Zieltag und die stabile Modellschicht-ID aus der Rasterzelle übernehmen und Beginn, Ende sowie Folgetag aus den für
+      die Zielzeile gespeicherten Rasterzeiten neu ableiten. Anschließend die Arbeitsblöcke und Pausen des Mitarbeiters für
+      Ausgangs- und Zieltag nach Todo 21.9 neu berechnen; eine freie Eingabe dieser Werte bleibt ausgeschlossen.
 - [ ] Das Ablegen in der bisherigen Rasterzelle ohne Schreibzugriff beenden und Schichten veröffentlichter oder archivierter
       Versionen nicht als verschiebbar anbieten.
 - [ ] Vor dem Verschieben die Zielzelle auf Einfach- oder Mehrfachbelegung sowie den Mitarbeiter auf zeitliche Konflikte prüfen.

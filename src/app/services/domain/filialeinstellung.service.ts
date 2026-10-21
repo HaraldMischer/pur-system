@@ -209,6 +209,21 @@ export class FilialeinstellungService {
   // ===== Öffentliche Aktionen =================
 
   /**
+   * Lädt und validiert den vollständigen Einstellungsbestand einer Filiale.
+   *
+   * @param pfad - Vollständiger Filialpfad.
+   * @param strategie - Datenquellenstrategie für den Ladevorgang.
+   * @returns Vollständiger Bestand oder `null`, wenn die Filiale noch nicht initialisiert ist.
+   */
+  async loadFilialeinstellung(
+    pfad: IFilialPfad,
+    strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.dienstplaene,
+  ): Promise<IFilialeinstellungBestand | null> {
+    const rohdaten = await this.loadFilialeinstellungRohdaten(pfad, strategie);
+    return this.validateFilialeinstellungRohdaten(pfad, rohdaten);
+  }
+
+  /**
    * Lädt die unveränderten Einstellungsdaten einer Filiale aus Firestore.
    *
    * @param pfad - Vollständiger Filialpfad.

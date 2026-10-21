@@ -10,27 +10,40 @@ import {
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import {
+  IBesondereRasterzeit,
   IModellschichtDaten,
   IModellschichtDokument,
   IModellschichtEintrag,
   IModellschichtSchreibdaten,
-  ISchichtmodellAktualisierung,
-  ISchichtmodellAnlage,
-  ISchichtmodellBestand,
-  ISchichtmodellDokument,
-  ISchichtmodellEintrag,
+  ISchichtrastermodellAktualisierung,
+  ISchichtrastermodellAnlage,
+  ISchichtrastermodellBestand,
+  ISchichtrastermodellDokument,
+  ISchichtrastermodellEintrag,
+  TSchichtmodellDokument,
 } from '../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
 
 // ===== Top-Level Helper =====================
 
-function sortSchichtmodelle(a: ISchichtmodellBestand, b: ISchichtmodellBestand): number {
+function sortSchichtmodelle(
+  a: ISchichtrastermodellBestand,
+  b: ISchichtrastermodellBestand,
+): number {
   return a.schichtmodell.bezeichnung.localeCompare(b.schichtmodell.bezeichnung, 'de');
 }
 
 function sortModellschichten(a: IModellschichtEintrag, b: IModellschichtEintrag): number {
   return compareModellschichtenNachBeginn(a, b);
+}
+
+function assertSchichtrastermodellDokument(
+  dokument: TSchichtmodellDokument,
+): asserts dokument is ISchichtrastermodellDokument {
+  if (dokument.planungsart !== 'schichtraster') {
+    throw new Error('Die Planungsart des Schichtmodells wird noch nicht unterstützt.');
+  }
 }
 
 function normalizeModellschicht(
@@ -49,7 +62,6 @@ function normalizeModellschicht(
     beginnLokalzeit: modellschicht.beginnLokalzeit,
     endeLokalzeit: modellschicht.endeLokalzeit,
     endetAmFolgetag: modellschicht.endeLokalzeit < modellschicht.beginnLokalzeit,
-    standardpauseMinuten: calculateStandardpauseMinuten(dauerMinuten),
     mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
   };
 }
@@ -60,8 +72,7 @@ function mapModellschichtDokument(daten: IModellschichtDaten): IModellschichtDok
     beginnLokalzeit: daten.beginnLokalzeit,
     endeLokalzeit: daten.endeLokalzeit,
     endetAmFolgetag: daten.endetAmFolgetag,
-    standardpauseMinuten: daten.standardpauseMinuten,
-    mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt ?? false,
+    mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt,
   };
 }
 
@@ -80,9 +91,37 @@ function getLokalzeitMinuten(lokalzeit: string): number | null {
   return stunden <= 23 && minuten <= 59 ? stunden * 60 + minuten : null;
 }
 
-function calculateStandardpauseMinuten(dauerMinuten: number): number {
-  if (dauerMinuten <= 6 * 60) return 0;
-  return dauerMinuten <= 9 * 60 ? 30 : 45;
+function normalizeBesondereRasterzeiten(
+  rasterzeiten: readonly IBesondereRasterzeit[],
+  modellschichtIds: ReadonlySet<string>,
+): readonly IBesondereRasterzeit[] {
+  const schluessel = new Set<string>();
+  return rasterzeiten.map((rasterzeit) => {
+    const dauerMinuten = calculateSchichtdauerMinuten(
+      rasterzeit.beginnLokalzeit,
+      rasterzeit.endeLokalzeit,
+    );
+    const aktuellerSchluessel = JSON.stringify([
+      rasterzeit.sondertagId,
+      rasterzeit.modellschichtId,
+    ]);
+    if (
+      !rasterzeit.sondertagId ||
+      !modellschichtIds.has(rasterzeit.modellschichtId) ||
+      dauerMinuten === null ||
+      schluessel.has(aktuellerSchluessel)
+    ) {
+      throw new Error('Die besondere Rasterzeit ist nicht eindeutig oder fachlich ungültig.');
+    }
+    schluessel.add(aktuellerSchluessel);
+    return {
+      sondertagId: rasterzeit.sondertagId,
+      modellschichtId: rasterzeit.modellschichtId,
+      beginnLokalzeit: rasterzeit.beginnLokalzeit,
+      endeLokalzeit: rasterzeit.endeLokalzeit,
+      endetAmFolgetag: rasterzeit.endeLokalzeit < rasterzeit.beginnLokalzeit,
+    };
+  });
 }
 
 @Injectable({ providedIn: 'root' })
@@ -103,14 +142,15 @@ export class SchichtmodellService {
   async loadSchichtmodelle(
     pfad: IFilialPfad,
     strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.dienstplaene,
-  ): Promise<ISchichtmodellBestand[]> {
-    const dokumente = await this.firestoreDbService.loadCollection<ISchichtmodellDokument>(
+  ): Promise<ISchichtrastermodellBestand[]> {
+    const dokumente = await this.firestoreDbService.loadCollection<TSchichtmodellDokument>(
       FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
       strategie,
     );
     const bestaende = await Promise.all(
       dokumente.map(async (dokument) => {
-        const schichtmodell: ISchichtmodellEintrag = {
+        assertSchichtrastermodellDokument(dokument.daten);
+        const schichtmodell: ISchichtrastermodellEintrag = {
           ...dokument.daten,
           ...pfad,
           id: dokument.id,
@@ -149,19 +189,21 @@ export class SchichtmodellService {
    */
   async createSchichtmodell(
     pfad: IFilialPfad,
-    anlage: ISchichtmodellAnlage,
+    anlage: ISchichtrastermodellAnlage,
     benutzerUid: string,
-  ): Promise<ISchichtmodellBestand> {
+  ): Promise<ISchichtrastermodellBestand> {
     this.assertSchichtmodell(anlage);
     const schichtmodellId = this.firestoreDbService.createDocumentId(
       FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
     );
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
-    const schichtmodell: ISchichtmodellEintrag = {
+    const schichtmodell: ISchichtrastermodellEintrag = {
       ...pfad,
       id: schichtmodellId,
       bezeichnung: anlage.bezeichnung.trim(),
       aktiv: true,
+      planungsart: 'schichtraster',
+      besondereRasterzeiten: [],
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
@@ -179,12 +221,19 @@ export class SchichtmodellService {
         };
       })
       .sort(compareModellschichtenNachBeginn);
+    const besondereRasterzeiten = normalizeBesondereRasterzeiten(
+      anlage.besondereRasterzeiten,
+      new Set(modellschichten.map((modellschicht) => modellschicht.id)),
+    );
+    schichtmodell.besondereRasterzeiten = besondereRasterzeiten;
     const operationen: TFirestoreBatchOperation[] = [
       {
         documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
         daten: {
           bezeichnung: schichtmodell.bezeichnung,
           aktiv: true,
+          planungsart: 'schichtraster',
+          besondereRasterzeiten,
           erstelltAm: zeitstempel,
           erstelltVonUid: benutzerUid,
           aktualisiertAm: zeitstempel,
@@ -217,10 +266,10 @@ export class SchichtmodellService {
    */
   async updateSchichtmodell(
     pfad: IFilialPfad,
-    bestand: ISchichtmodellBestand,
-    aktualisierung: ISchichtmodellAktualisierung,
+    bestand: ISchichtrastermodellBestand,
+    aktualisierung: ISchichtrastermodellAktualisierung,
     benutzerUid: string,
-  ): Promise<ISchichtmodellBestand> {
+  ): Promise<ISchichtrastermodellBestand> {
     this.assertSchichtmodell(aktualisierung);
     const schichtmodellId = bestand.schichtmodell.id;
     const bekannteIds = new Set(bestand.modellschichten.map((modellschicht) => modellschicht.id));
@@ -245,12 +294,20 @@ export class SchichtmodellService {
         };
       })
       .sort(compareModellschichtenNachBeginn);
+    const besondereRasterzeiten = normalizeBesondereRasterzeiten(
+      aktualisierung.besondereRasterzeiten.filter((rasterzeit) => {
+        return verwendeteIds.has(rasterzeit.modellschichtId);
+      }),
+      verwendeteIds,
+    );
     const operationen: TFirestoreBatchOperation[] = [
       {
         documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
         daten: {
           bezeichnung: aktualisierung.bezeichnung.trim(),
           aktiv: aktualisierung.aktiv,
+          planungsart: 'schichtraster',
+          besondereRasterzeiten,
           aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
           aktualisiertVonUid: benutzerUid,
         },
@@ -262,12 +319,7 @@ export class SchichtmodellService {
             schichtmodellId,
             modellschichtId: modellschicht.id,
           }),
-          daten: {
-            ...mapModellschichtDokument(modellschicht),
-            ...(bekannteIds.has(modellschicht.id)
-              ? { reihenfolge: this.firestoreDbService.createDeleteField() }
-              : {}),
-          },
+          daten: mapModellschichtDokument(modellschicht),
         };
       }),
       ...bestand.modellschichten
@@ -289,6 +341,7 @@ export class SchichtmodellService {
         ...bestand.schichtmodell,
         bezeichnung: aktualisierung.bezeichnung.trim(),
         aktiv: aktualisierung.aktiv,
+        besondereRasterzeiten,
         aktualisiertVonUid: benutzerUid,
       },
       modellschichten,
@@ -319,7 +372,7 @@ export class SchichtmodellService {
 
   // ===== Interne Helfer =======================
 
-  private assertSchichtmodell(anlage: ISchichtmodellAnlage): void {
+  private assertSchichtmodell(anlage: ISchichtrastermodellAnlage): void {
     if (!anlage.bezeichnung.trim()) {
       throw new Error('Ein Schichtmodell benötigt eine Bezeichnung.');
     }

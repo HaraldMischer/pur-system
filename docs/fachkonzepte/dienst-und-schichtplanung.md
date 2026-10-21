@@ -2,6 +2,8 @@
 
 # Dienst- und Schichtplanung
 
+## Allgemeine Beschreibung
+
 Ein Dienstplan gehört genau zu einer Filiale und umfasst in der ersten Ausbaustufe einen vollständigen Kalendermonat. Der
 Monatszeitraum beginnt am ersten und endet am letzten Kalendertag und wird mit lokalen Datumswerten sowie der Zeitzone
 `Europe/Berlin` beschrieben. Der Kalendermonat im Format `YYYY-MM` dient als fachlich eindeutige Dienstplan-ID innerhalb der
@@ -34,6 +36,8 @@ unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiterbelegung/{mitarbeiterId}_
 Die filialbezogenen Dienstpläne bleiben die fachliche Quelle der einzelnen Schichten. Der Belegungsindex ist eine gemeinsam mit
 den Schichten atomar gepflegte Prüfstruktur und ersetzt weder die Dienstplandokumente noch deren getrennte Versionierung.
 
+## Filialeinstellungen und Kalendertage
+
 Die allgemeinen Filialeinstellungen speichern das Bundesland. Die Oberfläche verwendet zunächst fest Nordrhein-Westfalen
 (`DE-NW`) und bietet keine Bundeslandauswahl an. Die technische Zeitzone `Europe/Berlin` gilt anwendungsweit und wird nicht als
 Filialeinstellung gespeichert. Die regelmäßigen Öffnungszeiten enthalten genau eine Regel für jeden Wochentag. Eine geöffnete
@@ -58,8 +62,8 @@ Tage benötigen initial keine Zeitwerte. Der Bearbeitungsdialog verwendet bei fe
 Sondertage `06:00` bis `01:00` Uhr am Folgetag als Vorbelegung.
 
 Der Aktivstatus steuert ausschließlich, ob die besondere Öffnungsregel die Wochentagsregel überschreibt. Ein gesetzlicher
-Feiertag bleibt unabhängig davon kalendarisch ein gesetzlicher Feiertag. Diese Unterscheidung wird bei späteren Tagesprofilen,
-Feiertagszuschlägen und vergleichbaren fachlichen Auswertungen beibehalten.
+Feiertag bleibt unabhängig davon kalendarisch ein gesetzlicher Feiertag. Diese Unterscheidung wird bei den tagesabhängigen
+Rasterzeiten und späteren Zuschlagsbewertungen beibehalten.
 
 Bei einem Bundeslandwechsel bleiben gemeinsame systemdefinierte Feiertage mit ihrer angepassten Öffnungsregel erhalten. Nicht
 mehr landesweit geltende Feiertage werden entfernt, neu geltende inaktiv ergänzt. Benutzerdefinierte Sondertage bleiben
@@ -77,6 +81,12 @@ Konfigurationsfehler vor; nur eine konkrete Datumsausnahme darf diese Kollision 
 werden nicht als geöffnet interpretiert. Eine über Mitternacht reichende Öffnungsregel gehört vollständig zu ihrem
 Startdatum, auch wenn der Folgetag ein Feiertag oder Sondertag ist.
 
+Direkte Kollisionen mehrerer jährlich fester aktiver Sondertage am selben Monatstag werden bereits beim Speichern oder
+Aktivieren verhindert. Eine Kollision zwischen einem festen Sondertag und einem beweglichen Feiertag kann vom konkreten Jahr
+abhängen und wird deshalb spätestens bei der Auflösung des betroffenen Monats gemeldet. Eine vorrangige Datumsausnahme löst die
+Öffnungsregel für dieses konkrete Datum eindeutig auf. Ohne vollständige und fachlich gültige Filialeinstellungen oder bei
+einer nicht aufgelösten Kollision darf kein Monatsdienstplan angelegt werden.
+
 Der `FilialeinstellungService` behandelt vollständig fehlende Einstellungsdokumente als noch nicht initialisierten Zustand.
 Existiert dagegen nur ein Teil der beiden verbindlichen Hauptdokumente, wird ein Initialisierungsfehler gemeldet. Die erstmalige
 Anlage verwendet Nordrhein-Westfalen und verlangt alle sieben Wochenregeln ausdrücklich; das Bundesland wird nicht aus Anschrift
@@ -90,22 +100,73 @@ ihrer Rolle sowie zugeordneten Office- und Filialkonten mit dem Bereich `einstel
 zugeordnete Filialen bleiben ausgeschlossen. Die Rules prüfen dafür Rolle, aktives Profil, Filialzugriff, Bereich und
 Collection-Pfad; Dokument-IDs, Feldinhalte, Datumsregeltypen und lokale Zeitwerte validiert der TypeScript-Code.
 
+## Planungsart Schichtraster
+
 Jede Filiale besitzt eigene vorkonfigurierte Schichtmodelle, damit unterschiedliche Öffnungs- und Betriebszeiten unabhängig
 voneinander abgebildet werden können. Ein Schichtmodell enthält eine Bezeichnung, einen Aktivstatus und eine chronologisch nach
 Beginn geordnete Liste eigener Modellschichten. Jede Modellschicht gehört ausschließlich zu ihrem Modell und wird nicht als
 eigenständige, wiederverwendbare Schichtvorlage geführt. Dadurch können beispielsweise die Modelle `Sommer` mit Früh-,
 Mittags- und Spätschicht sowie `Winter` mit nur Früh- und Spätschicht vollständig unabhängig voneinander definiert werden.
 
-Eine Modellschicht enthält mindestens eine innerhalb ihres Modells eindeutige ID, eine Bezeichnung sowie eine lokale Beginn- und
-Endzeit. Liegt die Endzeit vor der Beginnzeit, wird der Folgetag automatisch abgeleitet; identische Uhrzeiten sind ungültig. Die
-Standardpause wird bei Änderungen der Modellschichtzeiten anhand der vollständigen Schichtdauer automatisch festgelegt:
-0 Minuten bis einschließlich 6 Stunden, 30 Minuten bei mehr als 6 bis einschließlich 9 Stunden und 45 Minuten bei mehr als
-9 Stunden. Der berechnete Wert ist innerhalb der Modellschicht nicht manuell anpassbar. Die Reihenfolge der Modellschichten
-ergibt sich automatisch aus ihrer lokalen Beginnzeit; bei identischem Beginn werden Ende, Bezeichnung und ID als stabile
-Sortiermerkmale verwendet. Zusätzlich bestimmt `mehrfachbelegungErlaubt`, ob eine Rasterzelle dieser Modellschicht mit mehreren
-Mitarbeitern besetzt werden darf. Der Standardwert ist `false`; ohne aktivierte Mehrfachbelegung ist höchstens eine konkrete
-Mitarbeiterschicht je Kalendertag und Modellschicht zulässig. Weder Reihenfolge noch Anzahl werden redundant gespeichert. Nicht
-mehr verwendete Schichtmodelle werden deaktiviert und nicht physisch gelöscht.
+Diese Planungsart heißt `Schichtraster`. Ein Schichtraster definiert für den gesamten Monatsdienstplan feste Schichtplätze. Jeder
+Kalendertag verwendet dieselben Rasterplätze; nur ihre Uhrzeiten und ihre Belegung mit Mitarbeitern können je Tag abweichen.
+Die Rasterplätze dürfen sich zeitlich überschneiden oder untereinander identische Beginn- und Endzeiten besitzen. Eine einzelne
+konkrete Schicht benötigt dagegen eine positive Dauer, und die konkreten Schichten desselben Mitarbeiters dürfen sich nicht
+überschneiden.
+
+Jedes Schichtmodell und jeder daraus angelegte Monatsdienstplan speichern die Planungsart verbindlich. Solange ausschließlich
+das Schichtraster umgesetzt ist, setzt die Anwendung den Wert automatisch auf `schichtraster`. Die Einstiege zur Modell- und
+Monatsplananlage zeigen das Schichtraster bereits als auswählbare Planungsart und `Schichtbausteine` als noch nicht verfügbare
+Variante. Der Monatsdienstplan übernimmt die Planungsart als Teil seiner unveränderlichen Modellreferenz. Sobald eine weitere
+Planungsart umgesetzt ist, wird ihr Einstieg freigeschaltet und anschließend nur ein dazu passendes Schichtmodell angeboten.
+
+Die Modellschichten eines Schichtmodells bilden das Schichtraster für alle Kalendertage. Ihre IDs, Bezeichnungen, Reihenfolge
+und Mehrfachbelegung ändern sich nicht abhängig von Wochentag, Feiertag oder Sondertag. Ein Modell mit Früh-, Mittel- und
+Spätschicht bleibt deshalb an jedem Tag dreispaltig; ein Modell mit Früh- und Spätschicht bleibt durchgehend zweispaltig.
+Sonntag und Samstag verwenden dasselbe Schichtraster wie die übrigen Kalendertage.
+
+Jeder Feiertag und Sondertag mit aktiver abweichender Öffnungsregel wird im Schichtmodell einzeln für optionale abweichende
+Beginn- und Endzeiten der vorhandenen Rasterplätze angeboten. Eine solche Zeitüberschreibung darf keine Modellschicht
+hinzufügen, entfernen oder umsortieren. Nicht überschriebene Rasterplätze verwenden ihre regulären Modellzeiten. Die wirksamen
+besonderen Öffnungszeiten werden als Anhaltspunkt angezeigt, begrenzen die Schichtzeiten aber nicht und erzeugen keine
+Mitarbeiterschichten automatisch. Sie passen die Rasterzeiten auch nicht automatisch an. Für den Schichtbetrieb werden keine
+zusätzlichen Tag-Start- oder Tag-Stopp-Zeiten gespeichert. Benötigte Abweichungen werden ausschließlich als Beginn und Ende
+der vorhandenen Rasterplätze gepflegt und dürfen für Vor- oder Nachbereitungsarbeiten außerhalb der Kundenöffnungszeiten
+liegen.
+
+Wird die besondere Öffnungsregel später deaktiviert, bleiben ihre im Schichtmodell hinterlegten Rasterzeiten erhalten, werden
+aber für neu angelegte Monatspläne nicht verwendet. Bereits angelegte Monatspläne bleiben aufgrund ihrer Momentaufnahme
+unverändert. Eine unabhängige Zeitabweichung bei unveränderter Öffnungsregel ist nicht Teil der ersten Ausbaustufe.
+Unabhängig von den wirksamen Rasterzeiten bleiben die Eigenschaften als Sonntag, gesetzlicher Feiertag oder sonstiger
+Sondertag in der Monatsplan-Momentaufnahme erkennbar.
+
+Eine einmalige Datumsausnahme wird nicht dauerhaft in das wiederverwendbare Schichtmodell aufgenommen. Bei der Anlage des
+betroffenen Monatsdienstplans können für ihr konkretes Datum optional abweichende Beginn- und Endzeiten der vorhandenen
+Rasterplätze festgelegt werden. Ohne diese Überschreibungen gelten die regulären Modellzeiten. Die einmaligen Rasterzeiten
+werden ausschließlich mit diesem Monatsdienstplan gespeichert.
+
+Der Monatsdienstplan speichert für jeden seiner höchstens 31 Kalendertage eine vollständig aufgelöste Tagesmomentaufnahme. Sie
+enthält Datum, Wochentag, wirksame Öffnungsregel, deren Quelle, vorhandene Quell-IDs und Bezeichnungen sowie die unabhängig
+davon ermittelten Kalendereigenschaften. Hinzu kommen für jeden stabilen Rasterplatz die an diesem Tag wirksamen Beginn- und
+Endzeiten. Die Tagesmomentaufnahme wird bei späteren Änderungen an Filialeinstellungen, Feiertagsregeln oder Schichtmodellen
+nicht neu berechnet.
+
+Die Tagesmomentaufnahmen liegen als auf höchstens 31 Einträge begrenzte Liste `kalendertage` direkt im Dokument des
+Monatsdienstplans. Sie werden gemeinsam mit dem Dienstplan atomar angelegt und bei jeder Dienstplanladung ohne zusätzliche
+Dokumentlesevorgänge vollständig bereitgestellt. Die feste Begrenzung auf einen Kalendermonat verhindert ein unkontrolliertes
+Wachstum des Dokuments.
+
+Nacht-, Sonntags- und Feiertagszuschläge werden in der ersten Ausbaustufe weder konfiguriert noch berechnet. Eine spätere
+Bewertung leitet sie aus den tatsächlichen Schichtzeiten und den Kalendereigenschaften ab und nicht aus der Herkunft einer
+Rasterzeit.
+
+Eine Modellschicht enthält mindestens eine innerhalb ihres Modells eindeutige ID, eine Bezeichnung sowie eine lokale Beginn-
+und Endzeit. Liegt die Endzeit vor der Beginnzeit, wird der Folgetag automatisch abgeleitet; identische Uhrzeiten sind ungültig.
+Die Reihenfolge der Modellschichten ergibt sich automatisch aus ihrer lokalen Beginnzeit; bei identischem Beginn werden Ende,
+Bezeichnung und ID als stabile Sortiermerkmale verwendet. Zusätzlich bestimmt `mehrfachbelegungErlaubt`, ob eine Rasterzelle
+dieser Modellschicht mit mehreren Mitarbeitern besetzt werden darf. Der Standardwert ist `false`; ohne aktivierte
+Mehrfachbelegung ist höchstens eine konkrete Mitarbeiterschicht je Kalendertag und Modellschicht zulässig. Weder Reihenfolge
+noch Anzahl werden redundant gespeichert. Nicht mehr verwendete Schichtmodelle werden deaktiviert und nicht physisch gelöscht.
 
 Beim Anlegen eines Monatsdienstplans wählt der Planer ein aktives Schichtmodell der konkreten Filiale. Der Monatsdienstplan
 speichert die Modell-ID, die Modellbezeichnung und die vollständige chronologisch geordnete Liste ihrer Modellschichten als
@@ -118,23 +179,50 @@ bestehende Monatspläne nicht.
 
 Ein Schichtmodell kann mehrere getrennte Modellschichten mit gleichen Zeiten enthalten, wenn eigenständige Arbeitsplätze oder
 Aufgaben unterschieden werden sollen. Alternativ kann eine einzelne Modellschicht mit aktivierter Mehrfachbelegung verwendet
-werden, wenn mehrere Mitarbeiter dieselbe Schichtart mit identischen Zeiten und Pausen besetzen. In beiden Varianten erhält
-jeder Mitarbeiter eine eigene konkrete Schicht. Die Mehrfachbelegung fasst diese Schichten lediglich in derselben Rasterzelle
+werden, wenn mehrere Mitarbeiter dieselbe Schichtart mit identischen Zeiten besetzen. In beiden Varianten erhält jeder
+Mitarbeiter eine eigene konkrete Schicht. Die Mehrfachbelegung fasst diese Schichten lediglich in derselben Rasterzelle
 zusammen.
+
+## Spätere Ausbaustufe: Schichtbausteine
+
+Als weitere Planungsart können später `Schichtbausteine` ergänzt werden. Dabei besitzt ein Kalendertag kein festes Raster.
+Stattdessen werden beliebig viele vorgefertigte Schichten aus einem Katalog ausgewählt, als Momentaufnahme in den Tagesplan
+übernommen und anschließend mit Mitarbeitern besetzt. Unterschiedliche Tage können dadurch unterschiedliche Schichten
+enthalten.
+
+`Schichtbausteine` benötigen ein eigenes fachliches Modell und werden nicht als Sonderfall des Schichtrasters gespeichert. Der
+gemeinsame Wert `planungsart` bereitet die spätere Auswahl und die eindeutige Zuordnung von Schichtmodellen und Monatsplänen vor;
+die gemeinsame Modellbasis und die eigenständigen Dokumenttypen sind bereits getrennt. Fachliche Bausteinfelder, Services und
+Oberfläche der zweiten Planungsart sind noch nicht umgesetzt.
+
+## Arbeitszeiten, Pausen und Konflikte
+
+Die Pause ist keine feste Eigenschaft eines Rasterplatzes oder einer einzelnen konkreten Schicht. Für jeden Mitarbeiter
+werden alle in den relevanten Planungsständen vorhandenen Schichten desselben Dienstplantags filialübergreifend nach Beginn
+geordnet und zu zusammenhängenden Arbeitsblöcken gruppiert. Direkt aufeinanderfolgende Schichten und Unterbrechungen
+unter 30 Minuten gehören zum selben Arbeitsblock. Eine Unterbrechung ab 30 Minuten trennt die Arbeitsblöcke. Überschneidende
+Schichten desselben Mitarbeiters bleiben unzulässig.
+
+Die Arbeitsdauer eines Blocks ist die Summe der Dauern seiner Schichten; dazwischenliegende Lücken zählen nicht als
+Arbeitsdauer. Bis einschließlich 6 Stunden beträgt die bezahlte Pause 0 Minuten, bei mehr als 6 bis einschließlich 9 Stunden
+30 Minuten und bei mehr als 9 Stunden 45 Minuten. Die Pause wird als Gesamtwert des Arbeitsblocks abgeleitet und nicht
+künstlich einer einzelnen Früh-, Mittel- oder Spätschicht zugeordnet. Änderungen durch Anlage, Löschung oder Verschiebung
+einer Schicht führen zu einer erneuten Berechnung der betroffenen Arbeitsblöcke.
 
 Im grundlegenden Planungsablauf zieht der Planer einen aktiven Mitarbeiter in eine Rasterzelle aus Modellschicht und Kalendertag
 oder verwendet die gleichwertige Anlageaktion als Tastatur- und Mobilalternative. Datum und Modellschicht stehen dadurch bereits
 fest; eine freie Auswahl oder Eingabe regulärer Schichtzeiten ist beim Anlegen der konkreten Schicht nicht vorgesehen. Beginn und
-Ende werden aus dem gewählten Datum und der Modellschicht der Dienstplan-Momentaufnahme als absolute Zeitpunkte gespeichert. Ist
-die Mehrfachbelegung der Modellschicht deaktiviert und die Rasterzelle bereits besetzt, sind Anlageaktion und Drag-and-drop
-gesperrt. Der Schreibservice prüft die Begrenzung zusätzlich vor dem Speichern; die Versionsrevision verhindert dabei, dass zwei
-gleichzeitige Anlagen eine Einfachbelegung umgehen.
+Ende werden aus dem gewählten Datum, der stabilen Modellschicht-ID und den für diese Tageszeile gespeicherten Rasterzeiten als
+absolute Zeitpunkte gespeichert. Ist die Mehrfachbelegung der Modellschicht deaktiviert und die Rasterzelle bereits besetzt,
+sind Anlageaktion und Drag-and-drop gesperrt. Der Schreibservice prüft die Begrenzung zusätzlich vor dem Speichern; die
+Versionsrevision verhindert dabei, dass zwei gleichzeitige Anlagen eine Einfachbelegung umgehen.
 
 Eine bereits angelegte Schicht kann in einem bearbeitbaren Entwurf per Drag-and-drop oder über eine gleichwertige Tastatur- und
 Touch-Aktion in eine andere Rasterzelle verschoben werden. Mitarbeiterzuordnung und Schicht-ID bleiben erhalten; Zieltag und
-Zielmodellschicht sowie die daraus abgeleiteten Zeitwerte und die Standardpause werden vollständig aus der Zielzelle übernommen.
-Die bisherige Rasterzelle bewirkt keinen Schreibzugriff. Belegung und zeitliche Konflikte werden für die Zielzelle nach denselben
-Regeln wie bei einer Neuanlage geprüft. Veröffentlichte und archivierte Schichten sind nicht verschiebbar.
+Zielmodellschicht sowie die aus den Rasterzeiten der Zielzeile abgeleiteten Zeitwerte werden vollständig aus der Zielzelle
+übernommen. Anschließend werden die Arbeitsblöcke und Pausen des Mitarbeiters für den Ausgangs- und Zieltag neu berechnet. Die
+bisherige Rasterzelle bewirkt keinen eigenen Schreibzugriff. Belegung und zeitliche Konflikte werden für die Zielzelle nach
+denselben Regeln wie bei einer Neuanlage geprüft. Veröffentlichte und archivierte Schichten sind nicht verschiebbar.
 
 Schichtmodelle dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. In der Filial-App gilt
 zusätzlich die clientseitige Bedienbegrenzung auf einen aktiven Firma-Mitarbeiter mit `dienstplaner`. Mitarbeiterzugänge lesen
@@ -215,11 +303,11 @@ dauerhaft erhalten. Ausschließlich Duplikate werden im Rahmen der Migrationsber
 bevor sie in Dienstplänen referenziert werden.
 
 Eine Schicht speichert die ID ihrer Modellschicht aus der Schichtmodell-Momentaufnahme ihres Monatsplans. Beginn und Ende
-werden aus dem gewählten Datum und den Zeitwerten dieser Modellschicht als absolute Zeitpunkte gespeichert; die Pause wird in
-ganzen Minuten übernommen. Dadurch können auch Schichten über Mitternacht eindeutig abgebildet werden. Pausen sind immer
-bezahlt. Die Lohnzeit entspricht deshalb der vollständigen Zeitspanne von Beginn bis Ende und wird nicht redundant gespeichert.
-Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen Schichtdauer sind ungültig. Überlappende Schichten
-desselben Mitarbeiters sind ein blockierender Konflikt.
+werden aus dem gewählten Datum und den Rasterzeiten der Tagesmomentaufnahme als absolute Zeitpunkte gespeichert. Dadurch können
+auch Schichten über Mitternacht eindeutig abgebildet werden. Die bezahlte Pause wird aus dem zusammenhängenden Arbeitsblock des
+Mitarbeiters abgeleitet und nicht in eine einzelne Schicht übernommen. Die Lohnzeit einer Schicht entspricht deshalb weiterhin
+der vollständigen Zeitspanne von Beginn bis Ende und wird nicht redundant gespeichert. Ende vor oder gleich Beginn ist
+ungültig; überlappende Schichten desselben Mitarbeiters bilden einen blockierenden Konflikt.
 
 Während einer Pause genügt eine durchgängige Aufsicht durch eine Person. Ist nur ein Mitarbeiter im Dienst, übernimmt der
 Techniker während dessen Pause die Aufsicht. Sind zwei Mitarbeiter im Dienst, vertreten sie sich während ihrer Pausen
@@ -310,9 +398,11 @@ Die Modelltests werden mit den fachlichen Hilfsfunktionen der Grundfunktion umge
 
 - Ein Monatsbezeichner im Format `YYYY-MM` wird auf den ersten und letzten Kalendertag normalisiert. Dabei werden Monate mit 28,
   29, 30 und 31 Tagen sowie ungültige Monatsbezeichner geprüft.
-- Die Lohnzeit entspricht der vollständigen Zeitspanne von Beginn bis Ende und schließt die bezahlte Pause ein. Schichten am
-  selben Tag und über Mitternacht werden geprüft; Ende vor oder gleich Beginn, negative Pausen und Pausen ab der vollständigen
-  Schichtdauer sind ungültig.
+- Die Lohnzeit entspricht der vollständigen Zeitspanne von Beginn bis Ende. Die bezahlte Pause eines Arbeitsblocks reduziert
+  weder die Lohnzeit einer einzelnen Schicht noch deren Summe. Schichten am selben Tag und über Mitternacht werden geprüft;
+  Ende vor oder gleich Beginn ist ungültig.
+- Pausentests decken einzelne Schichten, unmittelbar folgende Schichten, Lücken unter 30 Minuten, Lücken ab 30 Minuten, die
+  Schwellenwerte von 6 und 9 Stunden sowie filialübergreifende Arbeitsblöcke ab.
 - Eine Frühschicht von 08:00 bis 16:30 Uhr bleibt am gewählten Kalendertag. Eine Spätschicht von 16:30 bis 01:00 Uhr endet am
   Folgetag. Änderungen am ursprünglichen Schichtmodell verändern die im Monatsplan gespeicherte
   Schichtmodell-Momentaufnahme nicht.

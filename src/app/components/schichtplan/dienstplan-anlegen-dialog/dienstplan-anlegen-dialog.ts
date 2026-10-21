@@ -15,13 +15,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
-import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
+import {
+  ISchichtrastermodellBestand,
+  TPlanungsart,
+} from '../../../commons/models/domain/schichtmodell';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 
 export type TDienstplanAnlegenDialogDaten = {
   readonly pfad: IFilialPfad;
   readonly monat: string;
-  readonly schichtmodelle: readonly ISchichtmodellBestand[];
+  readonly schichtmodelle: readonly ISchichtrastermodellBestand[];
 };
 
 @Component({
@@ -47,6 +50,10 @@ export class DienstplanAnlegenDialog {
   // ===== Öffentliche Werte ====================
 
   readonly dienstplanForm = new FormGroup({
+    planungsart: new FormControl<TPlanungsart>('schichtraster', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
     schichtmodellId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   readonly error = signal<string | null>(null);
@@ -68,6 +75,10 @@ export class DienstplanAnlegenDialog {
    */
   async saveDienstplan(): Promise<void> {
     if (this.dienstplanStore.inProgress() || this.dienstplanForm.invalid) return;
+    if (this.dienstplanForm.controls.planungsart.value !== 'schichtraster') {
+      this.error.set('Die gewählte Planungsart ist noch nicht verfügbar.');
+      return;
+    }
     const schichtmodellId = this.dienstplanForm.controls.schichtmodellId.value;
     const schichtmodell = this.daten.schichtmodelle.find((bestand) => {
       return bestand.schichtmodell.id === schichtmodellId;

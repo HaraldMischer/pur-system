@@ -7,23 +7,29 @@ import { Timestamp } from 'firebase/firestore';
 export interface ISchichtZeitdaten {
   beginn: Timestamp;
   ende: Timestamp;
-  pauseMinuten: number;
 }
 
-export interface ISchichtAnlage extends ISchichtZeitdaten {
+export interface ISchichtAnlage {
+  datum: string;
   mitarbeiterId: string;
   modellschichtId: string;
 }
 
 export interface ISchichtAktualisierung extends ISchichtAnlage {}
 
-export interface ISchichtEintrag extends ISchichtDokument {
+export interface ISchichtDaten extends ISchichtAnlage, ISchichtZeitdaten {}
+
+export interface ISchichtEintrag extends ISchichtDaten {
   id: string;
   dienstplanId: string;
   versionId: string;
   unternehmerId: string;
   firmaId: string;
   filialeId: string;
+  erstelltAm?: Timestamp;
+  erstelltVonUid: string;
+  aktualisiertAm?: Timestamp;
+  aktualisiertVonUid: string;
 }
 
 export interface ISchichtSchreibergebnis {
@@ -33,7 +39,10 @@ export interface ISchichtSchreibergebnis {
 
 // ===== Firestore-Dokumente ==================
 
-export interface ISchichtDokument extends ISchichtAnlage {
+export interface ISchichtDokument extends ISchichtZeitdaten {
+  datum: string;
+  mitarbeiterId: string;
+  modellschichtId: string;
   erstelltAm?: Timestamp;
   erstelltVonUid: string;
   aktualisiertAm?: Timestamp;

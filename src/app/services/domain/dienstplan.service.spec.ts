@@ -5,9 +5,10 @@ import { Timestamp } from 'firebase/firestore';
 
 import { IDienstplanVersionDokument } from '../../commons/models/domain/dienstplan';
 import { ISchichtAnlage, ISchichtEintrag } from '../../commons/models/domain/schicht';
-import { ISchichtmodellBestand } from '../../commons/models/domain/schichtmodell';
+import { ISchichtrastermodellBestand } from '../../commons/models/domain/schichtmodell';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { DienstplanService } from './dienstplan.service';
+import { FilialeinstellungService, IFilialeinstellungBestand } from './filialeinstellung.service';
 
 describe('DienstplanService', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
@@ -19,6 +20,7 @@ describe('DienstplanService', () => {
   const createServerTimestampMock = vi.fn();
   const updateDocumentsAtomicallyMock = vi.fn();
   const executeDocumentTransactionMock = vi.fn();
+  const loadFilialeinstellungMock = vi.fn();
   const firestoreDbServiceMock = {
     loadDocument: loadDocumentMock,
     loadCollection: loadCollectionMock,
@@ -27,13 +29,20 @@ describe('DienstplanService', () => {
     updateDocumentsAtomically: updateDocumentsAtomicallyMock,
     executeDocumentTransaction: executeDocumentTransactionMock,
   };
+  const filialeinstellungServiceMock = {
+    loadFilialeinstellung: loadFilialeinstellungMock,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     loadDocumentMock.mockImplementation(async (path: string) => {
-      return path.endsWith('/modellschicht/frueh')
-        ? { id: 'frueh', daten: createModellschichtDaten() }
-        : null;
+      if (path.endsWith('/modellschicht/frueh')) {
+        return { id: 'frueh', daten: createModellschichtDaten() };
+      }
+      if (path.endsWith('/dienstplan/2026-10')) {
+        return { id: '2026-10', daten: createDienstplanDokument() };
+      }
+      return null;
     });
     loadCollectionMock.mockResolvedValue([]);
     createDocumentIdMock.mockReturnValue('neu-1');
@@ -49,16 +58,19 @@ describe('DienstplanService', () => {
         ).ergebnis;
       },
     );
+    loadFilialeinstellungMock.mockResolvedValue(createFilialeinstellungen());
 
     TestBed.configureTestingModule({
       providers: [
         DienstplanService,
         { provide: FirestoreDbService, useValue: firestoreDbServiceMock },
+        { provide: FilialeinstellungService, useValue: filialeinstellungServiceMock },
       ],
     });
   });
 
   it('should return an empty monthly result for a missing service plan', async () => {
+    loadDocumentMock.mockResolvedValue(null);
     const service = TestBed.inject(DienstplanService);
 
     await expect(service.loadDienstplanMonat(monatsPfad, false)).resolves.toEqual({
@@ -70,6 +82,18 @@ describe('DienstplanService', () => {
     expect(loadDocumentMock).toHaveBeenCalledWith(
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10',
       'networkOnly',
+    );
+  });
+
+  it('should reject a monthly plan with an unsupported planning type', async () => {
+    loadDocumentMock.mockResolvedValue({
+      id: '2026-10',
+      daten: createDienstplanDokument({ planungsart: 'schichtbausteine' }),
+    });
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(service.loadDienstplanMonat(monatsPfad, false)).rejects.toThrow(
+      'Die Planungsart des Dienstplans wird noch nicht unterstützt.',
     );
   });
 
@@ -162,8 +186,14 @@ describe('DienstplanService', () => {
         entwurfVersionId: 'neu-1',
         schichtmodellId: 'modell-1',
         schichtmodellBezeichnung: 'Sommer',
+        planungsart: 'schichtraster',
+        kalendertage: expect.arrayContaining([
+          expect.objectContaining({ datum: '2024-02-01', wochentag: 'donnerstag' }),
+        ]),
       }),
     );
+    expect(ergebnis.dienstplan.kalendertage).toHaveLength(29);
+    expect(loadFilialeinstellungMock).toHaveBeenCalledWith(pfad, 'networkOnly');
     expect(ergebnis.version).toEqual(
       expect.objectContaining({ id: 'neu-1', nummer: 1, revision: 0, status: 'entwurf' }),
     );
@@ -186,10 +216,30 @@ describe('DienstplanService', () => {
     ]);
   });
 
+  it('should reject plan creation when branch settings are missing', async () => {
+    loadFilialeinstellungMock.mockResolvedValue(null);
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(
+      service.createDienstplan(pfad, '2026-10', createSchichtmodell(), 'uid-1'),
+    ).rejects.toThrow('weil die Filialeinstellungen fehlen');
+    expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
+  });
+
   it('should reject inactive, empty and foreign models before writing', async () => {
     const service = TestBed.inject(DienstplanService);
     const schichtmodell = createSchichtmodell();
+    const nichtUnterstuetztesSchichtmodell = {
+      ...schichtmodell,
+      schichtmodell: {
+        ...schichtmodell.schichtmodell,
+        planungsart: 'schichtbausteine',
+      },
+    } as unknown as ISchichtrastermodellBestand;
 
+    await expect(
+      service.createDienstplan(pfad, '2026-10', nichtUnterstuetztesSchichtmodell, 'uid-1'),
+    ).rejects.toThrow('Die Planungsart des Dienstplans wird noch nicht unterstützt.');
     await expect(
       service.createDienstplan(
         pfad,
@@ -326,9 +376,13 @@ describe('DienstplanService', () => {
   });
 
   it('should allow another employee when the model shift permits multiple occupancy', async () => {
-    loadDocumentMock.mockResolvedValue({
-      id: 'frueh',
-      daten: { ...createModellschichtDaten(), mehrfachbelegungErlaubt: true },
+    loadDocumentMock.mockImplementation(async (path: string) => {
+      return path.endsWith('/modellschicht/frueh')
+        ? {
+            id: 'frueh',
+            daten: { ...createModellschichtDaten(), mehrfachbelegungErlaubt: true },
+          }
+        : { id: '2026-10', daten: createDienstplanDokument() };
     });
     loadCollectionMock.mockResolvedValue([
       { id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') },
@@ -364,10 +418,65 @@ describe('DienstplanService', () => {
       zeitzone: 'Europe/Berlin',
       schichtmodellId: 'modell-1',
       schichtmodellBezeichnung: 'Sommer',
+      planungsart: 'schichtraster',
       naechsteVersionsnummer: 2,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
+      kalendertage: [
+        {
+          datum: '2026-10-05',
+          wochentag: 'montag',
+          istSonntag: false,
+          aktiveSondertage: [],
+          oeffnungsregelQuelle: 'wochentag',
+          oeffnungsregel: {
+            geoeffnet: true,
+            beginnLokalzeit: '08:00',
+            endeLokalzeit: '18:00',
+            endetAmFolgetag: false,
+          },
+          rasterzeiten: [
+            {
+              modellschichtId: 'frueh',
+              beginnLokalzeit: '07:00',
+              endeLokalzeit: '12:00',
+              endetAmFolgetag: false,
+            },
+          ],
+        },
+      ],
       ...overrides,
+    };
+  }
+
+  function createFilialeinstellungen(): IFilialeinstellungBestand {
+    const wochenregel = {
+      geoeffnet: true as const,
+      beginnLokalzeit: '08:00',
+      endeLokalzeit: '18:00',
+      endetAmFolgetag: false,
+    };
+    return {
+      allgemein: {
+        bundesland: 'DE-NW',
+        erstelltVonUid: 'uid-1',
+        aktualisiertVonUid: 'uid-1',
+      },
+      oeffnungszeiten: {
+        wochenregeln: {
+          montag: wochenregel,
+          dienstag: wochenregel,
+          mittwoch: wochenregel,
+          donnerstag: wochenregel,
+          freitag: wochenregel,
+          samstag: wochenregel,
+          sonntag: { geoeffnet: false },
+        },
+        erstelltVonUid: 'uid-1',
+        aktualisiertVonUid: 'uid-1',
+      },
+      sondertage: [],
+      ausnahmen: [],
     };
   }
 
@@ -386,11 +495,9 @@ describe('DienstplanService', () => {
 
   function createSchichtAnlage(): ISchichtAnlage {
     return {
+      datum: '2026-10-05',
       mitarbeiterId: 'm-1',
       modellschichtId: 'frueh',
-      beginn: Timestamp.fromDate(new Date('2026-10-05T08:00:00+02:00')),
-      ende: Timestamp.fromDate(new Date('2026-10-05T16:00:00+02:00')),
-      pauseMinuten: 30,
     };
   }
 
@@ -398,6 +505,7 @@ describe('DienstplanService', () => {
     return {
       ...createSchichtAnlage(),
       beginn: Timestamp.fromDate(new Date(`${beginn}:00+02:00`)),
+      ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     };
@@ -406,6 +514,8 @@ describe('DienstplanService', () => {
   function createSchichtEintrag(): ISchichtEintrag {
     return {
       ...createSchichtAnlage(),
+      beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+      ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
       ...versionsPfad,
       id: 's-1',
       erstelltVonUid: 'uid-1',
@@ -419,7 +529,6 @@ describe('DienstplanService', () => {
       beginnLokalzeit: '07:00',
       endeLokalzeit: '12:00',
       endetAmFolgetag: false,
-      standardpauseMinuten: 0,
       mehrfachbelegungErlaubt: false,
     };
   }
@@ -428,13 +537,15 @@ describe('DienstplanService', () => {
     id = 'modell-1',
     bezeichnung = 'Sommer',
     modellschichtId = 'frueh',
-  ): ISchichtmodellBestand {
+  ): ISchichtrastermodellBestand {
     return {
       schichtmodell: {
         ...pfad,
         id,
         bezeichnung,
         aktiv: true,
+        planungsart: 'schichtraster',
+        besondereRasterzeiten: [],
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },

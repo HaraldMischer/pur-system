@@ -536,6 +536,11 @@ Die Dienst- und Schichtplanung ist als filialbezogene, versionierte Monatsplanun
 Schichtmodell-Momentaufnahme und firmenweiter Konfliktprüfung konzipiert. Berechtigte Planer bearbeiten Entwürfe;
 Mitarbeiterzugänge lesen ausschließlich veröffentlichte Stände.
 
+Schichtmodelle und Monatsdienstpläne besitzen eine verpflichtende Planungsart. Die erste Ausbaustufe verwendet automatisch
+`schichtraster`; eine Auswahl ist erst erforderlich, wenn mit `schichtbausteine` eine zweite Planungsart vollständig umgesetzt
+ist. Ein Monatsplan übernimmt die Planungsart des gewählten Modells und behält sie unveränderlich bei. Modelle verschiedener
+Planungsarten werden fachlich getrennt und nicht mit derselben Planungslogik verarbeitet.
+
 Filialbezogene Konfiguration wird unterhalb der jeweiligen Filiale in einer eigenen Collection `einstellung` geführt. Das
 Dokument `allgemein` enthält das Bundesland. Das Dokument `oeffnungszeiten` enthält die regelmäßigen
 Wochenregeln. Eine geöffnete Regel beschreibt genau einen durchgehenden lokalen Zeitraum mit Beginn, Ende und der Angabe, ob
@@ -551,9 +556,36 @@ Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Technisch unte
 feste Daten von zentral berechneten gesetzlichen Feiertagen. Die wirksame
 Öffnungsregel wird weiterhin in der Reihenfolge
 `Ausnahme → Sondertag → Wochentag` bestimmt. Öffnungszeiten beschreiben den Kundenbetrieb und bleiben von den Arbeitszeiten
-der Schichtmodelle getrennt. Beim Anlegen eines Monatsdienstplans werden Tagestyp, Sondertags-ID und -Bezeichnung sowie die für
-seine Kalendertage aufgelösten Öffnungsregeln als unveränderliche Momentaufnahme übernommen. Sie begrenzen
-Mitarbeiterschichten nicht automatisch.
+der Schichtmodelle getrennt. Beim Anlegen eines Monatsdienstplans werden Wochentag, Kalendereigenschaften, Sondertags-ID und
+-Bezeichnung sowie die für seine Kalendertage aufgelösten Öffnungsregeln als unveränderliche Momentaufnahme übernommen. Sie
+begrenzen Mitarbeiterschichten nicht automatisch.
+
+Die Modellschichten eines Schichtmodells bilden ein festes Raster für alle Kalendertage. IDs, Bezeichnungen, Reihenfolge und
+Mehrfachbelegung bleiben an Werktagen, Sonntagen, Feiertagen und sonstigen Sondertagen identisch. Ein Modell mit Früh-, Mittel-
+und Spätschicht bleibt durchgehend dreispaltig; ein Modell mit Früh- und Spätschicht bleibt durchgehend zweispaltig.
+
+Jeder Feiertag und Sondertag mit aktiver abweichender Öffnungsregel kann im jeweiligen Schichtmodell optional abweichende
+Beginn- und Endzeiten für die vorhandenen Rasterplätze erhalten. Eine Zeitüberschreibung fügt keine Modellschicht hinzu,
+entfernt keine und ändert ihre Reihenfolge nicht. Nicht überschriebene Rasterplätze verwenden ihre regulären Modellzeiten. Die
+Öffnungszeiten werden als Anhaltspunkt angezeigt, begrenzen die Schichtzeiten aber nicht und erzeugen keine Mitarbeiterschichten
+automatisch. Sie passen die Rasterzeiten ebenfalls nicht automatisch an. Für den Schichtbetrieb werden keine zusätzlichen
+Tag-Start- oder Tag-Stopp-Zeiten gepflegt. Benötigte Abweichungen werden ausschließlich über Beginn und Ende der vorhandenen
+Rasterplätze festgelegt und dürfen für Vor- oder Nachbereitungsarbeiten außerhalb der Kundenöffnungszeiten liegen. Wird die
+besondere Öffnungsregel deaktiviert, bleiben hinterlegte Rasterzeiten erhalten, werden aber für neue Monatspläne nicht
+verwendet. Eine unabhängige Zeitabweichung bei unveränderter Öffnungsregel ist nicht Teil der ersten Ausbaustufe.
+
+Pausen werden nicht als feste Eigenschaft einer Modellschicht oder einzelnen konkreten Schicht behandelt. Alle relevanten
+Schichten eines Mitarbeiters mit demselben Dienstplandatum werden filialübergreifend zu Arbeitsblöcken gruppiert. Direkt
+aufeinanderfolgende Schichten und Unterbrechungen unter 30 Minuten bilden einen gemeinsamen Block; eine Unterbrechung ab
+30 Minuten trennt die Blöcke. Die Arbeitsdauer ist die Summe der enthaltenen Schichtdauern ohne dazwischenliegende Lücken. Bis
+einschließlich 6 Stunden beträgt die bezahlte Pause 0 Minuten, bei mehr als 6 bis einschließlich 9 Stunden 30 Minuten und bei
+mehr als 9 Stunden 45 Minuten. Die Pause bleibt ein Gesamtwert des Arbeitsblocks und wird nicht auf einzelne Rasterplätze
+verteilt.
+
+Die kalendarischen Eigenschaften als Sonntag, gesetzlicher Feiertag oder sonstiger Sondertag bleiben unabhängig von der
+wirksamen Öffnungsregel und den Rasterzeiten in der Monatsplan-Momentaufnahme erkennbar. Nacht-, Sonntags- und
+Feiertagszuschläge werden in der ersten Ausbaustufe nicht berechnet und später anhand der tatsächlichen Schichtzeiten und
+Kalendereigenschaften fachlich geplant.
 
 Gesetzliche Feiertage werden ohne externe Laufzeitabhängigkeit aus einem zentralen Katalog nach Jahr und Bundesland berechnet.
 Lokal oder kommunal begrenzte Feiertage werden nicht allein aus dem Bundesland abgeleitet. Initiale gesetzliche Feiertage sowie
@@ -562,6 +594,22 @@ gemeinsame Feiertage einschließlich ihrer angepassten Öffnungsregel erhalten; 
 geltende inaktiv ergänzt. Mehrere aktive Sondertage für dasselbe Datum bilden einen Konfigurationsfehler, sofern keine konkrete
 Datumsausnahme die Kollision bewusst überschreibt. Eine über Mitternacht reichende Öffnungsregel gehört vollständig zu ihrem
 Startdatum. Der Aktivstatus einer Feiertagsregel beeinflusst nicht die kalendarische Eigenschaft als gesetzlicher Feiertag.
+
+Direkte Kollisionen jährlich fester aktiver Sondertage werden bereits beim Speichern oder Aktivieren verhindert.
+Jahresabhängige Kollisionen mit beweglichen Feiertagen werden spätestens bei der Auflösung des konkreten Monats gemeldet. Ohne
+vollständige und fachlich gültige Filialeinstellungen oder bei einer nicht durch eine Datumsausnahme aufgelösten Kollision kann
+kein Monatsdienstplan angelegt werden.
+
+Jeder Monatsdienstplan speichert für seine höchstens 31 Kalendertage eine vollständig aufgelöste Tagesmomentaufnahme mit
+Datum, Wochentag, wirksamer Öffnungsregel, Quelle, vorhandenen Quell-IDs und Bezeichnungen sowie unabhängigen
+Kalendereigenschaften. Hinzu kommen je stabilem Rasterplatz dessen für diesen Tag wirksame Beginn- und Endzeit. Eine einmalige
+Datumsausnahme kann diese Zeiten ausschließlich im betroffenen Monatsdienstplan überschreiben, aber keine Rasterplätze
+hinzufügen, entfernen oder umsortieren. Spätere Änderungen an Filialeinstellungen, Feiertagsregeln oder Schichtmodellen
+verändern vorhandene Tagesmomentaufnahmen nicht.
+
+Die Tagesmomentaufnahmen werden als auf höchstens 31 Einträge begrenzte Liste `kalendertage` direkt im Monatsdienstplandokument
+gespeichert. Dienstplan und Kalendertage werden dadurch atomar angelegt und gemeinsam ohne zusätzliche Dokumentlesevorgänge
+geladen. Die feste Monatsbegrenzung verhindert ein unkontrolliertes Wachstum des Dokuments.
 
 Ein fachlicher Service lädt und schreibt den vollständigen Einstellungsbestand ausschließlich im konkreten Filialpfad. Ein
 Store hält Firestore-Rohdaten, validierte Bestände sowie Lade-, Schreib- und Fehlerzustände je Filiale getrennt und bietet die

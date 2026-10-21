@@ -2,8 +2,9 @@
 
 import { Timestamp } from 'firebase/firestore';
 
+import type { IDienstplanKalendertag } from './dienstplan-kalendertag';
 import type { ISchichtEintrag } from './schicht';
-import type { IModellschichtMomentaufnahmeEintrag } from './schichtmodell';
+import type { IModellschichtMomentaufnahmeEintrag, TPlanungsart } from './schichtmodell';
 
 export type TDienstplanVersionStatus = 'entwurf' | 'veroeffentlicht' | 'archiviert';
 
@@ -12,6 +13,7 @@ export type TDienstplanVersionStatus = 'entwurf' | 'veroeffentlicht' | 'archivie
 export interface IDienstplanSchichtmodellReferenz {
   schichtmodellId: string;
   schichtmodellBezeichnung: string;
+  planungsart: TPlanungsart;
 }
 
 export interface IDienstplanAnlage {
@@ -21,6 +23,7 @@ export interface IDienstplanAnlage {
 }
 
 export interface IDienstplanEintrag extends IDienstplanDokument {
+  kalendertage: readonly IDienstplanKalendertag[];
   id: string;
   unternehmerId: string;
   firmaId: string;
@@ -51,6 +54,7 @@ export interface IDienstplanAnlageErgebnis {
 // ===== Firestore-Dokumente ==================
 
 export interface IDienstplanDokument extends IDienstplanAnlage, IDienstplanSchichtmodellReferenz {
+  kalendertage: readonly IDienstplanKalendertag[];
   entwurfVersionId?: string;
   veroeffentlichteVersionId?: string;
   naechsteVersionsnummer: number;

@@ -8,11 +8,22 @@
         matButton="filled"
         type="button"
         [disabled]="schichtmodellStore.inProgress() || kontext()?.isLoaded !== true"
-        (click)="openSchichtmodellDialog()"
+        [matMenuTriggerFor]="planungsartMenu"
       >
         <mat-icon>add</mat-icon>
         Modell anlegen
+        <mat-icon>arrow_drop_down</mat-icon>
       </button>
+      <mat-menu #planungsartMenu="matMenu">
+        <button mat-menu-item type="button" (click)="openSchichtrastermodellDialog()">
+          <mat-icon>grid_view</mat-icon>
+          <span>Schichtraster</span>
+        </button>
+        <button mat-menu-item type="button" disabled>
+          <mat-icon>view_agenda</mat-icon>
+          <span>Schichtbausteine · noch nicht verfügbar</span>
+        </button>
+      </mat-menu>
     </div>
   </header>
 
@@ -59,7 +70,7 @@
                 matButton
                 type="button"
                 [disabled]="schichtmodellStore.inProgress()"
-                (click)="openSchichtmodellDialog(bestand)"
+                (click)="openSchichtrastermodellDialog(bestand)"
               >
                 Bearbeiten
               </button>

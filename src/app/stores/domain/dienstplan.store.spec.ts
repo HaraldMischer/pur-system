@@ -6,7 +6,7 @@ import { Timestamp } from 'firebase/firestore';
 
 import { IDienstplanBestand } from '../../commons/models/domain/dienstplan';
 import { ISchichtAnlage } from '../../commons/models/domain/schicht';
-import { ISchichtmodellBestand } from '../../commons/models/domain/schichtmodell';
+import { ISchichtrastermodellBestand } from '../../commons/models/domain/schichtmodell';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { DienstplanService } from '../../services/domain/dienstplan.service';
@@ -58,7 +58,7 @@ describe('DienstplanStore', () => {
     });
     updateSchichtMock.mockImplementation(async (_pfad, schicht) => {
       return {
-        schicht: { ...schicht, pauseMinuten: 45, aktualisiertVonUid: 'uid-1' },
+        schicht: { ...schicht, aktualisiertVonUid: 'uid-1' },
         versionRevision: 3,
       };
     });
@@ -112,9 +112,7 @@ describe('DienstplanStore', () => {
     expect(store.isLoaded()).toBe(true);
     expect(store.download()).toBe(false);
     expect(debugLogServiceMock.logDatenflussTitel).toHaveBeenCalledWith('3. FILIALDATEN ');
-    expect(debugLogServiceMock.logDatenGeladen.mock.calls).toEqual([
-      ['Dienstpläne | Halle 1', 1],
-    ]);
+    expect(debugLogServiceMock.logDatenGeladen.mock.calls).toEqual([['Dienstpläne | Halle 1', 1]]);
   });
 
   it('should log the branch data header only once per session', async () => {
@@ -235,7 +233,7 @@ describe('DienstplanStore', () => {
     const schichtmodell = createSchichtmodell();
     await store.createDienstplan(pfad, '2026-10', schichtmodell);
 
-    expect(createDienstplanMock).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell, 'uid-1');
+    expect(createDienstplanMock).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell, 'uid-1', []);
     expect(store.getDienstplanKontext(pfad)?.dienstplaene).toEqual([
       expect.objectContaining({ id: '2026-10' }),
     ]);
@@ -254,7 +252,7 @@ describe('DienstplanStore', () => {
     expect(createSchichtMock).toHaveBeenCalledWith(versionsPfad, 2, anlage, 'uid-1');
     expect(store.getDienstplanKontext(pfad)?.versionen[0].revision).toBe(3);
 
-    const aktualisierung = { ...anlage, pauseMinuten: 45 };
+    const aktualisierung = { ...anlage, mitarbeiterId: 'm-2' };
     await store.updateSchicht(versionsPfad, 's-1', aktualisierung);
     expect(updateSchichtMock).toHaveBeenCalledWith(
       versionsPfad,
@@ -340,12 +338,14 @@ describe('DienstplanStore', () => {
       dienstplaene: [
         {
           ...pfad,
+          kalendertage: [],
           id: '2026-10',
           zeitraumStart: '2026-10-01',
           zeitraumEnde: '2026-10-31',
           zeitzone: 'Europe/Berlin',
           schichtmodellId: 'modell-1',
           schichtmodellBezeichnung: 'Sommer',
+          planungsart: 'schichtraster',
           entwurfVersionId: 'v-1',
           naechsteVersionsnummer: 2,
           erstelltVonUid: 'uid-1',
@@ -367,6 +367,8 @@ describe('DienstplanStore', () => {
         {
           ...versionsPfad,
           ...createSchichtAnlage(),
+          beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+          ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
           id: 's-1',
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
@@ -381,20 +383,24 @@ describe('DienstplanStore', () => {
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,
-          standardpauseMinuten: 0,
           mehrfachbelegungErlaubt: false,
         },
       ],
     };
   }
 
-  function createSchichtmodell(id = 'modell-1', bezeichnung = 'Sommer'): ISchichtmodellBestand {
+  function createSchichtmodell(
+    id = 'modell-1',
+    bezeichnung = 'Sommer',
+  ): ISchichtrastermodellBestand {
     return {
       schichtmodell: {
         ...pfad,
         id,
         bezeichnung,
         aktiv: true,
+        planungsart: 'schichtraster',
+        besondereRasterzeiten: [],
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },
@@ -407,7 +413,6 @@ describe('DienstplanStore', () => {
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,
-          standardpauseMinuten: 0,
           mehrfachbelegungErlaubt: false,
         },
       ],
@@ -416,11 +421,9 @@ describe('DienstplanStore', () => {
 
   function createSchichtAnlage(): ISchichtAnlage {
     return {
+      datum: '2026-10-05',
       mitarbeiterId: 'm-1',
       modellschichtId: 'frueh',
-      beginn: Timestamp.fromDate(new Date('2026-10-05T08:00:00+02:00')),
-      ende: Timestamp.fromDate(new Date('2026-10-05T16:00:00+02:00')),
-      pauseMinuten: 30,
     };
   }
 });

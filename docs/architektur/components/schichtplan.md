@@ -53,18 +53,20 @@ mehrfach belegbare Modellschicht dargestellt werden. Auch bei einer Mehrfachbele
 eigene konkrete Schicht.
 
 Jede Schicht löst Anzeigename und optionale `farbkennung` über die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf
-und zeigt Zeitspanne, Pause und Lohnzeit. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher
-Ersatztext.
+und zeigt Zeitspanne und Lohnzeit. Die Pause wird nicht mehr einer einzelnen Schicht zugeordnet. Für eine nicht mehr auflösbare
+Mitarbeiter-ID erscheint ein verständlicher Ersatztext.
 Schreibaktionen werden nur für eine bearbeitbare Entwurfsversion angeboten. Dann ist jede Rasterzelle ein Ablageziel und besitzt
 zusätzlich eine Anlageaktion als Tastatur- und Mobilalternative. Beide Wege verwenden das bereits festgelegte Datum und die
 festgelegte Modellschicht. Eine Ablage ist nur für einen aktiven, der Zielfiliale zugeordneten Mitarbeiter zulässig und wird
 während eines Schreibvorgangs gesperrt. Derselbe Mitarbeiter kann nicht erneut in dieselbe Rasterzelle abgelegt werden. Bei
 deaktivierter Mehrfachbelegung werden Anlageaktion und Ablageziel nach der ersten Belegung gesperrt.
 
-Nach einer gültigen Ablage legt `DienstplanPlanungsbereich` die Schicht unmittelbar mit den Zeitwerten und der Standardpause
-aus der Modell-Momentaufnahme an. Vor dem Schreiben werden die aktiven Planungsstände aller bereits im Dienstplan-Store
-geladenen Filialkontexte auf zeitliche Überschneidungen geprüft. Diese Prüfung ist eine vorläufige Bedienabsicherung; die
-vollständige, filialübergreifend verbindliche Prüfung über einen firmenweiten Belegungsindex folgt in Todo 21.10. Auf kleinen
+Nach einer gültigen Ablage übergibt `DienstplanPlanungsbereich` Datum, Modellschicht-ID und Mitarbeiter-ID. Die für die
+Bedienprüfung benötigten Zeitwerte liest der Bereich aus der Tagesmomentaufnahme; der Service leitet die zu speichernden
+Zeitstempel unabhängig davon erneut aus derselben Rasterzeit ab. Vor dem Schreiben werden die aktiven Planungsstände aller
+bereits im Dienstplan-Store geladenen Filialkontexte auf zeitliche Überschneidungen geprüft. Diese Prüfung ist eine vorläufige
+Bedienabsicherung; die vollständige, filialübergreifend verbindliche Prüfung über einen firmenweiten Belegungsindex folgt in
+Todo 21.10. Auf kleinen
 Viewports bleibt die Tabelle horizontal scrollbar; die Tagesspalte bleibt beim horizontalen Scrollen sichtbar. Das vertikale
 Scrollen übernimmt der umgebende Dienstplanbereich, damit keine verschachtelten vertikalen Scrollflächen entstehen. Die
 Planungsoberfläche ist vorrangig für Desktop und Tablet vorgesehen; eine eigenständige mobile Dienstplanansicht für Mitarbeiter
@@ -76,15 +78,17 @@ folgt in einem späteren Ausbauschritt.
 Modellbezeichnung am Monatsplan und übernimmt alle geordneten Modellschichten als Momentaufnahme. Plan, erste Entwurfsversion
 und Momentaufnahme entstehen gemeinsam in einem atomaren Schreibvorgang. Soll das Modell eines leeren, noch nie
 veröffentlichten Plans geändert werden, wird der Plan gelöscht und anschließend mit dem gewünschten Modell neu angelegt.
+Vor der Modellwahl zeigt ein verpflichtendes Auswahlfeld die Planungsart. `Schichtraster` ist vorausgewählt und filtert die
+angebotenen Modelle; `Schichtbausteine` ist bis zur Umsetzung sichtbar, aber deaktiviert.
 
-`SchichtBearbeitenDialog` ordnet der bereits gewählten Rasterzelle einen aktiven Mitarbeiter zu. Datum, Modellschicht, Beginn,
-Ende und Standardpause stammen aus der Modell-Momentaufnahme und werden schreibgeschützt angezeigt. Beginn und Ende werden beim
-Speichern aus Datum, lokalen Modellschichtzeiten, Folgetagsangabe und Dienstplan-Zeitzone berechnet. Beim Bearbeiten kann nur die
-Mitarbeiterzuordnung geändert werden; die Rasterzelle und ihre Zeitwerte bleiben unverändert.
+`SchichtBearbeitenDialog` ordnet der bereits gewählten Rasterzelle einen aktiven Mitarbeiter zu. Datum, Modellschicht sowie der
+für diesen Kalendertag wirksame Beginn und das Ende werden schreibgeschützt angezeigt. Der Dialog übergibt keine freien
+Zeitwerte; der Dienstplan-Service berechnet die absoluten Zeitstempel aus der gespeicherten Tagesrasterzeit. Beim Bearbeiten
+kann nur die Mitarbeiterzuordnung geändert werden; die Rasterzelle und ihre Zeitwerte bleiben unverändert.
 
 `SchichtmodellBearbeitenDialog` verwaltet die Bezeichnung und den Aktivstatus eines Schichtmodells sowie eine dynamische Liste
-seiner Modellschichten. Jede Modellschicht besitzt Bezeichnung, Beginn, Ende, abgeleiteten Folgetag,
-schreibgeschützte Dauer, automatisch berechnete Standardpause und die standardmäßig deaktivierte Option `Mehrfachbelegung`.
+seiner Modellschichten. Jede Modellschicht besitzt Bezeichnung, Beginn, Ende, abgeleiteten Folgetag, schreibgeschützte Dauer und
+die standardmäßig deaktivierte Option `Mehrfachbelegung`.
 Mindestens eine Modellschicht bleibt erhalten; weitere können ergänzt und entfernt werden. Die Reihenfolge wird automatisch nach
 der lokalen Beginnzeit bestimmt. Neue Modelle sind immer aktiv, vorhandene Modelle können deaktiviert oder erneut aktiviert
 werden.
@@ -92,6 +96,8 @@ werden.
 Die routbare `SchichtmodellePage` ersetzt in der Navigation die bisherige Vorlagenverwaltung. Sie rendert pro ausgewählter
 Filiale eine `SchichtmodelleFiliale`, die ausschließlich Modelle dieses Filialpfads lädt und bearbeitet. Die
 Monatsanlage, die Rasterdarstellung und das Anlegen einzelner Schichten verwenden ausschließlich die Modell-Momentaufnahme.
+Die Anlageaktion öffnet zunächst ein Planungsart-Menü. Das Schichtraster führt in den vorhandenen Modelldialog;
+`Schichtbausteine` bleibt als angekündigter, deaktivierter Einstieg sichtbar.
 
 ## Beteiligte Dateien
 

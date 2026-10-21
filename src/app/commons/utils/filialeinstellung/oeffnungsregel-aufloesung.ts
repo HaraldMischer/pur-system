@@ -8,11 +8,14 @@ import type {
   TWochenoeffnungszeiten,
   TWochentag,
 } from '../../models/domain/filialeinstellung';
-import { getGesetzlicherFeiertagDatum } from './feiertag';
+import type {
+  IDienstplanGesetzlicherFeiertag,
+  IDienstplanKalenderSondertag,
+  TDienstplanOeffnungsregelQuelle,
+} from '../../models/domain/dienstplan-kalendertag';
+import { getGesetzlicherFeiertagDatum, getGesetzlicherFeiertagKatalogeintrag } from './feiertag';
 
 // ===== Konstanten & Typen ===================
-
-export type TOeffnungsregelQuelle = 'ausnahme' | 'sondertag' | 'wochentag';
 
 export interface IOeffnungsregelAufloesungsanfrage {
   datum: string;
@@ -24,11 +27,13 @@ export interface IOeffnungsregelAufloesungsanfrage {
 export interface IAufgeloesteOeffnungsregel {
   datum: string;
   wochentag: TWochentag;
-  quelle: TOeffnungsregelQuelle;
+  quelle: TDienstplanOeffnungsregelQuelle;
   oeffnungsregel: TOeffnungsregel;
   bezeichnung?: string;
   sondertagId?: string;
   ausnahmeId?: string;
+  gesetzlicherFeiertag?: IDienstplanGesetzlicherFeiertag;
+  aktiveSondertage: readonly IDienstplanKalenderSondertag[];
 }
 
 const WOCHENTAGE: readonly TWochentag[] = [
@@ -58,6 +63,13 @@ export function resolveOeffnungsregel(
 ): IAufgeloesteOeffnungsregel {
   const datumsteile = parseDatum(anfrage.datum);
   const wochentag = getWochentag(datumsteile);
+  const gesetzlicherFeiertag = resolveGesetzlicherFeiertag(anfrage.sondertage, datumsteile);
+  const passendeSondertage = anfrage.sondertage.filter((sondertag) => {
+    return sondertag.aktiv && matchesDatumsregel(sondertag.datumsregel, datumsteile);
+  });
+  const aktiveSondertage = passendeSondertage.map((sondertag) => {
+    return { id: sondertag.id, bezeichnung: sondertag.bezeichnung };
+  });
   const passendeAusnahmen = anfrage.ausnahmen.filter((ausnahme) => {
     return ausnahme.datum === anfrage.datum;
   });
@@ -73,12 +85,11 @@ export function resolveOeffnungsregel(
       ausnahmeId: ausnahme.id,
       bezeichnung: ausnahme.bezeichnung,
       oeffnungsregel: ausnahme.oeffnungsregel,
+      aktiveSondertage,
+      ...(gesetzlicherFeiertag ? { gesetzlicherFeiertag } : {}),
     };
   }
 
-  const passendeSondertage = anfrage.sondertage.filter((sondertag) => {
-    return sondertag.aktiv && matchesDatumsregel(sondertag.datumsregel, datumsteile);
-  });
   if (passendeSondertage.length > 1) {
     const bezeichnungen = passendeSondertage.map((sondertag) => {
       return sondertag.bezeichnung;
@@ -96,6 +107,8 @@ export function resolveOeffnungsregel(
       sondertagId: sondertag.id,
       bezeichnung: sondertag.bezeichnung,
       oeffnungsregel: sondertag.oeffnungsregel,
+      aktiveSondertage,
+      ...(gesetzlicherFeiertag ? { gesetzlicherFeiertag } : {}),
     };
   }
 
@@ -108,6 +121,8 @@ export function resolveOeffnungsregel(
     wochentag,
     quelle: 'wochentag',
     oeffnungsregel: wochenregel,
+    aktiveSondertage,
+    ...(gesetzlicherFeiertag ? { gesetzlicherFeiertag } : {}),
   };
 }
 
@@ -117,6 +132,30 @@ interface IDatumsteile {
   jahr: number;
   monat: number;
   tag: number;
+}
+
+function resolveGesetzlicherFeiertag(
+  sondertage: readonly IFilialeinstellungSondertagEintrag[],
+  datum: IDatumsteile,
+): IDienstplanGesetzlicherFeiertag | undefined {
+  const passendeFeiertage = sondertage.filter((sondertag) => {
+    return (
+      sondertag.datumsregel.typ === 'gesetzlicherFeiertag' &&
+      matchesDatumsregel(sondertag.datumsregel, datum)
+    );
+  });
+  if (passendeFeiertage.length > 1) {
+    throw new Error(`Für ${createDatum(datum)} sind mehrere gesetzliche Feiertage vorhanden.`);
+  }
+  const feiertag = passendeFeiertage[0];
+  if (!feiertag || feiertag.datumsregel.typ !== 'gesetzlicherFeiertag') return undefined;
+  const katalogeintrag = getGesetzlicherFeiertagKatalogeintrag(
+    feiertag.datumsregel.feiertagSchluessel,
+  );
+  return {
+    schluessel: feiertag.datumsregel.feiertagSchluessel,
+    bezeichnung: katalogeintrag.bezeichnung,
+  };
 }
 
 function matchesDatumsregel(datumsregel: TDatumsregel, datum: IDatumsteile): boolean {

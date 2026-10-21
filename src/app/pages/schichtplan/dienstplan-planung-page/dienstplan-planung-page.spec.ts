@@ -180,14 +180,14 @@ describe('DienstplanPlanungPage', () => {
       [
         'b-1',
         createDienstplanKontext('b-1', 'entwurf-b-1', 'veroeffentlicht-b-1', [
-          createSchicht('schicht-1', 'b-1', 'entwurf-b-1', 'm-1', '08:00', '16:00', 30),
-          createSchicht('alte-schicht', 'b-1', 'veroeffentlicht-b-1', 'm-1', '08:00', '12:00', 0),
+          createSchicht('schicht-1', 'b-1', 'entwurf-b-1', 'm-1', '08:00', '16:00'),
+          createSchicht('alte-schicht', 'b-1', 'veroeffentlicht-b-1', 'm-1', '08:00', '12:00'),
         ]),
       ],
       [
         'b-2',
         createDienstplanKontext('b-2', undefined, 'veroeffentlicht-b-2', [
-          createSchicht('schicht-2', 'b-2', 'veroeffentlicht-b-2', 'm-1', '12:00', '17:00', 30),
+          createSchicht('schicht-2', 'b-2', 'veroeffentlicht-b-2', 'm-1', '12:00', '17:00'),
         ]),
       ],
     ]);
@@ -265,6 +265,7 @@ describe('DienstplanPlanungPage', () => {
       filialeId,
       dienstplaene: [
         {
+          kalendertage: [],
           id: '2026-10',
           unternehmerId: 'u-1',
           firmaId: 'f-1',
@@ -274,6 +275,7 @@ describe('DienstplanPlanungPage', () => {
           zeitzone: 'Europe/Berlin',
           schichtmodellId: 'modell-1',
           schichtmodellBezeichnung: 'Standard',
+          planungsart: 'schichtraster',
           naechsteVersionsnummer: 3,
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
@@ -332,7 +334,6 @@ describe('DienstplanPlanungPage', () => {
     mitarbeiterId: string,
     beginn: string,
     ende: string,
-    pauseMinuten: number,
   ): ISchichtEintrag {
     return {
       id,
@@ -341,11 +342,11 @@ describe('DienstplanPlanungPage', () => {
       unternehmerId: 'u-1',
       firmaId: 'f-1',
       filialeId,
+      datum: '2026-10-05',
       mitarbeiterId,
       modellschichtId: 'modellschicht-1',
       beginn: Timestamp.fromDate(new Date(`2026-10-05T${beginn}:00+02:00`)),
       ende: Timestamp.fromDate(new Date(`2026-10-05T${ende}:00+02:00`)),
-      pauseMinuten,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     };

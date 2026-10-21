@@ -3,7 +3,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   effect,
   inject,
   signal,
@@ -30,9 +29,9 @@ import { MatInputModule } from '@angular/material/input';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import {
   IModellschichtSchreibdaten,
-  ISchichtmodellAktualisierung,
-  ISchichtmodellAnlage,
-  ISchichtmodellBestand,
+  ISchichtrastermodellAktualisierung,
+  ISchichtrastermodellAnlage,
+  ISchichtrastermodellBestand,
 } from '../../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
@@ -43,7 +42,7 @@ import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-einga
 
 export type TSchichtmodellBearbeitenDialogDaten = {
   readonly pfad: IFilialPfad;
-  readonly bestand?: ISchichtmodellBestand;
+  readonly bestand?: ISchichtrastermodellBestand;
 };
 
 function zeitfolgeValidator(): ValidatorFn {
@@ -71,12 +70,6 @@ function calculateSchichtdauerMinuten(beginn: string, ende: string): number | nu
   return endeMinuten + (endeMinuten < beginnMinuten ? 24 * 60 : 0) - beginnMinuten;
 }
 
-function calculateStandardpauseMinuten(beginn: string, ende: string): number {
-  const dauerMinuten = calculateSchichtdauerMinuten(beginn, ende);
-  if (dauerMinuten === null || dauerMinuten <= 6 * 60) return 0;
-  return dauerMinuten <= 9 * 60 ? 30 : 45;
-}
-
 @Component({
   selector: 'app-schichtmodell-bearbeiten-dialog',
   imports: [
@@ -97,7 +90,6 @@ export class SchichtmodellBearbeitenDialog {
   // ===== Interne Dependency Injection =========
 
   private readonly dialogRef = inject(MatDialogRef<SchichtmodellBearbeitenDialog, boolean>);
-  private readonly destroyRef = inject(DestroyRef);
   readonly daten = inject<TSchichtmodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly schichtmodellStore = inject(SchichtmodellStore);
 
@@ -236,24 +228,12 @@ export class SchichtmodellBearbeitenDialog {
           nonNullable: true,
           validators: [Validators.required],
         }),
-        standardpauseMinuten: new FormControl(modellschicht?.standardpauseMinuten ?? 0, {
-          nonNullable: true,
-        }),
         mehrfachbelegungErlaubt: new FormControl(modellschicht?.mehrfachbelegungErlaubt ?? false, {
           nonNullable: true,
         }),
       },
       { validators: [zeitfolgeValidator()] },
     );
-    form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      const pause = calculateStandardpauseMinuten(
-        form.controls.beginnLokalzeit.value,
-        form.controls.endeLokalzeit.value,
-      );
-      if (form.controls.standardpauseMinuten.value !== pause) {
-        form.controls.standardpauseMinuten.setValue(pause, { emitEvent: false });
-      }
-    });
     return form;
   }
 
@@ -267,21 +247,21 @@ export class SchichtmodellBearbeitenDialog {
           beginnLokalzeit: wert.beginnLokalzeit,
           endeLokalzeit: wert.endeLokalzeit,
           endetAmFolgetag: wert.endeLokalzeit < wert.beginnLokalzeit,
-          standardpauseMinuten: wert.standardpauseMinuten,
           mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
         };
       })
       .sort(compareModellschichtenNachBeginn);
   }
 
-  private getAnlage(): ISchichtmodellAnlage {
+  private getAnlage(): ISchichtrastermodellAnlage {
     return {
       bezeichnung: this.schichtmodellForm.controls.bezeichnung.value.trim(),
       modellschichten: this.getModellschichten(),
+      besondereRasterzeiten: this.daten.bestand?.schichtmodell.besondereRasterzeiten ?? [],
     };
   }
 
-  private getAktualisierung(): ISchichtmodellAktualisierung {
+  private getAktualisierung(): ISchichtrastermodellAktualisierung {
     return {
       ...this.getAnlage(),
       aktiv: this.schichtmodellForm.controls.aktiv.getRawValue(),

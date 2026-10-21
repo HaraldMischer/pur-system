@@ -18,7 +18,11 @@ import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
-import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
+import {
+  IModellschichtMomentaufnahmeEintrag,
+  ISchichtrastermodellBestand,
+} from '../../../commons/models/domain/schichtmodell';
+import { getDienstplanRasterzeit } from '../../../commons/utils/dienstplan/dienstplan-kalendertage';
 import { createSchichtZeitstempelAusLokalzeiten } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
@@ -285,7 +289,7 @@ export class DienstplanPlanungsbereich {
     try {
       const { beginn, ende } = createSchichtZeitstempelAusLokalzeiten(
         ablage.datum,
-        modellschicht,
+        this.getRasterzeit(ablage.datum, modellschicht),
         dienstplan.zeitzone,
       );
       const hatZeitkonflikt = this.hatGeladenenZeitkonflikt(
@@ -302,11 +306,9 @@ export class DienstplanPlanungsbereich {
       await this.dienstplanStore.createSchicht(
         { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
         {
+          datum: ablage.datum,
           mitarbeiterId: ablage.mitarbeiterId,
           modellschichtId: modellschicht.id,
-          beginn,
-          ende,
-          pauseMinuten: modellschicht.standardpauseMinuten,
         },
       );
     } catch (error) {
@@ -359,18 +361,39 @@ export class DienstplanPlanungsbereich {
       this.aktionsfehler.set('Die Modellschicht wurde im Monatsplan nicht gefunden.');
       return;
     }
+    const datum = schicht?.datum ?? auswahl.datum;
+    let rasterzeit;
+    try {
+      rasterzeit = this.getRasterzeit(datum, modellschicht);
+    } catch (error) {
+      this.aktionsfehler.set(
+        error instanceof Error ? error.message : 'Die Rasterzeit wurde nicht gefunden.',
+      );
+      return;
+    }
 
     this.dialog.open(SchichtBearbeitenDialog, {
       panelClass: ['pur-dialog__panel'],
       data: {
         pfad: { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
         zeitzone: dienstplan.zeitzone,
-        datum: auswahl.datum,
+        datum,
         mitarbeiter: this.mitarbeiter(),
         modellschicht,
+        rasterzeit,
         ...(schicht ? { schicht } : {}),
       },
     });
+  }
+
+  private getRasterzeit(datum: string, modellschicht: IModellschichtMomentaufnahmeEintrag) {
+    const kalendertag = this.dienstplan()?.kalendertage.find((eintrag) => {
+      return eintrag.datum === datum;
+    });
+    if (!kalendertag) {
+      throw new Error('Der Kalendertag wurde im Monatsplan nicht gefunden.');
+    }
+    return getDienstplanRasterzeit(kalendertag, modellschicht.id);
   }
 
   private async loadDienstplan(
@@ -385,7 +408,7 @@ export class DienstplanPlanungsbereich {
     }
   }
 
-  private async loadAktiveSchichtmodelle(): Promise<readonly ISchichtmodellBestand[] | null> {
+  private async loadAktiveSchichtmodelle(): Promise<readonly ISchichtrastermodellBestand[] | null> {
     this.aktionsfehler.set(null);
     try {
       await this.schichtmodellStore.loadSchichtmodelle(this.pfad());

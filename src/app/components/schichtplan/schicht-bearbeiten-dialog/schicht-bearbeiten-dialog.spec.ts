@@ -59,11 +59,9 @@ describe('SchichtBearbeitenDialog', () => {
     expect(createSchicht).toHaveBeenCalledWith(
       dialogDaten.pfad,
       expect.objectContaining({
+        datum: '2026-10-05',
         mitarbeiterId: 'm-1',
         modellschichtId: 'spaet',
-        beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
-        ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
-        pauseMinuten: 30,
       }),
     );
     expect(close).toHaveBeenCalledWith(true);
@@ -102,11 +100,9 @@ describe('SchichtBearbeitenDialog', () => {
       dialogDaten.pfad,
       's-1',
       expect.objectContaining({
+        datum: '2026-10-05',
         mitarbeiterId: 'm-2',
         modellschichtId: 'spaet',
-        beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
-        ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
-        pauseMinuten: 30,
       }),
     );
   });
@@ -142,11 +138,14 @@ describe('SchichtBearbeitenDialog', () => {
     expect(fixture.componentInstance.schichtForm.disabled).toBe(true);
   });
 
-  it('should show an error for a nonexistent local time', async () => {
+  it('should show a service error for a nonexistent local time', async () => {
+    createSchicht.mockRejectedValueOnce(
+      new Error('Die lokale Uhrzeit existiert in der gewählten Zeitzone nicht.'),
+    );
     dialogDaten = createDialogDaten({
       datum: '2026-03-29',
-      modellschicht: {
-        ...createDialogDaten().modellschicht,
+      rasterzeit: {
+        ...createDialogDaten().rasterzeit,
         beginnLokalzeit: '02:30',
         endeLokalzeit: '03:30',
         endetAmFolgetag: false,
@@ -160,7 +159,7 @@ describe('SchichtBearbeitenDialog', () => {
     fixture.detectChanges();
 
     expect(component.error()).toContain('existiert');
-    expect(createSchicht).not.toHaveBeenCalled();
+    expect(createSchicht).toHaveBeenCalledOnce();
   });
 
   function createDialogDaten(
@@ -187,8 +186,13 @@ describe('SchichtBearbeitenDialog', () => {
         beginnLokalzeit: '16:30',
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
-        standardpauseMinuten: 30,
         mehrfachbelegungErlaubt: false,
+      },
+      rasterzeit: {
+        modellschichtId: 'spaet',
+        beginnLokalzeit: '16:30',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
       },
       ...overrides,
     };
@@ -219,11 +223,11 @@ describe('SchichtBearbeitenDialog', () => {
       unternehmerId: 'u-1',
       firmaId: 'f-1',
       filialeId: 'b-1',
+      datum: '2026-10-05',
       mitarbeiterId: 'm-1',
       modellschichtId: 'spaet',
       beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
       ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
-      pauseMinuten: 30,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
       ...overrides,

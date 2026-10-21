@@ -84,29 +84,11 @@
             />
           </div>
 
-          <div class="pur-form__row">
-            <mat-form-field
-              appearance="outline"
-              class="pur-form__item pur-form__item--field pur-form__item--50"
-            >
-              <mat-label>Schicht</mat-label>
-              <input matInput readonly [value]="getSchichtdauerStunden(index)" />
-              <span matTextSuffix>Std.</span>
-            </mat-form-field>
-            <mat-form-field
-              appearance="outline"
-              class="pur-form__item pur-form__item--field pur-form__item--50"
-            >
-              <mat-label>Pause</mat-label>
-              <input
-                matInput
-                readonly
-                type="number"
-                [formControl]="modellschicht.controls.standardpauseMinuten"
-              />
-              <span matTextSuffix>Min.</span>
-            </mat-form-field>
-          </div>
+          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+            <mat-label>Schicht</mat-label>
+            <input matInput readonly [value]="getSchichtdauerStunden(index)" />
+            <span matTextSuffix>Std.</span>
+          </mat-form-field>
 
           @if (modellschicht.hasError('ungueltigeZeitfolge')) {
             <p class="pur-message pur-message--error pur-message--full" role="alert">

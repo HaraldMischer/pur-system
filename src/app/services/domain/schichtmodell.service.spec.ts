@@ -4,23 +4,23 @@ import { TestBed } from '@angular/core/testing';
 
 import {
   IModellschichtDokument,
-  ISchichtmodellAnlage,
-  ISchichtmodellDokument,
+  ISchichtrastermodellAnlage,
+  ISchichtrastermodellDokument,
 } from '../../commons/models/domain/schichtmodell';
 import { FirestoreDbService } from '../firebase/firestore-db.service';
 import { SchichtmodellService } from './schichtmodell.service';
 
 describe('SchichtmodellService', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
-  const anlage: ISchichtmodellAnlage = {
+  const anlage: ISchichtrastermodellAnlage = {
     bezeichnung: ' Sommer ',
+    besondereRasterzeiten: [],
     modellschichten: [
       {
         bezeichnung: 'Spät',
         beginnLokalzeit: '16:00',
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
-        standardpauseMinuten: 30,
         mehrfachbelegungErlaubt: true,
       },
       {
@@ -28,14 +28,12 @@ describe('SchichtmodellService', () => {
         beginnLokalzeit: '07:00',
         endeLokalzeit: '12:00',
         endetAmFolgetag: false,
-        standardpauseMinuten: 0,
         mehrfachbelegungErlaubt: false,
       },
     ],
   };
   const loadCollection = vi.fn();
   const createDocumentId = vi.fn();
-  const createDeleteField = vi.fn();
   const createServerTimestamp = vi.fn();
   const updateDocumentsAtomically = vi.fn();
   const updateDocument = vi.fn();
@@ -47,7 +45,6 @@ describe('SchichtmodellService', () => {
       .mockReturnValueOnce('modell-1')
       .mockReturnValueOnce('schicht-1')
       .mockReturnValueOnce('schicht-2');
-    createDeleteField.mockReturnValue('feld-loeschen');
     createServerTimestamp.mockReturnValue('server-zeit');
     updateDocumentsAtomically.mockResolvedValue(undefined);
     updateDocument.mockResolvedValue(undefined);
@@ -59,7 +56,6 @@ describe('SchichtmodellService', () => {
           useValue: {
             loadCollection,
             createDocumentId,
-            createDeleteField,
             createServerTimestamp,
             updateDocumentsAtomically,
             updateDocument,
@@ -99,13 +95,35 @@ describe('SchichtmodellService', () => {
     );
   });
 
+  it('should reject a model with an unsupported planning type', async () => {
+    loadCollection.mockResolvedValue([
+      {
+        id: 'flexibel',
+        daten: {
+          ...createSchichtmodellDokument('Flexibel'),
+          planungsart: 'schichtbausteine',
+        },
+      },
+    ]);
+    const service = TestBed.inject(SchichtmodellService);
+
+    await expect(service.loadSchichtmodelle(pfad)).rejects.toThrow(
+      'Die Planungsart des Schichtmodells wird noch nicht unterstützt.',
+    );
+  });
+
   it('should create a model and its normalized chronologically ordered shifts atomically', async () => {
     const service = TestBed.inject(SchichtmodellService);
 
     const ergebnis = await service.createSchichtmodell(pfad, anlage, 'uid-1');
 
     expect(ergebnis.schichtmodell).toEqual(
-      expect.objectContaining({ id: 'modell-1', bezeichnung: 'Sommer', aktiv: true }),
+      expect.objectContaining({
+        id: 'modell-1',
+        bezeichnung: 'Sommer',
+        aktiv: true,
+        planungsart: 'schichtraster',
+      }),
     );
     expect(ergebnis.modellschichten.map((schicht) => schicht.bezeichnung)).toEqual([
       'Früh',
@@ -113,6 +131,10 @@ describe('SchichtmodellService', () => {
     ]);
     expect(updateDocumentsAtomically).toHaveBeenCalledWith(
       expect.arrayContaining([
+        expect.objectContaining({
+          documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1',
+          daten: expect.objectContaining({ planungsart: 'schichtraster' }),
+        }),
         expect.objectContaining({
           documentPath:
             'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1/modellschicht/schicht-2',
@@ -130,6 +152,22 @@ describe('SchichtmodellService', () => {
         ...pfad,
         id: 'modell-1',
         ...createSchichtmodellDokument('Sommer'),
+        besondereRasterzeiten: [
+          {
+            sondertagId: 'heiligabend',
+            modellschichtId: 'alt-1',
+            beginnLokalzeit: '08:00',
+            endeLokalzeit: '11:00',
+            endetAmFolgetag: false,
+          },
+          {
+            sondertagId: 'heiligabend',
+            modellschichtId: 'alt-2',
+            beginnLokalzeit: '11:00',
+            endeLokalzeit: '16:00',
+            endetAmFolgetag: false,
+          },
+        ],
       },
       modellschichten: [
         {
@@ -153,6 +191,7 @@ describe('SchichtmodellService', () => {
       {
         bezeichnung: 'Sommer neu',
         aktiv: false,
+        besondereRasterzeiten: bestand.schichtmodell.besondereRasterzeiten,
         modellschichten: [{ ...anlage.modellschichten[0], id: 'alt-1' }],
       },
       'uid-2',
@@ -161,8 +200,19 @@ describe('SchichtmodellService', () => {
     expect(updateDocumentsAtomically).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
+          documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1',
+          daten: expect.objectContaining({
+            besondereRasterzeiten: [
+              expect.objectContaining({
+                sondertagId: 'heiligabend',
+                modellschichtId: 'alt-1',
+              }),
+            ],
+          }),
+        }),
+        expect.objectContaining({
           documentPath: expect.stringMatching(/\/alt-1$/),
-          daten: expect.objectContaining({ reihenfolge: 'feld-loeschen' }),
+          daten: expect.objectContaining({ bezeichnung: 'Spät' }),
         }),
         {
           documentPath:
@@ -177,7 +227,11 @@ describe('SchichtmodellService', () => {
     const service = TestBed.inject(SchichtmodellService);
 
     await expect(
-      service.createSchichtmodell(pfad, { bezeichnung: 'Leer', modellschichten: [] }, 'uid-1'),
+      service.createSchichtmodell(
+        pfad,
+        { bezeichnung: 'Leer', modellschichten: [], besondereRasterzeiten: [] },
+        'uid-1',
+      ),
     ).rejects.toThrow('mindestens eine Modellschicht');
     await service.deactivateSchichtmodell(pfad, 'modell-1', 'uid-2');
 
@@ -187,7 +241,7 @@ describe('SchichtmodellService', () => {
     );
   });
 
-  it('should reject invalid local times and calculate the standard break itself', async () => {
+  it('should reject invalid local times and normalize valid overnight information', async () => {
     const service = TestBed.inject(SchichtmodellService);
 
     await expect(
@@ -195,6 +249,7 @@ describe('SchichtmodellService', () => {
         pfad,
         {
           bezeichnung: 'Ungültig',
+          besondereRasterzeiten: [],
           modellschichten: [
             { ...anlage.modellschichten[0], beginnLokalzeit: '08:00', endeLokalzeit: '08:00' },
           ],
@@ -207,29 +262,27 @@ describe('SchichtmodellService', () => {
       pfad,
       {
         bezeichnung: 'Sommer',
+        besondereRasterzeiten: [],
         modellschichten: [
           {
             ...anlage.modellschichten[0],
             beginnLokalzeit: '08:00',
             endeLokalzeit: '17:01',
-            standardpauseMinuten: 0,
           },
         ],
       },
       'uid-1',
     );
-    expect(updateDocumentsAtomically).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ daten: expect.objectContaining({ standardpauseMinuten: 45 }) }),
-      ]),
-    );
+    expect(updateDocumentsAtomically).toHaveBeenCalledOnce();
   });
 });
 
-function createSchichtmodellDokument(bezeichnung: string): ISchichtmodellDokument {
+function createSchichtmodellDokument(bezeichnung: string): ISchichtrastermodellDokument {
   return {
     bezeichnung,
     aktiv: true,
+    planungsart: 'schichtraster',
+    besondereRasterzeiten: [],
     erstelltVonUid: 'uid-1',
     aktualisiertVonUid: 'uid-1',
   };
@@ -245,7 +298,6 @@ function createModellschichtDokument(
     beginnLokalzeit,
     endeLokalzeit,
     endetAmFolgetag: endeLokalzeit < beginnLokalzeit,
-    standardpauseMinuten: beginnLokalzeit === '07:00' ? 0 : 30,
     mehrfachbelegungErlaubt: false,
   };
 }

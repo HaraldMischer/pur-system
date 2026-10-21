@@ -9,12 +9,24 @@
     (ngSubmit)="saveDienstplan()"
   >
     <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+      <mat-label>Planungsart</mat-label>
+      <mat-select formControlName="planungsart">
+        <mat-option value="schichtraster">Schichtraster</mat-option>
+        <mat-option value="schichtbausteine" disabled>
+          Schichtbausteine · noch nicht verfügbar
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
       <mat-label>Schichtmodell wählen</mat-label>
       <mat-select formControlName="schichtmodellId">
         @for (bestand of daten.schichtmodelle; track bestand.schichtmodell.id) {
-          <mat-option [value]="bestand.schichtmodell.id">
-            {{ bestand.schichtmodell.bezeichnung }} · {{ bestand.modellschichten.length }} Schichten
-          </mat-option>
+          @if (bestand.schichtmodell.planungsart === dienstplanForm.controls.planungsart.value) {
+            <mat-option [value]="bestand.schichtmodell.id">
+              {{ bestand.schichtmodell.bezeichnung }} ·
+              {{ bestand.modellschichten.length }} Schichten
+            </mat-option>
+          }
         }
       </mat-select>
     </mat-form-field>

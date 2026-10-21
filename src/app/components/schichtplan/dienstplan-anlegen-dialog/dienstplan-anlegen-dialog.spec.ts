@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
+import { ISchichtrastermodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import {
   DienstplanAnlegenDialog,
@@ -49,6 +49,22 @@ describe('DienstplanAnlegenDialog', () => {
   }
 
   it('should require a model before creating the monthly plan', async () => {
+    expect(fixture.componentInstance.dienstplanForm.controls.planungsart.value).toBe(
+      'schichtraster',
+    );
+
+    await fixture.componentInstance.saveDienstplan();
+
+    expect(createDienstplan).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('should reject an unavailable planning type', async () => {
+    fixture.componentInstance.dienstplanForm.setValue({
+      planungsart: 'schichtbausteine',
+      schichtmodellId: 'modell-1',
+    });
+
     await fixture.componentInstance.saveDienstplan();
 
     expect(createDienstplan).not.toHaveBeenCalled();
@@ -64,13 +80,15 @@ describe('DienstplanAnlegenDialog', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
-  function createSchichtmodell(): ISchichtmodellBestand {
+  function createSchichtmodell(): ISchichtrastermodellBestand {
     return {
       schichtmodell: {
         ...pfad,
         id: 'modell-1',
         bezeichnung: 'Sommer',
         aktiv: true,
+        planungsart: 'schichtraster',
+        besondereRasterzeiten: [],
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },
@@ -83,7 +101,6 @@ describe('DienstplanAnlegenDialog', () => {
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
           endetAmFolgetag: false,
-          standardpauseMinuten: 0,
           mehrfachbelegungErlaubt: false,
         },
       ],

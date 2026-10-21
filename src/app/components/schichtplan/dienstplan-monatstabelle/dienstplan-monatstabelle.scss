@@ -31,6 +31,13 @@
   //margin-bottom: 8px;
 }
 
+.rasterzeit {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+}
+
 .schicht {
   display: grid;
   gap: 4px;

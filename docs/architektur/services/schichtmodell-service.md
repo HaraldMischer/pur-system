@@ -15,11 +15,25 @@ Der `SchichtmodellService` verwaltet die Schichtmodelle einer konkreten Filiale.
   Modellschichten im selben atomaren Batch.
 - `deactivateSchichtmodell()` setzt das Modell auf inaktiv. Das Modell und seine Modellschichten bleiben erhalten.
 
-Bezeichnungen werden vor dem Schreiben normalisiert. Der Service prüft die lokale Zeitfolge, leitet Folgetag sowie
-Standardpause nach den verbindlichen Zeitregeln erneut ab und sortiert die Modellschichten chronologisch. Bei gleicher
-Beginnzeit dienen Endzeit, Bezeichnung und ID als stabile Sortiermerkmale. Jede Modellschicht speichert außerdem, ob eine
-Mehrfachbelegung erlaubt ist; für ältere Dokumente ohne dieses Feld wird `false` angenommen. Das frühere Feld `reihenfolge` wird
-nicht mehr geschrieben und beim nächsten Speichern eines vorhandenen Modells entfernt.
+Bezeichnungen werden vor dem Schreiben normalisiert. Der Service prüft die lokale Zeitfolge, leitet den Folgetag erneut ab und
+sortiert die Modellschichten chronologisch. Bei gleicher Beginnzeit dienen Endzeit, Bezeichnung und ID als stabile
+Sortiermerkmale. Jede Modellschicht speichert außerdem verbindlich, ob eine Mehrfachbelegung erlaubt ist.
+
+Jedes Schichtmodell besitzt die verpflichtende `planungsart`. Der Service setzt sie bei neuen Modellen automatisch auf
+`schichtraster` und akzeptiert beim Laden oder Aktualisieren derzeit ausschließlich diesen Wert. Ein fehlender oder noch nicht
+unterstützter Wert wird als fachlich ungültiger Datenbestand abgewiesen. Die spätere Planungsart `schichtbausteine` erhält eine
+eigene Modellstruktur und wird erst mit ihrer fachlichen Umsetzung freigegeben.
+
+Das Domainmodell bildet die Varianten als diskriminierte Union ab. `ISchichtmodellDokumentBasis` enthält nur gemeinsame
+Metadaten. `ISchichtrastermodellDokument` ergänzt die Rasterzeiten, während `ISchichtbausteinmodellDokument` als eigenständige
+Variante vorbereitet ist. `TSchichtmodellDokument` fasst beide Typen zusammen; die aktuelle Service- und UI-API arbeitet
+bewusst ausschließlich mit `ISchichtrastermodellBestand`.
+
+Das Modelldokument kann besondere Rasterzeiten enthalten. Jeder Eintrag verbindet genau eine Sondertags-ID mit einer
+vorhandenen stabilen Modellschicht-ID und abweichenden Beginn- und Endzeiten. Der Service prüft Zeitfolge, Referenz und
+Eindeutigkeit. Beim normalen Bearbeiten und beim Deaktivieren bleiben diese Einträge erhalten; beim Entfernen einer
+Modellschicht werden ihre Zeitüberschreibungen mit entfernt. Besondere Rasterzeiten sind auch dann als leere Liste Bestandteil
+jedes neu angelegten Schichtmodells, wenn keine Abweichungen konfiguriert sind.
 
 ## Beteiligte Dateien
 

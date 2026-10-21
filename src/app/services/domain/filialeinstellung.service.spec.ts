@@ -57,9 +57,11 @@ describe('FilialeinstellungService', () => {
   it('should expose a completely missing configuration as not initialized', async () => {
     const service = TestBed.inject(FilialeinstellungService);
 
-    const rohdaten = await service.loadFilialeinstellungRohdaten(pfad);
-
-    expect(service.validateFilialeinstellungRohdaten(pfad, rohdaten)).toBeNull();
+    await expect(service.loadFilialeinstellung(pfad, 'networkOnly')).resolves.toBeNull();
+    expect(firestoreDbServiceMock.loadDocument).toHaveBeenCalledWith(
+      'unternehmer/u-1/firma/f-1/filiale/b-1/einstellung/allgemein',
+      'networkOnly',
+    );
   });
 
   it('should reject a partially initialized configuration', async () => {

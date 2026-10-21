@@ -9,10 +9,15 @@ import {
   IDienstplanEintrag,
   IDienstplanVersionEintrag,
 } from '../../../commons/models/domain/dienstplan';
+import {
+  IDienstplanKalendertag,
+  IDienstplanRasterzeit,
+} from '../../../commons/models/domain/dienstplan-kalendertag';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
+import { getDienstplanRasterzeit } from '../../../commons/utils/dienstplan/dienstplan-kalendertage';
 import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 
 export type TSchichtplanRasterauswahl = {
@@ -26,6 +31,7 @@ export type TSchichtplanMitarbeiterAblage = TSchichtplanRasterauswahl & {
 
 type TSchichtplanZelle = {
   readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
+  readonly rasterzeit: IDienstplanRasterzeit;
   readonly schichten: readonly ISchichtEintrag[];
   readonly mitarbeiterIds: readonly string[];
 };
@@ -108,7 +114,7 @@ export class DienstplanMonatstabelle {
     return createTage(
       dienstplan.zeitraumStart,
       dienstplan.zeitraumEnde,
-      dienstplan.zeitzone,
+      dienstplan.kalendertage,
       this.geordneteModellschichten(),
       schichten,
     );
@@ -211,18 +217,18 @@ export class DienstplanMonatstabelle {
 function createTage(
   zeitraumStart: string,
   zeitraumEnde: string,
-  zeitzone: string,
+  kalendertage: readonly IDienstplanKalendertag[],
   modellschichten: readonly IModellschichtMomentaufnahmeEintrag[],
   schichten: readonly ISchichtEintrag[],
 ): TSchichtplanTag[] {
   const schichtenNachZelle = new Map<string, ISchichtEintrag[]>();
   for (const schicht of schichten) {
-    const datum = formatIsoDatum(schicht.beginn.toDate(), zeitzone);
-    const schluessel = getZellenschluessel(datum, schicht.modellschichtId);
+    const schluessel = getZellenschluessel(schicht.datum, schicht.modellschichtId);
     schichtenNachZelle.set(schluessel, [...(schichtenNachZelle.get(schluessel) ?? []), schicht]);
   }
 
   const tage: TSchichtplanTag[] = [];
+  const kalendertageNachDatum = new Map(kalendertage.map((eintrag) => [eintrag.datum, eintrag]));
   const datum = new Date(`${zeitraumStart}T12:00:00Z`);
   const ende = new Date(`${zeitraumEnde}T12:00:00Z`);
   while (datum <= ende) {
@@ -236,6 +242,11 @@ function createTage(
         month: '2-digit',
       }).format(datum),
       zellen: modellschichten.map((modellschicht) => {
+        const kalendertag = kalendertageNachDatum.get(isoDatum);
+        if (!kalendertag) {
+          throw new Error('Der Kalendertag wurde im Monatsplan nicht gefunden.');
+        }
+        const rasterzeit = getDienstplanRasterzeit(kalendertag, modellschicht.id);
         const zellenschichten = (
           schichtenNachZelle.get(getZellenschluessel(isoDatum, modellschicht.id)) ?? []
         )
@@ -243,6 +254,7 @@ function createTage(
           .sort((a, b) => a.id.localeCompare(b.id));
         return {
           modellschicht,
+          rasterzeit,
           schichten: zellenschichten,
           mitarbeiterIds: zellenschichten.map((schicht) => schicht.mitarbeiterId),
         };
@@ -255,17 +267,4 @@ function createTage(
 
 function getZellenschluessel(datum: string, modellschichtId: string): string {
   return JSON.stringify([datum, modellschichtId]);
-}
-
-function formatIsoDatum(datum: Date, zeitzone: string): string {
-  const teile = new Intl.DateTimeFormat('de-DE', {
-    timeZone: zeitzone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(datum);
-  const wert = (typ: Intl.DateTimeFormatPartTypes): string => {
-    return teile.find((teil) => teil.type === typ)?.value ?? '';
-  };
-  return `${wert('year')}-${wert('month')}-${wert('day')}`;
 }

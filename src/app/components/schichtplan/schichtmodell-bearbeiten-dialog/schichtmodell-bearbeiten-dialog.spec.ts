@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { ISchichtmodellAnlage } from '../../../commons/models/domain/schichtmodell';
+import { ISchichtrastermodellAnlage } from '../../../commons/models/domain/schichtmodell';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
   SchichtmodellBearbeitenDialog,
@@ -55,10 +55,10 @@ describe('SchichtmodellBearbeitenDialog', () => {
 
     expect(createSchichtmodell).toHaveBeenCalledWith(pfad, {
       bezeichnung: 'Sommer',
+      besondereRasterzeiten: [],
       modellschichten: [
         expect.objectContaining({
           bezeichnung: 'Früh',
-          standardpauseMinuten: 30,
           mehrfachbelegungErlaubt: false,
         }),
       ],
@@ -98,7 +98,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
 
     await component.saveSchichtmodell();
 
-    const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtmodellAnlage;
+    const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtrastermodellAnlage;
     expect(anlage.modellschichten.map(({ bezeichnung }) => bezeichnung)).toEqual(['Früh', 'Spät']);
   });
 
@@ -116,7 +116,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
 
     await component.saveSchichtmodell();
 
-    const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtmodellAnlage;
+    const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtrastermodellAnlage;
     expect(anlage.modellschichten[0].mehrfachbelegungErlaubt).toBe(true);
   });
 
@@ -138,9 +138,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
     expect(createSchichtmodell).toHaveBeenCalledWith(
       pfad,
       expect.objectContaining({
-        modellschichten: [
-          expect.objectContaining({ endetAmFolgetag: true, standardpauseMinuten: 30 }),
-        ],
+        modellschichten: [expect.objectContaining({ endetAmFolgetag: true })],
       }),
     );
   });

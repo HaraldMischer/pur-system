@@ -7,9 +7,9 @@ import { environment } from '../../../environments/environment';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import {
-  ISchichtmodellAktualisierung,
-  ISchichtmodellAnlage,
-  ISchichtmodellBestand,
+  ISchichtrastermodellAktualisierung,
+  ISchichtrastermodellAnlage,
+  ISchichtrastermodellBestand,
 } from '../../commons/models/domain/schichtmodell';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
@@ -19,7 +19,7 @@ import { BenutzerStore } from '../app/benutzer.store';
 // ===== Top-Level Helper =====================
 
 export type TSchichtmodellKontext = IFilialPfad & {
-  readonly schichtmodelle: readonly ISchichtmodellBestand[];
+  readonly schichtmodelle: readonly ISchichtrastermodellBestand[];
   readonly download: boolean;
   readonly isLoaded: boolean;
   readonly error: string | null;
@@ -43,7 +43,10 @@ function createLeerenKontext(pfad: IFilialPfad): TSchichtmodellKontext {
   return { ...pfad, schichtmodelle: [], download: false, isLoaded: false, error: null };
 }
 
-function sortSchichtmodelle(a: ISchichtmodellBestand, b: ISchichtmodellBestand): number {
+function sortSchichtmodelle(
+  a: ISchichtrastermodellBestand,
+  b: ISchichtrastermodellBestand,
+): number {
   return a.schichtmodell.bezeichnung.localeCompare(b.schichtmodell.bezeichnung, 'de');
 }
 
@@ -106,7 +109,7 @@ export const SchichtmodellStore = signalStore(
        */
       async function createSchichtmodell(
         pfad: IFilialPfad,
-        anlage: ISchichtmodellAnlage,
+        anlage: ISchichtrastermodellAnlage,
       ): Promise<void> {
         const kontext = requireSchreibkontext(pfad);
         const benutzerUid = requireBenutzerUid();
@@ -127,7 +130,7 @@ export const SchichtmodellStore = signalStore(
       async function updateSchichtmodell(
         pfad: IFilialPfad,
         schichtmodellId: string,
-        aktualisierung: ISchichtmodellAktualisierung,
+        aktualisierung: ISchichtrastermodellAktualisierung,
       ): Promise<void> {
         const { kontext, bestand } = requireSchichtmodell(pfad, schichtmodellId);
         const benutzerUid = requireBenutzerUid();
@@ -303,7 +306,7 @@ export const SchichtmodellStore = signalStore(
       function requireSchichtmodell(
         pfad: IFilialPfad,
         schichtmodellId: string,
-      ): { kontext: TSchichtmodellKontext; bestand: ISchichtmodellBestand } {
+      ): { kontext: TSchichtmodellKontext; bestand: ISchichtrastermodellBestand } {
         const kontext = requireSchreibkontext(pfad);
         const bestand = kontext.schichtmodelle.find((eintrag) => {
           return eintrag.schichtmodell.id === schichtmodellId;

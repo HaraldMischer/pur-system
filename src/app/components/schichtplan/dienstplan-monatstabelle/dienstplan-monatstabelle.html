@@ -60,6 +60,12 @@
                 [cdkDropListSortingDisabled]="true"
                 (cdkDropListDropped)="handleMitarbeiterDrop($event)"
               >
+                <span class="rasterzeit">
+                  {{ zelle.rasterzeit.beginnLokalzeit }}–{{ zelle.rasterzeit.endeLokalzeit }} Uhr
+                  @if (zelle.rasterzeit.endetAmFolgetag) {
+                    (+1 Tag)
+                  }
+                </span>
                 @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                   <button
                     matButton
@@ -95,7 +101,6 @@
                       {{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}
                     </strong>
                     <span>{{ formatSchichtzeit(schicht) }}</span>
-                    <span>Pause: {{ schicht.pauseMinuten }} Min.</span>
                     <span>Lohnzeit: {{ formatLohnzeit(schicht) }}</span>
                     @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                       <button matButton type="button" (click)="schichtBearbeiten.emit(schicht)">

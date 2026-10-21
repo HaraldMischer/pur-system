@@ -38,6 +38,7 @@ describe('resolveOeffnungsregel', () => {
     ).toEqual({
       datum: '2026-10-19',
       wochentag: 'montag',
+      aktiveSondertage: [],
       quelle: 'wochentag',
       oeffnungsregel: {
         geoeffnet: true,
@@ -109,6 +110,10 @@ describe('resolveOeffnungsregel', () => {
     expect(ergebnis.quelle).toBe('ausnahme');
     expect(ergebnis.ausnahmeId).toBe('2026-12-24');
     expect(ergebnis.bezeichnung).toBe('Sonderöffnung');
+    expect(ergebnis.aktiveSondertage).toEqual([
+      { id: 'heiligabend', bezeichnung: 'Heiligabend' },
+      { id: 'betriebsjubilaeum', bezeichnung: 'Betriebsjubiläum' },
+    ]);
   });
 
   it('should reject multiple active special days on the same date', () => {

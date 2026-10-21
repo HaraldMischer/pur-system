@@ -15,12 +15,13 @@ import {
   IDienstplanEintrag,
   IDienstplanVersionEintrag,
 } from '../../commons/models/domain/dienstplan';
+import { IDienstplanDatumRasterzeiten } from '../../commons/models/domain/dienstplan-kalendertag';
 import {
   ISchichtAktualisierung,
   ISchichtAnlage,
   ISchichtEintrag,
 } from '../../commons/models/domain/schicht';
-import { ISchichtmodellBestand } from '../../commons/models/domain/schichtmodell';
+import { ISchichtrastermodellBestand } from '../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { BenutzerStore } from '../app/benutzer.store';
@@ -227,11 +228,13 @@ export const DienstplanStore = signalStore(
        * @param pfad - Vollständiger Filialpfad.
        * @param monat - Monat im Format `YYYY-MM`.
        * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
+       * @param datumRasterzeiten - Optionale Rasterzeitüberschreibungen einmaliger Datumsausnahmen.
        */
       async function createDienstplan(
         pfad: IFilialPfad,
         monat: string,
-        schichtmodell: ISchichtmodellBestand,
+        schichtmodell: ISchichtrastermodellBestand,
+        datumRasterzeiten: readonly IDienstplanDatumRasterzeiten[] = [],
       ): Promise<void> {
         const kontext = requireSchreibkontext(pfad, monat, false);
         if (kontext.dienstplaene.some((dienstplan) => dienstplan.id === monat)) {
@@ -245,6 +248,7 @@ export const DienstplanStore = signalStore(
             monat,
             schichtmodell,
             benutzerUid,
+            datumRasterzeiten,
           );
           setKontext(pfad, {
             ...kontext,
@@ -719,7 +723,7 @@ function mergeMonatBestand(
   };
 }
 
-function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtmodellBestand): void {
+function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtrastermodellBestand): void {
   const schichtmodell = bestand.schichtmodell;
   if (
     schichtmodell.unternehmerId !== pfad.unternehmerId ||

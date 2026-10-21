@@ -13,10 +13,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
-import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
+import { ISchichtrastermodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
   SchichtmodellBearbeitenDialog,
@@ -25,7 +26,7 @@ import {
 
 @Component({
   selector: 'app-schichtmodelle-filiale',
-  imports: [MatButtonModule, MatCardModule, MatIconModule],
+  imports: [MatButtonModule, MatCardModule, MatIconModule, MatMenuModule],
   templateUrl: './schichtmodelle-filiale.html',
   styleUrl: './schichtmodelle-filiale.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -70,7 +71,7 @@ export class SchichtmodelleFiliale {
    *
    * @param bestand - Optional ausgewählter Modellbestand.
    */
-  openSchichtmodellDialog(bestand?: ISchichtmodellBestand): void {
+  openSchichtrastermodellDialog(bestand?: ISchichtrastermodellBestand): void {
     const daten: TSchichtmodellBearbeitenDialogDaten = {
       pfad: this.pfad(),
       ...(bestand ? { bestand } : {}),

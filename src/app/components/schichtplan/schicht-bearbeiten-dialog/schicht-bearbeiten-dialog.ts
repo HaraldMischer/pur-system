@@ -25,13 +25,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import { IDienstplanVersionPfad } from '../../../commons/models/app/firestore-pfad.types';
+import { IDienstplanRasterzeit } from '../../../commons/models/domain/dienstplan-kalendertag';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
-import {
-  createSchichtZeitstempelAusLokalzeiten,
-  formatSchichtDatum,
-} from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
 
@@ -41,6 +38,7 @@ export type TSchichtBearbeitenDialogDaten = {
   readonly datum: string;
   readonly mitarbeiter: readonly IMitarbeiterEintrag[];
   readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
+  readonly rasterzeit: IDienstplanRasterzeit;
   readonly schicht?: ISchichtEintrag;
 };
 
@@ -86,14 +84,12 @@ export class SchichtBearbeitenDialog {
 
   // ===== Öffentliche Werte ====================
 
-  readonly datum = this.daten.schicht
-    ? formatSchichtDatum(this.daten.schicht.beginn, this.daten.zeitzone)
-    : this.daten.datum;
+  readonly datum = this.daten.schicht?.datum ?? this.daten.datum;
   readonly datumAnzeige = formatIsoDatum(this.datum);
-  readonly beginnLokalzeitControl = new FormControl(this.daten.modellschicht.beginnLokalzeit, {
+  readonly beginnLokalzeitControl = new FormControl(this.daten.rasterzeit.beginnLokalzeit, {
     nonNullable: true,
   });
-  readonly endeLokalzeitControl = new FormControl(this.daten.modellschicht.endeLokalzeit, {
+  readonly endeLokalzeitControl = new FormControl(this.daten.rasterzeit.endeLokalzeit, {
     nonNullable: true,
   });
   readonly schichtForm = new FormGroup({
@@ -142,17 +138,10 @@ export class SchichtBearbeitenDialog {
     const mitarbeiterId = this.schichtForm.controls.mitarbeiterId.value;
     if (!this.daten.mitarbeiter.some((eintrag) => eintrag.id === mitarbeiterId)) return;
     try {
-      const { beginn, ende } = createSchichtZeitstempelAusLokalzeiten(
-        this.datum,
-        this.daten.modellschicht,
-        this.daten.zeitzone,
-      );
       const aktualisierung = {
+        datum: this.datum,
         mitarbeiterId,
         modellschichtId: this.daten.modellschicht.id,
-        beginn,
-        ende,
-        pauseMinuten: this.daten.modellschicht.standardpauseMinuten,
       };
       if (this.daten.schicht) {
         await this.dienstplanStore.updateSchicht(

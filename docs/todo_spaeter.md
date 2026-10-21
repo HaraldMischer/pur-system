@@ -161,3 +161,55 @@ Neu hinzuzufügen:
 - [ ] Geheimnisse sind weder im Client noch als Klartext oder direkt vergleichbarer Wert in Firestore verfügbar.
 - [ ] Fehlversuche, Sperrung, Mitarbeiterwechsel und Sitzungsende funktionieren gemäß dem beschlossenen Sicherheitskonzept.
 - [ ] Automatisierte Tests, Produktionsbuild, Sicherheitsprüfung und manuelle Bedienprüfung sind erfolgreich.
+
+## 22. Alternative variable Dienstplanvariante prüfen
+
+### Ziel
+
+Die erste Dienstplan-Ausbaustufe verwendet bewusst ein festes Schichtraster. Anzahl, Identität und Reihenfolge der
+Modellschichten bleiben an allen Kalendertagen gleich; Sondertage und Datumsausnahmen dürfen nur die Beginn- und Endzeiten der
+vorhandenen Rasterplätze überschreiben.
+
+Langfristig kann neben dieser Rasterplanung die Planungsart `Schichtbausteine` mit je Tag frei veränderbarer Anzahl, Identität und
+Reihenfolge vorgefertigter Schichten angeboten werden. Der verpflichtende Wert `planungsart` in Schichtmodell und Monatsdienstplan
+bereitet die technische Trennung bereits vor. Die eigene Modellstruktur und Bedienoberfläche werden erst geplant, wenn ein
+konkreter betrieblicher Bedarf und ein verständliches Bedienkonzept vorliegen.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- docs/todo_spaeter.md
+- docs/projekt-plan.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/todo_next.md
+
+### Schritt 1: Fachlichen Bedarf konkretisieren
+
+- [ ] Betriebliche Anwendungsfälle benennen, die mit abweichenden Zeiten im festen Raster nicht ausreichend abgebildet werden.
+- [x] Festlegen, dass ein Schichtmodell genau einer Planungsart angehört und der Monatsdienstplan diese Planungsart beim Anlegen
+      unveränderlich übernimmt. Die Auswahl erfolgt später vor der Auswahl eines dazu passenden Schichtmodells.
+- [ ] Wechselwirkungen mit Mehrfachbelegung, Drag-and-drop, Veröffentlichung und historischen Plänen bewerten.
+
+### Schritt 2: Darstellung und Datenmodell festlegen
+
+- [ ] Eine verständliche Darstellung für Tageszeilen mit unterschiedlicher Schichtanzahl und -reihenfolge entwerfen.
+- [ ] Identität, Referenzen und Momentaufnahme frei variierender Tagesschichten festlegen.
+- [ ] Den Übergang zwischen fester Rasterplanung und variabler Planung eindeutig abgrenzen.
+
+### Schritt 3: Konkrete Umsetzung planen
+
+- [ ] Bei bestätigtem Bedarf ein eigenes Umsetzungstodo mit den tatsächlich betroffenen Dateien anlegen.
+- [ ] Migration, Services, Stores, UI, Tests und gegebenenfalls Firestore Rules für die gewählte Variante planen.
+
+### Tests und Abschluss
+
+- [ ] Die variable Variante mit realistischen Monatsplänen gegen die feste Rasterplanung vergleichen.
+- [ ] Bedienbarkeit, Datenumfang, Konfliktprüfung und historische Stabilität bewerten.
+- [ ] Die Entscheidung für oder gegen eine Umsetzung nachvollziehbar dokumentieren.
+
+### Erledigt, wenn
+
+- [ ] Der konkrete Bedarf für eine variable Dienstplanvariante ist nachgewiesen oder nachvollziehbar verworfen.
+- [ ] Bei einer Umsetzung sind Auswahl, Darstellung, Datenmodell und Übergang zur festen Rasterplanung eindeutig festgelegt.
+- [ ] Ein abgegrenztes Umsetzungstodo mit prüfbaren Abnahmekriterien ist angelegt.
