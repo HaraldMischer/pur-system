@@ -11,7 +11,7 @@
   width: 272px;
   border-radius: 0;
   border-inline-end: 1px solid var(--mat-sys-outline-variant);
-  background: var(--mat-sys-surface-container);
+  background: var(--mat-sys-surface-container-lowest);
 }
 
 .app-content {
@@ -28,11 +28,12 @@
 }
 
 .app-main {
+  --pur-page-content-padding: 32px;
+
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: 32px calc(32px + env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom))
-    calc(32px + env(safe-area-inset-left));
+  padding: 0;
 }
 
 @media (max-width: breakpoints.$breakpoint-large-device) {
@@ -41,7 +42,6 @@
   }
 
   .app-main {
-    padding: 20px calc(20px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom))
-      calc(20px + env(safe-area-inset-left));
+    --pur-page-content-padding: 20px;
   }
 }

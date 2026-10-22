@@ -131,10 +131,7 @@ export class DienstplanPlanungsbereich {
     const pfad = this.pfad();
     if (!this.planungsmodus() || !profil?.aktiv) return false;
     if (profil.userRole === 'master') return true;
-    return (
-      profil.userRole === 'office' &&
-      profil.zugriffe[pfad.unternehmerId]?.[pfad.firmaId]?.includes(pfad.filialeId) === true
-    );
+    return (profil.userRole === 'office' && profil.zugriffe[pfad.unternehmerId]?.[pfad.firmaId]?.includes(pfad.filialeId));
   });
   readonly darfDienstplanLoeschenAnzeigen = computed(() => {
     const dienstplan = this.dienstplan();

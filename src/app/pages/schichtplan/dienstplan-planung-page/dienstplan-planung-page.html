@@ -1,76 +1,78 @@
 <!-- pur-system/src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.html -->
 
 <section class="pur-page">
-  <section class="pur-page-section">
-    <header class="pur-page-section__header">
-      <h2 class="pur-page-section__title">Monatspläne</h2>
+  <mat-toolbar class="pur-toolbar pur-toolbar--page">
+    <h1 class="pur-toolbar__title" purPageRouteTitle></h1>
 
-      <div class="pur-page-section__header-actions">
-        <app-monat-selector [(selectedMonat)]="selectedMonat" />
-        <button matButton="outlined" type="button" (click)="setAktuellerMonat()">
-          Aktueller Monat
-        </button>
-      </div>
-    </header>
+    <div class="pur-toolbar__actions">
+      <app-monat-selector [(selectedMonat)]="selectedMonat" />
+      <button matButton="outlined" type="button" (click)="setAktuellerMonat()">Aktueller Monat</button>
+    </div>
+  </mat-toolbar>
 
-    <div cdkDropListGroup class="pur-page-section__grid pur-scrollbar pur-scrollbar--inset">
-      <div class="firmen-dienstplaene pur-scrollbar pur-scrollbar--inset">
-        @if (filialauswahl().length === 0) {
-          <p class="pur-message pur-message--surface pur-message--full" role="status">
-            Wähle mindestens eine Filiale, um ihre Dienstpläne anzuzeigen.
-          </p>
-        } @else {
-          <div class="filial-dienstplaene">
-            @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
-              <app-dienstplan-planungsbereich
-                [filiale]="auswahl.filiale"
-                [pfad]="auswahl.pfad"
-                [monat]="selectedMonat()"
-                [planungsmodus]="true"
-              />
+  <div class="pur-scroll pur-scroll--fill">
+    <div class="pur-page__content">
+      <section class="pur-page-section">
+        <div cdkDropListGroup class="pur-page-section__grid pur-scroll">
+          <div class="firmen-dienstplaene pur-scroll">
+            @if (filialauswahl().length === 0) {
+              <p class="pur-message pur-message--surface pur-message--full" role="status">
+                Wähle mindestens eine Filiale, um ihre Dienstpläne anzuzeigen.
+              </p>
+            } @else {
+              <div class="filial-dienstplaene">
+                @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
+                  <app-dienstplan-planungsbereich
+                    [filiale]="auswahl.filiale"
+                    [pfad]="auswahl.pfad"
+                    [monat]="selectedMonat()"
+                    [planungsmodus]="true"
+                  />
+                }
+              </div>
             }
           </div>
-        }
-      </div>
 
-      <div class="firmen-mitarbeiter pur-scrollbar pur-scrollbar--inset">
-        <header class="pur-page-section__header">
-          <h3 class="pur-page-section__title">Mitarbeiter</h3>
-        </header>
-        @if (filialauswahl().length === 0) {
-          <p
-            class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
-          >
-            Wähle mindestens eine Filiale, um ihre Mitarbeiter anzuzeigen.
-          </p>
-        } @else if (mitarbeiter().length > 0) {
-          <ul cdkDropList class="mitarbeiter-liste" [cdkDropListSortingDisabled]="true">
-            @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
-              <li cdkDrag class="mitarbeiter-karte" [cdkDragData]="mitarbeiter.id">
-                <span
-                  class="mitarbeiter-farbe"
-                  [style.background-color]="mitarbeiter.farbe ?? null"
-                  aria-hidden="true"
-                ></span>
-                <span class="mitarbeiter-daten">
-                  <strong>{{ mitarbeiter.anzeigename }}</strong>
-                  <span class="mitarbeiter-monatswerte">
-                    Lohnzeit: {{ mitarbeiter.lohnzeit }} ·
-                    {{ mitarbeiter.schichtanzahl }}
-                    {{ mitarbeiter.schichtanzahl === 1 ? 'Schicht' : 'Schichten' }}
-                  </span>
-                </span>
-              </li>
+          <div class="firmen-mitarbeiter pur-scroll">
+            <header class="pur-page-section__header">
+              <h3 class="pur-page-section__title">Mitarbeiter</h3>
+            </header>
+            @if (filialauswahl().length === 0) {
+              <p
+                class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+              >
+                Wähle mindestens eine Filiale, um ihre Mitarbeiter anzuzeigen.
+              </p>
+            } @else if (mitarbeiter().length > 0) {
+              <ul cdkDropList class="mitarbeiter-liste" [cdkDropListSortingDisabled]="true">
+                @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
+                  <li cdkDrag class="mitarbeiter-karte" [cdkDragData]="mitarbeiter.id">
+                    <span
+                      class="mitarbeiter-farbe"
+                      [style.background-color]="mitarbeiter.farbe ?? null"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="mitarbeiter-daten">
+                      <strong>{{ mitarbeiter.anzeigename }}</strong>
+                      <span class="mitarbeiter-monatswerte">
+                        Lohnzeit: {{ mitarbeiter.lohnzeit }} ·
+                        {{ mitarbeiter.schichtanzahl }}
+                        {{ mitarbeiter.schichtanzahl === 1 ? 'Schicht' : 'Schichten' }}
+                      </span>
+                    </span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p
+                class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+              >
+                Keine aktiven Mitarbeiter.
+              </p>
             }
-          </ul>
-        } @else {
-          <p
-            class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
-          >
-            Keine aktiven Mitarbeiter.
-          </p>
-        }
-      </div>
+          </div>
+        </div>
+      </section>
     </div>
-  </section>
+  </div>
 </section>

@@ -36,7 +36,6 @@ type TAuswahlForm = {
   ],
   templateUrl: './struktur-anlegen-page.html',
   styleUrl: './struktur-anlegen-page.scss',
-  host: { class: 'pur-page pur-page--limited' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StrukturAnlegenPage implements OnInit {

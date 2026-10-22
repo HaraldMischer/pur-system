@@ -3,14 +3,34 @@
 @use '../variables/breakpoints' as breakpoints;
 
 .pur-page {
-  display: grid;
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
   container-type: inline-size;
   container-name: pur-page;
 
-  &--limited {
-    max-width: 1024px;
+  &__content {
+    display: grid;
+    gap: 24px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-block-start: var(--pur-page-content-padding);
+    padding-block-end: calc(var(--pur-page-content-padding) + env(safe-area-inset-bottom));
+    padding-inline-start: calc(var(--pur-page-content-padding) + env(safe-area-inset-left));
+    padding-inline-end: calc(var(--pur-page-content-padding) - 8px + env(safe-area-inset-right));
+
+    &--limited {
+      max-width: 1024px;
+    }
+  }
+
+  & > .pur-scroll--hidden > .pur-page__content {
+    padding-inline-end: calc(var(--pur-page-content-padding) + env(safe-area-inset-right));
   }
 
   &__header {
@@ -42,6 +62,16 @@
     max-width: 100%;
   }
 
+  @media (max-width: breakpoints.$breakpoint-large-device) {
+    > .pur-scroll {
+      scrollbar-gutter: auto;
+    }
+
+    &__content {
+      padding-inline-end: calc(var(--pur-page-content-padding) + env(safe-area-inset-right));
+    }
+  }
+
   @media (max-width: breakpoints.$breakpoint-small-device) {
     &__header {
       display: grid;
@@ -56,7 +86,11 @@
 
 .app-main > router-outlet + * {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
 }

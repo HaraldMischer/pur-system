@@ -1,83 +1,89 @@
 <!-- pur-system/src/app/pages/mitarbeiter/mitarbeiter-liste-page/mitarbeiter-liste-page.html -->
 
 <section class="pur-page">
-  <!-- Mitarbeiterliste -->
-  <section class="pur-page-section">
-    <header class="pur-page-section__header">
-      <h2 class="pur-page-section__title">Mitarbeiterliste</h2>
-      <div class="pur-page-section__header-actions">
-        @if (mitarbeiterIsLoaded()) {
-          <span class="pur-page-section__meta pur-page-section__meta--badge">
-            {{ mitarbeiter().length }}
-          </span>
-        }
+  <div class="pur-scroll pur-scroll--fill">
+    <div class="pur-page__content">
+      <!-- Mitarbeiterliste -->
+      <section class="pur-page-section">
+        <header class="pur-page-section__header">
+          <h2 class="pur-page-section__title">Mitarbeiterliste</h2>
+          <div class="pur-page-section__header-actions">
+            @if (mitarbeiterIsLoaded()) {
+              <span class="pur-page-section__meta pur-page-section__meta--badge">
+                {{ mitarbeiter().length }}
+              </span>
+            }
 
-        <button
-          matButton="outlined"
-          type="button"
-          [disabled]="!mitarbeiterIsLoaded() || !darfSchreiben() || mitarbeiterStore.inProgress()"
-          (click)="openMitarbeiterAnlegenDialog()"
-        >
-          <mat-icon aria-hidden="true">person_add</mat-icon>
-          Mitarbeiter hinzufügen
-        </button>
-        <mat-button-toggle-group
-          aria-label="Mitarbeiteransicht"
-          [value]="mitarbeiterAnsicht()"
-          (change)="mitarbeiterAnsicht.set($event.value)"
-        >
-          <mat-button-toggle value="aktiv">Aktiv</mat-button-toggle>
-          <mat-button-toggle value="inaktiv">Inaktiv</mat-button-toggle>
-          <mat-button-toggle value="alle">Alle</mat-button-toggle>
-        </mat-button-toggle-group>
-      </div>
-    </header>
+            <button
+              matButton="outlined"
+              type="button"
+              [disabled]="
+                !mitarbeiterIsLoaded() || !darfSchreiben() || mitarbeiterStore.inProgress()
+              "
+              (click)="openMitarbeiterAnlegenDialog()"
+            >
+              <mat-icon aria-hidden="true">person_add</mat-icon>
+              Mitarbeiter hinzufügen
+            </button>
+            <mat-button-toggle-group
+              aria-label="Mitarbeiteransicht"
+              [value]="mitarbeiterAnsicht()"
+              (change)="mitarbeiterAnsicht.set($event.value)"
+            >
+              <mat-button-toggle value="aktiv">Aktiv</mat-button-toggle>
+              <mat-button-toggle value="inaktiv">Inaktiv</mat-button-toggle>
+              <mat-button-toggle value="alle">Alle</mat-button-toggle>
+            </mat-button-toggle-group>
+          </div>
+        </header>
 
-    @if (!appKontextStore.selectedFirma()) {
-      <p class="pur-message pur-message--surface pur-message--full" role="status">
-        Wähle eine Firma, um deren Mitarbeiter anzuzeigen.
-      </p>
-    } @else if (filialauswahlErforderlich()) {
-      <p class="pur-message pur-message--surface pur-message--full" role="status">
-        Wähle mindestens eine Filiale, um deren Mitarbeiter anzuzeigen.
-      </p>
-    } @else if (mitarbeiterDownload()) {
-      <p class="pur-message pur-message--surface pur-message--full" role="status">
-        Mitarbeiter werden geladen.
-      </p>
-    } @else if (mitarbeiterError(); as error) {
-      <div class="pur-page-section__error-state">
-        <p class="pur-message pur-message--error" role="alert">
-          {{ error }}
-        </p>
-        <button matButton="tonal" type="button" (click)="retryLoadMitarbeiter()">
-          Erneut laden
-        </button>
-      </div>
-    } @else if (mitarbeiterIsLoaded()) {
-      @if (mitarbeiterStore.error(); as error) {
-        <p class="pur-message pur-message--error pur-message--full" role="alert">
-          {{ error }}
-        </p>
-      }
-      <div class="pur-page__card-grid">
-        @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
-          <app-mitarbeiter-card
-            [mitarbeiter]="mitarbeiter"
-            [darfZusammenfuehren]="darfZusammenfuehren() && hatZusammenfuehrungsZiel()"
-            (bearbeiten)="openMitarbeiterBearbeitenDialog($event)"
-            (zusammenfuehren)="openMitarbeiterZusammenfuehrenDialog($event)"
-          />
+        @if (!appKontextStore.selectedFirma()) {
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
+            Wähle eine Firma, um deren Mitarbeiter anzuzeigen.
+          </p>
+        } @else if (filialauswahlErforderlich()) {
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
+            Wähle mindestens eine Filiale, um deren Mitarbeiter anzuzeigen.
+          </p>
+        } @else if (mitarbeiterDownload()) {
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
+            Mitarbeiter werden geladen.
+          </p>
+        } @else if (mitarbeiterError(); as error) {
+          <div class="pur-page-section__error-state">
+            <p class="pur-message pur-message--error" role="alert">
+              {{ error }}
+            </p>
+            <button matButton="tonal" type="button" (click)="retryLoadMitarbeiter()">
+              Erneut laden
+            </button>
+          </div>
+        } @else if (mitarbeiterIsLoaded()) {
+          @if (mitarbeiterStore.error(); as error) {
+            <p class="pur-message pur-message--error pur-message--full" role="alert">
+              {{ error }}
+            </p>
+          }
+          <div class="pur-page__card-grid">
+            @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
+              <app-mitarbeiter-card
+                [mitarbeiter]="mitarbeiter"
+                [darfZusammenfuehren]="darfZusammenfuehren() && hatZusammenfuehrungsZiel()"
+                (bearbeiten)="openMitarbeiterBearbeitenDialog($event)"
+                (zusammenfuehren)="openMitarbeiterZusammenfuehrenDialog($event)"
+              />
+            }
+          </div>
+          @if (mitarbeiter().length === 0) {
+            <p
+              class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+              role="status"
+            >
+              Die Firma hat noch keine Mitarbeiter.
+            </p>
+          }
         }
-      </div>
-      @if (mitarbeiter().length === 0) {
-        <p
-          class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
-          role="status"
-        >
-          Die Firma hat noch keine Mitarbeiter.
-        </p>
-      }
-    }
-  </section>
+      </section>
+    </div>
+  </div>
 </section>

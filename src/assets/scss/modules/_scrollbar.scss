@@ -1,27 +1,23 @@
 // pur-system/src/assets/scss/modules/_scrollbar.scss
 
-.pur-scrollbar {
+.pur-scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--mat-sys-outline-variant) transparent;
 
-  &--inset {
-    padding-inline-end: 4px;
+  &--fill {
+    flex: 1 1 auto;
   }
 
-  &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
+  &--hidden {
+    scrollbar-gutter: auto;
+    scrollbar-width: none;
 
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    border: 2px solid transparent;
-    border-radius: 999px;
-    background: var(--mat-sys-outline-variant);
-    background-clip: padding-box;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }

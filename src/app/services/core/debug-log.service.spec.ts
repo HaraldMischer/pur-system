@@ -2,7 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 
-import { DebugLogService, isLocalhost } from './debug-log.service';
+import { DebugLogService } from './debug-log.service';
 
 describe('DebugLogService', () => {
   afterEach(() => {
@@ -35,13 +35,5 @@ describe('DebugLogService', () => {
       2,
       '* Unternehmer geladen.......................... (1)',
     );
-  });
-
-  it('should recognize only local hostnames', () => {
-    expect(isLocalhost('localhost')).toBe(true);
-    expect(isLocalhost('127.0.0.1')).toBe(true);
-    expect(isLocalhost('::1')).toBe(true);
-    expect(isLocalhost('pur-filiale.web.app')).toBe(false);
-    expect(isLocalhost('192.168.1.10')).toBe(false);
   });
 });

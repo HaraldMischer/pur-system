@@ -1,9 +1,10 @@
 // pur-system/src/app/pages/zugang/initialisierungsfehler-page/initialisierungsfehler-page.scss
 
 .initialisierungsfehler-page {
-  width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
+  &__body {
+    max-width: 640px;
+    margin: 0 auto;
+  }
 
   &__fehler {
     font-weight: 500;

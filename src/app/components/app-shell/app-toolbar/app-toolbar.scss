@@ -2,30 +2,6 @@
 
 @use '../../../../assets/scss/variables/breakpoints' as breakpoints;
 
-.app-toolbar {
-  position: relative;
-  z-index: 1;
-  gap: 12px;
-  border-block-end: 1px solid var(--mat-sys-outline-variant);
-  background: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-}
-
-.app-toolbar__title {
-  overflow: hidden;
-  font: var(--mat-sys-headline-small);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-
-  &--brand {
-    color: var(--mat-sys-primary);
-  }
-}
-
-.app-toolbar__brand-icon {
-  color: var(--mat-sys-primary);
-}
-
 .app-toolbar__spacer {
   flex: 1 1 auto;
 }

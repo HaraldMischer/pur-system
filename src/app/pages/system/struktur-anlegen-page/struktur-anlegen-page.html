@@ -1,213 +1,223 @@
 <!-- pur-system/src/app/pages/system/struktur-anlegen-page/struktur-anlegen-page.html -->
 
-<section class="pur-page-section struktur-anlegen-page">
-  <mat-stepper
-    class="pur-stepper pur-stepper--flush"
-    [linear]="true"
-    [orientation]="stepperOrientation()"
-  >
-    <!-- Unternehmer -->
-    <mat-step [stepControl]="unternehmerForm" label="Unternehmer">
-      <form class="pur-form pur-form--grid" [formGroup]="unternehmerForm">
-        <h2 class="pur-form__titel">Unternehmer wählen oder neu anlegen</h2>
+<section class="pur-page struktur-anlegen-page">
+  <div class="pur-scroll pur-scroll--fill">
+    <div class="pur-page__content pur-page__content--limited">
+      <section class="pur-page-section">
+        <mat-stepper
+          class="pur-stepper pur-stepper--flush"
+          [linear]="true"
+          [orientation]="stepperOrientation()"
+        >
+          <!-- Unternehmer -->
+          <mat-step [stepControl]="unternehmerForm" label="Unternehmer">
+            <form class="pur-form pur-form--grid" [formGroup]="unternehmerForm">
+              <h2 class="pur-form__titel">Unternehmer wählen oder neu anlegen</h2>
 
-        <div class="pur-form__row struktur-anlegen-page__auswahl">
-          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-            <mat-label>Unternehmer</mat-label>
-            <mat-select formControlName="id">
-              @for (unternehmer of unternehmerStore.unternehmer(); track unternehmer.id) {
-                <mat-option [value]="unternehmer.id">{{ unternehmer.anzeigename }}</mat-option>
-              } @empty {
-                <mat-option disabled>Keine Unternehmer vorhanden</mat-option>
+              <div class="pur-form__row struktur-anlegen-page__auswahl">
+                <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+                  <mat-label>Unternehmer</mat-label>
+                  <mat-select formControlName="id">
+                    @for (unternehmer of unternehmerStore.unternehmer(); track unternehmer.id) {
+                      <mat-option [value]="unternehmer.id">{{
+                        unternehmer.anzeigename
+                      }}</mat-option>
+                    } @empty {
+                      <mat-option disabled>Keine Unternehmer vorhanden</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <button
+                  class="pur-form__item pur-form__item--button"
+                  matButton="outlined"
+                  type="button"
+                  [disabled]="!unternehmerStore.isLoaded()"
+                  (click)="openUnternehmerDialog()"
+                >
+                  <mat-icon aria-hidden="true">add</mat-icon>
+                  Unternehmer anlegen
+                </button>
+              </div>
+
+              @if (unternehmerStore.error(); as error) {
+                <p class="pur-message pur-message--error pur-message--full" role="alert">
+                  {{ error }}
+                </p>
+                <button
+                  class="pur-form__item pur-form__item--auto"
+                  matButton
+                  type="button"
+                  (click)="unternehmerStore.loadUnternehmer()"
+                >
+                  Erneut laden
+                </button>
+              } @else if (
+                unternehmerStore.isLoaded() && unternehmerStore.unternehmer().length === 0
+              ) {
+                <p class="pur-message pur-message--info pur-message--full" role="status">
+                  Keine Unternehmer vorhanden. Lege den ersten Unternehmer an.
+                </p>
               }
-            </mat-select>
-          </mat-form-field>
 
-          <button
-            class="pur-form__item pur-form__item--button"
-            matButton="outlined"
-            type="button"
-            [disabled]="!unternehmerStore.isLoaded()"
-            (click)="openUnternehmerDialog()"
-          >
-            <mat-icon aria-hidden="true">add</mat-icon>
-            Unternehmer anlegen
-          </button>
-        </div>
+              <div class="pur-form__row">
+                <button
+                  class="pur-form__item pur-form__item--auto pur-form__item--end"
+                  matButton="filled"
+                  matStepperNext
+                  type="button"
+                  [disabled]="unternehmerForm.invalid || !unternehmerStore.isLoaded()"
+                >
+                  Weiter
+                </button>
+              </div>
+            </form>
+          </mat-step>
 
-        @if (unternehmerStore.error(); as error) {
-          <p class="pur-message pur-message--error pur-message--full" role="alert">
-            {{ error }}
-          </p>
-          <button
-            class="pur-form__item pur-form__item--auto"
-            matButton
-            type="button"
-            (click)="unternehmerStore.loadUnternehmer()"
-          >
-            Erneut laden
-          </button>
-        } @else if (unternehmerStore.isLoaded() && unternehmerStore.unternehmer().length === 0) {
-          <p class="pur-message pur-message--info pur-message--full" role="status">
-            Keine Unternehmer vorhanden. Lege den ersten Unternehmer an.
-          </p>
-        }
+          <!-- Firma -->
+          <mat-step [stepControl]="firmaForm" label="Firma">
+            <form class="pur-form pur-form--grid" [formGroup]="firmaForm">
+              <h2 class="pur-form__titel">
+                Firma für {{ getUnternehmerBezeichnung() }} wählen oder neu anlegen
+              </h2>
 
-        <div class="pur-form__row">
-          <button
-            class="pur-form__item pur-form__item--auto pur-form__item--end"
-            matButton="filled"
-            matStepperNext
-            type="button"
-            [disabled]="unternehmerForm.invalid || !unternehmerStore.isLoaded()"
-          >
-            Weiter
-          </button>
-        </div>
-      </form>
-    </mat-step>
+              <div class="pur-form__row struktur-anlegen-page__auswahl">
+                <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+                  <mat-label>Firma</mat-label>
+                  <mat-select formControlName="id">
+                    @for (firma of firmaStore.firmen(); track firma.id) {
+                      <mat-option [value]="firma.id">{{ firma.anzeigename }}</mat-option>
+                    } @empty {
+                      <mat-option disabled>Keine Firmen vorhanden</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
 
-    <!-- Firma -->
-    <mat-step [stepControl]="firmaForm" label="Firma">
-      <form class="pur-form pur-form--grid" [formGroup]="firmaForm">
-        <h2 class="pur-form__titel">
-          Firma für {{ getUnternehmerBezeichnung() }} wählen oder neu anlegen
-        </h2>
+                <button
+                  class="pur-form__item pur-form__item--button"
+                  matButton="outlined"
+                  type="button"
+                  [disabled]="!firmaStore.isLoaded()"
+                  (click)="openFirmaDialog()"
+                >
+                  <mat-icon aria-hidden="true">add</mat-icon>
+                  Firma anlegen
+                </button>
+              </div>
 
-        <div class="pur-form__row struktur-anlegen-page__auswahl">
-          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-            <mat-label>Firma</mat-label>
-            <mat-select formControlName="id">
-              @for (firma of firmaStore.firmen(); track firma.id) {
-                <mat-option [value]="firma.id">{{ firma.anzeigename }}</mat-option>
-              } @empty {
-                <mat-option disabled>Keine Firmen vorhanden</mat-option>
+              @if (firmaStore.error(); as error) {
+                <p class="pur-message pur-message--error pur-message--full" role="alert">
+                  {{ error }}
+                </p>
+                <button
+                  class="pur-form__item pur-form__item--auto"
+                  matButton
+                  type="button"
+                  (click)="firmaStore.loadFirmen(unternehmerForm.controls.id.value)"
+                >
+                  Erneut laden
+                </button>
+              } @else if (firmaStore.isLoaded() && firmaStore.firmen().length === 0) {
+                <p class="pur-message pur-message--info pur-message--full" role="status">
+                  Keine Firmen vorhanden. Lege die erste Firma an.
+                </p>
               }
-            </mat-select>
-          </mat-form-field>
 
-          <button
-            class="pur-form__item pur-form__item--button"
-            matButton="outlined"
-            type="button"
-            [disabled]="!firmaStore.isLoaded()"
-            (click)="openFirmaDialog()"
-          >
-            <mat-icon aria-hidden="true">add</mat-icon>
-            Firma anlegen
-          </button>
-        </div>
+              <div class="pur-form__row">
+                <button
+                  class="pur-form__item pur-form__item--auto pur-form__item--end"
+                  matButton
+                  type="button"
+                  matStepperPrevious
+                >
+                  Zurück
+                </button>
+                <button
+                  class="pur-form__item pur-form__item--auto"
+                  matButton="filled"
+                  matStepperNext
+                  type="button"
+                  [disabled]="firmaForm.invalid || !firmaStore.isLoaded()"
+                >
+                  Weiter
+                </button>
+              </div>
+            </form>
+          </mat-step>
 
-        @if (firmaStore.error(); as error) {
-          <p class="pur-message pur-message--error pur-message--full" role="alert">
-            {{ error }}
-          </p>
-          <button
-            class="pur-form__item pur-form__item--auto"
-            matButton
-            type="button"
-            (click)="firmaStore.loadFirmen(unternehmerForm.controls.id.value)"
-          >
-            Erneut laden
-          </button>
-        } @else if (firmaStore.isLoaded() && firmaStore.firmen().length === 0) {
-          <p class="pur-message pur-message--info pur-message--full" role="status">
-            Keine Firmen vorhanden. Lege die erste Firma an.
-          </p>
-        }
+          <!-- Filiale -->
+          <mat-step [stepControl]="filialeForm" label="Filiale">
+            <form class="pur-form pur-form--grid" [formGroup]="filialeForm">
+              <h2 class="pur-form__titel">Filiale für {{ getFirmaBezeichnung() }} anlegen</h2>
 
-        <div class="pur-form__row">
-          <button
-            class="pur-form__item pur-form__item--auto pur-form__item--end"
-            matButton
-            type="button"
-            matStepperPrevious
-          >
-            Zurück
-          </button>
-          <button
-            class="pur-form__item pur-form__item--auto"
-            matButton="filled"
-            matStepperNext
-            type="button"
-            [disabled]="firmaForm.invalid || !firmaStore.isLoaded()"
-          >
-            Weiter
-          </button>
-        </div>
-      </form>
-    </mat-step>
+              @if (filialeStore.error(); as error) {
+                <p class="pur-message pur-message--error pur-message--full" role="alert">
+                  {{ error }}
+                </p>
+                <button
+                  class="pur-form__item pur-form__item--auto"
+                  matButton
+                  type="button"
+                  (click)="
+                    filialeStore.loadFilialen(
+                      unternehmerForm.controls.id.value,
+                      firmaForm.controls.id.value
+                    )
+                  "
+                >
+                  Erneut laden
+                </button>
+              } @else if (!filialeStore.download()) {
+                <div class="pur-form__row struktur-anlegen-page__auswahl">
+                  <button
+                    class="pur-form__item pur-form__item--button"
+                    matButton="outlined"
+                    type="button"
+                    [disabled]="!filialeStore.isLoaded()"
+                    (click)="openFilialeDialog()"
+                  >
+                    <mat-icon aria-hidden="true">add</mat-icon>
+                    Filiale anlegen
+                  </button>
+                </div>
+              }
 
-    <!-- Filiale -->
-    <mat-step [stepControl]="filialeForm" label="Filiale">
-      <form class="pur-form pur-form--grid" [formGroup]="filialeForm">
-        <h2 class="pur-form__titel">Filiale für {{ getFirmaBezeichnung() }} anlegen</h2>
+              @if (filialeForm.controls.id.value) {
+                <p class="pur-message pur-message--success pur-message--full" role="status">
+                  Die Filiale wurde angelegt.
+                </p>
+              }
 
-        @if (filialeStore.error(); as error) {
-          <p class="pur-message pur-message--error pur-message--full" role="alert">
-            {{ error }}
-          </p>
-          <button
-            class="pur-form__item pur-form__item--auto"
-            matButton
-            type="button"
-            (click)="
-              filialeStore.loadFilialen(
-                unternehmerForm.controls.id.value,
-                firmaForm.controls.id.value
-              )
-            "
-          >
-            Erneut laden
-          </button>
-        } @else if (!filialeStore.download()) {
-          <div class="pur-form__row struktur-anlegen-page__auswahl">
-            <button
-              class="pur-form__item pur-form__item--button"
-              matButton="outlined"
-              type="button"
-              [disabled]="!filialeStore.isLoaded()"
-              (click)="openFilialeDialog()"
-            >
-              <mat-icon aria-hidden="true">add</mat-icon>
-              Filiale anlegen
-            </button>
-          </div>
-        }
+              <!-- Zusammenfassung -->
+              <div class="pur-page-section__summary">
+                <div>
+                  <span>Unternehmer</span>
+                  <span>{{ getUnternehmerBezeichnung() }}</span>
+                </div>
+                <div>
+                  <span>Firma</span>
+                  <span>{{ getFirmaBezeichnung() }}</span>
+                </div>
+                <div>
+                  <span>Filiale</span>
+                  <span>{{ getFilialeBezeichnung() }}</span>
+                </div>
+              </div>
 
-        @if (filialeForm.controls.id.value) {
-          <p class="pur-message pur-message--success pur-message--full" role="status">
-            Die Filiale wurde angelegt.
-          </p>
-        }
-
-        <!-- Zusammenfassung -->
-        <div class="pur-page-section__summary">
-          <div>
-            <span>Unternehmer</span>
-            <span>{{ getUnternehmerBezeichnung() }}</span>
-          </div>
-          <div>
-            <span>Firma</span>
-            <span>{{ getFirmaBezeichnung() }}</span>
-          </div>
-          <div>
-            <span>Filiale</span>
-            <span>{{ getFilialeBezeichnung() }}</span>
-          </div>
-        </div>
-
-        <div class="pur-form__row">
-          <button
-            class="pur-form__item pur-form__item--auto pur-form__item--end"
-            matButton
-            type="button"
-            matStepperPrevious
-          >
-            Zurück
-          </button>
-        </div>
-      </form>
-    </mat-step>
-  </mat-stepper>
+              <div class="pur-form__row">
+                <button
+                  class="pur-form__item pur-form__item--auto pur-form__item--end"
+                  matButton
+                  type="button"
+                  matStepperPrevious
+                >
+                  Zurück
+                </button>
+              </div>
+            </form>
+          </mat-step>
+        </mat-stepper>
+      </section>
+    </div>
+  </div>
 </section>

@@ -1,26 +1,48 @@
 <!-- pur-system/src/app/pages/dashboard-page/dashboard-page.html -->
 
 <section class="pur-page">
-  <div class="pur-page-section">
-    <p class="pur-text pur-text--primary">Noch zu bestimmende Daten der einzelnen Filialen.</p>
-    <p class="pur-text pur-text--tertiary">Noch zu bestimmende Daten der einzelnen Filialen.</p>
-    <p class="pur-message pur-message--info pur-message--full">
-      Informationsmeldung über die volle Breite
-    </p>
-    <p class="pur-message pur-message--info pur-message--auto">
-      Informationsmeldung mit automatischer Breite
-    </p>
-    <p class="pur-message pur-message--success pur-message--auto">Erfolgsmeldung</p>
-    <p class="pur-message pur-message--warning pur-message--auto">Warnmeldung</p>
-    <p class="pur-message pur-message--error pur-message--auto">Fehlermeldung</p>
-    <p class="pur-message pur-message--surface pur-message--full">Meldung mit Hintergrundfläche</p>
-    <p
-      class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--auto"
-    >
-      Leerzustand mit Hintergrundfläche und gestricheltem Rahmen
-    </p>
-    <!--    <button matButton="filled" type="button" class="pur-button&#45;&#45;tertiary">-->
-    <!--      Alternative Aktion-->
-    <!--    </button>-->
+  <mat-toolbar class="pur-toolbar pur-toolbar--page">
+    <h1 class="pur-toolbar__title" purPageRouteTitle></h1>
+    @if (isLocalhost && showTests) {
+      <div class="pur-toolbar__actions">
+        <button matButton="text" [class.pur-button--tertiary]="isTertiary">Text</button>
+        <button matButton="outlined" [class.pur-button--tertiary]="isTertiary">Outlined</button>
+        <button matButton="tonal" [class.pur-button--tertiary]="isTertiary">Tonal</button>
+        <button matButton="filled" [class.pur-button--tertiary]="isTertiary">Filled</button>
+        <button matButton="elevated" [class.pur-button--tertiary]="isTertiary">Elevated</button>
+      </div>
+    }
+  </mat-toolbar>
+
+  <div class="pur-scroll pur-scroll--fill">
+    <div class="pur-page__content pur-page__content--limited">
+      @if (isLocalhost && showTests) {
+        <div class="pur-page-section">
+          <p class="pur-text pur-text--primary">
+            Noch zu bestimmende Daten der einzelnen Filialen.
+          </p>
+          <p class="pur-text pur-text--tertiary">
+            Noch zu bestimmende Daten der einzelnen Filialen.
+          </p>
+          <p class="pur-message pur-message--info pur-message--full">
+            Informationsmeldung über die volle Breite
+          </p>
+          <p class="pur-message pur-message--info pur-message--auto">
+            Informationsmeldung mit automatischer Breite
+          </p>
+          <p class="pur-message pur-message--success pur-message--auto">Erfolgsmeldung</p>
+          <p class="pur-message pur-message--warning pur-message--auto">Warnmeldung</p>
+          <p class="pur-message pur-message--error pur-message--auto">Fehlermeldung</p>
+          <p class="pur-message pur-message--surface pur-message--full">
+            Meldung mit Hintergrundfläche
+          </p>
+          <p
+            class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--auto"
+          >
+            Leerzustand mit Hintergrundfläche und gestricheltem Rahmen
+          </p>
+        </div>
+      }
+    </div>
   </div>
 </section>

@@ -1,0 +1,56 @@
+// pur-system/src/assets/scss/modules/_toolbar.scss
+
+.pur-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-width: 0;
+
+  // Elemente
+  &__title {
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  // Varianten
+  &--main {
+    position: relative;
+    z-index: 1;
+    gap: 12px;
+
+    --mat-toolbar-container-background-color: var(--pur-theme-primary-darker);
+    --mat-toolbar-container-text-color: var(--pur-theme-on-primary);
+    --mat-icon-button-icon-color: var(--pur-theme-on-primary);
+
+    .pur-toolbar__title {
+      font: var(--mat-sys-headline-small);
+    }
+  }
+
+  &--page {
+    gap: 24px;
+    min-height: 80px;
+    --mat-toolbar-container-background-color: var(--pur-theme-primary-lighter);
+    --mat-toolbar-container-text-color: var(--pur-theme-on-primary-lighter);
+
+    .pur-toolbar__title {
+      font: var(--mat-sys-headline-small);
+    }
+
+    .pur-toolbar__actions {
+      flex: 1 1 auto;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 16px;
+    }
+  }
+}

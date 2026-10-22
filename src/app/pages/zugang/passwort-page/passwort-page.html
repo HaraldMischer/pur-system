@@ -1,144 +1,150 @@
 <!-- pur-system/src/app/pages/zugang/passwort-page/passwort-page.html -->
 
-<section class="passwort-page">
-  <mat-card class="pur-card">
-    <!-- Kartenkopf -->
-    <mat-card-header>
-      <mat-card-title>Passwort ändern</mat-card-title>
-      <mat-card-subtitle>Bestätige zuerst dein aktuelles Passwort.</mat-card-subtitle>
-    </mat-card-header>
+<section class="pur-page passwort-page">
+  <div class="pur-scroll pur-scroll--fill">
+    <div class="pur-page__content passwort-page__body">
+      <mat-card class="pur-card">
+        <!-- Kartenkopf -->
+        <mat-card-header>
+          <mat-card-title>Passwort ändern</mat-card-title>
+          <mat-card-subtitle>Bestätige zuerst dein aktuelles Passwort.</mat-card-subtitle>
+        </mat-card-header>
 
-    <mat-card-content>
-      <!-- Passwortformular -->
-      <form
-        class="pur-form pur-form--grid"
-        [formGroup]="passwortForm"
-        [attr.aria-busy]="passwortStore.inProgress()"
-        [attr.inert]="passwortStore.inProgress() ? '' : null"
-        (ngSubmit)="onSubmit()"
-      >
-        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-          <mat-label>Aktuelles Passwort</mat-label>
-          <input
-            formControlName="aktuellesPasswort"
-            matInput
-            [type]="istPasswortSichtbar('aktuellesPasswort') ? 'text' : 'password'"
-            autocomplete="current-password"
-          />
-          <button
-            matIconButton
-            matSuffix
-            type="button"
-            [attr.aria-label]="
-              istPasswortSichtbar('aktuellesPasswort')
-                ? 'Aktuelles Passwort ausblenden'
-                : 'Aktuelles Passwort anzeigen'
-            "
-            [matTooltip]="
-              istPasswortSichtbar('aktuellesPasswort')
-                ? 'Aktuelles Passwort ausblenden'
-                : 'Aktuelles Passwort anzeigen'
-            "
-            (click)="togglePasswortSichtbarkeit('aktuellesPasswort')"
+        <mat-card-content>
+          <!-- Passwortformular -->
+          <form
+            class="pur-form pur-form--grid"
+            [formGroup]="passwortForm"
+            [attr.aria-busy]="passwortStore.inProgress()"
+            [attr.inert]="passwortStore.inProgress() ? '' : null"
+            (ngSubmit)="onSubmit()"
           >
-            <mat-icon aria-hidden="true">{{
-              istPasswortSichtbar('aktuellesPasswort') ? 'visibility_off' : 'visibility'
-            }}</mat-icon>
-          </button>
-        </mat-form-field>
+            <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+              <mat-label>Aktuelles Passwort</mat-label>
+              <input
+                formControlName="aktuellesPasswort"
+                matInput
+                [type]="istPasswortSichtbar('aktuellesPasswort') ? 'text' : 'password'"
+                autocomplete="current-password"
+              />
+              <button
+                matIconButton
+                matSuffix
+                type="button"
+                [attr.aria-label]="
+                  istPasswortSichtbar('aktuellesPasswort')
+                    ? 'Aktuelles Passwort ausblenden'
+                    : 'Aktuelles Passwort anzeigen'
+                "
+                [matTooltip]="
+                  istPasswortSichtbar('aktuellesPasswort')
+                    ? 'Aktuelles Passwort ausblenden'
+                    : 'Aktuelles Passwort anzeigen'
+                "
+                (click)="togglePasswortSichtbarkeit('aktuellesPasswort')"
+              >
+                <mat-icon aria-hidden="true">{{
+                  istPasswortSichtbar('aktuellesPasswort') ? 'visibility_off' : 'visibility'
+                }}</mat-icon>
+              </button>
+            </mat-form-field>
 
-        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-          <mat-label>Neues Passwort</mat-label>
-          <input
-            formControlName="neuesPasswort"
-            matInput
-            [type]="istPasswortSichtbar('neuesPasswort') ? 'text' : 'password'"
-            autocomplete="new-password"
-          />
-          <button
-            matIconButton
-            matSuffix
-            type="button"
-            [attr.aria-label]="
-              istPasswortSichtbar('neuesPasswort')
-                ? 'Neues Passwort ausblenden'
-                : 'Neues Passwort anzeigen'
-            "
-            [matTooltip]="
-              istPasswortSichtbar('neuesPasswort')
-                ? 'Neues Passwort ausblenden'
-                : 'Neues Passwort anzeigen'
-            "
-            (click)="togglePasswortSichtbarkeit('neuesPasswort')"
-          >
-            <mat-icon aria-hidden="true">{{
-              istPasswortSichtbar('neuesPasswort') ? 'visibility_off' : 'visibility'
-            }}</mat-icon>
-          </button>
-          @if (passwortForm.controls.neuesPasswort.hasError('minlength')) {
-            <mat-error>Das Passwort muss mindestens 8 Zeichen haben.</mat-error>
-          }
-        </mat-form-field>
+            <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+              <mat-label>Neues Passwort</mat-label>
+              <input
+                formControlName="neuesPasswort"
+                matInput
+                [type]="istPasswortSichtbar('neuesPasswort') ? 'text' : 'password'"
+                autocomplete="new-password"
+              />
+              <button
+                matIconButton
+                matSuffix
+                type="button"
+                [attr.aria-label]="
+                  istPasswortSichtbar('neuesPasswort')
+                    ? 'Neues Passwort ausblenden'
+                    : 'Neues Passwort anzeigen'
+                "
+                [matTooltip]="
+                  istPasswortSichtbar('neuesPasswort')
+                    ? 'Neues Passwort ausblenden'
+                    : 'Neues Passwort anzeigen'
+                "
+                (click)="togglePasswortSichtbarkeit('neuesPasswort')"
+              >
+                <mat-icon aria-hidden="true">{{
+                  istPasswortSichtbar('neuesPasswort') ? 'visibility_off' : 'visibility'
+                }}</mat-icon>
+              </button>
+              @if (passwortForm.controls.neuesPasswort.hasError('minlength')) {
+                <mat-error>Das Passwort muss mindestens 8 Zeichen haben.</mat-error>
+              }
+            </mat-form-field>
 
-        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-          <mat-label>Neues Passwort bestätigen</mat-label>
-          <input
-            formControlName="passwortBestaetigung"
-            matInput
-            [type]="istPasswortSichtbar('passwortBestaetigung') ? 'text' : 'password'"
-            autocomplete="new-password"
-          />
-          <button
-            matIconButton
-            matSuffix
-            type="button"
-            [attr.aria-label]="
-              istPasswortSichtbar('passwortBestaetigung')
-                ? 'Passwortbestätigung ausblenden'
-                : 'Passwortbestätigung anzeigen'
-            "
-            [matTooltip]="
-              istPasswortSichtbar('passwortBestaetigung')
-                ? 'Passwortbestätigung ausblenden'
-                : 'Passwortbestätigung anzeigen'
-            "
-            (click)="togglePasswortSichtbarkeit('passwortBestaetigung')"
-          >
-            <mat-icon aria-hidden="true">{{
-              istPasswortSichtbar('passwortBestaetigung') ? 'visibility_off' : 'visibility'
-            }}</mat-icon>
-          </button>
-        </mat-form-field>
+            <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+              <mat-label>Neues Passwort bestätigen</mat-label>
+              <input
+                formControlName="passwortBestaetigung"
+                matInput
+                [type]="istPasswortSichtbar('passwortBestaetigung') ? 'text' : 'password'"
+                autocomplete="new-password"
+              />
+              <button
+                matIconButton
+                matSuffix
+                type="button"
+                [attr.aria-label]="
+                  istPasswortSichtbar('passwortBestaetigung')
+                    ? 'Passwortbestätigung ausblenden'
+                    : 'Passwortbestätigung anzeigen'
+                "
+                [matTooltip]="
+                  istPasswortSichtbar('passwortBestaetigung')
+                    ? 'Passwortbestätigung ausblenden'
+                    : 'Passwortbestätigung anzeigen'
+                "
+                (click)="togglePasswortSichtbarkeit('passwortBestaetigung')"
+              >
+                <mat-icon aria-hidden="true">{{
+                  istPasswortSichtbar('passwortBestaetigung') ? 'visibility_off' : 'visibility'
+                }}</mat-icon>
+              </button>
+            </mat-form-field>
 
-        <!-- Fehlermeldungen -->
-        @if (passwortForm.hasError('passwoerterUngleich')) {
-          <p class="pur-message pur-message--error pur-message--full" role="alert">
-            Die Passwörter stimmen nicht überein.
-          </p>
-        }
+            <!-- Fehlermeldungen -->
+            @if (passwortForm.hasError('passwoerterUngleich')) {
+              <p class="pur-message pur-message--error pur-message--full" role="alert">
+                Die Passwörter stimmen nicht überein.
+              </p>
+            }
 
-        @if (passwortStore.error(); as error) {
-          <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
-        }
+            @if (passwortStore.error(); as error) {
+              <p class="pur-message pur-message--error pur-message--full" role="alert">
+                {{ error }}
+              </p>
+            }
 
-        <!-- Erfolgsmeldung -->
-        @if (passwortStore.erfolgreich()) {
-          <p class="pur-message pur-message--success pur-message--full" role="status">
-            Das Passwort wurde erfolgreich geändert.
-          </p>
-        }
+            <!-- Erfolgsmeldung -->
+            @if (passwortStore.erfolgreich()) {
+              <p class="pur-message pur-message--success pur-message--full" role="status">
+                Das Passwort wurde erfolgreich geändert.
+              </p>
+            }
 
-        <!-- Passwort ändern -->
-        <button
-          class="pur-form__item pur-form__item--button pur-form__item--full"
-          matButton="filled"
-          type="submit"
-          [disabled]="passwortForm.invalid || passwortStore.inProgress()"
-        >
-          <mat-icon aria-hidden="true">password</mat-icon>
-          {{ passwortStore.inProgress() ? 'Passwort wird geändert' : 'Passwort ändern' }}
-        </button>
-      </form>
-    </mat-card-content>
-  </mat-card>
+            <!-- Passwort ändern -->
+            <button
+              class="pur-form__item pur-form__item--button pur-form__item--full"
+              matButton="filled"
+              type="submit"
+              [disabled]="passwortForm.invalid || passwortStore.inProgress()"
+            >
+              <mat-icon aria-hidden="true">password</mat-icon>
+              {{ passwortStore.inProgress() ? 'Passwort wird geändert' : 'Passwort ändern' }}
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
 </section>

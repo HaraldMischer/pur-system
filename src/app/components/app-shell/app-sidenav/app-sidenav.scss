@@ -6,35 +6,47 @@
   height: 100%;
 }
 
-.app-sidenav__content {
+.app-sidenav {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   height: 100%;
   overflow: hidden;
-}
 
-.app-sidenav__body {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: auto;
-  padding-inline-start: calc(12px + env(safe-area-inset-left));
-}
+  &__content {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    box-sizing: border-box;
+    padding-inline-start: calc(12px + env(safe-area-inset-left));
+    padding-inline-end: 4px;
+  }
 
-.app-sidenav__version {
-  align-self: flex-end;
-  margin-block-start: auto;
-  padding: 16px calc(16px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) 16px;
-  color: color-mix(in srgb, var(--mat-sys-on-surface-variant) 62%, transparent);
-  font: var(--mat-sys-label-small);
-}
+  &__version {
+    align-self: flex-end;
+    margin-block-start: auto;
+    padding: 16px calc(16px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom))
+      16px;
+    color: color-mix(in srgb, var(--mat-sys-on-surface-variant) 62%, transparent);
+    font: var(--mat-sys-label-small);
+  }
 
-.app-brand-toolbar {
-  gap: 12px;
-  border-block-end: 1px solid var(--mat-sys-outline-variant);
-  background: var(--mat-sys-surface-container);
-  color: var(--mat-sys-primary);
+  // Versteckte Scrollbar benötigt keinen reservierten Abstand.
+  > .pur-scroll--hidden > .app-sidenav__content {
+    padding-inline-end: 12px;
+  }
+
+  @media (max-width: 720px) {
+    // In schmalen Ansichten wird kein fester Scrollbar-Abstand reserviert.
+    > .pur-scroll {
+      scrollbar-gutter: auto;
+    }
+
+    // Ohne reservierten Gutter gilt wieder das vollständige Content-Padding.
+    > .pur-scroll > .app-sidenav__content {
+      padding-inline-end: 12px;
+    }
+  }
 }
 
 .pur-card--user {
@@ -42,12 +54,5 @@
 
   .pur-card__text {
     flex: 1 1 auto;
-  }
-}
-
-@media (max-width: 720px) {
-  .app-sidenav__body.pur-scrollbar {
-    padding-inline-end: 12px;
-    scrollbar-gutter: auto;
   }
 }

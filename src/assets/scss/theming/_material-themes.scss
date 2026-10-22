@@ -1,5 +1,18 @@
 // src/assets/scss/theming/_material-themes.scss
+@use 'sass:map';
 @use '@angular/material' as mat;
+
+@mixin pur-primary-theme($primary-palette) {
+  // Primärfarbene Flächen
+  --pur-theme-primary: light-dark(#{map.get($primary-palette, 40)}, #{map.get($primary-palette, 30)});
+  --pur-theme-primary-lighter: light-dark(#{map.get($primary-palette, 80)}, #{map.get($primary-palette, 50)});
+  --pur-theme-primary-darker: light-dark(#{map.get($primary-palette, 30)}, #{map.get($primary-palette, 20)});
+
+  // Text und Icons auf den Primärflächen
+  --pur-theme-on-primary: light-dark(#{map.get($primary-palette, 100)}, #{map.get($primary-palette, 90)});
+  --pur-theme-on-primary-lighter: light-dark(#{map.get($primary-palette, 20)}, #{map.get($primary-palette, 100)});
+  --pur-theme-on-primary-darker: light-dark(#{map.get($primary-palette, 100)}, #{map.get($primary-palette, 90)});
+}
 
 // Include theming for Angular Material with `mat.theme()`.
 // This Sass mixin defines CSS variables for Angular Material components
@@ -17,6 +30,8 @@ html {
       density: 0,
     )
   );
+
+  @include pur-primary-theme(mat.$cyan-palette);
 }
 
 body {
@@ -45,6 +60,8 @@ body.pur-theme-color-cyan-orange {
       ),
     )
   );
+
+  @include pur-primary-theme(mat.$cyan-palette);
 }
 
 body.pur-theme-color-azure-blue {
@@ -56,6 +73,8 @@ body.pur-theme-color-azure-blue {
       ),
     )
   );
+
+  @include pur-primary-theme(mat.$azure-palette);
 }
 
 body.pur-theme-color-rose-red {
@@ -67,6 +86,8 @@ body.pur-theme-color-rose-red {
       ),
     )
   );
+
+  @include pur-primary-theme(mat.$rose-palette);
 }
 
 body.pur-theme-color-magenta-violet {
@@ -78,7 +99,29 @@ body.pur-theme-color-magenta-violet {
       ),
     )
   );
+
+  @include pur-primary-theme(mat.$magenta-palette);
 }
+
+// Theme Overrides Tests
+body.theme-dark {
+  @include mat.theme-overrides(
+    (
+      background: #303030,
+      surface: #303030,
+      surface-container-lowest: #252525,
+      surface-container-low: #2c2c2c,
+      surface-container: #333333,
+      surface-container-high: #3a3a3a,
+      surface-container-highest: #424242,
+      on-surface: #f1f1f1,
+      on-surface-variant: #cccccc,
+      outline: #8b8b8b,
+      outline-variant: #505050,
+    )
+  );
+}
+
 
 //mat.$red-palette
 //mat.$green-palette

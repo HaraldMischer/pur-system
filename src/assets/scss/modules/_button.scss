@@ -3,12 +3,60 @@
 @use '@angular/material' as mat;
 
 .pur-button {
+
+  // Tertiäre Button-Variante
   &--tertiary {
+    // Text
+    @include mat.button-overrides(
+      (
+        text-state-layer-color: var(--mat-sys-tertiary),
+        text-ripple-color: color-mix(in srgb, var(--mat-sys-tertiary) 12%, transparent),
+      )
+    );
+    --mat-button-text-label-text-color: var(--mat-sys-tertiary) !important;
+
+    // Outlined
+    @include mat.button-overrides(
+      (
+        outlined-outline-color: var(--mat-sys-tertiary),
+        outlined-state-layer-color: var(--mat-sys-tertiary),
+        outlined-ripple-color: color-mix(in srgb, var(--mat-sys-tertiary) 12%, transparent),
+      )
+    );
+    --mat-button-outlined-label-text-color: var(--mat-sys-tertiary) !important;
+
+    // Tonal
+    @include mat.button-overrides(
+      (
+        tonal-container-color: var(--mat-sys-tertiary-container),
+        tonal-label-text-color: var(--mat-sys-on-tertiary-container),
+        tonal-state-layer-color: var(--mat-sys-on-tertiary-container),
+        tonal-ripple-color: color-mix(
+            in srgb,
+            var(--mat-sys-on-tertiary-container) 12%,
+            transparent
+          ),
+      )
+    );
+
+    // Filled
     @include mat.button-overrides(
       (
         filled-container-color: var(--mat-sys-tertiary),
         filled-label-text-color: var(--mat-sys-on-tertiary),
+        filled-state-layer-color: var(--mat-sys-on-tertiary),
+        filled-ripple-color: color-mix(in srgb, var(--mat-sys-on-tertiary) 12%, transparent),
+      )
+    );
+
+    // Elevated
+    @include mat.button-overrides(
+      (
+        protected-label-text-color: var(--mat-sys-tertiary),
+        protected-state-layer-color: var(--mat-sys-tertiary),
+        protected-ripple-color: color-mix(in srgb, var(--mat-sys-tertiary) 12%, transparent),
       )
     );
   }
+
 }

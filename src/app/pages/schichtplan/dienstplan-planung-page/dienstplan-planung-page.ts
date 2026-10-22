@@ -3,6 +3,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CdkDrag, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
@@ -15,6 +16,7 @@ import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { MonatSelector } from '../../../components/date-selectors/monat-selector/monat-selector';
 import { DienstplanPlanungsbereich } from '../../../components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich';
+import { PageRouteTitleDirective } from '../../../directives/page-route-title.directive';
 
 // ===== Top-Level Helper =====================
 function formatLohnzeit(lohnzeitMinuten: number): string {
@@ -50,8 +52,10 @@ type TMitarbeiterMonatswerte = {
     CdkDropList,
     CdkDropListGroup,
     MatButtonModule,
+    MatToolbarModule,
     MonatSelector,
     DienstplanPlanungsbereich,
+    PageRouteTitleDirective,
   ],
   templateUrl: './dienstplan-planung-page.html',
   styleUrl: './dienstplan-planung-page.scss',

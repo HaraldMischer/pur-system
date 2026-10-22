@@ -1,6 +1,6 @@
 <!-- pur-system/src/app/components/app-shell/app-toolbar/app-toolbar.html -->
 
-<mat-toolbar class="app-toolbar">
+<mat-toolbar class="pur-toolbar pur-toolbar--main">
   <!-- Navigation und Titel -->
   @if (navigationVisible()) {
     <button
@@ -14,10 +14,10 @@
   }
 
   @if (brandVisible()) {
-    <mat-icon class="app-toolbar__brand-icon" aria-hidden="true">business</mat-icon>
+    <mat-icon aria-hidden="true">business</mat-icon>
   }
 
-  <span class="app-toolbar__title" [class.app-toolbar__title--brand]="brandVisible()">
+  <span class="pur-toolbar__title">
     {{ title() }}
   </span>
   <span class="app-toolbar__spacer" aria-hidden="true"></span>

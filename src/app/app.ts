@@ -106,7 +106,11 @@ export class App {
 
     return {
       authLayout,
-      toolbarTitel: authLayout ? environment.appTitle : (route.title ?? ''),
+      toolbarTitel: authLayout
+        ? environment.appTitle
+        : route.data['pageToolbar'] === true
+          ? ''
+          : (route.title ?? ''),
     };
   }
 }

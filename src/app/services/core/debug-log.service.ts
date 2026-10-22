@@ -3,6 +3,7 @@
 import { Injectable } from '@angular/core';
 
 import { LOCALHOST_DEBUG_LOG_ENABLED } from '../../commons/constants/app.constants';
+import { isLocalhost } from '../../commons/utils/core/localhost';
 
 export type TDebugLogKategorie = 'Authentifizierung' | 'Firestore' | 'Laden' | 'Store';
 
@@ -13,10 +14,6 @@ const LOGZEILEN_TEXT_LAENGE = 45;
 function formatDatenzeile(bezeichnung: string, anzahl: number): string {
   const text = `${bezeichnung} geladen`;
   return `* ${text.padEnd(LOGZEILEN_TEXT_LAENGE, '.')} (${anzahl})`;
-}
-
-export function isLocalhost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }
 
 @Injectable({ providedIn: 'root' })

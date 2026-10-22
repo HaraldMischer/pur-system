@@ -7,17 +7,24 @@
 .monat-selector__auswahl {
   display: flex;
   align-items: center;
-  border: 1px solid var(--mat-sys-outline);
-  border-radius: 999px;
-  color: var(--mat-sys-primary);
+  height: var(--mat-button-outlined-container-height, 40px);
+  box-sizing: border-box;
+  border: var(--mat-button-outlined-outline-width, 1px) solid
+    var(--mat-button-outlined-outline-color, var(--mat-sys-outline));
+  border-radius: var(--mat-button-outlined-container-shape, var(--mat-sys-corner-full));
+  color: var(
+    --mat-toolbar-container-text-color,
+    var(--mat-button-outlined-label-text-color, var(--mat-sys-primary))
+  );
   overflow: hidden;
 
   button {
-    --mat-icon-button-icon-color: var(--mat-sys-primary);
+    --mat-icon-button-icon-color: currentColor;
   }
 
   strong {
     min-width: 120px;
+    font: var(--mat-sys-label-large);
     text-align: center;
     text-transform: capitalize;
   }

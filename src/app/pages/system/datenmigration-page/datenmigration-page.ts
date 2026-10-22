@@ -46,7 +46,6 @@ const MIGRATIONSBEREICHE: readonly IMigrationsbereichOption[] = [
   imports: [MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatSelectModule],
   templateUrl: './datenmigration-page.html',
   styleUrl: './datenmigration-page.scss',
-  host: { class: 'pur-page pur-page--limited' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DatenmigrationPage implements OnInit {

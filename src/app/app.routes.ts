@@ -46,7 +46,7 @@ export const routes: Routes = [
     path: 'dashboard',
     title: 'Dashboard',
     canActivate: [authGuard, initialisierungGuard, bereichGuard],
-    data: { bereich: 'dashboard' },
+    data: { bereich: 'dashboard', pageToolbar: true },
     loadComponent: () =>
       import('./pages/dashboard-page/dashboard-page').then((m) => m.DashboardPage),
   },
@@ -72,6 +72,7 @@ export const routes: Routes = [
         path: 'planung',
         title: 'Dienstplan bearbeiten',
         canActivate: [dienstplanPlanungGuard],
+        data: { pageToolbar: true },
         loadComponent: () =>
           import('./pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page').then(
             (m) => m.DienstplanPlanungPage,

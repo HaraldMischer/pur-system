@@ -10,8 +10,13 @@
   height: 100%;
   min-height: 0;
 
-  > .pur-page-section {
-    grid-template-rows: auto minmax(0, 1fr);
+  &__content {
+    height: 100%;
+    min-height: 0;
+  }
+
+  &__content > .pur-page-section {
+    grid-template-rows: minmax(0, 1fr);
     height: 100%;
     min-height: 0;
   }

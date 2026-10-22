@@ -1,7 +1,8 @@
 // pur-system/src/app/pages/zugang/passwort-page/passwort-page.scss
 
 .passwort-page {
-  width: 100%;
-  max-width: 544px;
-  margin: 0 auto;
+  &__body {
+    max-width: 544px;
+    margin: 0 auto;
+  }
 }

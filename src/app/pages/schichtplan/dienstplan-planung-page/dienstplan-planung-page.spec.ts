@@ -3,6 +3,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { provideRouter } from '@angular/router';
 import { CdkDrag } from '@angular/cdk/drag-drop';
 import { MatDialog } from '@angular/material/dialog';
 import { Timestamp } from 'firebase/firestore';
@@ -69,6 +70,7 @@ describe('DienstplanPlanungPage', () => {
     await TestBed.configureTestingModule({
       imports: [DienstplanPlanungPage],
       providers: [
+        provideRouter([]),
         {
           provide: AppKontextStore,
           useValue: { selectedUnternehmer, selectedFirma, selectedFilialen },
