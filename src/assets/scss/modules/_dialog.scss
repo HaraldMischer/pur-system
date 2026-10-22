@@ -6,6 +6,18 @@
     width: calc(100vw - 32px);
     max-width: min(448px, calc(100vw - 32px)) !important;
 
+    // Aktionselement am Ende der Titelzeile
+    [mat-dialog-title] {
+      position: relative;
+
+      .pur-dialog__title-action--end {
+        position: absolute;
+        top: 50%;
+        inset-inline-end: 24px;
+        transform: translateY(-50%);
+      }
+    }
+
     &--medium {
       max-width: min(640px, calc(100vw - 32px)) !important;
     }

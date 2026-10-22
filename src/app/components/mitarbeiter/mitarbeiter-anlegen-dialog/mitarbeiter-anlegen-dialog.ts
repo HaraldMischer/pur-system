@@ -26,6 +26,7 @@ import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../commons/utils
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
+import { FarbkennungAuswahl } from '../../shared/farbkennung-auswahl/farbkennung-auswahl';
 
 export interface IMitarbeiterAnlegenDialogDaten {
   unternehmerId: string;
@@ -43,6 +44,7 @@ export interface IMitarbeiterAnlegenDialogDaten {
     MatInputModule,
     MatSelectModule,
     ReactiveFormsModule,
+    FarbkennungAuswahl,
   ],
   templateUrl: './mitarbeiter-anlegen-dialog.html',
   styleUrl: './mitarbeiter-anlegen-dialog.scss',
@@ -106,6 +108,7 @@ export class MitarbeiterAnlegenDialog {
       },
     ),
     aktiv: new FormControl(true, { nonNullable: true }),
+    farbkennung: new FormControl<string | null>(null),
   });
 
   constructor() {
@@ -200,6 +203,7 @@ export class MitarbeiterAnlegenDialog {
         ]),
       ],
       aktiv: value.aktiv,
+      ...(value.farbkennung ? { farbkennung: value.farbkennung } : {}),
     };
   }
   private getVerpflichtendeFilialId(): string | undefined {

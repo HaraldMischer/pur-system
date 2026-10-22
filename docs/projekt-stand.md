@@ -124,9 +124,10 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Die Oberfläche erläutert die Auflösungsreihenfolge mit den sichtbaren Begriffen einmaliger Sondertag, gesetzlicher Feiertag,
   jährlicher Sondertag und Wochentag. Ein noch nicht initialisierter gültiger Bestand kann ohne vorherige Formularänderung
   gespeichert werden; bestehende Einstellungen erfordern weiterhin eine fachliche Änderung.
-- Das Mitarbeiter-Domainmodell führt optional `farbkennung` im Firestore-Dokument und im Anwendungseintrag. Vorhandene Werte
-  werden geladen und im Schichtraster sowie in der Mitarbeiterübersicht dargestellt. Eine Oberfläche zur Pflege der Farbkennung
-  ist noch nicht umgesetzt.
+- Das Mitarbeiter-Domainmodell führt optional `farbkennung` in den Anlage-, Firestore- und Anwendungsdaten. Die Dialoge zum
+  Anlegen und Bearbeiten verwenden eine gemeinsame Formular-Component mit einem Farbkachel-Menü einschließlich der Auswahl
+  „Keine Farbe“. Die zentrale Farbzuordnung löst die gespeicherte Kennung im Schichtraster und in der Mitarbeiterübersicht in
+  eine konkrete Farbe auf; bestehende ältere CSS-Farbwerte bleiben darstellbar.
 - Eine Version besitzt den Status `entwurf`, `veroeffentlicht` oder `archiviert`. Veröffentlichte und archivierte Versionen
   bleiben unveränderlich. Änderungen werden als neue Entwurfsversion auf Basis des veröffentlichten Stands vorbereitet.
 - Aktive Master dürfen in allen Filialen planen. Aktive Office-Konten bleiben auf ausdrücklich freigegebene Filialen und

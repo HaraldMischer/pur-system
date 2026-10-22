@@ -20,7 +20,7 @@ describe('DienstplanMonatstabelle', () => {
       createSchicht('s-2', 'm-2'),
     ]);
     fixture.componentRef.setInput('mitarbeiter', [
-      createMitarbeiter('m-1', 'Mia', '#123456'),
+      createMitarbeiter('m-1', 'Mia', 'blau'),
       createMitarbeiter('m-2', 'Max'),
     ]);
     fixture.componentRef.setInput('darfSchreiben', true);
@@ -38,7 +38,7 @@ describe('DienstplanMonatstabelle', () => {
     expect(tage[2].zellen[1].schichten.map((schicht) => schicht.id)).toEqual(['s-1', 's-2']);
     expect(component.getMitarbeiterAnzeigename('m-1')).toBe('Muster, Mia');
     expect(component.getMitarbeiterAnzeigename('m-2')).toBe('Muster, Max');
-    expect(component.getMitarbeiterFarbkennung('m-1')).toBe('#123456');
+    expect(component.getMitarbeiterFarbe('m-1')).toBe('#1976d2');
     expect(component.formatLohnzeit(tage[2].zellen[1].schichten[0])).toBe('8 Std. 30 Min.');
     expect(component.statusBezeichnung()).toBe('Entwurf');
     expect(fixture.nativeElement.textContent).toContain('18:00–23:00 Uhr');

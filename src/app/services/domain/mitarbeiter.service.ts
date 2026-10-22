@@ -176,10 +176,14 @@ export class MitarbeiterService {
     mitarbeiterId: string,
     aktualisierung: IMitarbeiterAktualisierung,
   ): Promise<void> {
+    const { farbkennung, ...aktualisierungsdaten } = aktualisierung;
     await this.firestoreDbService.updateDocument(
       FIRESTORE_DOCUMENT_PATHS.mitarbeiter(unternehmerId, firmaId, mitarbeiterId),
       {
-        ...aktualisierung,
+        ...aktualisierungsdaten,
+        ...(farbkennung !== undefined
+          ? { farbkennung: farbkennung ?? this.firestoreDbService.createDeleteField() }
+          : {}),
         person: createMitarbeiterPerson(aktualisierung.person),
         anzeigename: createAnzeigename(aktualisierung.person),
         aktualisiertAm: this.firestoreDbService.createServerTimestamp(),

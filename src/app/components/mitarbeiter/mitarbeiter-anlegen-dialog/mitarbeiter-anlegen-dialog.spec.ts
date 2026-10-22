@@ -64,6 +64,7 @@ describe('MitarbeiterAnlegenDialog', () => {
 
     expect(fixture.componentInstance.mitarbeiterForm.invalid).toBe(true);
     expect(fixture.componentInstance.mitarbeiterForm.controls.aktiv.value).toBe(true);
+    expect(fixture.componentInstance.mitarbeiterForm.controls.farbkennung.value).toBeNull();
     expect(fixture.componentInstance.rollen).toContainEqual({
       value: 'dienstplaner',
       label: 'Dienstplaner',
@@ -120,6 +121,7 @@ describe('MitarbeiterAnlegenDialog', () => {
       rollen: ['filialkasse'],
       filialIds: ['b-1'],
       aktiv: false,
+      farbkennung: 'blau',
     });
 
     await component.onSubmit();
@@ -134,6 +136,7 @@ describe('MitarbeiterAnlegenDialog', () => {
       rollen: ['filialkasse'],
       filialIds: ['b-1'],
       aktiv: false,
+      farbkennung: 'blau',
     });
     expect(dialogRefMock.close).toHaveBeenCalledWith({ id: 'm-neu' });
   });

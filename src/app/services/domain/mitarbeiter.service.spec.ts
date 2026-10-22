@@ -22,6 +22,7 @@ describe('MitarbeiterService', () => {
     deleteDocument: vi.fn(),
     updateDocumentsAtomically: vi.fn(),
     createServerTimestamp: vi.fn(),
+    createDeleteField: vi.fn(),
   };
   const anlage: IMitarbeiterAnlage = {
     person: {
@@ -53,6 +54,7 @@ describe('MitarbeiterService', () => {
     firestoreDbServiceMock.deleteDocument.mockResolvedValue(undefined);
     firestoreDbServiceMock.updateDocumentsAtomically.mockResolvedValue(undefined);
     firestoreDbServiceMock.createServerTimestamp.mockReturnValue('server-zeitstempel');
+    firestoreDbServiceMock.createDeleteField.mockReturnValue('feld-loeschen');
 
     TestBed.configureTestingModule({
       providers: [
@@ -284,6 +286,28 @@ describe('MitarbeiterService', () => {
     );
     expect(firestoreDbServiceMock.updateDocument.mock.calls[0][1]).not.toHaveProperty(
       'benutzerUid',
+    );
+  });
+
+  it('should update or remove the employee color identifier', async () => {
+    const service = TestBed.inject(MitarbeiterService);
+
+    await service.updateMitarbeiter('u', 'f', 'm-1', {
+      ...anlage,
+      farbkennung: 'blau',
+    });
+    expect(firestoreDbServiceMock.updateDocument).toHaveBeenLastCalledWith(
+      'unternehmer/u/firma/f/mitarbeiter/m-1',
+      expect.objectContaining({ farbkennung: 'blau' }),
+    );
+
+    await service.updateMitarbeiter('u', 'f', 'm-1', {
+      ...anlage,
+      farbkennung: null,
+    });
+    expect(firestoreDbServiceMock.updateDocument).toHaveBeenLastCalledWith(
+      'unternehmer/u/firma/f/mitarbeiter/m-1',
+      expect.objectContaining({ farbkennung: 'feld-loeschen' }),
     );
   });
 

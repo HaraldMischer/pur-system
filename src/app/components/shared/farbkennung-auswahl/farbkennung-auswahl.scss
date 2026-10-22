@@ -1,0 +1,66 @@
+// pur-system/src/app/components/shared/farbkennung-auswahl/farbkennung-auswahl.scss
+
+.farbkennung-auswahl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.farbkennung-auswahl__button {
+  background: var(--mat-sys-surface-container-high);
+  color: #ffffff;
+
+  mat-icon {
+    color: currentcolor;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 60%));
+  }
+}
+
+.farbkennung-auswahl__label {
+  cursor: pointer;
+
+  &--disabled {
+    cursor: default;
+  }
+}
+
+.farbauswahl {
+  display: grid;
+  grid-template-columns: repeat(2, 56px);
+  gap: 2px;
+  padding: 4px;
+}
+
+.farbkachel[mat-menu-item] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  min-width: 56px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 0;
+
+  mat-icon {
+    margin: 0;
+    width: 18px;
+    height: 18px;
+    color: currentcolor;
+    font-size: 18px;
+  }
+}
+
+.farbkachel--ohne-farbe[mat-menu-item] {
+  grid-column: 1 / -1;
+  gap: 6px;
+  width: 114px;
+  min-width: 114px;
+  height: 32px;
+  min-height: 32px;
+  border: 1px solid var(--mat-sys-outline);
+  background: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-label-small);
+}

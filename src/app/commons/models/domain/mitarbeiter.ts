@@ -24,6 +24,7 @@ export interface IMitarbeiterAnlage {
   rollen: TMitarbeiterRolle[];
   filialIds: string[];
   aktiv: boolean;
+  farbkennung?: string;
 }
 
 export interface IMitarbeiterAktualisierung {
@@ -31,6 +32,7 @@ export interface IMitarbeiterAktualisierung {
   rollen: TMitarbeiterRolle[];
   filialIds: string[];
   aktiv: boolean;
+  farbkennung?: string | null;
 }
 
 export interface IMitarbeiterAnlageErgebnis {
@@ -41,14 +43,12 @@ export interface IMitarbeiterEintrag extends IMitarbeiterAnlage {
   id: string;
   unternehmerId: string;
   firmaId: string;
-  farbkennung?: string;
 }
 
 // ===== Firestore-Dokumente ==================
 
 export interface IMitarbeiterDokument extends IMitarbeiterAnlage {
   anzeigename: string;
-  farbkennung?: string;
   benutzerUid?: string;
   erstelltAm?: Timestamp;
   aktualisiertAm?: Timestamp;

@@ -29,6 +29,7 @@ import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.valid
 import { FilialeService } from '../../../services/domain/filiale.service';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
+import { FarbkennungAuswahl } from '../../shared/farbkennung-auswahl/farbkennung-auswahl';
 
 export interface IMitarbeiterBearbeitenDialogDaten {
   unternehmerId: string;
@@ -47,6 +48,7 @@ export interface IMitarbeiterBearbeitenDialogDaten {
     MatInputModule,
     MatSelectModule,
     ReactiveFormsModule,
+    FarbkennungAuswahl,
   ],
   templateUrl: './mitarbeiter-bearbeiten-dialog.html',
   styleUrl: './mitarbeiter-bearbeiten-dialog.scss',
@@ -144,6 +146,7 @@ export class MitarbeiterBearbeitenDialog {
       },
     ),
     aktiv: new FormControl(this.dialogDaten.mitarbeiter.aktiv, { nonNullable: true }),
+    farbkennung: new FormControl<string | null>(this.dialogDaten.mitarbeiter.farbkennung ?? null),
   });
 
   // ===== Öffentliche Ableitungen ==============
@@ -208,12 +211,7 @@ export class MitarbeiterBearbeitenDialog {
         this.dialogDaten.mitarbeiter.id,
         aktualisierung,
       );
-      this.dialogRef.close({
-        id: this.dialogDaten.mitarbeiter.id,
-        unternehmerId: this.dialogDaten.unternehmerId,
-        firmaId: this.dialogDaten.firmaId,
-        ...aktualisierung,
-      });
+      this.dialogRef.close(this.getAktualisiertenMitarbeiter(aktualisierung));
     } catch {
       // Der Store stellt die benutzerfreundliche Fehlermeldung bereit.
     } finally {
@@ -277,7 +275,23 @@ export class MitarbeiterBearbeitenDialog {
         ]),
       ],
       aktiv: value.aktiv,
+      farbkennung: value.farbkennung,
     };
+  }
+  private getAktualisiertenMitarbeiter(
+    aktualisierung: IMitarbeiterAktualisierung,
+  ): IMitarbeiterEintrag {
+    const { farbkennung, ...aktualisierungsdaten } = aktualisierung;
+    const mitarbeiter: IMitarbeiterEintrag = {
+      ...this.dialogDaten.mitarbeiter,
+      ...aktualisierungsdaten,
+    };
+    if (farbkennung === null) {
+      delete mitarbeiter.farbkennung;
+    } else if (farbkennung !== undefined) {
+      mitarbeiter.farbkennung = farbkennung;
+    }
+    return mitarbeiter;
   }
   private async pruefeVerwaisteFilialzuordnungen(): Promise<void> {
     if (

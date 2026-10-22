@@ -298,6 +298,27 @@ describe('MitarbeiterStore', () => {
     expect(store.getMitarbeiter('u', 'f')).toEqual([alpha, { ...zulu, ...aktualisierung }]);
   });
 
+  it('should add and remove the employee color identifier', async () => {
+    const store = TestBed.inject(MitarbeiterStore);
+    await store.loadMitarbeiter('u', 'f');
+
+    await store.updateMitarbeiter('u', 'f', 'z', {
+      ...anlage,
+      farbkennung: 'blau',
+    });
+    expect(store.getMitarbeiter('u', 'f').find((eintrag) => eintrag.id === 'z')).toMatchObject({
+      farbkennung: 'blau',
+    });
+
+    await store.updateMitarbeiter('u', 'f', 'z', {
+      ...anlage,
+      farbkennung: null,
+    });
+    expect(store.getMitarbeiter('u', 'f').find((eintrag) => eintrag.id === 'z')).not.toHaveProperty(
+      'farbkennung',
+    );
+  });
+
   it('should require one uniquely loaded company context before writing', async () => {
     const store = TestBed.inject(MitarbeiterStore);
 

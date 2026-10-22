@@ -152,7 +152,7 @@ describe('DienstplanPlanungPage', () => {
   });
 
   it('should merge active employees from the selected branches without duplicates', async () => {
-    const mitarbeiter1 = createMitarbeiter('m-1', 'Anna', 'Alpha', ['b-1'], true, '#123456');
+    const mitarbeiter1 = createMitarbeiter('m-1', 'Anna', 'Alpha', ['b-1'], true, 'blau');
     const mitarbeiter2 = createMitarbeiter('m-2', 'Berta', 'Beta', ['b-2'], true);
     const inaktiverMitarbeiter = createMitarbeiter('m-3', 'Ingo', 'Inaktiv', ['b-1'], false);
     const gemeinsamerMitarbeiter = createMitarbeiter(
@@ -180,6 +180,7 @@ describe('DienstplanPlanungPage', () => {
       'Beta, Berta',
       'Gemeinsam, Georg',
     ]);
+    expect(fixture.componentInstance.mitarbeiter()[0].farbe).toBe('#1976d2');
   });
 
   it('should show monthly hours and shift counts from active planning versions', async () => {

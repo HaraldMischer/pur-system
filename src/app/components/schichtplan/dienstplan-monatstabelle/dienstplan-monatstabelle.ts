@@ -18,6 +18,7 @@ import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
 import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
+import { getMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
 
 export type TSchichtplanRasterauswahl = {
   readonly datum: string;
@@ -194,13 +195,13 @@ export class DienstplanMonatstabelle {
   }
 
   /**
-   * Liefert die aktuelle Farbkennung eines referenzierten Mitarbeiters.
+   * Liefert die aktuelle Darstellungsfarbe eines referenzierten Mitarbeiters.
    *
    * @param mitarbeiterId - Dokument-ID des Mitarbeiters.
-   * @returns Gespeicherte Farbkennung oder `null`.
+   * @returns Aufgelöste Darstellungsfarbe oder `null`.
    */
-  getMitarbeiterFarbkennung(mitarbeiterId: string): string | null {
-    return this.mitarbeiterNachId().get(mitarbeiterId)?.farbkennung ?? null;
+  getMitarbeiterFarbe(mitarbeiterId: string): string | null {
+    return getMitarbeiterFarbe(this.mitarbeiterNachId().get(mitarbeiterId)?.farbkennung);
   }
 }
 

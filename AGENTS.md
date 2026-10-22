@@ -300,7 +300,11 @@
 - Verwende die vorhandenen npm-Skripte aus dem Projekt-Root. Der lokale Dev-Server startet mit `npm run web:pur-system`.
 - Füge Dependencies nur bei begründetem Bedarf hinzu und aktualisiere `package.json` und `package-lock.json` gemeinsam.
 - Ergänze oder aktualisiere passende `.spec.ts` Dateien bei Verhaltensänderungen.
-- Führe vor Abschluss von Code-Änderungen `npm test` ohne Watch-Modus aus.
+- Führe während der Umsetzung gezielte Tests für das betroffene Verhalten aus.
+- Bei reinen Stylingänderungen werden keine Unit-Tests ausgeführt.
+- Führe `npm test` ohne Watch-Modus vor einem Commit oder auf ausdrücklichen Wunsch des Benutzers aus.
+- Übernimmt der Benutzer die vollständige Prüfung, nennt der Agent die noch auszuführenden Tests. Die Änderung gilt erst nach
+  dem vom Benutzer gemeldeten erfolgreichen Ergebnis als vollständig geprüft.
 - Führe bei Build-, Template- oder größeren UI-Änderungen zusätzlich das zur betroffenen App passende vorhandene Build-Skript
   (`npm run build:master`, `npm run build:office`, `npm run build:filiale` oder `npm run build:mitarbeiter`) aus. Sind mehrere
   App-Varianten betroffen, führe die entsprechenden Builds einzeln aus. Verwende `npm run build` nur, wenn dieses Skript in der

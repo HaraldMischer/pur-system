@@ -73,6 +73,23 @@ function sortMitarbeiter(
   });
 }
 
+function applyMitarbeiterAktualisierung(
+  mitarbeiter: IMitarbeiterEintrag,
+  aktualisierung: IMitarbeiterAktualisierung,
+): IMitarbeiterEintrag {
+  const { farbkennung, ...aktualisierungsdaten } = aktualisierung;
+  const aktualisierterMitarbeiter: IMitarbeiterEintrag = {
+    ...mitarbeiter,
+    ...aktualisierungsdaten,
+  };
+  if (farbkennung === null) {
+    delete aktualisierterMitarbeiter.farbkennung;
+  } else if (farbkennung !== undefined) {
+    aktualisierterMitarbeiter.farbkennung = farbkennung;
+  }
+  return aktualisierterMitarbeiter;
+}
+
 export const MitarbeiterStore = signalStore(
   { providedIn: 'root', protectedState: true } as const,
   withState<TMitarbeiterState>(initialState),
@@ -283,7 +300,9 @@ export const MitarbeiterStore = signalStore(
           }
           const mitarbeiter = kontext.mitarbeiter
             .map((eintrag) => {
-              return eintrag.id === mitarbeiterId ? { ...eintrag, ...aktualisierung } : eintrag;
+              return eintrag.id === mitarbeiterId
+                ? applyMitarbeiterAktualisierung(eintrag, aktualisierung)
+                : eintrag;
             })
             .filter((eintrag) => {
               return !kontext.filialId || eintrag.filialIds.includes(kontext.filialId);

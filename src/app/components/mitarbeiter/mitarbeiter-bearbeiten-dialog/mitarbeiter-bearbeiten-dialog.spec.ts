@@ -94,6 +94,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
       rollen: ['servicekraft'],
       filialIds: ['b-1'],
       aktiv: true,
+      farbkennung: null,
     });
     expect(fixture.componentInstance.rollen).toContainEqual({
       value: 'dienstplaner',
@@ -136,6 +137,24 @@ describe('MitarbeiterBearbeitenDialog', () => {
 
     expect(component.hatAenderungen()).toBe(false);
     expect(submit?.disabled).toBe(true);
+  });
+
+  it('should save the selected employee color identifier', async () => {
+    const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
+
+    component.mitarbeiterForm.controls.farbkennung.setValue('blau');
+
+    expect(component.hatAenderungen()).toBe(true);
+    await component.onSubmit();
+    expect(updateMitarbeiterMock).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      'm-1',
+      expect.objectContaining({ farbkennung: 'blau' }),
+    );
+    expect(dialogRefMock.close).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'm-1', farbkennung: 'blau' }),
+    );
   });
 
   it('should not update an unchanged employee', async () => {

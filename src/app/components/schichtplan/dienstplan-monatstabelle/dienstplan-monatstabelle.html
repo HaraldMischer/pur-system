@@ -116,10 +116,10 @@
                 @for (schicht of zelle.schichten; track schicht.id) {
                   <div class="schicht">
                     <strong>
-                      @if (getMitarbeiterFarbkennung(schicht.mitarbeiterId); as farbkennung) {
+                      @if (getMitarbeiterFarbe(schicht.mitarbeiterId); as farbe) {
                         <span
                           class="mitarbeiter-farbe"
-                          [style.background-color]="farbkennung"
+                          [style.background-color]="farbe"
                           aria-hidden="true"
                         ></span>
                       }

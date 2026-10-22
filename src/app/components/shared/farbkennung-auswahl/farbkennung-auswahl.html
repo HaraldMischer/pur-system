@@ -1,0 +1,57 @@
+<!-- pur-system/src/app/components/shared/farbkennung-auswahl/farbkennung-auswahl.html -->
+
+<div class="farbkennung-auswahl">
+  <button
+    matIconButton
+    type="button"
+    class="farbkennung-auswahl__button"
+    [attr.aria-label]="label() + ' auswählen'"
+    [disabled]="deaktiviert()"
+    [matMenuTriggerFor]="farbkennungMenu"
+    #farbkennungMenuTrigger="matMenuTrigger"
+    [style.background-color]="getMitarbeiterFarbe(farbkennung())"
+  >
+    <mat-icon aria-hidden="true">format_color_fill</mat-icon>
+  </button>
+  <span
+    class="farbkennung-auswahl__label"
+    [class.farbkennung-auswahl__label--disabled]="deaktiviert()"
+    (click)="openMenu(farbkennungMenuTrigger)"
+  >
+    {{ label() }}
+  </span>
+</div>
+
+<mat-menu #farbkennungMenu="matMenu">
+  <div class="farbauswahl" aria-label="Farblabel auswählen">
+    <button
+      mat-menu-item
+      type="button"
+      class="farbkachel farbkachel--ohne-farbe"
+      role="menuitemradio"
+      aria-label="Kein Farblabel"
+      [attr.aria-checked]="farbkennung() === null"
+      (click)="selectFarbkennung(null)"
+    >
+      <mat-icon aria-hidden="true">{{ farbkennung() === null ? 'check' : 'block' }}</mat-icon>
+      <span>Keine Farbe</span>
+    </button>
+    @for (farbe of farben; track farbe.kennung) {
+      <button
+        mat-menu-item
+        type="button"
+        class="farbkachel"
+        role="menuitemradio"
+        [attr.aria-label]="farbe.bezeichnung"
+        [attr.aria-checked]="farbkennung() === farbe.kennung"
+        [style.background-color]="farbe.farbe"
+        [style.color]="farbe.kontrastfarbe"
+        (click)="selectFarbkennung(farbe.kennung)"
+      >
+        @if (farbkennung() === farbe.kennung) {
+          <mat-icon aria-hidden="true">check</mat-icon>
+        }
+      </button>
+    }
+  </div>
+</mat-menu>

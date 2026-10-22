@@ -9,6 +9,7 @@ import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 import { getAktuellerMonat } from '../../../commons/utils/datum/monat';
 import { sortMitarbeiter } from '../../../commons/utils/mitarbeiter/mitarbeiter-dokument';
+import { getMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
@@ -34,7 +35,7 @@ type TMitarbeiterAnzeige = {
   readonly filialIds: readonly string[];
   readonly lohnzeit: string;
   readonly schichtanzahl: number;
-  readonly farbkennung?: string;
+  readonly farbe?: string;
 };
 
 type TMitarbeiterMonatswerte = {
@@ -114,13 +115,14 @@ export class DienstplanPlanungPage {
         lohnzeitMinuten: 0,
         schichtanzahl: 0,
       };
+      const farbe = getMitarbeiterFarbe(eintrag.farbkennung);
       return {
         id: eintrag.id,
         anzeigename,
         filialIds: eintrag.filialIds,
         lohnzeit: formatLohnzeit(monatswerte.lohnzeitMinuten),
         schichtanzahl: monatswerte.schichtanzahl,
-        ...(eintrag.farbkennung ? { farbkennung: eintrag.farbkennung } : {}),
+        ...(farbe ? { farbe } : {}),
       };
     });
   });

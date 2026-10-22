@@ -1,6 +1,11 @@
 <!-- pur-system/src/app/components/mitarbeiter/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog.html -->
 
-<h2 mat-dialog-title>Mitarbeiter bearbeiten</h2>
+<h2 mat-dialog-title>
+  Mitarbeiter bearbeiten
+  <mat-checkbox class="pur-dialog__title-action--end" [formControl]="mitarbeiterForm.controls.aktiv"
+    >Aktiv</mat-checkbox
+  >
+</h2>
 
 <mat-dialog-content class="pur-dialog__content">
   <form
@@ -117,12 +122,10 @@
             }
           </mat-select>
         </mat-form-field>
-        <mat-checkbox
-          class="pur-form__item pur-form__item--checkbox pur-form__item--50"
-          formControlName="aktiv"
-        >
-          Mitarbeiter ist aktiv
-        </mat-checkbox>
+        <app-farbkennung-auswahl
+          class="pur-form__item pur-form__item--50"
+          formControlName="farbkennung"
+        />
       </div>
       @if (benutzerStore.benutzerProfil()?.userRole !== 'filiale') {
         <div class="pur-form__row">
