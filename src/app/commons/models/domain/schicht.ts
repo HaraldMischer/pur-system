@@ -17,7 +17,9 @@ export interface ISchichtAnlage {
 
 export interface ISchichtAktualisierung extends ISchichtAnlage {}
 
-export interface ISchichtDaten extends ISchichtAnlage, ISchichtZeitdaten {}
+export interface ISchichtDaten extends ISchichtAnlage, ISchichtZeitdaten {
+  pauseMinuten?: number;
+}
 
 export interface ISchichtEintrag extends ISchichtDaten {
   id: string;
@@ -32,9 +34,20 @@ export interface ISchichtEintrag extends ISchichtDaten {
   aktualisiertVonUid: string;
 }
 
+export interface ISchichtPausenaktualisierung {
+  unternehmerId: string;
+  firmaId: string;
+  filialeId: string;
+  dienstplanId: string;
+  versionId: string;
+  schichtId: string;
+  pauseMinuten: number;
+}
+
 export interface ISchichtSchreibergebnis {
   schicht: ISchichtEintrag;
   versionRevision: number;
+  pauseAktualisierungen: readonly ISchichtPausenaktualisierung[];
 }
 
 // ===== Firestore-Dokumente ==================
@@ -47,4 +60,5 @@ export interface ISchichtDokument extends ISchichtZeitdaten {
   erstelltVonUid: string;
   aktualisiertAm?: Timestamp;
   aktualisiertVonUid: string;
+  pauseMinuten?: number;
 }

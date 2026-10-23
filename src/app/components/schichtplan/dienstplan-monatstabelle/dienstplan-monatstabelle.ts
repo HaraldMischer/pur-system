@@ -16,7 +16,7 @@ import {
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
-import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
+import { compareModellschichtenNachReihenfolge } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
 import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 import { getMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
 
@@ -29,14 +29,26 @@ export type TSchichtplanMitarbeiterAblage = TSchichtplanRasterauswahl & {
   readonly mitarbeiterId: string;
 };
 
+export type TSchichtplanVerschiebung = TSchichtplanRasterauswahl & {
+  readonly schicht: ISchichtEintrag;
+};
+
+export type TSchichtplanDragDaten =
+  | { readonly art: 'mitarbeiter'; readonly mitarbeiterId: string }
+  | { readonly art: 'schicht'; readonly schicht: ISchichtEintrag };
+
 type TSchichtplanZelle = {
   readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
   readonly rasterzeit: IDienstplanRasterzeit | null;
   readonly schichten: readonly ISchichtEintrag[];
+  readonly schichtIds: readonly string[];
   readonly mitarbeiterIds: readonly string[];
+  readonly hatKonflikt: boolean;
 };
 
 type TSchichtplanAblageziel = TSchichtplanRasterauswahl & {
+  readonly rasterzeit: IDienstplanRasterzeit | null;
+  readonly schichtIds: readonly string[];
   readonly mitarbeiterIds: readonly string[];
   readonly mehrfachbelegungErlaubt: boolean;
   readonly verfuegbar: boolean;
@@ -54,7 +66,7 @@ type TSchichtplanTag = {
 
 @Component({
   selector: 'app-dienstplan-monatstabelle',
-  imports: [CdkDropList, MatButtonModule, MatIconModule],
+  imports: [CdkDrag, CdkDropList, MatButtonModule, MatIconModule],
   templateUrl: './dienstplan-monatstabelle.html',
   styleUrl: './dienstplan-monatstabelle.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,6 +78,7 @@ export class DienstplanMonatstabelle {
   readonly versionen = input.required<readonly IDienstplanVersionEintrag[]>();
   readonly schichten = input.required<readonly ISchichtEintrag[]>();
   readonly modellschichten = input.required<readonly IModellschichtMomentaufnahmeEintrag[]>();
+  readonly konfliktSchichtIds = input<ReadonlySet<string>>(new Set());
   readonly mitarbeiter = input<readonly IMitarbeiterEintrag[]>([]);
   readonly erlaubteMitarbeiterIds = input<readonly string[]>([]);
   readonly darfSchreiben = input(false);
@@ -73,10 +86,21 @@ export class DienstplanMonatstabelle {
   readonly dienstplanLoeschenAnzeigen = input(false);
   readonly dienstplanLoeschenDeaktiviert = input(false);
   readonly dienstplanLoeschenHinweis = input('');
+  readonly dienstplanVeroeffentlichenAnzeigen = input(false);
+  readonly dienstplanVeroeffentlichenDeaktiviert = input(false);
+  readonly dienstplanVeroeffentlichenHinweis = input('');
+  readonly entwurfAnlegenAnzeigen = input(false);
+  readonly entwurfAnlegenDeaktiviert = input(false);
   readonly schichtAnlegen = output<TSchichtplanRasterauswahl>();
   readonly schichtAblegen = output<TSchichtplanMitarbeiterAblage>();
+  readonly schichtVerschieben = output<TSchichtplanVerschiebung>();
   readonly schichtBearbeiten = output<ISchichtEintrag>();
+  readonly schichtVerschiebungErlaubt = input<
+    (schicht: ISchichtEintrag, ziel: TSchichtplanRasterauswahl) => boolean
+  >(() => true);
   readonly dienstplanLoeschen = output<void>();
+  readonly dienstplanVeroeffentlichen = output<void>();
+  readonly entwurfAnlegen = output<void>();
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -100,7 +124,7 @@ export class DienstplanMonatstabelle {
     const dienstplanId = this.dienstplan().id;
     return this.modellschichten()
       .filter((modellschicht) => modellschicht.dienstplanId === dienstplanId)
-      .sort(compareModellschichtenNachBeginn);
+      .sort(compareModellschichtenNachReihenfolge);
   });
   readonly mitarbeiterNachId = computed(() => {
     return new Map(this.mitarbeiter().map((mitarbeiter) => [mitarbeiter.id, mitarbeiter]));
@@ -122,19 +146,36 @@ export class DienstplanMonatstabelle {
       dienstplan.kalendertage,
       this.geordneteModellschichten(),
       schichten,
+      this.konfliktSchichtIds(),
     );
   });
 
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Prüft, ob der gezogene Mitarbeiter in das aktuelle Rasterziel abgelegt werden darf.
+   * Prüft, ob der gezogene Mitarbeiter oder die gezogene Schicht abgelegt werden darf.
    */
-  readonly darfMitarbeiterAblegen = (
-    drag: CdkDrag<string>,
+  readonly darfPlanungselementAblegen = (
+    drag: CdkDrag<TSchichtplanDragDaten>,
     drop: CdkDropList<TSchichtplanAblageziel>,
   ): boolean => {
-    const mitarbeiterId = drag.data;
+    const dragDaten = drag.data;
+    if (dragDaten.art === 'schicht') {
+      const schicht = dragDaten.schicht;
+      const istBisherigeZelle =
+        schicht.datum === drop.data.datum && schicht.modellschichtId === drop.data.modellschichtId;
+      const fremdeSchichtIds = drop.data.schichtIds.filter((id) => id !== schicht.id);
+      return (
+        this.kannSchichtenAblegen() &&
+        drop.data.verfuegbar &&
+        this.erlaubteMitarbeiterIds().includes(schicht.mitarbeiterId) &&
+        (istBisherigeZelle ||
+          ((drop.data.mehrfachbelegungErlaubt || fremdeSchichtIds.length === 0) &&
+            !drop.data.mitarbeiterIds.includes(schicht.mitarbeiterId) &&
+            this.schichtVerschiebungErlaubt()(schicht, drop.data)))
+      );
+    }
+    const mitarbeiterId = dragDaten.mitarbeiterId;
     return (
       this.kannSchichtenAblegen() &&
       drop.data.verfuegbar &&
@@ -145,13 +186,37 @@ export class DienstplanMonatstabelle {
   };
 
   /**
-   * Übergibt eine gültige Mitarbeiterablage an den Filialabschnitt.
+   * Übergibt eine gültige Mitarbeiter- oder Schichtablage an den Filialabschnitt.
    *
-   * @param event - CDK-Ablageereignis mit der Mitarbeiter-ID.
+   * @param event - CDK-Ablageereignis mit den Daten des Planungselements.
    */
-  handleMitarbeiterDrop(event: CdkDragDrop<TSchichtplanAblageziel, unknown, string>): void {
-    const mitarbeiterId = event.item.data;
+  handlePlanungselementDrop(
+    event: CdkDragDrop<TSchichtplanAblageziel, unknown, TSchichtplanDragDaten>,
+  ): void {
+    const dragDaten = event.item.data;
     const ziel = event.container.data;
+    if (dragDaten.art === 'schicht') {
+      const schicht = dragDaten.schicht;
+      if (schicht.datum === ziel.datum && schicht.modellschichtId === ziel.modellschichtId) return;
+      const fremdeSchichtIds = ziel.schichtIds.filter((id) => id !== schicht.id);
+      if (
+        !this.kannSchichtenAblegen() ||
+        !ziel.verfuegbar ||
+        !this.erlaubteMitarbeiterIds().includes(schicht.mitarbeiterId) ||
+        (!ziel.mehrfachbelegungErlaubt && fremdeSchichtIds.length > 0) ||
+        ziel.mitarbeiterIds.includes(schicht.mitarbeiterId) ||
+        !this.schichtVerschiebungErlaubt()(schicht, ziel)
+      ) {
+        return;
+      }
+      this.schichtVerschieben.emit({
+        schicht,
+        datum: ziel.datum,
+        modellschichtId: ziel.modellschichtId,
+      });
+      return;
+    }
+    const mitarbeiterId = dragDaten.mitarbeiterId;
     if (
       !this.kannSchichtenAblegen() ||
       !ziel.verfuegbar ||
@@ -211,6 +276,7 @@ function createTage(
   kalendertage: readonly IDienstplanKalendertag[],
   modellschichten: readonly IModellschichtMomentaufnahmeEintrag[],
   schichten: readonly ISchichtEintrag[],
+  konfliktSchichtIds: ReadonlySet<string>,
 ): TSchichtplanTag[] {
   const schichtenNachZelle = new Map<string, ISchichtEintrag[]>();
   for (const schicht of schichten) {
@@ -259,7 +325,9 @@ function createTage(
           modellschicht,
           rasterzeit,
           schichten: zellenschichten,
+          schichtIds: zellenschichten.map((schicht) => schicht.id),
           mitarbeiterIds: zellenschichten.map((schicht) => schicht.mitarbeiterId),
+          hatKonflikt: zellenschichten.some((schicht) => konfliktSchichtIds.has(schicht.id)),
         };
       }),
     });

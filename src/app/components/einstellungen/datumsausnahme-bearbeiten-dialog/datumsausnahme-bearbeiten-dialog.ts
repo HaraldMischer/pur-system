@@ -25,8 +25,8 @@ import {
 import { getMaximalerOeffnungsrahmen } from '../../../commons/utils/filialeinstellung/schliesszeitraum';
 import { createOeffnungsregelZeitraumValidator } from '../../../commons/validators/oeffnungsregel-zeitraum.validator';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
-import { DatumEingabe } from '../../shared/datum-eingabe/datum-eingabe';
-import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
+import { EingabeDatum } from '../../shared/eingabe-datum/eingabe-datum';
+import { EingabeZeit } from '../../shared/eingabe-zeit/eingabe-zeit';
 
 // ===== Konstanten & Typen ===================
 
@@ -44,8 +44,8 @@ export interface IDatumsausnahmeBearbeitenDialogDaten {
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
-    DatumEingabe,
-    LokalzeitEingabe,
+    EingabeDatum,
+    EingabeZeit,
     ReactiveFormsModule,
   ],
   templateUrl: './datumsausnahme-bearbeiten-dialog.html',

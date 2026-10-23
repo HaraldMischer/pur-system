@@ -23,16 +23,14 @@ Vorbelegung unmittelbar gespeichert werden. Bei einem bestehenden Bestand ist da
 
 Gesetzliche Feiertage und jährliche Sondertage werden über den `SondertagBearbeitenDialog` gepflegt. Systemdefinierte
 gesetzliche Feiertage behalten ihre zentrale Datumsregel; bearbeitbar sind nur Aktivstatus und Öffnungsregel. Gesetzliche
-Feiertage sowie Heiligabend und Silvester werden zunächst inaktiv angelegt, damit die Wochentagsregel gilt. Eigene Sondertage
-gelten immer jährlich und werden mit Monat und Tag angelegt. Fehlen bei einem Feiertag oder jährlichen Sondertag gespeicherte
-Zeitwerte, belegt der Dialog Beginn und Ende mit dem aus dem Schließzeitraum abgeleiteten maximalen Öffnungsrahmen vor. Bei
-inaktiven systemdefinierten Tagen ist dies zunächst nur eine Formularvorbelegung; gespeichert wird sie erst mit einer
-fachlichen Änderung. Einmalige Sondertage
+Feiertage sowie Heiligabend und Silvester werden zunächst inaktiv und geschlossen angelegt, damit die Wochentagsregel gilt.
+Beginn und Ende ihrer geschlossenen Öffnungsregeln werden bereits bei der Initialisierung aus dem Schließzeitraum abgeleitet
+und gespeichert. Eigene Sondertage gelten immer jährlich und werden mit Monat und Tag angelegt. Einmalige Sondertage
 werden getrennt über den `DatumsausnahmeBearbeitenDialog` mit einem vollständigen Datum gepflegt und technisch als
-Datumsausnahmen gespeichert. Die lokalen Zeit- und Datumseingaben verwenden die wiederverwendbaren Components
-`LokalzeitEingabe` und `DatumEingabe`. Beide arbeiten als
-browserunabhängige maskierte Texteingaben. `DatumEingabe` unterstützt vollständige Daten als `TT.MM.JJJJ` und jährliche Daten
-ohne Jahr als `TT.MM.`. Das Datum eines bestehenden einmaligen Sondertags bleibt unverändert, weil es zugleich die
+Datumsausnahmen gespeichert. Die lokalen Zeit- und Datumseingaben verwenden die wiederverwendbaren Components `EingabeZeit`
+und `EingabeDatum`. Beide arbeiten als browserunabhängige maskierte Texteingaben. `EingabeDatum` unterstützt vollständige Daten
+als `TT.MM.JJJJ` und jährliche Daten ohne Jahr als `TT.MM.`. Das Datum eines bestehenden einmaligen Sondertags bleibt
+unverändert, weil es zugleich die
 Firestore-Dokument-ID der Datumsausnahme bildet. Löschvorgänge werden über den gemeinsamen Bestätigungsdialog abgesichert.
 
 Die Oberfläche stellt den Schließzeitraum als zwei bearbeitbare, responsiv angeordnete Zeitfelder dar. Den maximalen

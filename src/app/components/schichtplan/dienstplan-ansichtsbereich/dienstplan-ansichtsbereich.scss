@@ -1,0 +1,40 @@
+// pur-system/src/app/components/schichtplan/dienstplan-ansichtsbereich/dienstplan-ansichtsbereich.scss
+
+.dienstplan-tage {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.dienstplan-tag {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+
+  &__titel {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+  }
+
+  &__schichten {
+    margin-block: 0;
+  }
+}
+
+.schicht-mitarbeiter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+}
+
+.schicht-daten {
+  flex: 1 1 320px;
+}
+
+.mitarbeiter-farbe {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}

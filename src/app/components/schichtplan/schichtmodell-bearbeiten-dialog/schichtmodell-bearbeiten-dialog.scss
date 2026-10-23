@@ -1,1 +1,19 @@
 // pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.scss
+
+@media (min-width: 601px) and (max-width: 800px) {
+  .modellschicht-items {
+    > .pur-form__item--40 {
+      flex: 1 0 100%;
+    }
+
+    > .pur-form__item--20 {
+      flex: 1 1 calc((100% - 32px) / 3);
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .modellschicht-platzhalter {
+    display: none;
+  }
+}

@@ -30,7 +30,7 @@
 
     <div class="pur-form__group pur-form__group-list">
       <header class="pur-form__group-header">
-        <h3 class="pur-form__group-titel">Modellschichten</h3>
+        <h2 class="pur-form__group-titel">Tagesschichten</h2>
         <button matButton type="button" (click)="addModellschicht()">
           <mat-icon>add</mat-icon>
           Schicht hinzufügen
@@ -44,7 +44,7 @@
       ) {
         <section class="pur-form__group pur-form__group--outlined">
           <header class="pur-form__group-header">
-            <strong class="pur-form__group-titel">Schicht {{ index + 1 }}</strong>
+            <h2 class="pur-form__group-titel">Schicht {{ index + 1 }}</h2>
             <div class="pur-form__group-actions">
               <mat-checkbox [formControl]="modellschicht.controls.mehrfachbelegungErlaubt">
                 Mehrfachbelegung
@@ -61,123 +61,84 @@
             </div>
           </header>
 
-          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-            <mat-label>Bezeichnung</mat-label>
-            <input matInput [formControl]="modellschicht.controls.bezeichnung" maxlength="80" />
-            @if (modellschicht.controls.bezeichnung.hasError('maxlength')) {
-              <mat-error>Die Bezeichnung darf höchstens 80 Zeichen lang sein.</mat-error>
+          <div class="pur-form__row modellschicht-items">
+            <mat-form-field
+              appearance="outline"
+              class="pur-form__item pur-form__item--field pur-form__item--40"
+            >
+              <mat-label>Bezeichnung</mat-label>
+              <input matInput [formControl]="modellschicht.controls.bezeichnung" maxlength="80" />
+              @if (modellschicht.controls.bezeichnung.hasError('maxlength')) {
+                <mat-error>Die Bezeichnung darf höchstens 80 Zeichen lang sein.</mat-error>
+              }
+            </mat-form-field>
+
+            @if (index === 0) {
+              <mat-form-field
+                appearance="outline"
+                class="pur-form__item pur-form__item--field pur-form__item--20"
+              >
+                <mat-label>Beginn</mat-label>
+                <input matInput readonly value="Schichtstart" />
+              </mat-form-field>
+            } @else {
+              <app-eingabe-zeit
+                class="pur-form__item pur-form__item--field pur-form__item--20"
+                label="Beginn"
+                [formControl]="modellschicht.controls.beginnLokalzeit"
+                required
+              />
             }
-          </mat-form-field>
+            @if (index === schichtmodellForm.controls.modellschichten.length - 1) {
+              <mat-form-field
+                appearance="outline"
+                class="pur-form__item pur-form__item--field pur-form__item--20"
+              >
+                <mat-label>Ende</mat-label>
+                <input matInput readonly value="Schichtende" />
+              </mat-form-field>
+            } @else {
+              <app-eingabe-zeit
+                class="pur-form__item pur-form__item--field pur-form__item--20"
+                label="Ende"
+                [formControl]="modellschicht.controls.endeLokalzeit"
+                required
+              />
+            }
 
-          <div class="pur-form__row">
-            <app-lokalzeit-eingabe
-              class="pur-form__item pur-form__item--field pur-form__item--50"
-              label="Beginn"
-              [formControl]="modellschicht.controls.beginnLokalzeit"
-              required
-            />
-            <app-lokalzeit-eingabe
-              class="pur-form__item pur-form__item--field pur-form__item--50"
-              label="Ende"
-              [formControl]="modellschicht.controls.endeLokalzeit"
-              required
-            />
+            @if (index > 0 && index < schichtmodellForm.controls.modellschichten.length - 1) {
+              <span
+                class="pur-form__item pur-form__item--20 modellschicht-platzhalter"
+                aria-hidden="true"
+              ></span>
+            }
+
+            @if (index === 0) {
+              <app-eingabe-minuten
+                class="pur-form__item pur-form__item--field pur-form__item--20"
+                label="Vorbereitung"
+                [formControl]="modellschicht.controls.vorbereitungsminuten"
+                required
+              />
+            }
+            @if (index === schichtmodellForm.controls.modellschichten.length - 1) {
+              <app-eingabe-minuten
+                class="pur-form__item pur-form__item--field pur-form__item--20"
+                label="Nachbereitung"
+                [formControl]="modellschicht.controls.nachbereitungsminuten"
+                required
+              />
+            }
           </div>
-
-          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-            <mat-label>Schicht</mat-label>
-            <input matInput readonly [value]="getSchichtdauerStunden(index)" />
-            <span matTextSuffix>Std.</span>
-          </mat-form-field>
-
-          @if (index === 0 || index === schichtmodellForm.controls.modellschichten.length - 1) {
-            <div class="pur-form__row">
-              @if (index === 0) {
-                <mat-form-field
-                  appearance="outline"
-                  class="pur-form__item pur-form__item--field pur-form__item--50"
-                >
-                  <mat-label>Vorbereitung</mat-label>
-                  <input
-                    matInput
-                    type="number"
-                    min="0"
-                    step="1"
-                    [formControl]="modellschicht.controls.vorbereitungsminuten"
-                  />
-                  <span matTextSuffix>Min.</span>
-                  @if (modellschicht.controls.vorbereitungsminuten.hasError('pattern')) {
-                    <mat-error>Die Vorbereitung muss in ganzen Minuten angegeben werden.</mat-error>
-                  }
-                  @if (modellschicht.controls.vorbereitungsminuten.hasError('min')) {
-                    <mat-error>Die Vorbereitung darf nicht negativ sein.</mat-error>
-                  }
-                </mat-form-field>
-              }
-              @if (index === schichtmodellForm.controls.modellschichten.length - 1) {
-                <mat-form-field
-                  appearance="outline"
-                  class="pur-form__item pur-form__item--field pur-form__item--50"
-                >
-                  <mat-label>Nachbereitung</mat-label>
-                  <input
-                    matInput
-                    type="number"
-                    min="0"
-                    step="1"
-                    [formControl]="modellschicht.controls.nachbereitungsminuten"
-                  />
-                  <span matTextSuffix>Min.</span>
-                  @if (modellschicht.controls.nachbereitungsminuten.hasError('pattern')) {
-                    <mat-error
-                      >Die Nachbereitung muss in ganzen Minuten angegeben werden.</mat-error
-                    >
-                  }
-                  @if (modellschicht.controls.nachbereitungsminuten.hasError('min')) {
-                    <mat-error>Die Nachbereitung darf nicht negativ sein.</mat-error>
-                  }
-                </mat-form-field>
-              }
-            </div>
-          }
 
           @if (modellschicht.hasError('ungueltigeZeitfolge')) {
             <p class="pur-message pur-message--error pur-message--full" role="alert">
-              Beginn und Ende dürfen nicht gleich sein.
+              Das Ende muss nach dem Beginn liegen.
             </p>
           }
         </section>
       }
     </div>
-
-    @if (istBearbeitung && schichtmodellForm.controls.modellschichten.length > 1) {
-      <div class="pur-form__group">
-        <h3 class="pur-form__group-titel">Abweichende Sondertagszeiten</h3>
-        <p class="pur-text pur-text--secondary">
-          Öffnungszeiten bestimmen Beginn und Ende des Rasters automatisch. Optional können
-          ausschließlich die inneren Schichtgrenzen angepasst werden.
-        </p>
-        @if (besondereTage.length > 0) {
-          <app-rasterzeit-abweichungen
-            [tage]="besondereTage"
-            [modellschichten]="daten.bestand?.modellschichten ?? []"
-            [abweichungen]="initialeRasterzeitAbweichungen"
-            [deaktiviert]="schichtmodellStore.inProgress()"
-            (abweichungenChange)="updateBesondereRasterzeiten($event)"
-            (gueltigChange)="rasterzeitAbweichungenGueltig.set($event)"
-          />
-        } @else {
-          <p class="pur-message pur-message--surface pur-message--full">
-            Es sind keine aktiven geöffneten Sondertage mit eigener Öffnungsregel vorhanden.
-          </p>
-        }
-      </div>
-    } @else if (!istBearbeitung) {
-      <p class="pur-text pur-text--secondary">
-        Sondertagszeiten können nach dem ersten Speichern anhand der stabilen Schicht-IDs ergänzt
-        werden.
-      </p>
-    }
 
     @if (schichtmodellStore.error(); as fehlermeldung) {
       <p class="pur-message pur-message--error pur-message--full" role="alert">
@@ -197,7 +158,6 @@
     form="schichtmodell-form"
     [disabled]="
       schichtmodellForm.invalid ||
-      !rasterzeitAbweichungenGueltig() ||
       schichtmodellStore.inProgress() ||
       (istBearbeitung && !hatAenderungen())
     "

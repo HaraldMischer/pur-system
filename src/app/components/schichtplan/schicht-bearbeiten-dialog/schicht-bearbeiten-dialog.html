@@ -21,30 +21,69 @@
         <mat-error>Mitarbeiter ungültig.</mat-error>
       }
     </mat-form-field>
+    @if (verschiebemodus()) {
+      <div class="pur-form__row">
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Zieltag</mat-label>
+          <mat-select formControlName="datum" (selectionChange)="handleDatumChange()">
+            @for (eintrag of verschiebedaten(); track eintrag.datum) {
+              <mat-option [value]="eintrag.datum">{{ eintrag.bezeichnung }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Zielschicht</mat-label>
+          <mat-select formControlName="modellschichtId">
+            @for (ziel of modellschichtenAmTag(); track ziel.modellschicht.id) {
+              <mat-option [value]="ziel.modellschicht.id">
+                {{ ziel.modellschicht.bezeichnung }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+    } @else {
+      <div class="pur-form__row">
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Datum</mat-label>
+          <input matInput readonly [value]="datumAnzeige()" />
+        </mat-form-field>
+        <mat-form-field
+          appearance="outline"
+          class="pur-form__item pur-form__item--field pur-form__item--50"
+        >
+          <mat-label>Modellschicht</mat-label>
+          <input matInput readonly [value]="modellschichtBezeichnung()" />
+        </mat-form-field>
+      </div>
+    }
+    @if (zielIstBelegt()) {
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
+        Die gewählte Schicht ist bereits belegt.
+      </p>
+    }
+    @if (hatZeitkonflikt()) {
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
+        Der Mitarbeiter ist im gewählten Zeitraum bereits eingeplant.
+      </p>
+    }
     <div class="pur-form__row">
-      <mat-form-field
-        appearance="outline"
-        class="pur-form__item pur-form__item--field pur-form__item--50"
-      >
-        <mat-label>Datum</mat-label>
-        <input matInput readonly [value]="datumAnzeige" />
-      </mat-form-field>
-      <mat-form-field
-        appearance="outline"
-        class="pur-form__item pur-form__item--field pur-form__item--50"
-      >
-        <mat-label>Modellschicht</mat-label>
-        <input matInput readonly [value]="daten.modellschicht.bezeichnung" />
-      </mat-form-field>
-    </div>
-    <div class="pur-form__row">
-      <app-lokalzeit-eingabe
+      <app-eingabe-zeit
         class="pur-form__item pur-form__item--field pur-form__item--50"
         label="Beginn"
         [formControl]="beginnLokalzeitControl"
         readonly
       />
-      <app-lokalzeit-eingabe
+      <app-eingabe-zeit
         class="pur-form__item pur-form__item--field pur-form__item--50"
         label="Ende"
         [formControl]="endeLokalzeitControl"
@@ -64,6 +103,14 @@
       matButton
       type="button"
       [disabled]="dienstplanStore.inProgress()"
+      (click)="toggleVerschiebemodus()"
+    >
+      {{ verschiebemodus() ? 'Verschieben abbrechen' : 'Schicht verschieben' }}
+    </button>
+    <button
+      matButton
+      type="button"
+      [disabled]="dienstplanStore.inProgress()"
       (click)="deleteSchicht()"
     >
       Löschen
@@ -77,7 +124,12 @@
     type="submit"
     form="schicht-form"
     [disabled]="
-      schichtForm.invalid || dienstplanStore.inProgress() || (istBearbeitung && !hatAenderungen())
+      schichtForm.invalid ||
+      dienstplanStore.inProgress() ||
+      (istBearbeitung && !hatAenderungen()) ||
+      hatZeitkonflikt() ||
+      zielIstBelegt() ||
+      !ausgewaehltesZiel()
     "
   >
     Speichern

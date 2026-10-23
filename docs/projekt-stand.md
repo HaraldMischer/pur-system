@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 20.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
+Stand: 23.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
 [Projekt-Plan](./projekt-plan.md).
 
 ## Projektbasis
@@ -104,8 +104,8 @@ Das vollständige fachliche und architektonische Zielbild steht im
   lokale Feiertagskatalog berechnet feste und bewegliche gesetzliche Feiertage nach Jahr und Bundesland und erzeugt die initial
   inaktiven Einträge einschließlich Heiligabend und Silvester, sodass zunächst die Wochentagsregel gilt. Die Oberfläche trennt
   die Bereiche `Schließzeiten`, `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`.
-  Fehlende Zeitwerte von Feiertagen und jährlichen Sondertagen werden im Bearbeitungsdialog mit dem maximalen Öffnungsrahmen
-  vorbelegt.
+  Initial angelegte Feiertage sowie Heiligabend und Silvester speichern den maximalen Öffnungsrahmen als zeitliche
+  Vorbelegung, bleiben aber zunächst inaktiv und geschlossen.
   Heiligabend, Silvester und eigene jährliche Sondertage besitzen einen Aktivstatus; einmalige Sondertage gelten für genau ein
   vollständiges Datum, besitzen keinen Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Der Aktivstatus einer
   Feiertagsregel verändert nicht die kalendarische Eigenschaft als gesetzlicher Feiertag. Die Auflösung verwendet intern
@@ -156,7 +156,8 @@ Das vollständige fachliche und architektonische Zielbild steht im
   `getAktuellerMonat()` für `Europe/Berlin` ermittelten aktuellen Monat zurück.
 - Jeder Monatsplanabschnitt besitzt einen eigenen Lade-, Fehler-, Leer- oder Planzustand. Fehlt ein Plan, bleiben die übrigen
   Filialpläne sichtbar; berechtigte Benutzer können den fehlenden Plan ausschließlich in dessen Abschnitt anlegen. Speicherung
-  und Versionierung bleiben je Filiale getrennt. Die Veröffentlichung folgt in Todo 21.10.
+  und Versionierung bleiben je Filiale getrennt. Entwürfe werden nach Bestätigung filialbezogen veröffentlicht; ein ersetzter
+  veröffentlichter Stand wird dabei archiviert.
 - Für die Filial-App ist die vollständige Startladung umgesetzt: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
   Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung geladen. Mitarbeiter verwenden weiterhin die
   bestehende Stammdatenstrategie `cacheFirst`; der vollständige Dienstplanbestand verwendet `networkFirst`. Online werden die
@@ -166,6 +167,11 @@ Das vollständige fachliche und architektonische Zielbild steht im
   erst bei Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` für jede ausgewählte und fachlich erlaubte Filiale nur
   die veröffentlichte Version dieses Monats. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese getrennten direkten
   Abfragewege zunächst nicht vorgesehen.
+- Die `DienstplanAnsichtPage` stellt diese veröffentlichten Monatsstände in getrennten Filialabschnitten gemeinsam dar. Die
+  mobile Listenansicht gruppiert Schichten nach Kalendertag und zeigt Zeitspanne, Mitarbeiternamen, Farbkennung, bezahlte Pause,
+  Zeitraum und Veröffentlichungsstand. Fehlt eine veröffentlichte Version, erscheint ein eindeutiger Leerzustand; Entwürfe und
+  archivierte Stände werden nicht angezeigt. Eine ersetzte Veröffentlichung wird bei der nächsten Netzwerkladung durch den neu
+  referenzierten Stand abgelöst.
 - Für alle Rollen werden Anzeigename und `farbkennung` einer Schicht über deren `mitarbeiterId` aus dem aktuellen
   Mitarbeiterdokument aufgelöst. Der Mitarbeiter-Store verwendet bereits geladene Einträge und lädt nur eindeutige, im
   geöffneten Dienstplan referenzierte und noch fehlende Mitarbeiter mit `networkOnly` gezielt nach. Das Schichtmodell und neue
@@ -174,29 +180,32 @@ Das vollständige fachliche und architektonische Zielbild steht im
 - Dienstplan, unveränderliche Modellschichten, Version und konkrete Schichten bleiben einzelne kleine Dokumente. Es werden keine
   über Jahre wachsenden Arrays gespeichert; mit der Historie steigen nur Dokumentanzahl und Lesezugriffe der vollständigen
   Filialladung.
-- Veröffentlichung und Archivierung sollen mit UID und Zeitpunkt protokolliert werden. Eine Änderung nach Veröffentlichung
-  erzeugt eine neue Entwurfsversion, während der vorherige Stand für Mitarbeiter sichtbar bleibt.
+- Veröffentlichung und Archivierung werden mit UID und Zeitpunkt protokolliert. Eine Änderung nach Veröffentlichung erzeugt
+  eine neue Entwurfsversion, während der vorherige Stand für Mitarbeiter sichtbar bleibt.
 - Dienstplanaktionen erfolgen im Angular-Frontend über den Firestore Client; Cloud Functions und andere serverseitige
   Fachaktionen sind für diesen Bereich ausgeschlossen. Das Anlegen eines Monatsplans mit Modellreferenz, vollständiger
   Modell-Momentaufnahme und erster Entwurfsversion erfolgt atomar. Anlegen, Bearbeiten und Löschen einer Schicht erhöhen die
   Versionsrevision in einer Firestore-Transaktion. Eine abweichende Revision verhindert veraltete Schreibzugriffe. Die
-  Transaktion für Veröffentlichung und Archivierung folgt in Todo 21.10.
+  Veröffentlichung aktualisiert Plan, Versionsstatus, Metadaten und firmenweiten Belegungsindex atomar. Eine neue
+  Entwurfsversion kopiert die Schichten des veröffentlichten Stands und verwendet dieselbe Modell-Momentaufnahme.
 - Beim Anlegen eines Monatsdienstplans lädt der Dienstplan-Service die vollständigen Filialeinstellungen verbindlich vom Server.
   Fehlende, unvollständige oder für den Zielmonat widersprüchliche Einstellungen verhindern die Anlage. Die bestehende
   Öffnungsregel- und Feiertagsauflösung aus Todo 20 erzeugt für alle 28 bis 31 Tage die begrenzte Liste `kalendertage` direkt im
   Monatsdienstplandokument. Jede Tagesmomentaufnahme enthält Datum, Wochentag, wirksame Öffnungsregel, deren Quelle und
-  vorhandene Quellangaben, alle aktiven Sondertage sowie die wirksamen Zeiten der festen Rasterplätze. Aktive Sondertage können
-  je Schichtmodell eigene Rasterzeiten verwenden; einmalige Datumsüberschreibungen haben Vorrang. Gesetzliche Feiertage bleiben
-  unabhängig vom Aktivstatus ihrer besonderen Öffnungsregel erkennbar. Dienstplan und Tagesmomentaufnahmen werden atomar
-  geschrieben; spätere Änderungen der Filialeinstellungen oder Schichtmodelle verändern den gespeicherten Monatsstand nicht.
-  Tages- und Rasterzeitmomentaufnahmen sind verbindlicher Bestandteil jedes Monatsdienstplans. Unvollständige Dokumente werden
-  nicht mit Ersatzwerten ergänzt, weil Schichtmodelle und Monatspläne in dieser Ausbaustufe neu angelegt werden.
-- Fachlich ist inzwischen festgelegt, dass die wirksame Öffnungsregel die äußeren Rastergrenzen automatisch bestimmt: Der erste
-  Rasterplatz beginnt am Öffnungsbeginn, der letzte endet am Öffnungsende. Ausdrückliche Vorbereitungsminuten der ersten und
-  Nachbereitungsminuten der letzten Modellschicht erweitern diese Grenzen. Ableitung, Minutenfelder und die Sperre geschlossener
-  Tage sind umgesetzt. Der Schichtmodelldialog bietet für aktive geöffnete Sondertage optionale innere Rastergrenzen an. Bei der
-  Monatsplananlage können dieselben inneren Grenzen für einmalige Sondertage ausschließlich in diesem Monatsplan überschrieben
-  werden.
+  vorhandene Quellangaben, alle aktiven Sondertage sowie die tatsächlich passenden Rasterzeiten. Feiertage, jährliche
+  Sondertage und Datumsausnahmen wirken ausschließlich über ihre wirksame Öffnungsregel auf die tagesabhängigen Außengrenzen;
+  eigene besondere Rasterzeiten entfallen. Gesetzliche Feiertage bleiben unabhängig vom Aktivstatus ihrer besonderen
+  Öffnungsregel erkennbar. Dienstplan und Tagesmomentaufnahmen werden atomar geschrieben; spätere Änderungen der
+  Filialeinstellungen oder Schichtmodelle verändern den gespeicherten Monatsstand nicht. Tages- und
+  Rasterzeitmomentaufnahmen sind verbindlicher Bestandteil jedes Monatsdienstplans. Unvollständige Dokumente werden nicht mit
+  Ersatzwerten ergänzt, weil Schichtmodelle und Monatspläne in dieser Ausbaustufe neu angelegt werden.
+- Die wirksame Öffnungsregel bestimmt die äußeren Rastergrenzen automatisch: Der erste Rasterplatz beginnt am Öffnungsbeginn,
+  der letzte endet am Öffnungsende. Ganze Vorbereitungsminuten von 0 bis 999 der ersten und Nachbereitungsminuten von 0 bis 999
+  der letzten Modellschicht erweitern diese Grenzen. Feste innere Grenzen speichern Uhrzeit und Zuordnung zum Start- oder
+  Folgetag. Nur Rasterplätze mit positiver Dauer, die vollständig zu den Tagesgrenzen passen, werden in die Tagesmomentaufnahme
+  übernommen.
+  Unpassende Zellen werden an geöffneten Tagen als `Nicht verfügbar` dargestellt und für Anlage sowie Drag-and-drop gesperrt;
+  geschlossene Tage bleiben vollständig unbelegbar.
 - Die zeitliche Konfliktprüfung, Entwurfsstatus, Benutzer-UID und Revisionsfortschritt bleiben Frontend-Fachprüfungen. Firestore
   Rules sichern ausschließlich Rolle, Filialgrenzen und CRUD-Rechte gemäß Berechtigungsmatrix.
 - Die technische Planung aus Todo 21.3 ist abgeschlossen. Domainmodell, deutsche Firestore-Pfade, Abfrage- und Cache-Strategien,
@@ -204,12 +213,14 @@ Das vollständige fachliche und architektonische Zielbild steht im
   und Zustandswechsel sowie ein Monatsplan mit mehreren Tagen, Mitarbeitern und Schichten sind als Grundlage für 21.4 und 21.5
   dokumentiert.
 - Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtmodelle. Die
-  `DienstplanPlanungPage` enthält die Planungslogik und eine Monatsnavigation für alle ausgewählten Filialen. Für jede Filiale
-  wird ein eigener Abschnitt mit Schichtraster sowie Lade-, Leer- und Fehlerzuständen gerendert. Die leere
-  `DienstplanAnsichtPage` bildet die Grundlage für eigenständige Ansichts-Views und verwendet das Bearbeitungsraster nicht.
-  Filialkonten verwenden unmittelbar ihre einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je
-  Rasterzelle den Schichtdialog mit bereits gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende
-  Konfliktprüfung und die atomare Veröffentlichung folgen in Todo 21.10.
+  `DienstplanPlanungPage` enthält für Master- und berechtigte Office-Konten die Planungslogik und eine Monatsnavigation für alle
+  ausgewählten Filialen. Für jede Filiale wird ein eigener Abschnitt mit Schichtraster sowie Lade-, Leer- und Fehlerzuständen
+  gerendert. Die separate responsive `DienstplanAnsichtPage` zeigt Filial- und Mitarbeiterkonten ausschließlich die für sie
+  freigegebenen veröffentlichten Dienstpläne und verwendet das Bearbeitungsraster nicht. Filialkonten verwenden unmittelbar ihre
+  einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Rasterzelle den Schichtdialog mit bereits
+  gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende Konfliktprüfung und die atomare Veröffentlichung
+  sind umgesetzt. Die Veröffentlichungsaktion wird bei unvollständigem Belegungsstand, blockierenden Konflikten oder ungültigen
+  Mitarbeiterzuordnungen gesperrt.
 - Die `DienstplanPlanungPage` stellt Dienstpläne und die Mitarbeiterübersicht auf breiten Ansichten in zwei unabhängig
   scrollbaren Spalten dar. Die Mitarbeiterübersicht führt die aktiven Mitarbeiter aller ausgewählten Filialen ohne Duplikate
   zusammen und zeigt ihre optionale Farbkennung sowie die filialübergreifend summierte Lohnzeit und Schichtanzahl des
@@ -222,9 +233,18 @@ Das vollständige fachliche und architektonische Zielbild steht im
   unmittelbar eine Schicht für Datum, Modellschicht und Mitarbeiter an. Der Service leitet die absoluten Zeitwerte verbindlich
   aus der gespeicherten Tagesrasterzeit ab. Laufende Schreibvorgänge sperren weitere Ablagen; Fehler werden im betroffenen
   Filialabschnitt angezeigt. Die bisherige Anlageaktion bleibt als Tastatur- und Mobilalternative erhalten.
-- Die direkte Ablage prüft bereits die aktiven Planungsstände aller im Dienstplan-Store geladenen Filialkontexte auf zeitliche
-  Überschneidungen. Nicht geladene Filialpläne und konkurrierende Schreibzugriffe sind damit noch nicht verbindlich abgedeckt.
-  Der firmenweite Belegungsindex, seine Live-Aktualisierung und die transaktionale Konfliktabsicherung folgen in Todo 21.10.
+- Die direkte Ablage und der Bearbeitungsdialog prüfen den live geladenen firmenweiten Belegungsindex frühzeitig auf zeitliche
+  Überschneidungen. Zusätzlich pflegen Anlage, Änderung und Löschung einer Schicht den firmenweiten Belegungsindex
+  pro Mitarbeiter und Kalendertag gemeinsam mit Schicht und Versionsrevision in einer Firestore-Transaktion. Dadurch werden
+  auch Konflikte mit nicht geladenen Filialplänen und parallelen Schreibzugriffen verbindlich verhindert. Die geöffnete
+  Planung beobachtet die für Monat und sichtbare aktive Mitarbeiter konkreten Indexdokumente in begrenzten Gruppen von
+  höchstens 30 IDs. Kontextwechsel ersetzen alle Listener; beim Verlassen werden sie beendet. Bis zur vollständigen
+  Initialladung und nach einem Listenerfehler bleiben Planerstellung, Schichtaktionen und Mitarbeiter-Drag-and-drop gesperrt.
+- Bestehende Schichten eines bearbeitbaren Entwurfs können als eigene Drag-and-drop-Elemente in eine andere verfügbare
+  Rasterzelle verschoben werden. Alternativ bietet der Bearbeitungsdialog die Auswahl von Zieltag und Zielmodellschicht an.
+  Mitarbeiterzuordnung und Schicht-ID bleiben erhalten; Datum sowie absolute Zeitwerte werden aus der Zielrasterzeit neu
+  abgeleitet. Belegte Einfachschichten und firmenweite Zeitkonflikte verhindern die Verschiebung. Die bestehende
+  Service-Transaktion aktualisiert Schicht, Versionsrevision, bisherige und neue Belegungstage sowie betroffene Pausen gemeinsam.
 - Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
   bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, Modellschicht
   und die für den Tag wirksamen lokalen Rasterzeiten werden schreibgeschützt angezeigt. Der Service validiert Datum,
@@ -233,14 +253,19 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Filialkonten bleiben bis zur Umsetzung des betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser
   Sitzungszustand einen aktiven Firma-Mitarbeiter mit `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
 - Die Route und Navigation für die Schichtplaneinstellungen führen auf die neue filialbezogene Schichtmodellverwaltung. Ein
-  Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer eigenen Modellschicht. Modellschichten können ergänzt und
-  entfernt werden; Beginn, Ende, Folgetag und Dauer folgen den bestehenden Zeitregeln. Pro
-  Modellschicht kann eine standardmäßig deaktivierte Mehrfachbelegung freigegeben werden. Ihre Reihenfolge wird automatisch nach
-  der lokalen Beginnzeit bestimmt. Modell und Modellschichten werden atomar gespeichert.
-  Vorhandene Modelle werden nicht gelöscht, sondern bei Bedarf
-  deaktiviert. Beim Anlegen eines Monatsplans stehen ausschließlich aktive, nicht leere Modelle der konkreten Filiale zur
-  Auswahl. Modell-ID, Modellbezeichnung und alle geordneten Modellschichten werden gemeinsam mit der ersten Entwurfsversion als
-  Momentaufnahme gespeichert und bei Monats- sowie Bestandsladungen mitgeführt. Ein leerer, noch nie veröffentlichter
+  Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer eigenen Modellschicht. Modellschichten besitzen eine
+  ausdrücklich gespeicherte, lückenlose Reihenfolge und können ergänzt oder entfernt werden. Der erste Beginn und das letzte
+  Ende sind tagesabhängig und werden nicht als feste Modellzeiten gespeichert. Innere Beginn- und Endgrenzen bleiben
+  unabhängig und speichern ihre Zuordnung zum Start- oder Folgetag. Bei inneren Beginn- und Endzeiten zeigt der Dialog nur die
+  Uhrzeit und leitet diese Zuordnung automatisch aus dem Schließzeitraum der Filiale ab. Bestätigte Lücken und beliebige
+  Rasterplatzüberlappungen bleiben möglich. Pro Modellschicht kann eine standardmäßig deaktivierte Mehrfachbelegung freigegeben
+  werden. Modell und Modellschichten werden atomar gespeichert. Besondere Rasterzeiten für Sondertage sind entfernt. Eine
+  Migration oder
+  Kompatibilitätsbehandlung für alte Schichtmodelle ist nicht vorhanden; die alten Modelle wurden gelöscht und benötigte
+  Modelle werden in der neuen Struktur angelegt. Beim Anlegen eines Monatsplans stehen ausschließlich aktive, nicht leere
+  Modelle der konkreten Filiale zur Auswahl. Modell-ID, Modellbezeichnung und alle geordneten Modellschichten werden gemeinsam
+  mit der ersten Entwurfsversion als Momentaufnahme gespeichert und bei Monats- sowie Bestandsladungen mitgeführt. Ein leerer,
+  noch nie veröffentlichter
   Dienstplan kann nach Bestätigung vollständig gelöscht und anschließend mit einem anderen aktiven Modell neu angelegt werden.
   Sobald eine Schicht vorhanden ist, bleibt die Löschaktion bis zum Löschen aller Schichten deaktiviert; nach der ersten
   Veröffentlichung wird sie dauerhaft ausgeblendet. Spätere Änderungen oder die Deaktivierung des Quellmodells verändern
@@ -266,8 +291,13 @@ Das vollständige fachliche und architektonische Zielbild steht im
 - Der TypeScript-Code verlangt bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben
   Monatsplans. Beginn und Ende werden ausschließlich aus der Tagesrasterzeit abgeleitet. Eine Pause wird nicht mehr in einer
   Modellschicht vorgegeben; die zentrale Arbeitsblockberechnung ermittelt 0, 30 oder 45 bezahlte Pausenminuten aus der
-  summierten Arbeitszeit. Die verbindliche filialübergreifende Neuberechnung und Speicherung auf der chronologisch letzten
-  Blockschicht folgt gemeinsam mit dem firmenweiten Belegungsindex in Todo 21.10.
+  summierten Arbeitszeit. Anlage, Änderung und Löschung berechnen die filialübergreifenden Arbeitsblöcke aus dem
+  Belegungsindex neu und speichern die Pause atomar ausschließlich auf der chronologisch letzten Blockschicht. Der Monatsplan
+  zeigt diesen Wert an.
+- Der live beobachtete Belegungsindex leitet blockierende Zeitkonflikte aus relevanten Entwurfs- und Veröffentlichungsständen
+  ab. Anlage, Mitarbeiterwechsel und Drag-and-drop werden bei einer Überschneidung frühzeitig gesperrt; die betroffenen
+  Schichtkarten und Rasterzellen werden im Monatsplan verständlich hervorgehoben. Die Firestore-Transaktion prüft denselben
+  firmenweiten Index vor dem Schreiben weiterhin verbindlich.
 - Das Löschen eines Monatsplans entfernt Dienstplan, leere Entwurfsversion und Modellschicht-Momentaufnahme gemeinsam. Der
   Service lädt Dienstplan und Entwurfsschichten zuvor mit `networkOnly` und prüft einen noch nie veröffentlichten Entwurf sowie
   dessen gemeinsame Löschung.
@@ -279,8 +309,7 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Modell-Momentaufnahme eines bestehenden Monatsplans nicht.
 - Die Dienstplan- und Schichtmodell-Services, ihre Stores sowie der Aufbau der Schichtplan-Komponenten sind unter
   `docs/architektur` dokumentiert. Angular- und Rules-Tests sowie alle vier Varianten-Builds sind erfolgreich.
-  Für die Varianten-Builds wurde der persistente Angular-Cache in der lokalen Umgebung mit `CI=1` deaktiviert, weil dessen
-  native LMDB-Anbindung den Buildprozess mit Exit-Code 134 beendet hat.
+  Die Varianten-Builds synchronisieren vor dem jeweiligen Angular-Build automatisch die zentrale PWA-Rahmenfarbe.
 - Erfolgreiche Monats- und Gesamtladungen protokollieren im lokalen Entwicklungslog unter `3. FILIALDATEN` die Anzahl geladener
   Dienstpläne, Versionen und Schichten mit dem Anzeigenamen der betreffenden Filiale.
 
@@ -799,8 +828,8 @@ Das vollständige fachliche und architektonische Zielbild steht im
 - Master-, Office-, Filial- und Mitarbeiter-Build verwenden jeweils eine eigene Produktkennung im Web-App-Manifest und einen
   eigenen Icon-Satz. Das gemeinsame weiße Pur-`P` wird für Master durch Violett/Magenta, für Office durch Blau/Türkis, für Filiale
   durch Grün/Türkis und für Mitarbeiter durch Orange/Rot ergänzt. Jeder Produktionsbuild liefert ausschließlich seinen
-  zugehörigen Icon-Satz aus. Indexdatei und Manifest verwenden je Variante dieselbe PWA-Rahmenfarbe: Master `#3C0384`, Office
-  `#013676`, Filiale `#014A33` und Mitarbeiter `#AD2604`. Die Farben werden zentral in `config/pwa-theme-colors.mjs` gepflegt und
+  zugehörigen Icon-Satz aus. Indexdatei und Manifest verwenden für alle Varianten einheitlich die anthrazitfarbene
+  PWA-Rahmenfarbe `#252829`. Die Farbe wird zentral in `config/pwa-theme-colors.mjs` gepflegt und
   vor Development-Server und Varianten-Builds automatisch synchronisiert. Browseraktionen in der Titelleiste einer installierten
   Desktop-PWA, beispielsweise „Deinstallieren“, Erweiterungen und das Drei-Punkte-Menü, werden vom Browser bereitgestellt und sind
   durch die Anwendung nicht ausblendbar.
@@ -868,9 +897,10 @@ Das vollständige fachliche und architektonische Zielbild steht im
 
 ## Tests und Build
 
-Am 20.10.2026 für den aktuellen Stand geprüft:
+Am 23.10.2026 für den aktuellen Stand geprüft:
 
-- 891 von 891 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation, Bereichsfreigaben,
+- 1046 von 1046 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation,
+  Bereichsfreigaben,
   konsistenter Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
   PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Strukturanlage, zentraler Stammdateninitialisierung sowie Firmen-,
   Filial- und Benutzerprofil-Bearbeitung, fachlichem Mitarbeiter-Service und -Store, Mitarbeiterlistenroute, Rollenprüfung und
@@ -890,16 +920,16 @@ Am 20.10.2026 für den aktuellen Stand geprüft:
   nach erneuter Aktivierung wechselt die Anwendung selbstständig zum Dashboard.
 - 88 Functions-Tests einschließlich technischer Anmeldedaten, doppelter Anmeldenamen, rekursiver Strukturlöschung, eindeutiger
   Mitarbeiterverknüpfung, Rückabwicklung, Rollenprüfung, Hierarchievalidierung und sicherer Kontoaktivierung.
-- 57 Firestore-Emulator-Tests für aktive Profile, Rollen, hierarchische Zugriffe und die CRUD-Rechte der Berechtigungsmatrix.
+- 63 Firestore-Emulator-Tests für aktive Profile, Rollen, hierarchische Zugriffe und die CRUD-Rechte der Berechtigungsmatrix.
   Abgedeckt sind außerdem die ausdrücklich dokumentierten Ausnahmen für das eigene Profil, Masterzugriffe, den Bereich
   `einstellungen`, Mitarbeiterzugriffe auf Dienstpläne, Legacy-Konten, strukturelle Cloud-Function-Operationen und den
   Löschschutz verknüpfter Mitarbeiter. Nicht aufgeführte Collections und unzulässige Pfade werden abgewiesen.
 - Master-, Office-, Filial- und Mitarbeiter-Produktionsbuild sind als vollständige PWA-Ausgaben konfiguriert. Sie enthalten das
   jeweils passende Manifest, zehn erreichbare App-Icons, lokale Roboto- und Material-Icon-Schriften, `ngsw.json`,
-  `ngsw-worker.js` und die Ressourcengruppen `app`, `fonts` und `assets`. Die Builds benötigen in der Codex-Umgebung Zugriff
-  außerhalb der Sandbox, weil der native `esbuild`-Prozess innerhalb der eingeschränkten Umgebung mit Exit-Code 134 beendet wird.
+  `ngsw-worker.js` und die Ressourcengruppen `app`, `fonts` und `assets`. Der native Buildprozess kann in der lokalen
+  Codex-Umgebung vereinzelt mit Exit-Code 134 abbrechen; ein unmittelbar wiederholter Build war jeweils erfolgreich.
   Master-, Office-, Filial- und Mitarbeiter-Build sind für den aktuellen Stand erfolgreich. Das initiale Bundle der geprüften
-  Varianten liegt bei rund 1,26 MB.
+  Varianten liegt bei rund 1,31 MB.
 - Rollenladepläne, Zustandswechsel, Benutzertrennung, Cache-Auswahl und Lesestrategien sind automatisiert geprüft. Die manuelle
   Abnahme mit realen Master-, Office-, Filial- und Mitarbeiterkonten war erfolgreich. Pur Filiale wurde zusätzlich mit
   persistentem Cache, Offline-Neustart, fehlendem Cache, verständlicher Fehleranzeige und erzwungenem Server-Neuladen geprüft.

@@ -10,6 +10,7 @@ import {
   FIRESTORE_DELETE_FIELD,
   FIRESTORE_DELETE_DOC,
   FIRESTORE_DOC,
+  FIRESTORE_DOCUMENT_ID,
   FIRESTORE_GET_DOC_FROM_CACHE,
   FIRESTORE_GET_DOC_FROM_SERVER,
   FIRESTORE_GET_DOCS_FROM_CACHE,
@@ -48,6 +49,11 @@ export interface IFirestoreTransaktionsergebnis<TResult> {
   operationen: readonly TFirestoreBatchOperation[];
 }
 
+export type TFirestoreTransaktionsDokumente = ReadonlyMap<
+  string,
+  IFirestoreDokument<DocumentData> | null
+>;
+
 const TECHNISCHE_SERVERFEHLER = new Set([
   'aborted',
   'cancelled',
@@ -69,6 +75,7 @@ export class FirestoreDbService {
   private readonly deleteField = inject(FIRESTORE_DELETE_FIELD);
   private readonly deleteDoc = inject(FIRESTORE_DELETE_DOC);
   private readonly doc = inject(FIRESTORE_DOC);
+  private readonly documentId = inject(FIRESTORE_DOCUMENT_ID);
   private readonly getDocFromCache = inject(FIRESTORE_GET_DOC_FROM_CACHE);
   private readonly getDocFromServer = inject(FIRESTORE_GET_DOC_FROM_SERVER);
   private readonly getDocsFromCache = inject(FIRESTORE_GET_DOCS_FROM_CACHE);
@@ -296,6 +303,48 @@ export class FirestoreDbService {
   }
 
   /**
+   * Beobachtet eine begrenzte Menge bekannter Dokument-IDs innerhalb einer Collection.
+   *
+   * @param collectionPath - Vollständiger Pfad der Collection.
+   * @param documentIds - Ein bis höchstens 30 konkrete Dokument-IDs.
+   * @param next - Wird bei jedem vollständigen Query-Stand mit den vorhandenen Dokumenten aufgerufen.
+   * @param error - Wird bei einem Fehler des Echtzeit-Listeners aufgerufen.
+   * @returns Funktion zum Beenden des Echtzeit-Listeners.
+   */
+  observeCollectionByDocumentIds<T extends DocumentData>(
+    collectionPath: string,
+    documentIds: readonly string[],
+    next: (dokumente: readonly IFirestoreDokument<T>[]) => void,
+    error: (error: unknown) => void,
+  ): () => void {
+    const eindeutigeIds = [...new Set(documentIds)];
+    if (eindeutigeIds.length === 0 || eindeutigeIds.length > 30) {
+      throw new Error('Ein Dokument-ID-Listener benötigt zwischen 1 und 30 Dokument-IDs.');
+    }
+    return this.runInContext(() => {
+      const collectionRef = this.collection(this.firestore, collectionPath);
+      const queryRef = this.query(
+        collectionRef,
+        this.where(this.documentId(), 'in', eindeutigeIds),
+      );
+      return this.onSnapshot(
+        queryRef,
+        (snapshot) => {
+          next(
+            snapshot.docs.map((dokument) => {
+              return {
+                id: dokument.id,
+                daten: dokument.data() as T,
+              };
+            }),
+          );
+        },
+        error,
+      );
+    });
+  }
+
+  /**
    * Erzeugt eine zufällige Dokument-ID für eine Firestore-Collection, ohne ein Dokument anzulegen.
    *
    * @param collectionPath - Vollständiger Pfad der Ziel-Collection.
@@ -430,17 +479,49 @@ export class FirestoreDbService {
     documentPath: string,
     aktion: (dokument: IFirestoreDokument<T> | null) => IFirestoreTransaktionsergebnis<TResult>,
   ): Promise<TResult> {
+    return this.executeDocumentsTransaction([documentPath], (dokumente) => {
+      const dokument = dokumente.get(documentPath) as IFirestoreDokument<T> | null | undefined;
+      return aktion(dokument ?? null);
+    });
+  }
+
+  /**
+   * Liest mehrere Dokumente vor dem ersten Schreibzugriff und aktualisiert davon abhängige Dokumente atomar.
+   *
+   * @param documentPaths - Vollständige Pfade aller transaktional zu lesenden Dokumente.
+   * @param aktion - Erstellt aus den gelesenen Ständen Ergebnis und Schreiboperationen.
+   * @returns Das durch die Aktion erzeugte fachliche Ergebnis.
+   * @throws Gibt Validierungs- und Firestore-Fehler an die aufrufende Stelle weiter.
+   */
+  async executeDocumentsTransaction<TResult>(
+    documentPaths: readonly string[],
+    aktion: (dokumente: TFirestoreTransaktionsDokumente) => IFirestoreTransaktionsergebnis<TResult>,
+  ): Promise<TResult> {
     this.netzwerkStatusService.assertOnline();
+    const eindeutigePfade = [...new Set(documentPaths)];
+    if (eindeutigePfade.length === 0) {
+      throw new Error('Eine Firestore-Transaktion benötigt mindestens ein Lesedokument.');
+    }
 
     return this.loadingService.trackWrite(async () => {
       return this.runInContext(() => {
         return this.runTransaction(this.firestore, async (transaction) => {
-          const documentRef = this.doc(this.firestore, documentPath);
-          const snapshot = await transaction.get(documentRef);
-          const dokument = snapshot.exists()
-            ? { id: snapshot.id, daten: snapshot.data() as T }
-            : null;
-          const { ergebnis, operationen } = aktion(dokument);
+          const dokumente = new Map<string, IFirestoreDokument<DocumentData> | null>();
+          const snapshots = await Promise.all(
+            eindeutigePfade.map(async (documentPath) => {
+              const documentRef = this.doc(this.firestore, documentPath);
+              return transaction.get(documentRef);
+            }),
+          );
+          snapshots.forEach((snapshot, index) => {
+            dokumente.set(
+              eindeutigePfade[index],
+              snapshot.exists()
+                ? { id: snapshot.id, daten: snapshot.data() as DocumentData }
+                : null,
+            );
+          });
+          const { ergebnis, operationen } = aktion(dokumente);
           for (const operation of operationen) {
             const operationRef = this.doc(this.firestore, operation.documentPath);
             if ('delete' in operation) {

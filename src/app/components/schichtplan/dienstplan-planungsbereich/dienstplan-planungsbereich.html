@@ -22,6 +22,11 @@
         {{ fehlermeldung }}
       </p>
     }
+    @if (aktionsmeldung(); as meldung) {
+      <p class="pur-message pur-message--success pur-message--full" role="status">
+        {{ meldung }}
+      </p>
+    }
 
     @if (dienstplan(); as geladenerDienstplan) {
       <app-dienstplan-monatstabelle
@@ -29,17 +34,27 @@
         [versionen]="versionen()"
         [schichten]="schichten()"
         [modellschichten]="modellschichten()"
+        [konfliktSchichtIds]="konfliktSchichtIds()"
         [mitarbeiter]="schichtMitarbeiter()"
         [erlaubteMitarbeiterIds]="mitarbeiterIds()"
+        [schichtVerschiebungErlaubt]="darfSchichtVerschieben"
         [darfSchreiben]="darfSchreiben()"
-        [schreibvorgang]="dienstplanStore.inProgress()"
+        [schreibvorgang]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
         [dienstplanLoeschenAnzeigen]="darfDienstplanLoeschenAnzeigen()"
         [dienstplanLoeschenDeaktiviert]="dienstplanLoeschenDeaktiviert()"
         [dienstplanLoeschenHinweis]="dienstplanLoeschenHinweis()"
+        [dienstplanVeroeffentlichenAnzeigen]="dienstplanVeroeffentlichenAnzeigen()"
+        [dienstplanVeroeffentlichenDeaktiviert]="dienstplanVeroeffentlichenDeaktiviert()"
+        [dienstplanVeroeffentlichenHinweis]="dienstplanVeroeffentlichenHinweis()"
+        [entwurfAnlegenAnzeigen]="entwurfAnlegenAnzeigen()"
+        [entwurfAnlegenDeaktiviert]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
         (schichtAnlegen)="openSchichtDialog($event)"
         (schichtAblegen)="createSchichtAusAblage($event)"
+        (schichtVerschieben)="moveSchichtAusAblage($event)"
         (schichtBearbeiten)="openSchichtBearbeitenDialog($event)"
         (dienstplanLoeschen)="deleteDienstplan()"
+        (dienstplanVeroeffentlichen)="publishDienstplan()"
+        (entwurfAnlegen)="createEntwurfAusVeroeffentlichung()"
       />
     } @else {
       <div

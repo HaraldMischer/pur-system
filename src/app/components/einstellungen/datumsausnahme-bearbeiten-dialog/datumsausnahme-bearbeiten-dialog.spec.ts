@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { STANDARD_SCHLIESSZEITRAUM } from '../../../commons/models/domain/filialeinstellung';
+import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../../commons/constants/filialeinstellung.constants';
 import {
   FilialeinstellungStore,
   IFilialeinstellungFehler,
@@ -34,7 +34,7 @@ describe('DatumsausnahmeBearbeitenDialog', () => {
       providers: [
         {
           provide: MAT_DIALOG_DATA,
-          useValue: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM },
+          useValue: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
         },
         { provide: MatDialogRef, useValue: { close } },
         {

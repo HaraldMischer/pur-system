@@ -5,17 +5,45 @@
     <span>Version {{ aktiveVersion()?.nummer }}</span>
     <span class="status">{{ statusBezeichnung() }}</span>
     <span>{{ aktiveVersion()?.revision ?? 0 }}. Revision</span>
-    @if (dienstplanLoeschenAnzeigen()) {
-      <button
-        matButton="tonal"
-        type="button"
-        class="kopf-aktion"
-        [disabled]="dienstplanLoeschenDeaktiviert()"
-        [attr.title]="dienstplanLoeschenHinweis()"
-        (click)="dienstplanLoeschen.emit()"
-      >
-        Dienstplan löschen
-      </button>
+    @if (
+      dienstplanLoeschenAnzeigen() ||
+      dienstplanVeroeffentlichenAnzeigen() ||
+      entwurfAnlegenAnzeigen()
+    ) {
+      <div class="kopf-aktionen">
+        @if (dienstplanLoeschenAnzeigen()) {
+          <button
+            matButton="tonal"
+            type="button"
+            [disabled]="dienstplanLoeschenDeaktiviert()"
+            [attr.title]="dienstplanLoeschenHinweis()"
+            (click)="dienstplanLoeschen.emit()"
+          >
+            Dienstplan löschen
+          </button>
+        }
+        @if (entwurfAnlegenAnzeigen()) {
+          <button
+            matButton="tonal"
+            type="button"
+            [disabled]="entwurfAnlegenDeaktiviert()"
+            (click)="entwurfAnlegen.emit()"
+          >
+            Neue Entwurfsversion
+          </button>
+        }
+        @if (dienstplanVeroeffentlichenAnzeigen()) {
+          <button
+            matButton="filled"
+            type="button"
+            [disabled]="dienstplanVeroeffentlichenDeaktiviert()"
+            [attr.title]="dienstplanVeroeffentlichenHinweis()"
+            (click)="dienstplanVeroeffentlichen.emit()"
+          >
+            Veröffentlichen
+          </button>
+        }
+      </div>
     }
   </header>
 
@@ -60,28 +88,31 @@
               <td
                 cdkDropList
                 class="pur-table__cell pur-table__cell--inhalt"
+                [class.zelle--konflikt]="zelle.hatKonflikt"
                 [cdkDropListData]="{
                   datum: tag.datum,
                   modellschichtId: zelle.modellschicht.id,
+                  rasterzeit: zelle.rasterzeit,
+                  schichtIds: zelle.schichtIds,
                   mitarbeiterIds: zelle.mitarbeiterIds,
                   mehrfachbelegungErlaubt: zelle.modellschicht.mehrfachbelegungErlaubt,
                   verfuegbar: zelle.rasterzeit !== null,
                 }"
-                [cdkDropListDisabled]="
-                  !kannSchichtenAblegen() ||
-                  !zelle.rasterzeit ||
-                  (!zelle.modellschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
-                "
-                [cdkDropListEnterPredicate]="darfMitarbeiterAblegen"
+                [cdkDropListDisabled]="!kannSchichtenAblegen() || !zelle.rasterzeit"
+                [cdkDropListEnterPredicate]="darfPlanungselementAblegen"
                 [cdkDropListSortingDisabled]="true"
-                (cdkDropListDropped)="handleMitarbeiterDrop($event)"
+                (cdkDropListDropped)="handlePlanungselementDrop($event)"
               >
                 <div class="zellenkopf">
                   <span class="rasterzeit">
                     @if (zelle.rasterzeit; as rasterzeit) {
                       {{ rasterzeit.beginnLokalzeit }}–{{ rasterzeit.endeLokalzeit }} Uhr
                     } @else {
-                      Geschlossen
+                      {{
+                        tag.oeffnungszeitBezeichnung === 'Geschlossen'
+                          ? 'Geschlossen'
+                          : 'Nicht verfügbar'
+                      }}
                     }
                   </span>
                   @if (
@@ -114,7 +145,13 @@
                   }
                 </div>
                 @for (schicht of zelle.schichten; track schicht.id) {
-                  <div class="schicht">
+                  <div
+                    cdkDrag
+                    class="schicht"
+                    [cdkDragData]="{ art: 'schicht', schicht }"
+                    [cdkDragDisabled]="!kannSchichtenAblegen()"
+                    [class.schicht--konflikt]="konfliktSchichtIds().has(schicht.id)"
+                  >
                     <strong>
                       @if (getMitarbeiterFarbe(schicht.mitarbeiterId); as farbe) {
                         <span
@@ -126,7 +163,12 @@
                       {{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}
                     </strong>
                     <span>Lohnzeit: {{ formatLohnzeit(schicht) }}</span>
-                    <span>Bezahlte Pause: 00 Min.</span>
+                    @if ((schicht.pauseMinuten ?? 0) > 0) {
+                      <span>Bezahlte Pause: {{ schicht.pauseMinuten }} Min.</span>
+                    }
+                    @if (konfliktSchichtIds().has(schicht.id)) {
+                      <span class="konflikthinweis">Zeitkonflikt</span>
+                    }
                     @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                       <button matButton type="button" (click)="schichtBearbeiten.emit(schicht)">
                         Bearbeiten

@@ -20,6 +20,10 @@ Kalendereigenschaften, Öffnungsregeln und wirksamen Rasterzeiten.
   Modell-Momentaufnahme aus dem bestätigten Service-Ergebnis in den lokalen Zustand.
 - `deleteDienstplan()` erlaubt das Löschen nur für den leeren, noch nie veröffentlichten Entwurf und entfernt Plan, Version,
   Schichten sowie Modell-Momentaufnahme nach dem bestätigten Service-Aufruf aus dem lokalen Zustand.
+- `publishDienstplan()` übergibt die zuletzt geladene Entwurfsrevision und übernimmt den bestätigten veröffentlichten sowie
+  gegebenenfalls archivierten Versionsstand in den lokalen Filialkontext.
+- `createEntwurfAusVeroeffentlichung()` übergibt die Revision des sichtbaren veröffentlichten Stands und ergänzt die vom
+  Service kopierte neue Entwurfsversion samt Schichten im lokalen Zustand.
 - `createSchicht()`, `updateSchicht()` und `deleteSchicht()` übernehmen bestätigte Service-Ergebnisse direkt in den lokalen
   Zustand und erhöhen die lokale Versionsrevision. Eine Schicht wird über ihre `modellschichtId` einer Zelle der geladenen
   Modell-Momentaufnahme zugeordnet.
@@ -32,6 +36,10 @@ Parallele Ladeaufträge werden je Kontext zusammengeführt. Bereits im Mitarbeit
 wiederverwendet. Ergebnisse einer bereits zurückgesetzten Sitzung werden verworfen. Schreibvorgänge benötigen einen
 vollständig geladenen Monat, eine Entwurfsversion und eine Benutzer-UID.
 
+Der firmenweite Live-Stand des Mitarbeiterbelegungsindex gehört bewusst nicht in diesen filialbezogenen Store. Ihn hält der
+eigenständige `MitarbeiterbelegungStore`, damit mehrere gleichzeitig sichtbare Filialpläne denselben begrenzten
+Belegungskontext verwenden.
+
 ## Beteiligte Dateien
 
 - `src/app/stores/domain/dienstplan.store.ts`
@@ -39,3 +47,4 @@ vollständig geladenen Monat, eine Entwurfsversion und eine Benutzer-UID.
 - `src/app/commons/models/domain/dienstplan.ts`
 - `src/app/commons/models/domain/schicht.ts`
 - `src/app/commons/models/domain/schichtmodell.ts`
+- `src/app/stores/domain/mitarbeiterbelegung.store.ts`

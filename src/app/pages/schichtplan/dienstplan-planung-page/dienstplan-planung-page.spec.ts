@@ -21,6 +21,7 @@ import {
   TDienstplanKontextBestand,
 } from '../../../stores/domain/dienstplan.store';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
+import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { MonatSelector } from '../../../components/date-selectors/monat-selector/monat-selector';
@@ -58,6 +59,11 @@ describe('DienstplanPlanungPage', () => {
   const getDienstplanKontext = vi.fn().mockReturnValue(null);
   const getMitarbeiter = vi.fn().mockReturnValue([]);
   const getMitarbeiterNachFilialen = vi.fn().mockReturnValue([]);
+  const belegungsstandVerfuegbar = signal(true);
+  const belegungsfehler = signal<string | null>(null);
+  const belegungskonflikte = signal<readonly never[]>([]);
+  const observeMitarbeiterbelegungen = vi.fn();
+  const stopMitarbeiterbelegungen = vi.fn();
 
   beforeEach(async () => {
     selectedUnternehmer.set({ id: 'u-1' });
@@ -67,6 +73,8 @@ describe('DienstplanPlanungPage', () => {
     getMitarbeiter.mockReturnValue([]);
     getMitarbeiterNachFilialen.mockReturnValue([]);
     getDienstplanKontext.mockReturnValue(null);
+    belegungsstandVerfuegbar.set(true);
+    belegungsfehler.set(null);
     await TestBed.configureTestingModule({
       imports: [DienstplanPlanungPage],
       providers: [
@@ -92,6 +100,17 @@ describe('DienstplanPlanungPage', () => {
             getMitarbeiter,
             getMitarbeiterNachFilialen,
             getMitarbeiterById: vi.fn().mockReturnValue(null),
+          },
+        },
+        {
+          provide: MitarbeiterbelegungStore,
+          useValue: {
+            istVerfuegbar: belegungsstandVerfuegbar,
+            error: belegungsfehler,
+            konflikte: belegungskonflikte,
+            hatMitarbeiterZeitkonflikt: vi.fn().mockReturnValue(false),
+            observeMitarbeiterbelegungen,
+            stopMitarbeiterbelegungen,
           },
         },
         {
@@ -183,6 +202,12 @@ describe('DienstplanPlanungPage', () => {
       'Gemeinsam, Georg',
     ]);
     expect(fixture.componentInstance.mitarbeiter()[0].farbe).toBe('#1976d2');
+    expect(observeMitarbeiterbelegungen).toHaveBeenLastCalledWith(
+      { unternehmerId: 'u-1', firmaId: 'f-1' },
+      ['b-1', 'b-2'],
+      fixture.componentInstance.selectedMonat(),
+      ['m-1', 'm-2', 'm-4'],
+    );
   });
 
   it('should show monthly hours and shift counts from active planning versions', async () => {
@@ -224,8 +249,40 @@ describe('DienstplanPlanungPage', () => {
     await fixture.whenStable();
 
     const drag = fixture.debugElement.query(By.directive(CdkDrag)).injector.get(CdkDrag);
-    expect(drag.data).toBe('m-1');
+    expect(drag.data).toEqual({ art: 'mitarbeiter', mitarbeiterId: 'm-1' });
     expect(drag.disabled).toBe(false);
+  });
+
+  it('should disable employee drag sources while the live allocation state is unavailable', async () => {
+    belegungsstandVerfuegbar.set(false);
+    getMitarbeiter.mockReturnValue([createMitarbeiter('m-1', 'Anna', 'Alpha', ['b-1'], true)]);
+    const fixture = TestBed.createComponent(DienstplanPlanungPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const drag = fixture.debugElement.query(By.directive(CdkDrag)).injector.get(CdkDrag);
+    expect(drag.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Die Planung ist vorübergehend gesperrt.');
+  });
+
+  it('should retry the live allocation listener after an error', async () => {
+    belegungsfehler.set('Der Belegungsindex konnte nicht live geladen werden.');
+    const fixture = TestBed.createComponent(DienstplanPlanungPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    vi.clearAllMocks();
+
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find((element) => {
+      return element.textContent.includes('Erneut laden');
+    });
+    button?.click();
+
+    expect(observeMitarbeiterbelegungen).toHaveBeenCalledWith(
+      { unternehmerId: 'u-1', firmaId: 'f-1' },
+      ['b-1', 'b-2'],
+      fixture.componentInstance.selectedMonat(),
+      [],
+    );
   });
 
   it('should not load a plan without a selected branch', async () => {
@@ -238,6 +295,7 @@ describe('DienstplanPlanungPage', () => {
       0,
     );
     expect(loadDienstplanMonat).not.toHaveBeenCalled();
+    expect(stopMitarbeiterbelegungen).toHaveBeenCalled();
   });
 
   function createMitarbeiter(

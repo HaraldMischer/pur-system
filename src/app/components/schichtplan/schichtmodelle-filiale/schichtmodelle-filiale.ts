@@ -17,7 +17,10 @@ import { MatMenuModule } from '@angular/material/menu';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
-import { ISchichtrastermodellBestand } from '../../../commons/models/domain/schichtmodell';
+import {
+  IModellschichtZeitgrenze,
+  ISchichtrastermodellBestand,
+} from '../../../commons/models/domain/schichtmodell';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
@@ -58,16 +61,16 @@ export class SchichtmodelleFiliale {
   readonly kontext = computed(() => {
     return this.schichtmodellStore.getSchichtmodellKontext(this.pfad());
   });
-  readonly aktiveGeoeffneteSondertage = computed(() => {
+  readonly filialeinstellungKontext = computed(() => {
+    return this.filialeinstellungStore.getFilialeinstellungKontext(this.pfad());
+  });
+  readonly istBereit = computed(() => {
     return (
-      this.filialeinstellungStore
-        .getFilialeinstellungKontext(this.pfad())
-        ?.bestand?.sondertage.filter((sondertag) => {
-          return sondertag.aktiv && sondertag.oeffnungsregel.geoeffnet;
-        }) ?? []
+      this.kontext()?.isLoaded === true &&
+      this.filialeinstellungKontext()?.isLoaded === true &&
+      this.filialeinstellungKontext()?.bestand !== null
     );
   });
-
   // ===== Öffentliche Aktionen =================
 
   /**
@@ -78,14 +81,28 @@ export class SchichtmodelleFiliale {
   }
 
   /**
+   * Formatiert eine feste Modellschichtgrenze oder kennzeichnet eine tagesabhängige Außengrenze.
+   *
+   * @param zeitgrenze - Optional gespeicherte feste Zeitgrenze.
+   * @returns Verständliche Darstellung der Zeitgrenze.
+   */
+  formatZeitgrenze(zeitgrenze?: IModellschichtZeitgrenze): string {
+    if (!zeitgrenze) return 'Tagesabhängig';
+    return `${zeitgrenze.lokalzeit} Uhr${zeitgrenze.tag === 'folgetag' ? ' (Folgetag)' : ''}`;
+  }
+
+  /**
    * Öffnet den Dialog zum Anlegen oder Bearbeiten eines Schichtmodells.
    *
    * @param bestand - Optional ausgewählter Modellbestand.
    */
   openSchichtrastermodellDialog(bestand?: ISchichtrastermodellBestand): void {
+    const schliesszeitraum =
+      this.filialeinstellungKontext()?.bestand?.oeffnungszeiten.schliesszeitraum;
+    if (!schliesszeitraum) return;
     const daten: TSchichtmodellBearbeitenDialogDaten = {
       pfad: this.pfad(),
-      sondertage: this.aktiveGeoeffneteSondertage(),
+      schliesszeitraum,
       ...(bestand ? { bestand } : {}),
     };
     this.dialog.open(SchichtmodellBearbeitenDialog, {

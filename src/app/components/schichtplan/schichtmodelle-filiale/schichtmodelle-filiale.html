@@ -7,7 +7,7 @@
       <button
         matButton="filled"
         type="button"
-        [disabled]="schichtmodellStore.inProgress() || kontext()?.isLoaded !== true"
+        [disabled]="schichtmodellStore.inProgress() || !istBereit()"
         [matMenuTriggerFor]="planungsartMenu"
       >
         <mat-icon>add</mat-icon>
@@ -59,7 +59,9 @@
                   <li>
                     <strong>{{ modellschicht.bezeichnung }}</strong>
                     <span>
-                      {{ modellschicht.beginnLokalzeit }}–{{ modellschicht.endeLokalzeit }} Uhr
+                      {{ formatZeitgrenze(modellschicht.beginn) }}–{{
+                        formatZeitgrenze(modellschicht.ende)
+                      }}
                     </span>
                   </li>
                 }
@@ -69,7 +71,7 @@
               <button
                 matButton
                 type="button"
-                [disabled]="schichtmodellStore.inProgress()"
+                [disabled]="schichtmodellStore.inProgress() || !istBereit()"
                 (click)="openSchichtrastermodellDialog(bestand)"
               >
                 Bearbeiten

@@ -34,48 +34,81 @@ Abschnitt die Schichtmodelle seiner Filiale und bietet nur aktive Modelle mit mi
 eines Schichtdialogs übernimmt der Abschnitt Datum und Modellschicht aus der gewählten Rasterzelle und begrenzt die
 Mitarbeiterwahl auf die aktiven Mitarbeiter der Filiale.
 
-Die routbare `DienstplanAnsichtPage` verwendet die Planungsseite und ihre Rasterdarstellung nicht. Sie ist derzeit leer und
-bildet die Grundlage für eigenständige Ansichts-Views.
+## Veröffentlichte Dienstplanansicht
+
+Die routbare `DienstplanAnsichtPage` verwendet die Planungsseite und ihre bearbeitbare Rasterdarstellung nicht. Sie verwaltet
+eine gemeinsame Monatsauswahl und rendert für jede ausgewählte Filiale einen `DienstplanAnsichtsbereich`. Jeder Bereich lädt
+über den direkten Filialpfad mit `networkOnly` ausschließlich die über `veroeffentlichteVersionId` referenzierte Version.
+Entwürfe und archivierte Versionen werden weder an die Darstellung übergeben noch als Ausweichstand verwendet.
+
+Der Ansichtsbereich zeigt Zeitraum, Versionsnummer, Veröffentlichungszeitpunkt und die nach Tagen gruppierten Schichten. Jede
+Schicht enthält den aktuellen Mitarbeiternamen, die optionale Farbkennung, ihre absolute Zeitspanne und die als
+Planungsmomentaufnahme gespeicherte bezahlte Pause. Ein Ende am Folgetag wird ausdrücklich gekennzeichnet. Die Darstellung
+verwendet eine umbruchfähige Liste statt des breiten Planungsrasters und bleibt dadurch auf kleinen Viewports verständlich.
+
+Noch nicht veröffentlichte Monatspläne und ein zukünftig zurückgezogener Stand ohne `veroeffentlichteVersionId` erhalten
+denselben eindeutigen Leerzustand. Ersetzt eine spätere Veröffentlichung den bisherigen Stand, verweist das Dienstplandokument
+auf die neue Version; bei der nächsten Netzwerkladung erscheint nur dieser aktuelle Stand. Lade- und Fehlerzustände bleiben je
+Filiale getrennt, sodass ein fehlender oder fehlerhafter Monatsplan die übrigen ausgewählten Filialen nicht verdeckt.
 
 Im leeren, noch nie veröffentlichten Entwurf bietet die Statuszeile des Monatsplans zusätzlich `Dienstplan löschen` an. Sobald
 der Entwurf mindestens eine Schicht enthält, ist die Aktion mit einem erklärenden Hinweis deaktiviert; nach dem Löschen aller
 Schichten wird sie wieder aktiv. Vor der Löschung fragt der allgemeine `BestaetigungDialog` nach. Dienstplan, Entwurfsversion
 und Modell-Momentaufnahme werden gemeinsam gelöscht. Nach der ersten Veröffentlichung wird die Aktion dauerhaft ausgeblendet.
 
+Für einen aktuellen Entwurf bietet die Statuszeile `Veröffentlichen` an. Die Aktion bleibt gesperrt, solange der firmenweite
+Belegungsstand unvollständig ist, blockierende Konflikte bestehen oder eine Schicht einen inaktiven beziehungsweise nicht mehr
+zugeordneten Mitarbeiter enthält. Vor dem Statuswechsel fragt der allgemeine `BestaetigungDialog` nach. Sind verfügbare
+Rasterplätze nicht belegt, nennt der Dialog deren Anzahl und bietet die bewusste Aktion `Trotzdem veröffentlichen` an.
+Geschlossene Tage und für einen Tag nicht verfügbare Rasterplätze werden nicht mitgezählt. Erfolg oder Fehler erscheinen im
+betroffenen Filialabschnitt. Ohne Entwurf bietet ein veröffentlichter Stand `Neue Entwurfsversion` an. Diese übernimmt die
+veröffentlichten Schichten als bearbeitbare Kopien, während der veröffentlichte Stand sichtbar bleibt.
+
 ## Monatsdarstellung
 
 `DienstplanMonatstabelle` stellt den Monat als Tabelle dar. Die erste Spalte enthält die Kalendertage; jede weitere Spalte
-entspricht einer nach ihrer lokalen Beginnzeit sortierten Modellschicht aus der unveränderlichen Momentaufnahme des
-Monatsplans. Jede Rasterzelle enthält alle konkreten Mitarbeiterschichten ihres Tages und ihrer Modellschicht. Mehrere
+entspricht einer nach ihrer ausdrücklich gespeicherten `reihenfolge` sortierten Modellschicht aus der unveränderlichen
+Momentaufnahme des Monatsplans. Jede Rasterzelle enthält alle konkreten Mitarbeiterschichten ihres Tages und ihrer
+Modellschicht. Mehrere
 Mitarbeiterschichten sind nur möglich, wenn die Modellschicht in der Momentaufnahme `mehrfachbelegungErlaubt` enthält.
 Identische Kapazitäten können deshalb entweder als getrennte Modellschichten mit jeweils einer Belegung oder als eine
 mehrfach belegbare Modellschicht dargestellt werden. Auch bei einer Mehrfachbelegung bleibt jede Mitarbeiterzuordnung eine
 eigene konkrete Schicht.
 
 Jede Schicht löst Anzeigename und optionale `farbkennung` über die gespeicherte `mitarbeiterId` aus dem Mitarbeiter-Store auf
-und zeigt Zeitspanne und Lohnzeit. Die chronologisch letzte Schicht eines Arbeitsblocks zeigt zusätzlich dessen gespeicherte
-bezahlte `pauseMinuten`. Diese Darstellung ist ein Anker für den Gesamtwert und legt nicht fest, während welcher Schicht die
-Pause genommen wird. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher Ersatztext.
+und zeigt Zeitspanne und Lohnzeit. Für eine nicht mehr auflösbare Mitarbeiter-ID erscheint ein verständlicher Ersatztext. Die
+chronologisch letzte Schicht eines Arbeitsblocks zeigt zusätzlich dessen bezahlte Gesamtpause. Blockierende Zeitkonflikte
+werden an der betroffenen Schichtkarte und Rasterzelle hervorgehoben.
+
 Schreibaktionen werden nur für eine bearbeitbare Entwurfsversion angeboten. Dann ist jede Rasterzelle ein Ablageziel und besitzt
 zusätzlich eine Anlageaktion als Tastatur- und Mobilalternative. Beide Wege verwenden das bereits festgelegte Datum und die
 festgelegte Modellschicht. Eine Ablage ist nur für einen aktiven, der Zielfiliale zugeordneten Mitarbeiter zulässig und wird
 während eines Schreibvorgangs gesperrt. Derselbe Mitarbeiter kann nicht erneut in dieselbe Rasterzelle abgelegt werden. Bei
 deaktivierter Mehrfachbelegung werden Anlageaktion und Ablageziel nach der ersten Belegung gesperrt.
 
+Schichtkarten eines bearbeitbaren Entwurfs sind ebenfalls Drag-Quellen. Beim Ablegen in einer anderen Rasterzelle bleiben
+Schicht-ID und Mitarbeiterzuordnung erhalten; Datum und Modellschicht stammen aus dem Ziel. Die bisherige Zelle beendet den
+Vorgang ohne Schreibzugriff. Belegte Einfachschichten und firmenweite Zeitkonflikte sind keine zulässigen Ziele. Ein
+fehlgeschlagener Schreibzugriff zeigt den Fehler im bisherigen Filialabschnitt und verändert die bestehende Schicht nicht.
+
 Die Tabelle zeigt in der Tagesspalte Wochentag, Datum, Öffnungszeiten und vorhandene Kalendermerkmale wie Sonntag, Feiertag
-oder Sondertag. Jede Rasterzelle zeigt die automatisch aus Öffnungsregel sowie Vor- und Nachbereitungsminuten abgeleitete
-Rasterzeit. An geschlossenen Tagen werden Anlageaktion und Ablageziel deaktiviert.
+oder Sondertag. Jede verfügbare Rasterzelle zeigt die aus Tagesgrenzen, inneren Modellgrenzen sowie Vor- und
+Nachbereitungsminuten abgeleitete Rasterzeit. An geschlossenen Tagen erscheint `Geschlossen`. Fehlt an einem geöffneten Tag für
+einen Rasterplatz eine passende Rasterzeit, erscheint `Nicht verfügbar`. In beiden Fällen sind Anlageaktion und Ablageziel
+deaktiviert.
 
 Nach einer gültigen Ablage übergibt `DienstplanPlanungsbereich` Datum, Modellschicht-ID und Mitarbeiter-ID. Die für die
 Bedienprüfung benötigten Zeitwerte liest der Bereich aus der Tagesmomentaufnahme; der Service leitet die zu speichernden
-Zeitstempel unabhängig davon erneut aus derselben Rasterzeit ab. Vor dem Schreiben werden die aktiven Planungsstände aller
-bereits im Dienstplan-Store geladenen Filialkontexte auf zeitliche Überschneidungen geprüft. Diese Prüfung ist eine vorläufige
-Bedienabsicherung; die vollständige, filialübergreifend verbindliche Prüfung über einen firmenweiten Belegungsindex folgt in
-Todo 21.10. Auf kleinen
-Viewports bleibt die Tabelle horizontal scrollbar; die Tagesspalte bleibt beim horizontalen Scrollen sichtbar. Das vertikale
+Zeitstempel unabhängig davon erneut aus derselben Rasterzeit ab. Die Planungsseite beobachtet den für Monat und sichtbare
+Mitarbeiter begrenzten firmenweiten Belegungsindex live und verwendet ihn für frühzeitige Konflikthinweise und Eingabesperren.
+Während dessen Initialladung oder nach einem Listenerfehler bleiben Planerstellung, Schichtaktionen und
+Mitarbeiter-Drag-and-drop gesperrt. Verbindlich ist weiterhin die transaktionale Indexprüfung des Schreibzugriffs. Auf kleinen
+Viewports bleibt die Tabelle horizontal scrollbar;
+die Tagesspalte bleibt beim horizontalen Scrollen
+sichtbar. Das vertikale
 Scrollen übernimmt der umgebende Dienstplanbereich, damit keine verschachtelten vertikalen Scrollflächen entstehen. Die
-Planungsoberfläche ist vorrangig für Desktop und Tablet vorgesehen; eine eigenständige mobile Dienstplanansicht für Mitarbeiter
-folgt in einem späteren Ausbauschritt.
+Planungsoberfläche ist vorrangig für Desktop und Tablet vorgesehen. Mitarbeiter verwenden die separate responsive Ansicht der
+für sie freigegebenen veröffentlichten Dienstpläne.
 
 ## Dialoge
 
@@ -91,20 +124,28 @@ automatisch die äußeren Rastergrenzen; die inneren Grenzen des gewählten Schi
 `SchichtBearbeitenDialog` ordnet der bereits gewählten Rasterzelle einen aktiven Mitarbeiter zu. Datum, Modellschicht sowie der
 für diesen Kalendertag wirksame Beginn und das Ende werden schreibgeschützt angezeigt. Der Dialog übergibt keine freien
 Zeitwerte; der Dienstplan-Service berechnet die absoluten Zeitstempel aus der gespeicherten Tagesrasterzeit. Beim Bearbeiten
-kann nur die Mitarbeiterzuordnung geändert werden; die Rasterzelle und ihre Zeitwerte bleiben unverändert.
+kann die Mitarbeiterzuordnung geändert werden. Die alternative Aktion `Schicht verschieben` blendet zusätzlich die Auswahl
+von Zieltag und Zielmodellschicht ein; auch dabei bleiben die abgeleiteten Zeitwerte schreibgeschützt. Eine belegte
+Einfachschicht oder filialübergreifende Überschneidung des ausgewählten Mitarbeiters wird angezeigt und sperrt das Speichern.
 
 `SchichtmodellBearbeitenDialog` verwaltet die Bezeichnung und den Aktivstatus eines Schichtmodells sowie eine dynamische Liste
-seiner Modellschichten. Jede Modellschicht besitzt Bezeichnung, Beginn, Ende, abgeleiteten Folgetag, schreibgeschützte Dauer und
-die standardmäßig deaktivierte Option `Mehrfachbelegung`.
-Mindestens eine Modellschicht bleibt erhalten; weitere können ergänzt und entfernt werden. Die Reihenfolge wird automatisch nach
-der lokalen Beginnzeit bestimmt. Neue Modelle sind immer aktiv, vorhandene Modelle können deaktiviert oder erneut aktiviert
-werden.
+seiner Modellschichten. Jede Modellschicht besitzt eine Bezeichnung, die standardmäßig deaktivierte Option
+`Mehrfachbelegung` und ihre gespeicherte fachliche Reihenfolge. Der Beginn der ersten Modellschicht und das Ende der letzten
+werden als tagesabhängig angezeigt und nicht bearbeitet; bei einer einzelnen Modellschicht gilt dies für beide Grenzen. Feste
+innere Beginn- und Endzeiten werden ausschließlich als Uhrzeit erfasst; ihre Zuordnung zum Start- oder Folgetag leitet der
+Dialog automatisch aus dem Schließzeitraum der Filiale ab. Berechnete Schichtdauern werden im Modelldialog nicht angezeigt;
+ein leerer Platzhalter hält bei mittleren Modellschichten die gemeinsame Spaltenaufteilung ein.
+
+Mindestens eine Modellschicht bleibt erhalten; weitere werden am Ende der fachlichen Reihenfolge ergänzt und können entfernt
+werden. Beim erstmaligen Erfassen des Beginns einer neuen Modellschicht wird das Ende der vorherigen Schicht einmalig damit
+vorbelegt. Beide Grenzen bleiben danach unabhängig bearbeitbar. Lücken lösen vor dem Speichern einen bestätigbaren Hinweis
+aus; Überlappungen mehrerer Rasterplätze sind zulässig. Neue Modelle sind immer aktiv, vorhandene Modelle können deaktiviert
+oder erneut aktiviert werden.
 
 An der ersten Modellschicht können Vorbereitungsminuten und an der letzten Modellschicht Nachbereitungsminuten gepflegt werden.
-Bei einer einzelnen Modellschicht zeigt der Dialog beide Werte. Bei vorhandenen stabilen Modellschicht-IDs zeigt der Dialog
-zusätzlich alle aktiven geöffneten Sondertage der Filiale. Für sie lassen sich optional nur die inneren Schichtgrenzen
-überschreiben; Öffnungsbeginn und Öffnungsende sowie Vor- und Nachbereitungsminuten bleiben die verbindlichen äußeren Grenzen.
-Inaktive oder geschlossene Sondertage werden nicht zur Bearbeitung angeboten, vorhandene Konfigurationen bleiben aber erhalten.
+Die wiederverwendbare Component `EingabeMinuten` erfasst dafür ganze Werte von 0 bis 999 mit festem Minutensuffix. Bei einer
+einzelnen Modellschicht zeigt der Dialog beide Werte. Besondere Rasterzeiten für Sondertage werden nicht angeboten; deren
+wirksame Öffnungsregel bestimmt ausschließlich die tagesabhängigen Außengrenzen.
 
 Die routbare `SchichtmodellePage` ersetzt in der Navigation die bisherige Vorlagenverwaltung. Sie rendert pro ausgewählter
 Filiale eine `SchichtmodelleFiliale`, die ausschließlich Modelle dieses Filialpfads lädt und bearbeitet. Die
@@ -116,6 +157,7 @@ Die Anlageaktion öffnet zunächst ein Planungsart-Menü. Das Schichtraster füh
 
 - `src/app/commons/utils/datum/monat.ts`
 - `src/app/components/date-selectors/monat-selector`
+- `src/app/components/schichtplan/dienstplan-ansichtsbereich`
 - `src/app/components/schichtplan/dienstplan-planungsbereich`
 - `src/app/components/schichtplan/dienstplan-anlegen-dialog`
 - `src/app/components/schichtplan/dienstplan-monatstabelle`

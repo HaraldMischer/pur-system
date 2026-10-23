@@ -1,15 +1,15 @@
-// pur-system/src/app/components/shared/datum-eingabe/datum-eingabe.spec.ts
+// pur-system/src/app/components/shared/eingabe-datum/eingabe-datum.spec.ts
 
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { DatumEingabe } from './datum-eingabe';
+import { EingabeDatum } from './eingabe-datum';
 
 @Component({
-  imports: [DatumEingabe, ReactiveFormsModule],
+  imports: [EingabeDatum, ReactiveFormsModule],
   template: `
-    <app-datum-eingabe
+    <app-eingabe-datum
       label="Datum"
       required
       [formControl]="control"
@@ -26,9 +26,9 @@ class TestHost {
 }
 
 @Component({
-  imports: [DatumEingabe, ReactiveFormsModule],
+  imports: [EingabeDatum, ReactiveFormsModule],
   template: `
-    <app-datum-eingabe label="Datum" modus="monat-tag" required [formControl]="control" />
+    <app-eingabe-datum label="Datum" modus="monat-tag" required [formControl]="control" />
   `,
 })
 class MonatTagTestHost {
@@ -38,7 +38,7 @@ class MonatTagTestHost {
   });
 }
 
-describe('DatumEingabe', () => {
+describe('EingabeDatum', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TestHost, MonatTagTestHost],

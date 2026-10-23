@@ -28,10 +28,10 @@ Die Ports `8080` bis `8083` liefern lokal dieselben PWA-Builds aus, die für die
 vorgesehen sind. Alle vier Produktionsvarianten verwenden im Manifest den Darstellungsmodus `standalone` und besitzen eine
 Offline-App-Shell. Jeder Produktionsbuild enthält ausschließlich seinen eigenen Icon-Satz: Pur Master in Violett/Magenta,
 Pur Office in Blau/Türkis, Pur Filiale in Grün/Türkis und Pur Mitarbeiter in Orange/Rot. Das weiße Pur-`P` bleibt in allen
-Varianten identisch. Die jeweilige PWA-Rahmenfarbe wird in der variantenspezifischen Indexdatei und im Manifest übereinstimmend
-gesetzt: Master `#3C0384`, Office `#013676`, Filiale `#014A33` und Mitarbeiter `#AD2604`. Die zentrale Farbquelle ist
+Varianten identisch. Alle Varianten verwenden in der variantenspezifischen Indexdatei und im Manifest einheitlich die
+anthrazitfarbene PWA-Rahmenfarbe `#252829`. Die zentrale Farbquelle ist
 `config/pwa-theme-colors.mjs`; vor Development-Server und Varianten-Builds überträgt `scripts/sync-pwa-theme-colors.mjs` die
-Werte in die jeweiligen Index- und Manifestdateien.
+Farbe in die jeweiligen Index- und Manifestdateien.
 
 Die Titelleiste einer installierten Desktop-PWA wird teilweise vom verwendeten Browser bereitgestellt. Browseraktionen wie
 „Deinstallieren“, Erweiterungen und das Drei-Punkte-Menü können deshalb zusätzlich zur Anwendung angezeigt werden und lassen sich

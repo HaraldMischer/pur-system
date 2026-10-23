@@ -51,6 +51,18 @@ export interface IDienstplanAnlageErgebnis {
   modellschichten: readonly IModellschichtMomentaufnahmeEintrag[];
 }
 
+export interface IDienstplanVeroeffentlichungErgebnis {
+  dienstplan: IDienstplanEintrag;
+  veroeffentlichteVersion: IDienstplanVersionEintrag;
+  archivierteVersion?: IDienstplanVersionEintrag;
+}
+
+export interface IDienstplanEntwurfAnlageErgebnis {
+  dienstplan: IDienstplanEintrag;
+  version: IDienstplanVersionEintrag;
+  schichten: readonly ISchichtEintrag[];
+}
+
 // ===== Firestore-Dokumente ==================
 
 export interface IDienstplanDokument extends IDienstplanAnlage, IDienstplanSchichtmodellReferenz {

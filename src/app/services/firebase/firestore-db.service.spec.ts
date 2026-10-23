@@ -9,6 +9,7 @@ import {
   FIRESTORE_DELETE_FIELD,
   FIRESTORE_DELETE_DOC,
   FIRESTORE_DOC,
+  FIRESTORE_DOCUMENT_ID,
   FIRESTORE_GET_DOC_FROM_CACHE,
   FIRESTORE_GET_DOC_FROM_SERVER,
   FIRESTORE_GET_DOCS_FROM_CACHE,
@@ -29,6 +30,7 @@ describe('FirestoreDbService', () => {
   const firestoreMock = {} as Firestore;
   const collectionMock = vi.fn().mockReturnValue('collection-ref');
   const docMock = vi.fn().mockReturnValue('document-ref');
+  const documentIdMock = vi.fn().mockReturnValue('document-id-field');
   const deleteFieldMock = vi.fn().mockReturnValue('feld-loeschen');
   const deleteDocMock = vi.fn();
   const getDocsFromCacheMock = vi.fn();
@@ -69,11 +71,7 @@ describe('FirestoreDbService', () => {
     return aktion();
   });
   const assertOnlineMock = vi.fn();
-  let snapshotNext: (snapshot: {
-    id: string;
-    exists: () => boolean;
-    data: () => Record<string, unknown>;
-  }) => void;
+  let snapshotNext: (snapshot: any) => void;
   let snapshotError: (error: unknown) => void;
 
   beforeEach(() => {
@@ -109,6 +107,7 @@ describe('FirestoreDbService', () => {
         { provide: FIRESTORE_DELETE_FIELD, useValue: deleteFieldMock },
         { provide: FIRESTORE_DELETE_DOC, useValue: deleteDocMock },
         { provide: FIRESTORE_DOC, useValue: docMock },
+        { provide: FIRESTORE_DOCUMENT_ID, useValue: documentIdMock },
         { provide: FIRESTORE_GET_DOC_FROM_CACHE, useValue: getDocFromCacheMock },
         { provide: FIRESTORE_GET_DOC_FROM_SERVER, useValue: getDocFromServerMock },
         { provide: FIRESTORE_GET_DOCS_FROM_CACHE, useValue: getDocsFromCacheMock },
@@ -167,6 +166,41 @@ describe('FirestoreDbService', () => {
     expect(batchCommitMock).toHaveBeenCalledOnce();
   });
 
+  it('should observe a bounded collection query by document ids', () => {
+    const next = vi.fn();
+    const error = vi.fn();
+    const service = TestBed.inject(FirestoreDbService);
+
+    const unsubscribe = service.observeCollectionByDocumentIds(
+      'firma/f-1/mitarbeiterbelegung',
+      ['m-1__2026-10-01', 'm-2__2026-10-01'],
+      next,
+      error,
+    );
+    snapshotNext({
+      docs: [
+        {
+          id: 'm-1__2026-10-01',
+          data: () => ({ mitarbeiterId: 'm-1', datum: '2026-10-01' }),
+        },
+      ],
+    });
+
+    expect(collectionMock).toHaveBeenCalledWith(firestoreMock, 'firma/f-1/mitarbeiterbelegung');
+    expect(whereMock).toHaveBeenCalledWith('document-id-field', 'in', [
+      'm-1__2026-10-01',
+      'm-2__2026-10-01',
+    ]);
+    expect(queryMock).toHaveBeenCalledWith('collection-ref', 'where-constraint');
+    expect(next).toHaveBeenCalledWith([
+      {
+        id: 'm-1__2026-10-01',
+        daten: { mitarbeiterId: 'm-1', datum: '2026-10-01' },
+      },
+    ]);
+    expect(unsubscribe).toBe(unsubscribeMock);
+  });
+
   it('should update dependent documents in a transaction', async () => {
     docMock.mockImplementation((_firestore, path: string) => `ref:${path}`);
     const service = TestBed.inject(FirestoreDbService);
@@ -194,6 +228,45 @@ describe('FirestoreDbService', () => {
       { merge: true },
     );
     expect(transactionDeleteMock).toHaveBeenCalledWith('ref:version/v-1/schicht/s-1');
+  });
+
+  it('should read several documents before updating them in one transaction', async () => {
+    docMock.mockImplementation((_firestore, path: string) => `ref:${path}`);
+    transactionGetMock.mockImplementation(async (documentRef: string) => {
+      const path = documentRef.replace('ref:', '');
+      return {
+        id: path.split('/').at(-1),
+        exists: () => path === 'version/v-1',
+        data: () => ({ revision: 2 }),
+      };
+    });
+    const service = TestBed.inject(FirestoreDbService);
+
+    await expect(
+      service.executeDocumentsTransaction<number>(
+        ['version/v-1', 'mitarbeiterbelegung/m-1__2026-10-05'],
+        (dokumente) => {
+          expect(dokumente.get('version/v-1')).toEqual({
+            id: 'v-1',
+            daten: { revision: 2 },
+          });
+          expect(dokumente.get('mitarbeiterbelegung/m-1__2026-10-05')).toBeNull();
+          return {
+            ergebnis: 3,
+            operationen: [
+              { documentPath: 'version/v-1', daten: { revision: 3 } },
+              {
+                documentPath: 'mitarbeiterbelegung/m-1__2026-10-05',
+                daten: { belegungen: [] },
+              },
+            ],
+          };
+        },
+      ),
+    ).resolves.toBe(3);
+
+    expect(transactionGetMock).toHaveBeenCalledTimes(2);
+    expect(transactionSetMock).toHaveBeenCalledTimes(2);
   });
 
   it('should load a collection with document ids', async () => {

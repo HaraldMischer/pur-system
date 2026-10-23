@@ -12,6 +12,10 @@ export interface IFilialPfad extends IFirmaPfad {
   filialeId: string;
 }
 
+export interface IMitarbeiterbelegungPfad extends IFirmaPfad {
+  mitarbeiterbelegungId: string;
+}
+
 export interface IFilialeinstellungPfad extends IFilialPfad {
   einstellungId: 'allgemein' | 'oeffnungszeiten';
 }

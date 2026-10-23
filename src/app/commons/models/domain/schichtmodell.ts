@@ -5,23 +5,21 @@ import { Timestamp } from 'firebase/firestore';
 // ===== Anwendungs-Typen ====================
 
 export type TPlanungsart = 'schichtraster' | 'schichtbausteine';
+export type TModellschichtTag = 'starttag' | 'folgetag';
+
+export interface IModellschichtZeitgrenze {
+  lokalzeit: string;
+  tag: TModellschichtTag;
+}
 
 export interface IModellschichtDaten {
   bezeichnung: string;
-  beginnLokalzeit: string;
-  endeLokalzeit: string;
-  endetAmFolgetag: boolean;
+  reihenfolge: number;
+  beginn?: IModellschichtZeitgrenze;
+  ende?: IModellschichtZeitgrenze;
   mehrfachbelegungErlaubt: boolean;
   vorbereitungsminuten?: number;
   nachbereitungsminuten?: number;
-}
-
-export interface IBesondereRasterzeit {
-  sondertagId: string;
-  modellschichtId: string;
-  beginnLokalzeit: string;
-  endeLokalzeit: string;
-  endetAmFolgetag: boolean;
 }
 
 export interface IModellschichtEintrag extends IModellschichtDaten {
@@ -39,7 +37,6 @@ export interface IModellschichtSchreibdaten extends IModellschichtDaten {
 export interface ISchichtrastermodellAnlage {
   bezeichnung: string;
   modellschichten: readonly IModellschichtSchreibdaten[];
-  besondereRasterzeiten: readonly IBesondereRasterzeit[];
 }
 
 export interface ISchichtrastermodellAktualisierung extends ISchichtrastermodellAnlage {
@@ -55,7 +52,6 @@ export interface ISchichtmodellEintragBasis extends ISchichtmodellDokumentBasis 
 
 export interface ISchichtrastermodellEintrag extends ISchichtmodellEintragBasis {
   planungsart: 'schichtraster';
-  besondereRasterzeiten: readonly IBesondereRasterzeit[];
 }
 
 export interface ISchichtbausteinmodellEintrag extends ISchichtmodellEintragBasis {
@@ -92,7 +88,6 @@ export interface ISchichtmodellDokumentBasis {
 
 export interface ISchichtrastermodellDokument extends ISchichtmodellDokumentBasis {
   planungsart: 'schichtraster';
-  besondereRasterzeiten: readonly IBesondereRasterzeit[];
 }
 
 export interface ISchichtbausteinmodellDokument extends ISchichtmodellDokumentBasis {

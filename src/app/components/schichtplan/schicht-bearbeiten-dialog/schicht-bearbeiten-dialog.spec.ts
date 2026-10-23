@@ -8,6 +8,7 @@ import { Timestamp } from 'firebase/firestore';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
+import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import {
   SchichtBearbeitenDialog,
   TSchichtBearbeitenDialogDaten,
@@ -20,12 +21,14 @@ describe('SchichtBearbeitenDialog', () => {
   const updateSchicht = vi.fn().mockResolvedValue(undefined);
   const deleteSchicht = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
+  const hatMitarbeiterZeitkonflikt = vi.fn().mockReturnValue(false);
   let dialogDaten: TSchichtBearbeitenDialogDaten;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     inProgress.set(false);
     storeError.set(null);
+    hatMitarbeiterZeitkonflikt.mockReturnValue(false);
     dialogDaten = createDialogDaten();
     await TestBed.configureTestingModule({
       imports: [SchichtBearbeitenDialog],
@@ -43,6 +46,10 @@ describe('SchichtBearbeitenDialog', () => {
             updateSchicht,
             deleteSchicht,
           },
+        },
+        {
+          provide: MitarbeiterbelegungStore,
+          useValue: { hatMitarbeiterZeitkonflikt },
         },
         { provide: MatDialogRef, useValue: { close } },
       ],
@@ -107,6 +114,68 @@ describe('SchichtBearbeitenDialog', () => {
     );
   });
 
+  it('should move an edited shift to a selected day and model cell', async () => {
+    dialogDaten = createDialogDaten({
+      schicht: createSchichtEintrag(),
+      verschiebeziele: [
+        ...createDialogDaten().verschiebeziele,
+        {
+          datum: '2026-10-06',
+          modellschicht: {
+            ...createDialogDaten().modellschicht,
+            id: 'frueh',
+            bezeichnung: 'Früh',
+          },
+          rasterzeit: {
+            modellschichtId: 'frueh',
+            beginnLokalzeit: '07:00',
+            endeLokalzeit: '12:00',
+            beginntAmFolgetag: false,
+            endetAmFolgetag: false,
+          },
+          schichtIds: [],
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
+    const component = fixture.componentInstance;
+    component.toggleVerschiebemodus();
+    component.schichtForm.controls.datum.setValue('2026-10-06');
+    component.handleDatumChange();
+
+    await component.saveSchicht();
+
+    expect(updateSchicht).toHaveBeenCalledWith(dialogDaten.pfad, 's-1', {
+      datum: '2026-10-06',
+      mitarbeiterId: 'm-1',
+      modellschichtId: 'frueh',
+    });
+  });
+
+  it('should block moving into an occupied single model cell', async () => {
+    const basis = createDialogDaten();
+    dialogDaten = createDialogDaten({
+      schicht: createSchichtEintrag(),
+      verschiebeziele: [
+        ...basis.verschiebeziele,
+        {
+          datum: '2026-10-06',
+          modellschicht: basis.modellschicht,
+          rasterzeit: basis.rasterzeit,
+          schichtIds: ['s-fremd'],
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
+    const component = fixture.componentInstance;
+    component.schichtForm.patchValue({ datum: '2026-10-06', modellschichtId: 'spaet' });
+
+    await component.saveSchicht();
+
+    expect(component.zielIstBelegt()).toBe(true);
+    expect(updateSchicht).not.toHaveBeenCalled();
+  });
+
   it('should reject an unavailable employee', async () => {
     const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
     const component = fixture.componentInstance;
@@ -116,6 +185,37 @@ describe('SchichtBearbeitenDialog', () => {
 
     expect(component.schichtForm.invalid).toBe(true);
     expect(createSchicht).not.toHaveBeenCalled();
+  });
+
+  it('should show and block a company-wide employee time conflict', async () => {
+    hatMitarbeiterZeitkonflikt.mockReturnValue(true);
+    const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
+    const component = fixture.componentInstance;
+    component.schichtForm.controls.mitarbeiterId.setValue('m-1');
+    fixture.detectChanges();
+
+    await component.saveSchicht();
+
+    expect(component.hatZeitkonflikt()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain(
+      'Der Mitarbeiter ist im gewählten Zeitraum bereits eingeplant.',
+    );
+    expect(createSchicht).not.toHaveBeenCalled();
+  });
+
+  it('should exclude the edited shift itself from the time conflict check', () => {
+    dialogDaten = createDialogDaten({ schicht: createSchichtEintrag() });
+    const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
+    fixture.detectChanges();
+
+    expect(hatMitarbeiterZeitkonflikt).toHaveBeenCalledWith(
+      'm-1',
+      expect.objectContaining({
+        beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
+        ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
+      }),
+      JSON.stringify(['b-1', '2026-10', 'v-1', 's-1']),
+    );
   });
 
   it('should delete the edited shift', async () => {
@@ -142,14 +242,24 @@ describe('SchichtBearbeitenDialog', () => {
     createSchicht.mockRejectedValueOnce(
       new Error('Die lokale Uhrzeit existiert in der gewählten Zeitzone nicht.'),
     );
+    const basis = createDialogDaten();
+    const rasterzeit = {
+      ...basis.rasterzeit,
+      beginnLokalzeit: '02:30',
+      endeLokalzeit: '03:30',
+      endetAmFolgetag: false,
+    };
     dialogDaten = createDialogDaten({
       datum: '2026-03-29',
-      rasterzeit: {
-        ...createDialogDaten().rasterzeit,
-        beginnLokalzeit: '02:30',
-        endeLokalzeit: '03:30',
-        endetAmFolgetag: false,
-      },
+      rasterzeit,
+      verschiebeziele: [
+        {
+          datum: '2026-03-29',
+          modellschicht: basis.modellschicht,
+          rasterzeit,
+          schichtIds: [],
+        },
+      ],
     });
     const fixture = TestBed.createComponent(SchichtBearbeitenDialog);
     const component = fixture.componentInstance;
@@ -183,17 +293,41 @@ describe('SchichtBearbeitenDialog', () => {
         firmaId: 'f-1',
         filialeId: 'b-1',
         bezeichnung: 'Spät',
-        beginnLokalzeit: '16:30',
-        endeLokalzeit: '01:00',
-        endetAmFolgetag: true,
+        reihenfolge: 1,
+        beginn: { lokalzeit: '16:30', tag: 'starttag' },
         mehrfachbelegungErlaubt: false,
       },
       rasterzeit: {
         modellschichtId: 'spaet',
         beginnLokalzeit: '16:30',
         endeLokalzeit: '01:00',
+        beginntAmFolgetag: false,
         endetAmFolgetag: true,
       },
+      verschiebeziele: [
+        {
+          datum: '2026-10-05',
+          modellschicht: {
+            id: 'spaet',
+            dienstplanId: '2026-10',
+            unternehmerId: 'u-1',
+            firmaId: 'f-1',
+            filialeId: 'b-1',
+            bezeichnung: 'Spät',
+            reihenfolge: 1,
+            beginn: { lokalzeit: '16:30', tag: 'starttag' },
+            mehrfachbelegungErlaubt: false,
+          },
+          rasterzeit: {
+            modellschichtId: 'spaet',
+            beginnLokalzeit: '16:30',
+            endeLokalzeit: '01:00',
+            beginntAmFolgetag: false,
+            endetAmFolgetag: true,
+          },
+          schichtIds: [],
+        },
+      ],
       ...overrides,
     };
   }

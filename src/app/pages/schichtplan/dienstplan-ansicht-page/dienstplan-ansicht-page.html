@@ -1,7 +1,34 @@
 <!-- pur-system/src/app/pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page.html -->
 
 <section class="pur-page">
+  <mat-toolbar class="pur-toolbar pur-toolbar--page">
+    <h1 class="pur-toolbar__title" purPageRouteTitle></h1>
+
+    <div class="pur-toolbar__actions">
+      <app-monat-selector [(selectedMonat)]="selectedMonat" />
+      <button matButton="outlined" type="button" (click)="setAktuellerMonat()">
+        Aktueller Monat
+      </button>
+    </div>
+  </mat-toolbar>
+
   <div class="pur-scroll pur-scroll--fill">
-    <div class="pur-page__content"></div>
+    <div class="pur-page__content">
+      @if (filialauswahl().length === 0) {
+        <p class="pur-message pur-message--surface pur-message--full" role="status">
+          Wähle mindestens eine Filiale, um ihre veröffentlichten Dienstpläne anzuzeigen.
+        </p>
+      } @else {
+        <div class="dienstplan-ansichten">
+          @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
+            <app-dienstplan-ansichtsbereich
+              [filiale]="auswahl.filiale"
+              [pfad]="auswahl.pfad"
+              [monat]="selectedMonat()"
+            />
+          }
+        </div>
+      }
+    </div>
   </div>
 </section>

@@ -24,6 +24,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
+import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../../commons/constants/filialeinstellung.constants';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import {
@@ -31,7 +32,6 @@ import {
   IFilialeinstellungSondertagEintrag,
   ISchliesszeitraum,
   STANDARD_BUNDESLAND,
-  STANDARD_SCHLIESSZEITRAUM,
   TOeffnungsregel,
   TWochenoeffnungszeiten,
   TWochentag,
@@ -44,7 +44,7 @@ import {
 import { IFilialeinstellungGrundlagen } from '../../../services/domain/filialeinstellung.service';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
-import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
+import { EingabeZeit } from '../../shared/eingabe-zeit/eingabe-zeit';
 import { DatumsausnahmeBearbeitenDialog } from '../datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog';
 import { SondertagBearbeitenDialog } from '../sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog';
 
@@ -86,11 +86,11 @@ function schliesszeitraumValidator(control: AbstractControl): ValidationErrors |
 function createSchliesszeitraumForm(): TSchliesszeitraumForm {
   return new FormGroup(
     {
-      beginnLokalzeit: new FormControl(STANDARD_SCHLIESSZEITRAUM.beginnLokalzeit, {
+      beginnLokalzeit: new FormControl(STANDARD_SCHLIESSZEITRAUM_NRW.beginnLokalzeit, {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      endeLokalzeit: new FormControl(STANDARD_SCHLIESSZEITRAUM.endeLokalzeit, {
+      endeLokalzeit: new FormControl(STANDARD_SCHLIESSZEITRAUM_NRW.endeLokalzeit, {
         nonNullable: true,
         validators: [Validators.required],
       }),
@@ -99,7 +99,9 @@ function createSchliesszeitraumForm(): TSchliesszeitraumForm {
   );
 }
 
-function createTagForm(schliesszeitraum: ISchliesszeitraum = STANDARD_SCHLIESSZEITRAUM): TTagForm {
+function createTagForm(
+  schliesszeitraum: ISchliesszeitraum = STANDARD_SCHLIESSZEITRAUM_NRW,
+): TTagForm {
   const oeffnungsrahmen = getMaximalerOeffnungsrahmen(schliesszeitraum);
   return new FormGroup(
     {
@@ -169,13 +171,7 @@ function getOeffnungsregel(form: TTagForm): TOeffnungsregel {
 
 @Component({
   selector: 'app-oeffnungszeiten-filiale',
-  imports: [
-    MatButtonModule,
-    MatCheckboxModule,
-    MatIconModule,
-    LokalzeitEingabe,
-    ReactiveFormsModule,
-  ],
+  imports: [MatButtonModule, MatCheckboxModule, MatIconModule, EingabeZeit, ReactiveFormsModule],
   templateUrl: './oeffnungszeiten-filiale.html',
   styleUrl: './oeffnungszeiten-filiale.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

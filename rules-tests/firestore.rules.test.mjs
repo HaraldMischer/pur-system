@@ -109,6 +109,7 @@ const firmaPath = `${unternehmerPath}/firma/f-1`;
 const filialePath = `${firmaPath}/filiale/b-1`;
 const mitarbeiterPath = `${firmaPath}/mitarbeiter/m-1`;
 const andererMitarbeiterPath = `${firmaPath}/mitarbeiter/m-2`;
+const mitarbeiterbelegungPath = `${firmaPath}/mitarbeiterbelegung/m-1__2026-10-05`;
 const nichtZugeordneteFirmaPath = `${unternehmerPath}/firma/f-2`;
 const nichtZugeordneterMitarbeiterPath = `${nichtZugeordneteFirmaPath}/mitarbeiter/m-3`;
 const nichtZugeordneteFilialePath = `${firmaPath}/filiale/b-2`;
@@ -337,6 +338,37 @@ function setInitialeFilialeinstellung(batch, db) {
   batch.set(doc(db, filialeinstellungOeffnungszeitenPath), oeffnungszeitenFilialeinstellung());
   batch.set(doc(db, `${filialeinstellungSondertagPath}/neujahr`), systemSondertagDaten());
 }
+
+for (const role of ['master', 'office', 'filiale']) {
+  test(role + ' follows the CRUD matrix for company-wide employee occupancy', async () => {
+    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
+    const belegung = doc(db, mitarbeiterbelegungPath);
+
+    await assertSucceeds(setDoc(belegung, { mitarbeiterId: 'm-1', datum: '2026-10-05' }));
+    await assertSucceeds(getDoc(belegung));
+    await assertSucceeds(getDocs(collection(db, `${firmaPath}/mitarbeiterbelegung`)));
+    await assertSucceeds(updateDoc(belegung, { datum: '2026-10-06' }));
+    await assertSucceeds(deleteDoc(belegung));
+  });
+}
+
+test('company-wide employee occupancy requires company access and an authorized role', async () => {
+  const officeDb = await seedProfile('office');
+  await assertFails(
+    setDoc(doc(officeDb, `${nichtZugeordneteFirmaPath}/mitarbeiterbelegung/m-3__2026-10-05`), {
+      mitarbeiterId: 'm-3',
+      datum: '2026-10-05',
+    }),
+  );
+
+  const mitarbeiterDb = await seedProfile('mitarbeiter', {
+    erlaubteBereiche: ['dashboard', 'schichtplan'],
+    zugriffe: { 'u-1': { 'f-1': [] } },
+    firmaMitarbeiterId: 'm-1',
+  });
+  await assertFails(getDoc(doc(mitarbeiterDb, mitarbeiterbelegungPath)));
+  await assertFails(setDoc(doc(mitarbeiterDb, mitarbeiterbelegungPath), { datum: '2026-10-05' }));
+});
 
 for (const role of ['master', 'office', 'filiale']) {
   test(role + ' follows the CRUD matrix for shift models and model shifts', async () => {
@@ -594,6 +626,74 @@ test('allows an authorized atomic monthly snapshot with model-shift references',
 
   assert.equal(plan.data()?.['kalendertage'][0].rasterzeiten[0].modellschichtId, 'frueh');
   assert.equal(schicht.data()?.['modellschichtId'], 'frueh');
+});
+
+test('allows a realistic maximal atomic service-plan and occupancy write', async () => {
+  const db = await seedProfile('office');
+  const batch = writeBatch(db);
+  const versionPath = `${dienstplanPath}/version/v-max`;
+  const zeitpunkt = new Date('2026-10-01T08:00:00.000Z');
+  batch.set(doc(db, dienstplanPath), {
+    zeitraumStart: '2026-10-01',
+    zeitraumEnde: '2026-10-31',
+    zeitzone: 'Europe/Berlin',
+    entwurfVersionId: 'v-max',
+    naechsteVersionsnummer: 2,
+    erstelltVonUid: 'scoped',
+    aktualisiertVonUid: 'scoped',
+  });
+  batch.set(doc(db, versionPath), {
+    nummer: 1,
+    revision: 31,
+    status: 'entwurf',
+    erstelltVonUid: 'scoped',
+    aktualisiertVonUid: 'scoped',
+  });
+  for (let tag = 1; tag <= 31; tag += 1) {
+    const datum = `2026-10-${String(tag).padStart(2, '0')}`;
+    const schichtId = `s-${String(tag).padStart(2, '0')}`;
+    const beginn = new Date(`${datum}T06:00:00.000Z`);
+    const ende = new Date(`${datum}T14:00:00.000Z`);
+    batch.set(doc(db, `${versionPath}/schicht/${schichtId}`), {
+      datum,
+      mitarbeiterId: 'm-1',
+      modellschichtId: 'frueh',
+      beginn,
+      ende,
+      pauseMinuten: 30,
+      erstelltAm: zeitpunkt,
+      erstelltVonUid: 'scoped',
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+    });
+    batch.set(doc(db, `${firmaPath}/mitarbeiterbelegung/m-1__${datum}`), {
+      mitarbeiterId: 'm-1',
+      datum,
+      belegungen: [
+        {
+          datum,
+          mitarbeiterId: 'm-1',
+          filialeId: 'b-1',
+          dienstplanId: '2026-10',
+          versionId: 'v-max',
+          schichtId,
+          status: 'entwurf',
+          beginn,
+          ende,
+          pauseMinuten: 30,
+        },
+      ],
+      aktualisiertAm: zeitpunkt,
+      aktualisiertVonUid: 'scoped',
+    });
+  }
+
+  await assertSucceeds(batch.commit());
+
+  const letzterBelegungstag = await assertSucceeds(
+    getDoc(doc(db, `${firmaPath}/mitarbeiterbelegung/m-1__2026-10-31`)),
+  );
+  assert.equal(letzterBelegungstag.data()?.['belegungen'][0].schichtId, 's-31');
 });
 
 test('service-plan writes require an allowed branch and an authorized role', async () => {

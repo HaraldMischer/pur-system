@@ -519,9 +519,9 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
    später durch berechtigte Benutzer geändert werden. Aus ihm wird der größtmögliche Öffnungsrahmen abgeleitet. Die sieben
    Wochenregeln werden bei einer neuen Filiale zunächst mit diesem Rahmen vorbelegt. Beim initialen Schließzeitraum entspricht
    er `06:00` bis `01:00` Uhr am Folgetag. Die technische Zeitzone `Europe/Berlin` wird nicht als Filialeinstellung gespeichert.
-   Fehlende Zeitwerte von Feiertagen und jährlichen Sondertagen werden im Bearbeitungsdialog ebenfalls mit dem jeweils
-   abgeleiteten Öffnungsrahmen vorbelegt. Weitere filialbezogene Einstellungsseiten können später als gleichrangige Unterpunkte
-   ergänzt werden. Sichtbarkeit und Route der gesamten Gruppe werden über den App-Bereich `einstellungen` geschützt.
+   Initial angelegte Feiertage und jährliche Sondertage erhalten ebenfalls den jeweils abgeleiteten Öffnungsrahmen als
+   zeitliche Vorbelegung. Weitere filialbezogene Einstellungsseiten können später als gleichrangige Unterpunkte ergänzt werden.
+   Sichtbarkeit und Route der gesamten Gruppe werden über den App-Bereich `einstellungen` geschützt.
 
 5. **System (`/system`):** Administrativer Bereich für `master`, der in der Sidebar als `System` bezeichnet wird. Er umfasst die
    Page `StrukturAnlegenPage` unter `/system/struktur/anlegen`, die `StrukturVerwaltenPage` für vorhandene Firmen und
@@ -571,19 +571,28 @@ Die Modellschichten eines Schichtmodells bilden ein festes Raster für alle Kale
 Mehrfachbelegung bleiben an Werktagen, Sonntagen, Feiertagen und sonstigen Sondertagen identisch. Ein Modell mit Früh-, Mittel-
 und Spätschicht bleibt durchgehend dreispaltig; ein Modell mit Früh- und Spätschicht bleibt durchgehend zweispaltig.
 
-Die Modellzeiten bleiben frei konfigurierbare Grundzeiten. Für jeden Kalendertag wird der Beginn des ersten Rasterplatzes an den
-wirksamen Öffnungsbeginn und das Ende des letzten Rasterplatzes an das wirksame Öffnungsende angepasst; bei nur einem
-Rasterplatz gelten beide Anpassungen. Innere Schichtgrenzen bleiben unverändert. Die erste Modellschicht kann nicht negative
-Vorbereitungsminuten und die letzte Modellschicht nicht negative Nachbereitungsminuten festlegen. Diese Minuten erweitern die
-äußeren Rastergrenzen ausdrücklich vor beziehungsweise nach der Kundenöffnungszeit.
+Die Modellschichten besitzen eine ausdrücklich gespeicherte Reihenfolge. Der Beginn des ersten Rasterplatzes wird für jeden
+Kalendertag aus dem wirksamen Öffnungsbeginn abgeleitet, das Ende des letzten aus dem wirksamen Öffnungsende. Bei nur einem
+Rasterplatz gelten beide tagesabhängigen Außengrenzen. Die erste Modellschicht kann ganze Vorbereitungsminuten von 0 bis 999 und
+die letzte ganze Nachbereitungsminuten von 0 bis 999 festlegen; diese Minuten erweitern die Grenzen ausdrücklich vor
+beziehungsweise nach der Kundenöffnungszeit.
 
-Feiertage, Sondertage und Datumsausnahmen beeinflussen das Raster über ihre wirksame Öffnungsregel automatisch. Besondere
-Rasterzeiten eines Schichtmodells werden nur für abweichende innere Schichtgrenzen jährlich wiederkehrender Sondertage benötigt.
-Einmalige Datumsausnahmen verändern ausschließlich die äußeren Rastergrenzen; die inneren Modellgrenzen bleiben unverändert.
-Besondere Rasterzeiten fügen keine Modellschicht hinzu, entfernen keine und ändern ihre Reihenfolge nicht. Ergibt die
-Tagesanpassung für einen Rasterplatz keine positive Dauer, ist das Modell mit der Öffnungsregel unvereinbar und die
-Konfiguration oder Dienstplananlage wird verhindert. An geschlossenen Tagen können keine Schichten angelegt werden.
-Öffnungszeiten erzeugen weiterhin keine Mitarbeiterschichten automatisch.
+Bei mehreren Rasterplätzen werden die inneren Beginn- und Endzeiten unabhängig gepflegt. Eine neue Schichtgrenze wird zunächst
+lückenlos vorbelegt, kann danach aber für eine bewusste Lücke oder eine Überlappung geändert werden. Für innere Beginn- und
+Endzeiten wird nur die Uhrzeit erfasst; die Zuordnung zum Start- oder Folgetag wird automatisch aus dem Schließzeitraum der
+Filiale abgeleitet. Lücken erzeugen beim Speichern einen nicht blockierenden Hinweis. Mehrere Rasterplätze dürfen gleichzeitig
+überlappen; konkrete Schichten desselben Mitarbeiters dürfen sich weiterhin nicht überschneiden.
+
+Feiertage, Sondertage und Datumsausnahmen beeinflussen das Raster ausschließlich über ihre wirksame Öffnungsregel. Besondere
+Rasterzeiten für Sondertage entfallen. Kann ein Rasterplatz an einem Tag nicht vollständig mit positiver Dauer in die wirksamen
+Tagesgrenzen eingeordnet werden, wird für ihn an diesem Tag keine Rasterzeit angeboten. Passen keine Rasterplätze, bleibt der
+Tag ohne belegbare Schichten. An geschlossenen Tagen können ebenfalls keine Schichten angelegt werden. Öffnungszeiten erzeugen
+weiterhin keine Mitarbeiterschichten automatisch.
+
+Für die Umstellung auf diese Struktur ist keine Migration oder Kompatibilitätslogik vorgesehen. Alte Schichtmodelle werden
+gelöscht und benötigte Modelle vollständig neu angelegt. Firestore Rules prüfen gemäß Berechtigungsmatrix ausschließlich
+aktives Profil, Rolle, Filialpfad und erlaubte CRUD-Aktion; Feldstruktur, Reihenfolge und Zeitregeln werden im TypeScript-Code
+und dessen Tests validiert.
 
 Pausen werden nicht als feste Eigenschaft einer Modellschicht behandelt. Alle relevanten Schichten eines Mitarbeiters mit
 demselben Dienstplandatum werden filialübergreifend zu Arbeitsblöcken gruppiert. Direkt aufeinanderfolgende Schichten und
@@ -617,10 +626,10 @@ kein Monatsdienstplan angelegt werden.
 
 Jeder Monatsdienstplan speichert für seine höchstens 31 Kalendertage eine vollständig aufgelöste Tagesmomentaufnahme mit
 Datum, Wochentag, wirksamer Öffnungsregel, Quelle, vorhandenen Quell-IDs und Bezeichnungen sowie unabhängigen
-Kalendereigenschaften. Hinzu kommen je stabilem Rasterplatz dessen für diesen Tag wirksame Beginn- und Endzeit. Eine einmalige
-Datumsausnahme kann diese Zeiten ausschließlich im betroffenen Monatsdienstplan überschreiben, aber keine Rasterplätze
-hinzufügen, entfernen oder umsortieren. Spätere Änderungen an Filialeinstellungen, Feiertagsregeln oder Schichtmodellen
-verändern vorhandene Tagesmomentaufnahmen nicht.
+Kalendereigenschaften. Hinzu kommen je stabilem Rasterplatz dessen für diesen Tag wirksame Beginn- und Endzeit, sofern der
+Rasterplatz zu den Tagesgrenzen passt. Eine einmalige Datumsausnahme beeinflusst diese Zeiten ausschließlich über ihre
+wirksame Öffnungsregel und kann keine Rasterplätze hinzufügen, entfernen oder umsortieren. Spätere Änderungen an
+Filialeinstellungen, Feiertagsregeln oder Schichtmodellen verändern vorhandene Tagesmomentaufnahmen nicht.
 
 Die Tagesmomentaufnahmen werden als auf höchstens 31 Einträge begrenzte Liste `kalendertage` direkt im Monatsdienstplandokument
 gespeichert. Dienstplan und Kalendertage werden dadurch atomar angelegt und gemeinsam ohne zusätzliche Dokumentlesevorgänge

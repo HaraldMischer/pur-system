@@ -29,6 +29,7 @@ import {
 } from '../../commons/utils/filialeinstellung/feiertag';
 import { assertKeineAktiveSondertagDatumskollision } from '../../commons/utils/filialeinstellung/sondertag-kollision';
 import {
+  getMaximalerOeffnungsrahmen,
   isGueltigerSchliesszeitraum,
   isOeffnungsregelInnerhalbOeffnungsrahmen,
 } from '../../commons/utils/filialeinstellung/schliesszeitraum';
@@ -353,7 +354,11 @@ export class FilialeinstellungService {
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
-    const sondertagVorlagen = createInitialeSondertage(grundlagen.bundesland);
+    const oeffnungsrahmen = getMaximalerOeffnungsrahmen(grundlagen.schliesszeitraum);
+    const sondertagVorlagen = createInitialeSondertage(
+      grundlagen.bundesland,
+      oeffnungsrahmen,
+    );
     const allgemeinPfad = FIRESTORE_DOCUMENT_PATHS.filialeinstellung({
       ...pfad,
       einstellungId: 'allgemein',
@@ -422,6 +427,7 @@ export class FilialeinstellungService {
     const sondertagVorlagen = reconcileInitialeSondertage(
       bestand.sondertage,
       grundlagen.bundesland,
+      getMaximalerOeffnungsrahmen(grundlagen.schliesszeitraum),
     );
     const bisherigeNachId = new Map(
       bestand.sondertage.map((sondertag) => {

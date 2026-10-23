@@ -27,7 +27,6 @@ Die Pfadkürzel bauen aufeinander auf:
 
 - `{firmaPfad}` = `unternehmer/{unternehmerId}/firma/{firmaId}`
 - `{filialPfad}` = `{firmaPfad}/filiale/{filialId}`
-- `{mitarbeiterPfad}` = `{firmaPfad}/mitarbeiter/{mitarbeiterId}`
 
 | Collection                                                                | `master` | `office` | `filiale` | `mitarbeiter` | Legacy-Konto |
 | ------------------------------------------------------------------------- | -------- | -------- | --------- | ------------- | ------------ |
@@ -35,7 +34,8 @@ Die Pfadkürzel bauen aufeinander auf:
 | `benutzerprofil/{uid}/{subcollection}/{document=**}`                      | R/C/U/D  | –        | –         | –             | –            |
 | `unternehmer/{unternehmerId}`                                             | R/C/U/D  | R        | R         | R             | –            |
 | `{firmaPfad}`                                                             | R/C/U/D  | R        | R         | R             | –            |
-| `{mitarbeiterPfad}`                                                       | R/C/U/D  | R/C/U    | R/C/U     | R             | –            |
+| `{firmaPfad}/mitarbeiter/{mitarbeiterId}`                                 | R/C/U/D  | R/C/U    | R/C/U     | R             | –            |
+| `{firmaPfad}/mitarbeiterbelegung/{mitarbeiterIdDatum}`                    | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
 | `{filialPfad}`                                                            | R/C/U/D  | R        | R         | R             | –            |
 | `{filialPfad}/einstellung/{dokumentId}`                                   | R/C/U    | R/C/U    | R/C/U     | –             | –            |
 | `{filialPfad}/einstellung/oeffnungszeiten/sondertag/{sondertagId}`        | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
@@ -110,8 +110,12 @@ der TypeScript-Code.
 
 #### Schichtplan
 
-- `dienstplaner` steuert ausschließlich im Filial-Frontend, ob ein aktiver Firma-Mitarbeiter der eigenen Filiale die dort für
-  das Filialkonto erlaubten Planungsaktionen bedienen darf.
+- `dienstplaner` ist für die spätere clientseitige Bedienbegrenzung im Filial-Frontend vorgesehen. Der dafür erforderliche
+  betriebliche Sitzungszustand ist noch nicht umgesetzt; aktuell verwenden Filialkonten ausschließlich die veröffentlichte
+  Dienstplanansicht. Die laut Matrix vorhandenen Pfad- und CRUD-Rechte der Auth-Rolle `filiale` bleiben davon unberührt.
+- Der firmenweite Belegungsindex ist für `office` und `filiale` mit einem Zugriff auf die Firma les- und schreibbar. Er dient
+  ausschließlich dazu, filialübergreifende Mitarbeiterschichten innerhalb eines berechtigten Dienstplan-Schreibvorgangs
+  konsistent zu prüfen und zu aktualisieren. Mitarbeiterzugänge erhalten keinen direkten Zugriff auf den Index.
 - Die fachliche Steuerung von Entwürfen, Veröffentlichungen, Archivierungen, Revisionen, Referenzen und Löschvorgängen erfolgt
   ausschließlich im TypeScript-Code. Die Rules prüfen dafür keine Felder oder Zustandswechsel.
 - `mitarbeiter` liest entsprechend der Matrix alle Dienstplanpfade einer zugeordneten Filiale und erhält keine Schreibrechte.
@@ -127,8 +131,6 @@ der TypeScript-Code.
   gesperrt.
 - Legacy-Konten sind als ausdrückliche Ausnahme authentifizierte Konten ohne `benutzerprofil` und greifen ausschließlich auf
   `purCustomers` und `purUser` einschließlich ihrer Untercollections zu.
-
-
 
 ## 2. App-Bereich-Matrix
 

@@ -3,11 +3,9 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../commons/constants/filialeinstellung.constants';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
-import {
-  STANDARD_SCHLIESSZEITRAUM,
-  TWochenoeffnungszeiten,
-} from '../../commons/models/domain/filialeinstellung';
+import { TWochenoeffnungszeiten } from '../../commons/models/domain/filialeinstellung';
 import { SondertagDatumskollisionFehler } from '../../commons/utils/filialeinstellung/sondertag-kollision';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
@@ -375,7 +373,7 @@ function createGrundlagen(): IFilialeinstellungGrundlagen {
     samstag: { geoeffnet: false },
     sonntag: { geoeffnet: false },
   };
-  return { bundesland: 'DE-NW', schliesszeitraum: STANDARD_SCHLIESSZEITRAUM, wochenregeln };
+  return { bundesland: 'DE-NW', schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW, wochenregeln };
 }
 
 function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {

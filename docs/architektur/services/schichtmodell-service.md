@@ -9,36 +9,41 @@ Der `SchichtmodellService` verwaltet die Schichtmodelle einer konkreten Filiale.
 ## Öffentliche API
 
 - `loadSchichtmodelle()` lädt alle aktiven und inaktiven Modelle der Filiale und anschließend deren Modellschichten. Modelle
-  werden nach Bezeichnung, Modellschichten automatisch nach ihrer lokalen Beginnzeit sortiert.
+  werden nach Bezeichnung und Modellschichten nach ihrer ausdrücklich gespeicherten `reihenfolge` sortiert.
 - `createSchichtmodell()` legt ein aktives Modell und mindestens eine Modellschicht in einem atomaren Batch an.
 - `updateSchichtmodell()` aktualisiert das Modell, behält vorhandene Modellschicht-IDs bei, ergänzt neue IDs und löscht entfernte
   Modellschichten im selben atomaren Batch.
 - `deactivateSchichtmodell()` setzt das Modell auf inaktiv. Das Modell und seine Modellschichten bleiben erhalten.
 
-Bezeichnungen werden vor dem Schreiben normalisiert. Der Service prüft die lokale Zeitfolge, leitet den Folgetag erneut ab und
-sortiert die Modellschichten chronologisch. Bei gleicher Beginnzeit dienen Endzeit, Bezeichnung und ID als stabile
-Sortiermerkmale. Jede Modellschicht speichert außerdem verbindlich, ob eine Mehrfachbelegung erlaubt ist.
+Bezeichnungen werden vor dem Schreiben normalisiert. Jede Modellschicht speichert eine innerhalb des Modells eindeutige und
+lückenlose `reihenfolge`. Die erste Modellschicht enthält keinen festen Beginn, die letzte kein festes Ende; bei einer einzelnen
+Modellschicht entfallen beide festen Außengrenzen. Jede vorhandene innere Zeitgrenze speichert ihre lokale Uhrzeit und die
+eindeutige Zuordnung zum Start- oder Folgetag. Die erste Modellschicht darf nicht negative Vorbereitungsminuten, die letzte
+nicht negative Nachbereitungsminuten enthalten. Jede Modellschicht legt außerdem verbindlich fest, ob eine Mehrfachbelegung
+derselben Rasterzelle erlaubt ist.
+
+Der gemeinsame TypeScript-Validator prüft diese Struktur, die Modellschicht-IDs, die Zeitgrenzen und die positiven, bereits
+ohne Kalendertag bestimmbaren Dauern. Innere Beginn- und Endgrenzen bleiben unabhängig: Überlappungen zwischen Rasterplätzen
+sind erlaubt, Lücken werden als nicht blockierender Hinweis behandelt. Eine zeitliche Sortierung findet nicht statt.
 
 Jedes Schichtmodell besitzt die verpflichtende `planungsart`. Der Service setzt sie bei neuen Modellen automatisch auf
 `schichtraster` und akzeptiert beim Laden oder Aktualisieren derzeit ausschließlich diesen Wert. Ein fehlender oder noch nicht
 unterstützter Wert wird als fachlich ungültiger Datenbestand abgewiesen. Die spätere Planungsart `schichtbausteine` erhält eine
 eigene Modellstruktur und wird erst mit ihrer fachlichen Umsetzung freigegeben.
 
-Das Domainmodell bildet die Varianten als diskriminierte Union ab. `ISchichtmodellDokumentBasis` enthält nur gemeinsame
-Metadaten. `ISchichtrastermodellDokument` ergänzt die Rasterzeiten, während `ISchichtbausteinmodellDokument` als eigenständige
-Variante vorbereitet ist. `TSchichtmodellDokument` fasst beide Typen zusammen; die aktuelle Service- und UI-API arbeitet
-bewusst ausschließlich mit `ISchichtrastermodellBestand`.
+Das Domainmodell bildet die Varianten als diskriminierte Union ab. `ISchichtmodellDokumentBasis` enthält die gemeinsamen
+Metadaten. `ISchichtrastermodellDokument` kennzeichnet die umgesetzte Planungsart, während
+`ISchichtbausteinmodellDokument` als eigenständige Variante vorbereitet ist. Die Rasterstruktur liegt nicht im Modelldokument,
+sondern in den Dokumenten der Untercollection `modellschicht`. `TSchichtmodellDokument` fasst beide Typen zusammen; die aktuelle
+Service- und UI-API arbeitet bewusst ausschließlich mit `ISchichtrastermodellBestand`.
 
-Das Modelldokument kann besondere Rasterzeiten enthalten. Jeder Eintrag verbindet genau eine Sondertags-ID mit einer
-vorhandenen stabilen Modellschicht-ID und abweichenden Beginn- und Endzeiten. Der Service prüft Zeitfolge, Referenz und
-Eindeutigkeit. Beim normalen Bearbeiten und beim Deaktivieren bleiben diese Einträge erhalten; beim Entfernen einer
-Modellschicht werden ihre Zeitüberschreibungen mit entfernt. Besondere Rasterzeiten sind auch dann als leere Liste Bestandteil
-jedes neu angelegten Schichtmodells, wenn keine Abweichungen konfiguriert sind.
+Besondere Rasterzeiten für Sondertage sind nicht Bestandteil des Schichtmodells. Feiertage, jährliche Sondertage und einmalige
+Datumsausnahmen wirken ausschließlich über ihre Öffnungsregel auf die tagesabhängigen Außengrenzen des Rasters.
 
-Die in Todo 21.9 noch offene Erweiterung ergänzt die erste Modellschicht um nicht negative Vorbereitungsminuten und die letzte
-Modellschicht um nicht negative Nachbereitungsminuten. Der Service muss die Werte normalisieren und sicherstellen, dass sie nur
-an den äußeren Rasterplätzen verwendet werden. Besondere Rasterzeiten bleiben für abweichende innere Schichtgrenzen erhalten;
-Öffnungsbeginn und Öffnungsende werden nicht als redundante Rasterzeitüberschreibungen im Schichtmodell gespeichert.
+Für die Umstellung ist keine Migration oder Kompatibilitätslogik vorhanden. Die bisherigen Schichtmodelle wurden gelöscht und
+die benötigten Modelle werden ausschließlich in der neuen Struktur angelegt. Die Firestore Rules prüfen gemäß
+Berechtigungsmatrix nur aktives Profil, Rolle, Filialpfad und erlaubte CRUD-Aktion. Feldstruktur, IDs, Reihenfolge und Zeitregeln
+validiert ausschließlich der TypeScript-Code mit seinen Tests.
 
 ## Beteiligte Dateien
 

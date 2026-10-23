@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { STANDARD_SCHLIESSZEITRAUM } from '../../../commons/models/domain/filialeinstellung';
+import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../../commons/constants/filialeinstellung.constants';
 import {
   FilialeinstellungStore,
   IFilialeinstellungFehler,
@@ -35,7 +35,7 @@ describe('SondertagBearbeitenDialog', () => {
       providers: [
         {
           provide: MAT_DIALOG_DATA,
-          useValue: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM },
+          useValue: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
         },
         { provide: MatDialogRef, useValue: { close } },
         {
@@ -98,7 +98,7 @@ describe('SondertagBearbeitenDialog', () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
         pfad: PFAD,
-        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM,
+        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
         sondertag: {
           id: 'karfreitag',
           unternehmerId: PFAD.unternehmerId,
@@ -150,7 +150,7 @@ describe('SondertagBearbeitenDialog', () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
         pfad: PFAD,
-        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM,
+        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
         sondertag: {
           id: 'karfreitag',
           unternehmerId: PFAD.unternehmerId,
@@ -240,7 +240,7 @@ describe('SondertagBearbeitenDialog', () => {
       'mat-checkbox[formControlName="geoeffnet"] input',
     ) as HTMLInputElement | null;
     const zeitfelder = fixture.nativeElement.querySelectorAll(
-      'app-lokalzeit-eingabe input',
+      'app-eingabe-zeit input',
     ) as NodeListOf<HTMLInputElement>;
     expect(fixture.componentInstance.form.controls.geoeffnet.disabled).toBe(true);
     expect(geoeffnetCheckbox?.disabled).toBe(true);

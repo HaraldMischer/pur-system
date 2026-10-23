@@ -10,9 +10,15 @@ import type {
   TOeffnungsregel,
   TWochenoeffnungszeiten,
 } from '../../models/domain/filialeinstellung';
-import type { IBesondereRasterzeit } from '../../models/domain/schichtmodell';
+import type {
+  IModellschichtDaten,
+  IModellschichtZeitgrenze,
+} from '../../models/domain/schichtmodell';
 import { resolveOeffnungsregel } from '../filialeinstellung/oeffnungsregel-aufloesung';
 import { createDienstplanZeitraum } from './dienstplan-zeitraum';
+
+const MINUTEN_PRO_TAG = 24 * 60;
+const MAX_DARSTELLBARE_MINUTEN = 2 * MINUTEN_PRO_TAG;
 
 export interface IDienstplanKalendertageAnfrage {
   monat: string;
@@ -20,16 +26,13 @@ export interface IDienstplanKalendertageAnfrage {
   sondertage: readonly IFilialeinstellungSondertagEintrag[];
   ausnahmen: readonly IFilialeinstellungAusnahmeEintrag[];
   modellschichten?: readonly IDienstplanRasterModellschicht[];
-  besondereRasterzeiten?: readonly IBesondereRasterzeit[];
 }
 
-export interface IDienstplanRasterModellschicht {
+export interface IDienstplanRasterModellschicht extends Pick<
+  IModellschichtDaten,
+  'reihenfolge' | 'beginn' | 'ende' | 'vorbereitungsminuten' | 'nachbereitungsminuten'
+> {
   id: string;
-  beginnLokalzeit: string;
-  endeLokalzeit: string;
-  endetAmFolgetag: boolean;
-  vorbereitungsminuten?: number;
-  nachbereitungsminuten?: number;
 }
 
 /**
@@ -42,7 +45,7 @@ export function createDienstplanKalendertage(
   anfrage: IDienstplanKalendertageAnfrage,
 ): readonly IDienstplanKalendertag[] {
   const zeitraum = createDienstplanZeitraum(anfrage.monat);
-  assertRasterzeitUeberschreibungen(anfrage);
+  assertModellschichten(anfrage.modellschichten ?? []);
   const letzterTag = Number(zeitraum.zeitraumEnde.slice(-2));
   return Array.from({ length: letzterTag }, (_, index) => {
     const datum = `${anfrage.monat}-${String(index + 1).padStart(2, '0')}`;
@@ -53,11 +56,8 @@ export function createDienstplanKalendertage(
       ausnahmen: anfrage.ausnahmen,
     });
     const rasterzeiten = createRasterzeiten(
-      datum,
-      aufgeloest.quelle === 'sondertag' ? aufgeloest.sondertagId : undefined,
       aufgeloest.oeffnungsregel,
       anfrage.modellschichten ?? [],
-      anfrage.besondereRasterzeiten ?? [],
     );
     return {
       datum,
@@ -77,39 +77,13 @@ export function createDienstplanKalendertage(
   });
 }
 
-function assertRasterzeitUeberschreibungen(anfrage: IDienstplanKalendertageAnfrage): void {
+function assertModellschichten(modellschichten: readonly IDienstplanRasterModellschicht[]): void {
   const modellschichtIds = new Set<string>();
-  for (const modellschicht of anfrage.modellschichten ?? []) {
+  for (const modellschicht of modellschichten) {
     if (!modellschicht.id || modellschichtIds.has(modellschicht.id)) {
       throw new Error('Die Modellschicht-IDs des Schichtrasters müssen eindeutig sein.');
     }
     modellschichtIds.add(modellschicht.id);
-  }
-
-  const besondereSchluessel = new Set<string>();
-  for (const rasterzeit of anfrage.besondereRasterzeiten ?? []) {
-    assertRasterzeit(rasterzeit, modellschichtIds);
-    const schluessel = JSON.stringify([rasterzeit.sondertagId, rasterzeit.modellschichtId]);
-    if (!rasterzeit.sondertagId || besondereSchluessel.has(schluessel)) {
-      throw new Error('Die besondere Rasterzeit ist nicht eindeutig oder fachlich ungültig.');
-    }
-    besondereSchluessel.add(schluessel);
-  }
-}
-
-function assertRasterzeit(
-  rasterzeit: IDienstplanRasterzeit,
-  modellschichtIds: ReadonlySet<string>,
-): void {
-  if (!modellschichtIds.has(rasterzeit.modellschichtId)) {
-    throw new Error(
-      `Die Rasterzeit verweist auf die unbekannte Modellschicht ${rasterzeit.modellschichtId}.`,
-    );
-  }
-  const beginn = parseLokalzeit(rasterzeit.beginnLokalzeit);
-  const ende = parseLokalzeit(rasterzeit.endeLokalzeit);
-  if (beginn === ende || rasterzeit.endetAmFolgetag !== ende < beginn) {
-    throw new Error('Die Rasterzeit enthält keine gültige Zeitfolge.');
   }
 }
 
@@ -129,82 +103,73 @@ export function getDienstplanRasterzeit(
     return eintrag.modellschichtId === modellschichtId;
   });
   if (!rasterzeit) {
-    throw new Error('Die Rasterzeit wurde im Kalendertag nicht gefunden.');
+    throw new Error('Die Modellschicht ist an diesem Kalendertag nicht verfügbar.');
   }
   return rasterzeit;
 }
 
 function createRasterzeiten(
-  datum: string,
-  sondertagId: string | undefined,
   oeffnungsregel: TOeffnungsregel,
   modellschichten: readonly IDienstplanRasterModellschicht[],
-  besondereRasterzeiten: readonly IBesondereRasterzeit[],
 ): readonly IDienstplanRasterzeit[] {
   if (!oeffnungsregel.geoeffnet) return [];
-  return modellschichten.map((modellschicht, index) => {
-    const sondertagUeberschreibung = sondertagId
-      ? besondereRasterzeiten.find((rasterzeit) => {
-          return (
-            rasterzeit.sondertagId === sondertagId &&
-            rasterzeit.modellschichtId === modellschicht.id
-          );
-        })
-      : undefined;
-    const grundzeit = sondertagUeberschreibung ?? modellschicht;
-    return createWirksameRasterzeit({
-      datum,
+  const geordnet = modellschichten.slice().sort((a, b) => a.reihenfolge - b.reihenfolge);
+  if (geordnet.length === 0) return [];
+  const oeffnungsbeginn = parseLokalzeit(oeffnungsregel.beginnLokalzeit);
+  const oeffnungsende =
+    parseLokalzeit(oeffnungsregel.endeLokalzeit) +
+    (oeffnungsregel.endetAmFolgetag ? MINUTEN_PRO_TAG : 0);
+  const tagesbeginn =
+    oeffnungsbeginn - getRandminuten(geordnet.at(0)?.vorbereitungsminuten, 'Vorbereitungsminuten');
+  const tagesende =
+    oeffnungsende + getRandminuten(geordnet.at(-1)?.nachbereitungsminuten, 'Nachbereitungsminuten');
+  return geordnet.flatMap((modellschicht, index) => {
+    const rasterzeit = createWirksameRasterzeit({
       modellschicht,
-      grundzeit,
-      oeffnungsregel,
       istErste: index === 0,
-      istLetzte: index === modellschichten.length - 1,
+      istLetzte: index === geordnet.length - 1,
+      tagesbeginn,
+      tagesende,
     });
+    return rasterzeit ? [rasterzeit] : [];
   });
 }
 
 function createWirksameRasterzeit(anfrage: {
-  datum: string;
   modellschicht: IDienstplanRasterModellschicht;
-  grundzeit: Pick<IDienstplanRasterzeit, 'beginnLokalzeit' | 'endeLokalzeit' | 'endetAmFolgetag'>;
-  oeffnungsregel: Extract<TOeffnungsregel, { geoeffnet: true }>;
   istErste: boolean;
   istLetzte: boolean;
-}): IDienstplanRasterzeit {
-  const grundbeginn = parseLokalzeit(anfrage.grundzeit.beginnLokalzeit);
-  const grundende =
-    parseLokalzeit(anfrage.grundzeit.endeLokalzeit) +
-    (anfrage.grundzeit.endetAmFolgetag ? 24 * 60 : 0);
-  const oeffnungsbeginn = parseLokalzeit(anfrage.oeffnungsregel.beginnLokalzeit);
-  const oeffnungsende =
-    parseLokalzeit(anfrage.oeffnungsregel.endeLokalzeit) +
-    (anfrage.oeffnungsregel.endetAmFolgetag ? 24 * 60 : 0);
-  const vorbereitungsminuten = getRandminuten(
-    anfrage.modellschicht.vorbereitungsminuten,
-    'Vorbereitungsminuten',
-  );
-  const nachbereitungsminuten = getRandminuten(
-    anfrage.modellschicht.nachbereitungsminuten,
-    'Nachbereitungsminuten',
-  );
-  const beginn = anfrage.istErste ? oeffnungsbeginn - vorbereitungsminuten : grundbeginn;
-  const ende = anfrage.istLetzte ? oeffnungsende + nachbereitungsminuten : grundende;
-  if (beginn < 0 || ende >= 2 * 24 * 60) {
-    throw new Error(
-      `Die Vor- oder Nachbereitungszeit der Modellschicht ${anfrage.modellschicht.id} kann am ${anfrage.datum} nicht abgebildet werden.`,
-    );
-  }
-  if (ende <= beginn) {
-    throw new Error(
-      `Die Modellschicht ${anfrage.modellschicht.id} hat am ${anfrage.datum} nach der Anpassung an die Öffnungszeiten keine positive Dauer.`,
-    );
-  }
+  tagesbeginn: number;
+  tagesende: number;
+}): IDienstplanRasterzeit | null {
+  const beginn = anfrage.istErste
+    ? anfrage.tagesbeginn
+    : parseZeitgrenze(anfrage.modellschicht.beginn, 'Beginn');
+  const ende = anfrage.istLetzte
+    ? anfrage.tagesende
+    : parseZeitgrenze(anfrage.modellschicht.ende, 'Ende');
+  const liegtImDarstellbarenZeitraum = beginn >= 0 && ende < MAX_DARSTELLBARE_MINUTEN;
+  const liegtImTagesrahmen = beginn >= anfrage.tagesbeginn && ende <= anfrage.tagesende;
+  if (!liegtImDarstellbarenZeitraum || !liegtImTagesrahmen || ende <= beginn) return null;
   return {
     modellschichtId: anfrage.modellschicht.id,
     beginnLokalzeit: formatLokalzeit(beginn),
     endeLokalzeit: formatLokalzeit(ende),
-    endetAmFolgetag: ende >= 24 * 60,
+    beginntAmFolgetag: beginn >= MINUTEN_PRO_TAG,
+    endetAmFolgetag: ende >= MINUTEN_PRO_TAG,
   };
+}
+
+function parseZeitgrenze(
+  zeitgrenze: IModellschichtZeitgrenze | undefined,
+  bezeichnung: string,
+): number {
+  if (!zeitgrenze) {
+    throw new Error(`Die Modellschicht enthält keinen inneren ${bezeichnung}.`);
+  }
+  return (
+    parseLokalzeit(zeitgrenze.lokalzeit) + (zeitgrenze.tag === 'folgetag' ? MINUTEN_PRO_TAG : 0)
+  );
 }
 
 function getRandminuten(wert: number | undefined, bezeichnung: string): number {
@@ -227,7 +192,7 @@ function parseLokalzeit(lokalzeit: string): number {
 }
 
 function formatLokalzeit(minutenSeitTagesbeginn: number): string {
-  const minutenImTag = minutenSeitTagesbeginn % (24 * 60);
+  const minutenImTag = minutenSeitTagesbeginn % MINUTEN_PRO_TAG;
   const stunden = Math.floor(minutenImTag / 60);
   const minuten = minutenImTag % 60;
   return `${String(stunden).padStart(2, '0')}:${String(minuten).padStart(2, '0')}`;

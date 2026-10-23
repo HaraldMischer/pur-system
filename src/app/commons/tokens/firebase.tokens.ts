@@ -17,6 +17,7 @@ import {
   deleteField,
   deleteDoc,
   doc,
+  documentId,
   getDocFromCache,
   getDocFromServer,
   getDocsFromCache,
@@ -80,6 +81,14 @@ export const FIRESTORE_DOC = new InjectionToken<typeof doc>('FIRESTORE_DOC', {
   providedIn: 'root',
   factory: () => doc,
 });
+
+export const FIRESTORE_DOCUMENT_ID = new InjectionToken<typeof documentId>(
+  'FIRESTORE_DOCUMENT_ID',
+  {
+    providedIn: 'root',
+    factory: () => documentId,
+  },
+);
 
 export const FIRESTORE_GET_DOC_FROM_CACHE = new InjectionToken<typeof getDocFromCache>(
   'FIRESTORE_GET_DOC_FROM_CACHE',

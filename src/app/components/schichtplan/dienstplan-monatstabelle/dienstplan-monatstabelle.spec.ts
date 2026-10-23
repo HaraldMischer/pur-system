@@ -97,6 +97,25 @@ describe('DienstplanMonatstabelle', () => {
     expect(button?.disabled).toBe(true);
   });
 
+  it('should emit publishing and creating a new draft from the plan status row', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('dienstplanVeroeffentlichenAnzeigen', true);
+    fixture.componentRef.setInput('entwurfAnlegenAnzeigen', true);
+    const veroeffentlichen = vi.fn();
+    const entwurfAnlegen = vi.fn();
+    fixture.componentInstance.dienstplanVeroeffentlichen.subscribe(veroeffentlichen);
+    fixture.componentInstance.entwurfAnlegen.subscribe(entwurfAnlegen);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const buttons = [...compiled.querySelectorAll<HTMLButtonElement>('button')];
+    buttons.find((button) => button.textContent?.includes('Veröffentlichen'))?.click();
+    buttons.find((button) => button.textContent?.includes('Neue Entwurfsversion'))?.click();
+
+    expect(veroeffentlichen).toHaveBeenCalledOnce();
+    expect(entwurfAnlegen).toHaveBeenCalledOnce();
+  });
+
   it('should emit only valid employee drops into writable cells', () => {
     const fixture = createFixture();
     fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-1']);
@@ -106,14 +125,17 @@ describe('DienstplanMonatstabelle', () => {
     });
     fixture.detectChanges();
 
-    fixture.componentInstance.handleMitarbeiterDrop(
+    fixture.componentInstance.handlePlanungselementDrop(
       createDropEvent('m-1', '2026-02-03', 'frueh', []),
     );
-    fixture.componentInstance.handleMitarbeiterDrop(
+    fixture.componentInstance.handlePlanungselementDrop(
       createDropEvent('m-fremd', '2026-02-03', 'frueh', []),
     );
-    fixture.componentInstance.handleMitarbeiterDrop(
+    fixture.componentInstance.handlePlanungselementDrop(
       createDropEvent('m-1', '2026-02-03', 'frueh', ['m-1']),
+    );
+    fixture.componentInstance.handlePlanungselementDrop(
+      createDropEvent('m-1', '2026-02-03', 'frueh', [], false, false),
     );
 
     expect(ablagen).toEqual([
@@ -122,7 +144,7 @@ describe('DienstplanMonatstabelle', () => {
 
     fixture.componentRef.setInput('schreibvorgang', true);
     fixture.detectChanges();
-    fixture.componentInstance.handleMitarbeiterDrop(
+    fixture.componentInstance.handlePlanungselementDrop(
       createDropEvent('m-1', '2026-02-04', 'frueh', []),
     );
     expect(ablagen).toHaveLength(1);
@@ -138,10 +160,10 @@ describe('DienstplanMonatstabelle', () => {
     });
     fixture.detectChanges();
 
-    fixture.componentInstance.handleMitarbeiterDrop(
+    fixture.componentInstance.handlePlanungselementDrop(
       createDropEvent('m-2', '2026-02-03', 'frueh', ['m-1']),
     );
-    fixture.componentInstance.handleMitarbeiterDrop(
+    fixture.componentInstance.handlePlanungselementDrop(
       createDropEvent('m-2', '2026-02-03', 'spaet', ['m-1'], true),
     );
 
@@ -150,12 +172,93 @@ describe('DienstplanMonatstabelle', () => {
     ]);
   });
 
+  it('should move an existing draft shift while preserving its identity and employee', () => {
+    const fixture = createFixture();
+    const schicht = createSchicht('s-1', 'm-1');
+    fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-1']);
+    const verschiebungen: unknown[] = [];
+    fixture.componentInstance.schichtVerschieben.subscribe((verschiebung) => {
+      verschiebungen.push(verschiebung);
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.handlePlanungselementDrop(
+      createSchichtDropEvent(schicht, '2026-02-04', 'frueh', []),
+    );
+
+    expect(verschiebungen).toEqual([{ schicht, datum: '2026-02-04', modellschichtId: 'frueh' }]);
+  });
+
+  it('should ignore dropping an existing shift into its current cell', () => {
+    const fixture = createFixture();
+    const schicht = createSchicht('s-1', 'm-1');
+    fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-1']);
+    const verschieben = vi.fn();
+    fixture.componentInstance.schichtVerschieben.subscribe(verschieben);
+    fixture.detectChanges();
+
+    fixture.componentInstance.handlePlanungselementDrop(
+      createSchichtDropEvent(schicht, schicht.datum, schicht.modellschichtId, ['s-1']),
+    );
+
+    expect(verschieben).not.toHaveBeenCalled();
+  });
+
+  it('should move only into a cell with capacity and without an employee time conflict', () => {
+    const fixture = createFixture();
+    const schicht = createSchicht('s-1', 'm-1');
+    const verschiebungen: unknown[] = [];
+    fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-1']);
+    fixture.componentInstance.schichtVerschieben.subscribe((verschiebung) => {
+      verschiebungen.push(verschiebung);
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.handlePlanungselementDrop(
+      createSchichtDropEvent(schicht, '2026-02-04', 'frueh', ['s-fremd']),
+    );
+    fixture.componentRef.setInput('schichtVerschiebungErlaubt', () => false);
+    fixture.detectChanges();
+    fixture.componentInstance.handlePlanungselementDrop(
+      createSchichtDropEvent(schicht, '2026-02-04', 'spaet', [], true),
+    );
+    fixture.componentRef.setInput('schichtVerschiebungErlaubt', () => true);
+    fixture.detectChanges();
+    fixture.componentInstance.handlePlanungselementDrop(
+      createSchichtDropEvent(schicht, '2026-02-04', 'spaet', ['s-fremd'], true),
+    );
+
+    expect(verschiebungen).toEqual([{ schicht, datum: '2026-02-04', modellschichtId: 'spaet' }]);
+  });
+
   it('should show a fallback when a referenced employee is unavailable', () => {
     const fixture = createFixture();
     fixture.componentRef.setInput('schichten', [createSchicht('s-1', 'm-fehlt')]);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Mitarbeiter nicht verfügbar');
+  });
+
+  it('should show a blocking conflict at the affected shift and grid cell', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('schichten', [createSchicht('s-1', 'm-1')]);
+    fixture.componentRef.setInput('konfliktSchichtIds', new Set(['s-1']));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Zeitkonflikt');
+  });
+
+  it('should show a paid break only on the shift that stores it', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('schichten', [
+      createSchicht('s-1', 'm-1'),
+      { ...createSchicht('s-2', 'm-2'), pauseMinuten: 30 },
+    ]);
+    fixture.detectChanges();
+
+    const schichten = fixture.nativeElement.querySelectorAll('.schicht');
+    expect(schichten[0].textContent).not.toContain('Bezahlte Pause');
+    expect(schichten[1].textContent).toContain('Bezahlte Pause: 30 Min.');
   });
 
   it('should show closed cells without offering shift creation', () => {
@@ -179,6 +282,30 @@ describe('DienstplanMonatstabelle', () => {
     expect(ersteZeile.textContent).toContain('Geschlossen');
     expect(fixture.componentInstance.tage()[0].oeffnungszeitBezeichnung).toBe('Geschlossen');
     expect(ersteZeile.querySelector('td button')).toBeNull();
+  });
+
+  it('should show and lock an unavailable model cell on an open day', () => {
+    const fixture = createFixture();
+    const dienstplan = fixture.componentInstance.dienstplan();
+    const [ersterTag, ...weitereTage] = dienstplan.kalendertage;
+    fixture.componentRef.setInput('dienstplan', {
+      ...dienstplan,
+      kalendertage: [
+        {
+          ...ersterTag,
+          rasterzeiten: ersterTag.rasterzeiten.filter((rasterzeit) => {
+            return rasterzeit.modellschichtId !== 'frueh';
+          }),
+        },
+        ...weitereTage,
+      ],
+    });
+    fixture.detectChanges();
+
+    const ersteZeile = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
+    const nichtVerfuegbareZelle = ersteZeile.querySelector('td') as HTMLTableCellElement;
+    expect(nichtVerfuegbareZelle.textContent).toContain('Nicht verfügbar');
+    expect(nichtVerfuegbareZelle.querySelector('button')).toBeNull();
   });
 
   it('should show the stored holiday and special-day properties', () => {
@@ -328,12 +455,14 @@ describe('DienstplanMonatstabelle', () => {
             modellschichtId: 'frueh',
             beginnLokalzeit: '07:00',
             endeLokalzeit: '12:00',
+            beginntAmFolgetag: false,
             endetAmFolgetag: false,
           },
           {
             modellschichtId: 'spaet',
             beginnLokalzeit: datum === '2026-02-03' ? '18:00' : '16:30',
             endeLokalzeit: datum === '2026-02-03' ? '23:00' : '01:00',
+            beginntAmFolgetag: false,
             endetAmFolgetag: datum !== '2026-02-03',
           },
         ],
@@ -348,18 +477,43 @@ describe('DienstplanMonatstabelle', () => {
     mitarbeiterIds: string[],
     mehrfachbelegungErlaubt = false,
     verfuegbar = true,
-  ): Parameters<DienstplanMonatstabelle['handleMitarbeiterDrop']>[0] {
+  ): Parameters<DienstplanMonatstabelle['handlePlanungselementDrop']>[0] {
     return {
-      item: { data: mitarbeiterId },
+      item: { data: { art: 'mitarbeiter', mitarbeiterId } },
       container: {
         data: {
           datum,
           modellschichtId,
+          rasterzeit: null,
+          schichtIds: [],
           mitarbeiterIds,
           mehrfachbelegungErlaubt,
           verfuegbar,
         },
       },
-    } as unknown as Parameters<DienstplanMonatstabelle['handleMitarbeiterDrop']>[0];
+    } as unknown as Parameters<DienstplanMonatstabelle['handlePlanungselementDrop']>[0];
+  }
+
+  function createSchichtDropEvent(
+    schicht: ReturnType<typeof createSchicht>,
+    datum: string,
+    modellschichtId: string,
+    schichtIds: string[],
+    mehrfachbelegungErlaubt = false,
+  ): Parameters<DienstplanMonatstabelle['handlePlanungselementDrop']>[0] {
+    return {
+      item: { data: { art: 'schicht', schicht } },
+      container: {
+        data: {
+          datum,
+          modellschichtId,
+          rasterzeit: null,
+          schichtIds,
+          mitarbeiterIds: [],
+          mehrfachbelegungErlaubt,
+          verfuegbar: true,
+        },
+      },
+    } as unknown as Parameters<DienstplanMonatstabelle['handlePlanungselementDrop']>[0];
   }
 });

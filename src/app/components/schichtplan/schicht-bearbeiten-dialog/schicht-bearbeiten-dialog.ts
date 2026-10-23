@@ -3,6 +3,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   signal,
@@ -29,8 +30,11 @@ import { IDienstplanRasterzeit } from '../../../commons/models/domain/dienstplan
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/domain/schichtmodell';
+import { createMitarbeiterbelegungReferenzSchluessel } from '../../../commons/utils/dienstplan/mitarbeiterbelegung';
+import { createSchichtZeitstempelAusLokalzeiten } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
-import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
+import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
+import { EingabeZeit } from '../../shared/eingabe-zeit/eingabe-zeit';
 
 export type TSchichtBearbeitenDialogDaten = {
   readonly pfad: IDienstplanVersionPfad;
@@ -39,7 +43,15 @@ export type TSchichtBearbeitenDialogDaten = {
   readonly mitarbeiter: readonly IMitarbeiterEintrag[];
   readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
   readonly rasterzeit: IDienstplanRasterzeit;
+  readonly verschiebeziele: readonly TSchichtVerschiebeziel[];
   readonly schicht?: ISchichtEintrag;
+};
+
+export type TSchichtVerschiebeziel = {
+  readonly datum: string;
+  readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
+  readonly rasterzeit: IDienstplanRasterzeit;
+  readonly schichtIds: readonly string[];
 };
 
 // ===== Top-Level Helper =====================
@@ -65,7 +77,7 @@ function formatIsoDatum(datum: string): string {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    LokalzeitEingabe,
+    EingabeZeit,
   ],
   templateUrl: './schicht-bearbeiten-dialog.html',
   styleUrl: './schicht-bearbeiten-dialog.scss',
@@ -77,15 +89,18 @@ export class SchichtBearbeitenDialog {
   private readonly dialogRef = inject(MatDialogRef<SchichtBearbeitenDialog>);
   readonly daten = inject<TSchichtBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly dienstplanStore = inject(DienstplanStore);
+  readonly mitarbeiterbelegungStore = inject(MitarbeiterbelegungStore);
 
   // ===== Interner State =======================
 
   private readonly urspruenglicherFormwert: string;
+  private readonly selectedMitarbeiterId = signal(this.daten.schicht?.mitarbeiterId ?? '');
+  private readonly selectedDatum = signal(this.daten.datum);
+  private readonly selectedModellschichtId = signal(this.daten.modellschicht.id);
 
   // ===== Öffentliche Werte ====================
 
-  readonly datum = this.daten.schicht?.datum ?? this.daten.datum;
-  readonly datumAnzeige = formatIsoDatum(this.datum);
+  readonly verschiebemodus = signal(false);
   readonly beginnLokalzeitControl = new FormControl(this.daten.rasterzeit.beginnLokalzeit, {
     nonNullable: true,
   });
@@ -100,10 +115,76 @@ export class SchichtBearbeitenDialog {
         auswahlValidator(this.daten.mitarbeiter.map((eintrag) => eintrag.id)),
       ],
     }),
+    datum: new FormControl(this.daten.datum, {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    modellschichtId: new FormControl(this.daten.modellschicht.id, {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
   readonly istBearbeitung = Boolean(this.daten.schicht);
   readonly error = signal<string | null>(null);
   readonly hatAenderungen = signal(!this.istBearbeitung);
+
+  // ===== Öffentliche Ableitungen ==============
+
+  readonly verschiebedaten = computed(() => {
+    const daten = new Map<string, string>();
+    this.daten.verschiebeziele.forEach((ziel) => {
+      daten.set(ziel.datum, formatIsoDatum(ziel.datum));
+    });
+    return [...daten].map(([datum, bezeichnung]) => ({ datum, bezeichnung }));
+  });
+  readonly modellschichtenAmTag = computed(() => {
+    const datum = this.selectedDatum();
+    return this.daten.verschiebeziele.filter((ziel) => ziel.datum === datum);
+  });
+  readonly ausgewaehltesZiel = computed(() => {
+    const datum = this.selectedDatum();
+    const modellschichtId = this.selectedModellschichtId();
+    return (
+      this.daten.verschiebeziele.find((ziel) => {
+        return ziel.datum === datum && ziel.modellschicht.id === modellschichtId;
+      }) ?? null
+    );
+  });
+  readonly datumAnzeige = computed(() => formatIsoDatum(this.selectedDatum()));
+  readonly modellschichtBezeichnung = computed(() => {
+    return this.ausgewaehltesZiel()?.modellschicht.bezeichnung ?? '';
+  });
+  readonly zielIstBelegt = computed(() => {
+    const ziel = this.ausgewaehltesZiel();
+    if (!ziel || ziel.modellschicht.mehrfachbelegungErlaubt) return false;
+    return ziel.schichtIds.some((id) => id !== this.daten.schicht?.id);
+  });
+  readonly hatZeitkonflikt = computed(() => {
+    const mitarbeiterId = this.selectedMitarbeiterId();
+    const ziel = this.ausgewaehltesZiel();
+    if (!mitarbeiterId || !ziel) return false;
+    let schichtZeitdaten;
+    try {
+      schichtZeitdaten = createSchichtZeitstempelAusLokalzeiten(
+        ziel.datum,
+        ziel.rasterzeit,
+        this.daten.zeitzone,
+      );
+    } catch {
+      return false;
+    }
+    const ausgenommenerSchichtSchluessel = this.daten.schicht
+      ? createMitarbeiterbelegungReferenzSchluessel({
+          ...this.daten.pfad,
+          schichtId: this.daten.schicht.id,
+        })
+      : undefined;
+    return this.mitarbeiterbelegungStore.hatMitarbeiterZeitkonflikt(
+      mitarbeiterId,
+      schichtZeitdaten,
+      ausgenommenerSchichtSchluessel,
+    );
+  });
 
   // ===== Interne Ableitungen ==================
 
@@ -118,6 +199,14 @@ export class SchichtBearbeitenDialog {
   constructor() {
     this.urspruenglicherFormwert = JSON.stringify(this.schichtForm.getRawValue());
     this.schichtForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.selectedMitarbeiterId.set(this.schichtForm.controls.mitarbeiterId.value);
+      this.selectedDatum.set(this.schichtForm.controls.datum.value);
+      this.selectedModellschichtId.set(this.schichtForm.controls.modellschichtId.value);
+      const ziel = this.ausgewaehltesZiel();
+      if (ziel) {
+        this.beginnLokalzeitControl.setValue(ziel.rasterzeit.beginnLokalzeit);
+        this.endeLokalzeitControl.setValue(ziel.rasterzeit.endeLokalzeit);
+      }
       this.hatAenderungen.set(
         JSON.stringify(this.schichtForm.getRawValue()) !== this.urspruenglicherFormwert,
       );
@@ -127,10 +216,41 @@ export class SchichtBearbeitenDialog {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Speichert die Mitarbeiterzuordnung der festgelegten Rasterzelle.
+   * Blendet die Auswahl eines anderen Rasterziels ein oder setzt sie zurück.
+   */
+  toggleVerschiebemodus(): void {
+    const aktiv = !this.verschiebemodus();
+    this.verschiebemodus.set(aktiv);
+    if (aktiv) return;
+    this.schichtForm.patchValue({
+      datum: this.daten.datum,
+      modellschichtId: this.daten.modellschicht.id,
+    });
+  }
+
+  /**
+   * Übernimmt den ersten verfügbaren Modellschichtwert des gewählten Tages.
+   */
+  handleDatumChange(): void {
+    const erstesZiel = this.daten.verschiebeziele.find((ziel) => {
+      return ziel.datum === this.schichtForm.controls.datum.value;
+    });
+    if (erstesZiel) {
+      this.schichtForm.controls.modellschichtId.setValue(erstesZiel.modellschicht.id);
+    }
+  }
+
+  /**
+   * Speichert die Mitarbeiterzuordnung und gegebenenfalls das ausgewählte Rasterziel.
    */
   async saveSchicht(): Promise<void> {
-    if (this.schichtForm.invalid || this.dienstplanStore.inProgress()) {
+    if (
+      this.schichtForm.invalid ||
+      this.dienstplanStore.inProgress() ||
+      this.hatZeitkonflikt() ||
+      this.zielIstBelegt() ||
+      !this.ausgewaehltesZiel()
+    ) {
       this.schichtForm.markAllAsTouched();
       return;
     }
@@ -139,9 +259,9 @@ export class SchichtBearbeitenDialog {
     if (!this.daten.mitarbeiter.some((eintrag) => eintrag.id === mitarbeiterId)) return;
     try {
       const aktualisierung = {
-        datum: this.datum,
+        datum: this.schichtForm.controls.datum.value,
         mitarbeiterId,
-        modellschichtId: this.daten.modellschicht.id,
+        modellschichtId: this.schichtForm.controls.modellschichtId.value,
       };
       if (this.daten.schicht) {
         await this.dienstplanStore.updateSchicht(

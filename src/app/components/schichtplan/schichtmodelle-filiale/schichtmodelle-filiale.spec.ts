@@ -6,6 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatMenuTrigger } from '@angular/material/menu';
 
+import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../../commons/constants/filialeinstellung.constants';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import {
@@ -34,10 +35,18 @@ describe('SchichtmodelleFiliale', () => {
     error: null,
   });
   const loadSchichtmodelle = vi.fn().mockResolvedValue(undefined);
+  const loadFilialeinstellung = vi.fn().mockResolvedValue(undefined);
   const open = vi.fn();
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    kontext.set({
+      ...PFAD,
+      schichtmodelle: [],
+      download: false,
+      isLoaded: true,
+      error: null,
+    });
     await TestBed.configureTestingModule({
       imports: [SchichtmodelleFiliale],
       providers: [
@@ -52,8 +61,13 @@ describe('SchichtmodelleFiliale', () => {
         {
           provide: FilialeinstellungStore,
           useValue: {
-            loadFilialeinstellung: vi.fn().mockResolvedValue(undefined),
-            getFilialeinstellungKontext: vi.fn().mockReturnValue({ bestand: { sondertage: [] } }),
+            loadFilialeinstellung,
+            getFilialeinstellungKontext: vi.fn().mockReturnValue({
+              isLoaded: true,
+              bestand: {
+                oeffnungszeiten: { schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
+              },
+            }),
           },
         },
         { provide: MatDialog, useValue: { open } },
@@ -69,6 +83,7 @@ describe('SchichtmodelleFiliale', () => {
     await fixture.whenStable();
 
     expect(loadSchichtmodelle).toHaveBeenCalledWith(PFAD);
+    expect(loadFilialeinstellung).toHaveBeenCalledWith(PFAD);
   });
 
   it('should offer the available planning type and keep the later type disabled', async () => {
@@ -94,7 +109,62 @@ describe('SchichtmodelleFiliale', () => {
     menueintraege[0].click();
     expect(open).toHaveBeenCalledWith(
       SchichtmodellBearbeitenDialog,
-      expect.objectContaining({ data: { pfad: PFAD, sondertage: [] } }),
+      expect.objectContaining({
+        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
+      }),
     );
+  });
+
+  it('should distinguish day-dependent boundaries and following-day boundaries', async () => {
+    kontext.update((wert) => ({
+      ...wert,
+      schichtmodelle: [
+        {
+          schichtmodell: {
+            id: 'modell-1',
+            unternehmerId: PFAD.unternehmerId,
+            firmaId: PFAD.firmaId,
+            filialeId: PFAD.filialeId,
+            bezeichnung: 'Standard',
+            aktiv: true,
+            planungsart: 'schichtraster',
+            erstelltVonUid: 'admin-1',
+            aktualisiertVonUid: 'admin-1',
+          },
+          modellschichten: [
+            {
+              id: 'frueh',
+              schichtmodellId: 'modell-1',
+              unternehmerId: PFAD.unternehmerId,
+              firmaId: PFAD.firmaId,
+              filialeId: PFAD.filialeId,
+              bezeichnung: 'Früh',
+              reihenfolge: 0,
+              ende: { lokalzeit: '00:30', tag: 'folgetag' },
+              mehrfachbelegungErlaubt: false,
+            },
+            {
+              id: 'spaet',
+              schichtmodellId: 'modell-1',
+              unternehmerId: PFAD.unternehmerId,
+              firmaId: PFAD.firmaId,
+              filialeId: PFAD.filialeId,
+              bezeichnung: 'Spät',
+              reihenfolge: 1,
+              beginn: { lokalzeit: '00:30', tag: 'folgetag' },
+              mehrfachbelegungErlaubt: false,
+            },
+          ],
+        },
+      ],
+    }));
+    const fixture = TestBed.createComponent(SchichtmodelleFiliale);
+    fixture.componentRef.setInput('filiale', FILIALE);
+    fixture.componentRef.setInput('pfad', PFAD);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.textContent).toContain('Tagesabhängig–00:30 Uhr (Folgetag)');
+    expect(fixture.nativeElement.textContent).toContain('00:30 Uhr (Folgetag)–Tagesabhängig');
   });
 });

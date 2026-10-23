@@ -23,7 +23,10 @@
   font: var(--mat-sys-label-large);
 }
 
-.kopf-aktion {
+.kopf-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-left: auto;
 }
 
@@ -85,6 +88,36 @@
     color: var(--mat-sys-on-surface-variant);
     font: var(--mat-sys-body-medium);
   }
+
+  &--konflikt {
+    outline: 2px solid var(--mat-sys-error);
+  }
+
+  &.cdk-drag-disabled {
+    cursor: default;
+  }
+
+  &:not(.cdk-drag-disabled) {
+    cursor: grab;
+  }
+}
+
+.pur-table__cell.cdk-drop-list-dragging {
+  outline: 2px dashed var(--mat-sys-primary);
+  outline-offset: -3px;
+}
+
+.pur-table__cell.cdk-drop-list-receiving {
+  background: var(--mat-sys-primary-container);
+}
+
+.zelle--konflikt {
+  background: var(--mat-sys-error-container);
+}
+
+.schicht .konflikthinweis {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-label-large);
 }
 
 .mitarbeiter-farbe {

@@ -23,6 +23,8 @@ describe('DienstplanStore', () => {
   const loadDienstplanBestandMock = vi.fn();
   const createDienstplanMock = vi.fn();
   const deleteDienstplanMock = vi.fn();
+  const publishDienstplanMock = vi.fn();
+  const createEntwurfAusVeroeffentlichungMock = vi.fn();
   const createSchichtMock = vi.fn();
   const updateSchichtMock = vi.fn();
   const deleteSchichtMock = vi.fn();
@@ -32,6 +34,8 @@ describe('DienstplanStore', () => {
     loadDienstplanBestand: loadDienstplanBestandMock,
     createDienstplan: createDienstplanMock,
     deleteDienstplan: deleteDienstplanMock,
+    publishDienstplan: publishDienstplanMock,
+    createEntwurfAusVeroeffentlichung: createEntwurfAusVeroeffentlichungMock,
     createSchicht: createSchichtMock,
     updateSchicht: updateSchichtMock,
     deleteSchicht: deleteSchichtMock,
@@ -53,6 +57,23 @@ describe('DienstplanStore', () => {
       modellschichten: createBestand().modellschichten,
     });
     deleteDienstplanMock.mockResolvedValue(undefined);
+    publishDienstplanMock.mockImplementation(async () => {
+      const bestand = createBestand();
+      const entwurf = bestand.versionen[0];
+      return {
+        dienstplan: {
+          ...bestand.dienstplaene[0],
+          entwurfVersionId: undefined,
+          veroeffentlichteVersionId: entwurf.id,
+        },
+        veroeffentlichteVersion: {
+          ...entwurf,
+          status: 'veroeffentlicht',
+          revision: entwurf.revision + 1,
+        },
+      };
+    });
+    createEntwurfAusVeroeffentlichungMock.mockResolvedValue(undefined);
     createSchichtMock.mockResolvedValue({
       schicht: createBestand().schichten[0],
       versionRevision: 3,
@@ -327,6 +348,35 @@ describe('DienstplanStore', () => {
     expect(store.getDienstplanKontext(pfad)?.versionen[0].revision).toBe(4);
   });
 
+  it('should apply returned paid-break updates to already loaded shifts', async () => {
+    createSchichtMock.mockResolvedValueOnce({
+      schicht: {
+        ...createBestand().schichten[0],
+        id: 's-2',
+        mitarbeiterId: 'm-2',
+        pauseMinuten: 0,
+      },
+      versionRevision: 3,
+      pauseAktualisierungen: [
+        { ...versionsPfad, schichtId: 's-1', pauseMinuten: 30 },
+        { ...versionsPfad, schichtId: 's-2', pauseMinuten: 0 },
+      ],
+    });
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+
+    await store.createSchicht(versionsPfad, createSchichtAnlage());
+
+    expect(
+      store
+        .getDienstplanKontext(pfad)
+        ?.schichten.map((schicht) => ({ id: schicht.id, pauseMinuten: schicht.pauseMinuten })),
+    ).toEqual([
+      { id: 's-1', pauseMinuten: 30 },
+      { id: 's-2', pauseMinuten: 0 },
+    ]);
+  });
+
   it('should delete an empty never-published plan from the loaded month', async () => {
     loadDienstplanMonatMock.mockResolvedValueOnce({ ...createBestand(), schichten: [] });
     const store = TestBed.inject(DienstplanStore);
@@ -354,6 +404,116 @@ describe('DienstplanStore', () => {
       'Lösche zuerst alle Schichten des Entwurfs.',
     );
     expect(deleteDienstplanMock).not.toHaveBeenCalled();
+  });
+
+  it('should replace the local draft with the published service result', async () => {
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+
+    await store.publishDienstplan(versionsPfad);
+
+    expect(publishDienstplanMock).toHaveBeenCalledWith(versionsPfad, 2, 'uid-1');
+    expect(store.selectedDienstplan()).toBeNull();
+    expect(store.getDienstplanKontext(pfad)?.dienstplaene[0]).toEqual(
+      expect.objectContaining({ veroeffentlichteVersionId: 'v-1' }),
+    );
+    expect(store.getDienstplanKontext(pfad)?.versionen[0]).toEqual(
+      expect.objectContaining({ status: 'veroeffentlicht', revision: 3 }),
+    );
+  });
+
+  it('should add a copied draft returned by the service', async () => {
+    const bestand = createBestand();
+    const veroeffentlichteVersion = {
+      ...bestand.versionen[0],
+      status: 'veroeffentlicht' as const,
+      revision: 3,
+    };
+    const veroeffentlichterBestand: IDienstplanBestand = {
+      ...bestand,
+      dienstplaene: [
+        {
+          ...bestand.dienstplaene[0],
+          entwurfVersionId: undefined,
+          veroeffentlichteVersionId: 'v-1',
+          naechsteVersionsnummer: 2,
+        },
+      ],
+      versionen: [veroeffentlichteVersion],
+      schichten: bestand.schichten.map((schicht) => {
+        return { ...schicht, versionId: 'v-1' };
+      }),
+    };
+    loadDienstplanMonatMock.mockResolvedValueOnce(veroeffentlichterBestand);
+    createEntwurfAusVeroeffentlichungMock.mockResolvedValueOnce({
+      dienstplan: {
+        ...veroeffentlichterBestand.dienstplaene[0],
+        entwurfVersionId: 'v-2',
+        naechsteVersionsnummer: 3,
+      },
+      version: { ...veroeffentlichteVersion, id: 'v-2', nummer: 2, revision: 0, status: 'entwurf' },
+      schichten: veroeffentlichterBestand.schichten.map((schicht) => {
+        return { ...schicht, versionId: 'v-2' };
+      }),
+    });
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+
+    await store.createEntwurfAusVeroeffentlichung({ ...pfad, dienstplanId: '2026-10' });
+
+    expect(createEntwurfAusVeroeffentlichungMock).toHaveBeenCalledWith(
+      { ...pfad, dienstplanId: '2026-10' },
+      3,
+      'uid-1',
+    );
+    expect(store.getDienstplanKontext(pfad)?.versionen).toEqual([
+      expect.objectContaining({ id: 'v-1', status: 'veroeffentlicht' }),
+      expect.objectContaining({ id: 'v-2', status: 'entwurf' }),
+    ]);
+    expect(store.getDienstplanKontext(pfad)?.schichten).toHaveLength(2);
+  });
+
+  it('should preserve the loaded plan after a failed shift move', async () => {
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+    const vorher = store.getDienstplanKontext(pfad);
+    updateSchichtMock.mockRejectedValueOnce(
+      new DienstplanFachfehler('Der Mitarbeiter ist in diesem Zeitraum bereits eingeplant.'),
+    );
+
+    await expect(
+      store.updateSchicht(versionsPfad, 's-1', {
+        ...createSchichtAnlage(),
+        datum: '2026-10-06',
+      }),
+    ).rejects.toThrow('bereits eingeplant');
+
+    expect(store.getDienstplanKontext(pfad)).toEqual(vorher);
+    expect(store.getDienstplanKontext(pfad)?.versionen[0].revision).toBe(2);
+    expect(store.getDienstplanKontext(pfad)?.schichten[0]).toEqual(
+      expect.objectContaining({ id: 's-1', datum: '2026-10-05', mitarbeiterId: 'm-1' }),
+    );
+  });
+
+  it('should preserve the draft after a failed publication', async () => {
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+    const vorher = store.getDienstplanKontext(pfad);
+    publishDienstplanMock.mockRejectedValueOnce(
+      new DienstplanFachfehler(
+        'Der Dienstplan konnte nicht veröffentlicht werden. Der Dienstplan wurde zwischenzeitlich geändert.',
+      ),
+    );
+
+    await expect(store.publishDienstplan(versionsPfad)).rejects.toThrow(
+      'zwischenzeitlich geändert',
+    );
+
+    expect(store.getDienstplanKontext(pfad)).toEqual(vorher);
+    expect(store.getDienstplanKontext(pfad)?.dienstplaene[0].entwurfVersionId).toBe('v-1');
+    expect(store.getDienstplanKontext(pfad)?.versionen[0]).toEqual(
+      expect.objectContaining({ status: 'entwurf', revision: 2 }),
+    );
   });
 
   it('should require a fully loaded planning month and an authenticated user for writes', async () => {
@@ -430,6 +590,7 @@ describe('DienstplanStore', () => {
                   modellschichtId: 'frueh',
                   beginnLokalzeit: '07:00',
                   endeLokalzeit: '12:00',
+                  beginntAmFolgetag: false,
                   endetAmFolgetag: false,
                 },
               ],
@@ -476,9 +637,7 @@ describe('DienstplanStore', () => {
           dienstplanId: '2026-10',
           id: 'frueh',
           bezeichnung: 'Früh',
-          beginnLokalzeit: '07:00',
-          endeLokalzeit: '12:00',
-          endetAmFolgetag: false,
+          reihenfolge: 0,
           mehrfachbelegungErlaubt: false,
         },
       ],
@@ -496,7 +655,6 @@ describe('DienstplanStore', () => {
         bezeichnung,
         aktiv: true,
         planungsart: 'schichtraster',
-        besondereRasterzeiten: [],
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },
@@ -506,9 +664,7 @@ describe('DienstplanStore', () => {
           id: 'frueh',
           schichtmodellId: id,
           bezeichnung: 'Früh',
-          beginnLokalzeit: '07:00',
-          endeLokalzeit: '12:00',
-          endetAmFolgetag: false,
+          reihenfolge: 0,
           mehrfachbelegungErlaubt: false,
         },
       ],

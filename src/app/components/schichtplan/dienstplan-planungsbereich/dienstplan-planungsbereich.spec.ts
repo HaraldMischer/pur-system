@@ -24,6 +24,7 @@ import {
   TDienstplanKontextBestand,
 } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
+import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
 import { SchichtBearbeitenDialog } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
@@ -109,6 +110,7 @@ function createKalendertage(): IDienstplanKalendertag[] {
           modellschichtId: 'frueh',
           beginnLokalzeit: '07:00',
           endeLokalzeit: '12:00',
+          beginntAmFolgetag: false,
           endetAmFolgetag: false,
         },
       ],
@@ -120,9 +122,7 @@ const MODELLSCHICHT: IModellschichtMomentaufnahmeEintrag = {
   id: 'frueh',
   dienstplanId: '2026-10',
   bezeichnung: 'Früh',
-  beginnLokalzeit: '07:00',
-  endeLokalzeit: '12:00',
-  endetAmFolgetag: false,
+  reihenfolge: 0,
   mehrfachbelegungErlaubt: false,
 };
 
@@ -159,10 +159,15 @@ describe('DienstplanPlanungsbereich', () => {
   const dienstplanError = signal<string | null>(null);
   const loadDienstplanMonat = vi.fn().mockResolvedValue(undefined);
   const createSchicht = vi.fn().mockResolvedValue(undefined);
+  const updateSchicht = vi.fn().mockResolvedValue(undefined);
   const deleteDienstplan = vi.fn().mockResolvedValue(undefined);
+  const publishDienstplan = vi.fn().mockResolvedValue(undefined);
+  const createEntwurfAusVeroeffentlichung = vi.fn().mockResolvedValue(undefined);
   const loadSchichtmodelle = vi.fn().mockResolvedValue(undefined);
   const dialogOpen = vi.fn();
   const getMitarbeiter = vi.fn().mockReturnValue([]);
+  const belegungskonflikte = signal<readonly never[]>([]);
+  const hatMitarbeiterZeitkonflikt = vi.fn().mockReturnValue(false);
   const schichtmodelle = signal<readonly ISchichtrastermodellBestand[]>([createSchichtmodell()]);
 
   beforeEach(async () => {
@@ -180,9 +185,14 @@ describe('DienstplanPlanungsbereich', () => {
     dienstplanError.set(null);
     loadDienstplanMonat.mockResolvedValue(undefined);
     createSchicht.mockResolvedValue(undefined);
+    updateSchicht.mockResolvedValue(undefined);
     deleteDienstplan.mockResolvedValue(undefined);
+    publishDienstplan.mockResolvedValue(undefined);
+    createEntwurfAusVeroeffentlichung.mockResolvedValue(undefined);
     loadSchichtmodelle.mockResolvedValue(undefined);
     getMitarbeiter.mockReturnValue([]);
+    belegungskonflikte.set([]);
+    hatMitarbeiterZeitkonflikt.mockReturnValue(false);
     schichtmodelle.set([createSchichtmodell()]);
     vi.clearAllMocks();
     dialogOpen.mockReturnValue({ afterClosed: () => of(false) });
@@ -202,7 +212,10 @@ describe('DienstplanPlanungsbereich', () => {
             }),
             loadDienstplanMonat,
             createSchicht,
+            updateSchicht,
             deleteDienstplan,
+            publishDienstplan,
+            createEntwurfAusVeroeffentlichung,
             inProgress,
             error: dienstplanError,
           },
@@ -230,6 +243,13 @@ describe('DienstplanPlanungsbereich', () => {
             getMitarbeiterById: vi.fn().mockReturnValue(null),
           },
         },
+        {
+          provide: MitarbeiterbelegungStore,
+          useValue: {
+            konflikte: belegungskonflikte,
+            hatMitarbeiterZeitkonflikt,
+          },
+        },
         { provide: MatDialog, useValue: { open: dialogOpen } },
       ],
     }).compileComponents();
@@ -240,6 +260,7 @@ describe('DienstplanPlanungsbereich', () => {
     fixture.componentRef.setInput('pfad', PFAD);
     fixture.componentRef.setInput('monat', '2026-10');
     fixture.componentRef.setInput('planungsmodus', planungsmodus);
+    fixture.componentRef.setInput('belegungsstandVerfuegbar', true);
     return fixture;
   }
 
@@ -259,6 +280,18 @@ describe('DienstplanPlanungsbereich', () => {
     await fixture.whenStable();
 
     expect(fixture.componentInstance.dienstplan()).toBeNull();
+    expect(fixture.componentInstance.darfSchreiben()).toBe(false);
+    await fixture.componentInstance.openDienstplanDialog();
+    expect(loadSchichtmodelle).not.toHaveBeenCalled();
+    expect(dialogOpen).not.toHaveBeenCalled();
+  });
+
+  it('should lock write actions while the live allocation state is unavailable', async () => {
+    const fixture = createComponent(true);
+    fixture.componentRef.setInput('belegungsstandVerfuegbar', false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
     expect(fixture.componentInstance.darfSchreiben()).toBe(false);
     await fixture.componentInstance.openDienstplanDialog();
     expect(loadSchichtmodelle).not.toHaveBeenCalled();
@@ -389,6 +422,124 @@ describe('DienstplanPlanungsbereich', () => {
     expect(button).toBeUndefined();
   });
 
+  it('should publish a conflict-free draft after confirmation', async () => {
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    kontext.set(
+      createKontext({
+        dienstplaene: [
+          {
+            ...DIENSTPLAN,
+            zeitraumStart: '2026-10-05',
+            zeitraumEnde: '2026-10-05',
+            kalendertage: DIENSTPLAN.kalendertage.filter((kalendertag) => {
+              return kalendertag.datum === '2026-10-05';
+            }),
+          },
+        ],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+        schichten: [
+          {
+            ...PFAD,
+            id: 's-1',
+            dienstplanId: '2026-10',
+            versionId: 'v-1',
+            datum: '2026-10-05',
+            mitarbeiterId: 'm-1',
+            modellschichtId: 'frueh',
+            beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+            ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+            erstelltVonUid: 'uid-1',
+            aktualisiertVonUid: 'uid-1',
+          },
+        ],
+      }),
+    );
+    dialogOpen.mockReturnValue({ afterClosed: () => of(true) });
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.publishDienstplan();
+
+    expect(dialogOpen).toHaveBeenCalledWith(
+      BestaetigungDialog,
+      expect.objectContaining({
+        data: expect.objectContaining({ bestaetigenText: 'Veröffentlichen' }),
+      }),
+    );
+    expect(publishDienstplan).toHaveBeenCalledWith({
+      ...PFAD,
+      dienstplanId: '2026-10',
+      versionId: 'v-1',
+    });
+    expect(fixture.componentInstance.aktionsmeldung()).toContain('erfolgreich veröffentlicht');
+  });
+
+  it('should warn about unoccupied shift slots before publishing', async () => {
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    dialogOpen.mockReturnValue({ afterClosed: () => of(true) });
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.publishDienstplan();
+
+    expect(fixture.componentInstance.unbesetzteSchichtplaetze()).toBe(31);
+    expect(dialogOpen).toHaveBeenCalledWith(
+      BestaetigungDialog,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          nachricht: expect.stringContaining('31 unbesetzte Schichtplätze'),
+          bestaetigenText: 'Trotzdem veröffentlichen',
+        }),
+      }),
+    );
+    expect(publishDienstplan).toHaveBeenCalledWith({
+      ...PFAD,
+      dienstplanId: '2026-10',
+      versionId: 'v-1',
+    });
+  });
+
+  it('should not offer publishing when a draft employee is no longer assignable', async () => {
+    getMitarbeiter.mockReturnValue([]);
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+        schichten: [
+          {
+            ...PFAD,
+            id: 's-1',
+            dienstplanId: '2026-10',
+            versionId: 'v-1',
+            datum: '2026-10-05',
+            mitarbeiterId: 'm-1',
+            modellschichtId: 'frueh',
+            beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+            ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+            erstelltVonUid: 'uid-1',
+            aktualisiertVonUid: 'uid-1',
+          },
+        ],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.dienstplanVeroeffentlichenDeaktiviert()).toBe(true);
+    expect(fixture.componentInstance.dienstplanVeroeffentlichenHinweis()).toContain('inaktive');
+  });
+
   it('should open a shift dialog for the selected grid cell', async () => {
     getMitarbeiter.mockReturnValue([
       MITARBEITER,
@@ -476,6 +627,7 @@ describe('DienstplanPlanungsbereich', () => {
   });
 
   it('should reject an overlapping shift from the loaded draft', async () => {
+    hatMitarbeiterZeitkonflikt.mockReturnValue(true);
     getMitarbeiter.mockReturnValue([MITARBEITER]);
     kontext.set(
       createKontext({
@@ -513,7 +665,131 @@ describe('DienstplanPlanungsbereich', () => {
     expect(fixture.componentInstance.aktionsfehler()).toContain('bereits eingeplant');
   });
 
+  it('should move an existing draft shift while preserving its identity and employee', async () => {
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    const schicht = {
+      ...PFAD,
+      id: 's-1',
+      dienstplanId: '2026-10',
+      versionId: 'v-1',
+      datum: '2026-10-05',
+      mitarbeiterId: 'm-1',
+      modellschichtId: 'frueh',
+      beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+      ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    };
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+        schichten: [schicht],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.moveSchichtAusAblage({
+      schicht,
+      datum: '2026-10-06',
+      modellschichtId: 'frueh',
+    });
+
+    expect(updateSchicht).toHaveBeenCalledWith(
+      { ...PFAD, dienstplanId: '2026-10', versionId: 'v-1' },
+      's-1',
+      { datum: '2026-10-06', mitarbeiterId: 'm-1', modellschichtId: 'frueh' },
+    );
+  });
+
+  it('should leave an existing shift unchanged when its move has a time conflict', async () => {
+    hatMitarbeiterZeitkonflikt.mockReturnValue(true);
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    const schicht = {
+      ...PFAD,
+      id: 's-1',
+      dienstplanId: '2026-10',
+      versionId: 'v-1',
+      datum: '2026-10-05',
+      mitarbeiterId: 'm-1',
+      modellschichtId: 'frueh',
+      beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+      ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    };
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+        schichten: [schicht],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.moveSchichtAusAblage({
+      schicht,
+      datum: '2026-10-06',
+      modellschichtId: 'frueh',
+    });
+
+    expect(updateSchicht).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.aktionsfehler()).toContain('Mitarbeiterbelegung');
+  });
+
+  it('should allow directly consecutive shifts for the same employee', async () => {
+    getMitarbeiter.mockReturnValue([MITARBEITER]);
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+        schichten: [
+          {
+            ...PFAD,
+            id: 's-1',
+            dienstplanId: '2026-10',
+            versionId: 'v-1',
+            datum: '2026-10-05',
+            mitarbeiterId: 'm-1',
+            modellschichtId: 'vorherige-schicht',
+            beginn: Timestamp.fromDate(new Date('2026-10-05T03:00:00+02:00')),
+            ende: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+            erstelltVonUid: 'uid-1',
+            aktualisiertVonUid: 'uid-1',
+          },
+        ],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.createSchichtAusAblage({
+      mitarbeiterId: 'm-1',
+      datum: '2026-10-05',
+      modellschichtId: 'frueh',
+    });
+
+    expect(createSchicht).toHaveBeenCalledWith(
+      { ...PFAD, dienstplanId: '2026-10', versionId: 'v-1' },
+      expect.objectContaining({
+        datum: '2026-10-05',
+        mitarbeiterId: 'm-1',
+        modellschichtId: 'frueh',
+      }),
+    );
+    expect(fixture.componentInstance.aktionsfehler()).toBeNull();
+  });
+
   it('should reject an overlapping shift from another loaded branch', async () => {
+    hatMitarbeiterZeitkonflikt.mockReturnValue(true);
     getMitarbeiter.mockReturnValue([MITARBEITER]);
     kontext.set(
       createKontext({
@@ -597,7 +873,6 @@ describe('DienstplanPlanungsbereich', () => {
         bezeichnung,
         aktiv: true,
         planungsart: 'schichtraster',
-        besondereRasterzeiten: [],
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },
@@ -607,9 +882,7 @@ describe('DienstplanPlanungsbereich', () => {
           id: 'frueh',
           schichtmodellId: id,
           bezeichnung: 'Früh',
-          beginnLokalzeit: '07:00',
-          endeLokalzeit: '12:00',
-          endetAmFolgetag: false,
+          reihenfolge: 0,
           mehrfachbelegungErlaubt: false,
         },
       ],

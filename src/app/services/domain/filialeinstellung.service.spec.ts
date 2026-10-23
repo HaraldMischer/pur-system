@@ -2,10 +2,10 @@
 
 import { TestBed } from '@angular/core/testing';
 
+import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../commons/constants/filialeinstellung.constants';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import {
   IFilialeinstellungSondertagEintrag,
-  STANDARD_SCHLIESSZEITRAUM,
   TOeffnungsregel,
   TWochenoeffnungszeiten,
 } from '../../commons/models/domain/filialeinstellung';
@@ -210,11 +210,28 @@ describe('FilialeinstellungService', () => {
 
   it('should initialize explicit foundations and the system special days atomically', async () => {
     const service = TestBed.inject(FilialeinstellungService);
+    const initialeGrundlagen = {
+      ...grundlagen,
+      schliesszeitraum: {
+        beginnLokalzeit: '02:00',
+        endeLokalzeit: '06:00',
+        endetAmFolgetag: false,
+      },
+    };
 
-    const bestand = await service.initializeFilialeinstellung(pfad, grundlagen, 'uid-1');
+    const bestand = await service.initializeFilialeinstellung(pfad, initialeGrundlagen, 'uid-1');
 
     expect(bestand.allgemein.bundesland).toBe('DE-NW');
     expect(bestand.sondertage.some((sondertag) => sondertag.id === 'heiligabend')).toBe(true);
+    expect(
+      bestand.sondertage.every((sondertag) => {
+        return (
+          sondertag.oeffnungsregel.beginnLokalzeit === '06:00' &&
+          sondertag.oeffnungsregel.endeLokalzeit === '02:00' &&
+          sondertag.oeffnungsregel.endetAmFolgetag === true
+        );
+      }),
+    ).toBe(true);
     const transactionCall = firestoreDbServiceMock.executeDocumentTransaction.mock.calls[0];
     expect(transactionCall[0]).toBe('unternehmer/u-1/firma/f-1/filiale/b-1/einstellung/allgemein');
     const operationen: TFirestoreBatchOperation[] = transactionCall[1](null).operationen;
@@ -224,9 +241,19 @@ describe('FilialeinstellungService', () => {
         erstelltAm: 'server-zeitstempel',
       },
     });
-    expect(operationen.some((operation) => operation.documentPath.endsWith('/heiligabend'))).toBe(
-      true,
-    );
+    expect(
+      operationen.find((operation) => operation.documentPath.endsWith('/heiligabend')),
+    ).toMatchObject({
+      daten: {
+        aktiv: false,
+        oeffnungsregel: {
+          geoeffnet: false,
+          beginnLokalzeit: '06:00',
+          endeLokalzeit: '02:00',
+          endetAmFolgetag: true,
+        },
+      },
+    });
   });
 
   it('should not initialize an existing configuration', async () => {
@@ -518,7 +545,7 @@ function createGrundlagen(): IFilialeinstellungGrundlagen {
     samstag: geoeffnet,
     sonntag: { geoeffnet: false },
   };
-  return { bundesland: 'DE-NW', schliesszeitraum: STANDARD_SCHLIESSZEITRAUM, wochenregeln };
+  return { bundesland: 'DE-NW', schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW, wochenregeln };
 }
 
 function createSondertag(

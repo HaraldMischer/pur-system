@@ -23,18 +23,24 @@ import {
   ISchichtrastermodellBestand,
 } from '../../../commons/models/domain/schichtmodell';
 import { getDienstplanRasterzeit } from '../../../commons/utils/dienstplan/dienstplan-kalendertage';
+import { createMitarbeiterbelegungReferenzSchluessel } from '../../../commons/utils/dienstplan/mitarbeiterbelegung';
 import { createSchichtZeitstempelAusLokalzeiten } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
+import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
 import { DienstplanAnlegenDialog } from '../dienstplan-anlegen-dialog/dienstplan-anlegen-dialog';
-import { SchichtBearbeitenDialog } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
+import {
+  SchichtBearbeitenDialog,
+  TSchichtVerschiebeziel,
+} from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
 import {
   DienstplanMonatstabelle,
   TSchichtplanMitarbeiterAblage,
   TSchichtplanRasterauswahl,
+  TSchichtplanVerschiebung,
 } from '../dienstplan-monatstabelle/dienstplan-monatstabelle';
 
 @Component({
@@ -49,6 +55,7 @@ export class DienstplanPlanungsbereich {
 
   readonly benutzerStore = inject(BenutzerStore);
   readonly dienstplanStore = inject(DienstplanStore);
+  readonly mitarbeiterbelegungStore = inject(MitarbeiterbelegungStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
   readonly schichtmodellStore = inject(SchichtmodellStore);
   private readonly dialog = inject(MatDialog);
@@ -59,10 +66,12 @@ export class DienstplanPlanungsbereich {
   readonly pfad = input.required<IFilialPfad>();
   readonly monat = input.required<string>();
   readonly planungsmodus = input(false);
+  readonly belegungsstandVerfuegbar = input(false);
 
   // ===== Interner State =======================
 
   readonly aktionsfehler = signal<string | null>(null);
+  readonly aktionsmeldung = signal<string | null>(null);
 
   // ===== Interne Ableitungen ==================
 
@@ -72,6 +81,7 @@ export class DienstplanPlanungsbereich {
     const nurVeroeffentlicht = this.benutzerStore.benutzerProfil()?.userRole === 'mitarbeiter';
     untracked(() => {
       this.aktionsfehler.set(null);
+      this.aktionsmeldung.set(null);
       void this.loadDienstplan(pfad, monat, nurVeroeffentlicht);
     });
   });
@@ -116,6 +126,44 @@ export class DienstplanPlanungsbereich {
         })
       : [];
   });
+  readonly unbesetzteSchichtplaetze = computed(() => {
+    const dienstplan = this.dienstplan();
+    if (!dienstplan || !this.entwurfVersion()) return 0;
+    const belegteSchichtplaetze = new Set(
+      this.entwurfSchichten().map((schicht) => {
+        return JSON.stringify([schicht.datum, schicht.modellschichtId]);
+      }),
+    );
+    return dienstplan.kalendertage.reduce((anzahl, kalendertag) => {
+      return (
+        anzahl +
+        kalendertag.rasterzeiten.filter((rasterzeit) => {
+          return !belegteSchichtplaetze.has(
+            JSON.stringify([kalendertag.datum, rasterzeit.modellschichtId]),
+          );
+        }).length
+      );
+    }, 0);
+  });
+  readonly konfliktSchichtIds = computed(() => {
+    const dienstplanId = this.dienstplan()?.id;
+    const versionId = this.entwurfVersion()?.id;
+    const pfad = this.pfad();
+    if (!dienstplanId || !versionId) return new Set<string>();
+    return new Set(
+      this.mitarbeiterbelegungStore
+        .konflikte()
+        .flatMap((konflikt) => konflikt.belegungen)
+        .filter((belegung) => {
+          return (
+            belegung.filialeId === pfad.filialeId &&
+            belegung.dienstplanId === dienstplanId &&
+            belegung.versionId === versionId
+          );
+        })
+        .map((belegung) => belegung.schichtId),
+    );
+  });
   readonly download = computed(() => {
     return this.kontext()?.download ?? false;
   });
@@ -126,12 +174,18 @@ export class DienstplanPlanungsbereich {
   readonly ladeFehler = computed(() => {
     return this.kontext()?.error ?? null;
   });
-  readonly darfSchreiben = computed(() => {
+  readonly darfPlanen = computed(() => {
     const profil = this.benutzerStore.benutzerProfil();
     const pfad = this.pfad();
     if (!this.planungsmodus() || !profil?.aktiv) return false;
     if (profil.userRole === 'master') return true;
-    return (profil.userRole === 'office' && profil.zugriffe[pfad.unternehmerId]?.[pfad.firmaId]?.includes(pfad.filialeId));
+    return (
+      profil.userRole === 'office' &&
+      profil.zugriffe[pfad.unternehmerId]?.[pfad.firmaId]?.includes(pfad.filialeId)
+    );
+  });
+  readonly darfSchreiben = computed(() => {
+    return this.darfPlanen() && this.belegungsstandVerfuegbar();
   });
   readonly darfDienstplanLoeschenAnzeigen = computed(() => {
     const dienstplan = this.dienstplan();
@@ -160,6 +214,41 @@ export class DienstplanPlanungsbereich {
   readonly mitarbeiterIds = computed(() => {
     return this.mitarbeiter().map((mitarbeiter) => mitarbeiter.id);
   });
+  readonly hatUngueltigeEntwurfMitarbeiter = computed(() => {
+    const erlaubteIds = new Set(this.mitarbeiterIds());
+    return this.entwurfSchichten().some((schicht) => {
+      return !erlaubteIds.has(schicht.mitarbeiterId);
+    });
+  });
+  readonly dienstplanVeroeffentlichenAnzeigen = computed(() => {
+    return this.darfPlanen() && Boolean(this.entwurfVersion());
+  });
+  readonly dienstplanVeroeffentlichenDeaktiviert = computed(() => {
+    return (
+      this.dienstplanStore.inProgress() ||
+      !this.belegungsstandVerfuegbar() ||
+      this.konfliktSchichtIds().size > 0 ||
+      this.hatUngueltigeEntwurfMitarbeiter()
+    );
+  });
+  readonly dienstplanVeroeffentlichenHinweis = computed(() => {
+    if (!this.belegungsstandVerfuegbar()) {
+      return 'Der firmenweite Belegungsstand ist nicht vollständig verfügbar.';
+    }
+    if (this.konfliktSchichtIds().size > 0) {
+      return 'Behebe zuerst alle Belegungskonflikte.';
+    }
+    if (this.hatUngueltigeEntwurfMitarbeiter()) {
+      return 'Der Entwurf enthält inaktive oder dieser Filiale nicht mehr zugeordnete Mitarbeiter.';
+    }
+    return 'Diesen Entwurf verbindlich veröffentlichen.';
+  });
+  readonly entwurfAnlegenAnzeigen = computed(() => {
+    const dienstplan = this.dienstplan();
+    return Boolean(
+      this.darfPlanen() && dienstplan?.veroeffentlichteVersionId && !dienstplan.entwurfVersionId,
+    );
+  });
   readonly schichtMitarbeiter = computed<readonly IMitarbeiterEintrag[]>(() => {
     const pfad = this.pfad();
     return [...new Set(this.schichten().map((schicht) => schicht.mitarbeiterId))]
@@ -174,6 +263,39 @@ export class DienstplanPlanungsbereich {
   });
 
   // ===== Öffentliche Aktionen =================
+
+  /**
+   * Prüft eine Verschiebung gegen den firmenweiten Belegungsstand.
+   */
+  readonly darfSchichtVerschieben = (
+    schicht: ISchichtEintrag,
+    ziel: TSchichtplanRasterauswahl,
+  ): boolean => {
+    const dienstplan = this.dienstplan();
+    const modellschicht = this.modellschichten().find((eintrag) => {
+      return eintrag.id === ziel.modellschichtId;
+    });
+    if (!dienstplan || !modellschicht) return false;
+    try {
+      const zeitraum = createSchichtZeitstempelAusLokalzeiten(
+        ziel.datum,
+        this.getRasterzeit(ziel.datum, modellschicht),
+        dienstplan.zeitzone,
+      );
+      return !this.mitarbeiterbelegungStore.hatMitarbeiterZeitkonflikt(
+        schicht.mitarbeiterId,
+        zeitraum,
+        createMitarbeiterbelegungReferenzSchluessel({
+          ...this.pfad(),
+          dienstplanId: schicht.dienstplanId,
+          versionId: schicht.versionId,
+          schichtId: schicht.id,
+        }),
+      );
+    } catch {
+      return false;
+    }
+  };
 
   /**
    * Wiederholt das Laden des Monatsplans dieser Filiale.
@@ -221,7 +343,7 @@ export class DienstplanPlanungsbereich {
           data: {
             titel: 'Dienstplan löschen',
             nachricht:
-              'Möchtest du diesen Dienstplan wirklich löschen? Ein leere Entwurf kann danach neu angelegt werden.',
+              'Möchtest du diesen Dienstplan wirklich löschen? Ein leerer Entwurf kann danach neu angelegt werden.',
             bestaetigenText: 'Löschen',
           },
         })
@@ -239,6 +361,92 @@ export class DienstplanPlanungsbereich {
     } catch (error) {
       this.aktionsfehler.set(
         error instanceof Error ? error.message : 'Der Dienstplan konnte nicht gelöscht werden.',
+      );
+    }
+  }
+
+  /**
+   * Veröffentlicht den aktuellen Entwurf nach ausdrücklicher Bestätigung.
+   */
+  async publishDienstplan(): Promise<void> {
+    const dienstplan = this.dienstplan();
+    const version = this.entwurfVersion();
+    if (
+      !dienstplan ||
+      !version ||
+      !this.dienstplanVeroeffentlichenAnzeigen() ||
+      this.dienstplanVeroeffentlichenDeaktiviert()
+    ) {
+      return;
+    }
+    const unbesetzteSchichtplaetze = this.unbesetzteSchichtplaetze();
+    const hatUnbesetzteSchichtplaetze = unbesetzteSchichtplaetze > 0;
+    const unbesetzteSchichtplaetzeText =
+      unbesetzteSchichtplaetze === 1
+        ? 'Der Dienstplan enthält einen unbesetzten Schichtplatz.'
+        : `Der Dienstplan enthält ${unbesetzteSchichtplaetze} unbesetzte Schichtplätze.`;
+    const bestaetigt = await firstValueFrom(
+      this.dialog
+        .open(BestaetigungDialog, {
+          panelClass: ['pur-dialog__panel'],
+          data: {
+            titel: 'Dienstplan veröffentlichen',
+            nachricht: hatUnbesetzteSchichtplaetze
+              ? `${unbesetzteSchichtplaetzeText} Möchtest du ihn trotzdem verbindlich veröffentlichen? Ein zuvor veröffentlichter Stand wird dabei archiviert.`
+              : 'Möchtest du diesen Entwurf verbindlich veröffentlichen? Ein zuvor veröffentlichter Stand wird dabei archiviert.',
+            bestaetigenText: hatUnbesetzteSchichtplaetze
+              ? 'Trotzdem veröffentlichen'
+              : 'Veröffentlichen',
+          },
+        })
+        .afterClosed(),
+    );
+    if (!bestaetigt) return;
+
+    this.aktionsfehler.set(null);
+    this.aktionsmeldung.set(null);
+    try {
+      await this.dienstplanStore.publishDienstplan({
+        ...this.pfad(),
+        dienstplanId: dienstplan.id,
+        versionId: version.id,
+      });
+      this.aktionsmeldung.set('Der Dienstplan wurde erfolgreich veröffentlicht.');
+    } catch (error) {
+      this.aktionsfehler.set(
+        error instanceof Error
+          ? error.message
+          : 'Der Dienstplan konnte nicht veröffentlicht werden.',
+      );
+    }
+  }
+
+  /**
+   * Erstellt aus dem veröffentlichten Stand eine neue bearbeitbare Entwurfsversion.
+   */
+  async createEntwurfAusVeroeffentlichung(): Promise<void> {
+    const dienstplan = this.dienstplan();
+    if (
+      !dienstplan ||
+      !this.entwurfAnlegenAnzeigen() ||
+      this.dienstplanStore.inProgress() ||
+      !this.belegungsstandVerfuegbar()
+    ) {
+      return;
+    }
+    this.aktionsfehler.set(null);
+    this.aktionsmeldung.set(null);
+    try {
+      await this.dienstplanStore.createEntwurfAusVeroeffentlichung({
+        ...this.pfad(),
+        dienstplanId: dienstplan.id,
+      });
+      this.aktionsmeldung.set('Die neue Entwurfsversion wurde angelegt.');
+    } catch (error) {
+      this.aktionsfehler.set(
+        error instanceof Error
+          ? error.message
+          : 'Die neue Entwurfsversion konnte nicht angelegt werden.',
       );
     }
   }
@@ -293,10 +501,9 @@ export class DienstplanPlanungsbereich {
         this.getRasterzeit(ablage.datum, modellschicht),
         dienstplan.zeitzone,
       );
-      const hatZeitkonflikt = this.hatGeladenenZeitkonflikt(
+      const hatZeitkonflikt = this.mitarbeiterbelegungStore.hatMitarbeiterZeitkonflikt(
         ablage.mitarbeiterId,
-        beginn.toMillis(),
-        ende.toMillis(),
+        { beginn, ende },
       );
       if (hatZeitkonflikt) {
         this.aktionsfehler.set(
@@ -319,33 +526,53 @@ export class DienstplanPlanungsbereich {
     }
   }
 
-  // ===== Interne Helfer =======================
-
   /**
-   * Prüft die aktiven Planungsstände aller bereits geladenen Filialkontexte auf eine Überschneidung.
+   * Verschiebt eine bestehende Entwurfsschicht in eine andere Rasterzelle.
+   *
+   * @param verschiebung - Bestehende Schicht und ausgewähltes Rasterziel.
    */
-  private hatGeladenenZeitkonflikt(
-    mitarbeiterId: string,
-    beginnMillis: number,
-    endeMillis: number,
-  ): boolean {
-    return Object.values(this.dienstplanStore.kontexte()).some((kontext) => {
-      const aktiveVersionIds = new Set(
-        kontext.dienstplaene.flatMap((dienstplan) => {
-          const versionId = dienstplan.entwurfVersionId ?? dienstplan.veroeffentlichteVersionId;
-          return versionId ? [versionId] : [];
-        }),
+  async moveSchichtAusAblage(verschiebung: TSchichtplanVerschiebung): Promise<void> {
+    const dienstplan = this.dienstplan();
+    const version = this.entwurfVersion();
+    const { schicht } = verschiebung;
+    if (
+      !dienstplan ||
+      !version ||
+      !this.darfSchreiben() ||
+      this.dienstplanStore.inProgress() ||
+      schicht.versionId !== version.id ||
+      !this.mitarbeiterIds().includes(schicht.mitarbeiterId) ||
+      (schicht.datum === verschiebung.datum &&
+        schicht.modellschichtId === verschiebung.modellschichtId)
+    ) {
+      return;
+    }
+    if (!this.darfSchichtVerschieben(schicht, verschiebung)) {
+      this.aktionsfehler.set(
+        'Die Schicht kann wegen einer bestehenden Mitarbeiterbelegung nicht dorthin verschoben werden.',
       );
-      return kontext.schichten.some((schicht) => {
-        return (
-          aktiveVersionIds.has(schicht.versionId) &&
-          schicht.mitarbeiterId === mitarbeiterId &&
-          beginnMillis < schicht.ende.toMillis() &&
-          endeMillis > schicht.beginn.toMillis()
-        );
-      });
-    });
+      return;
+    }
+
+    this.aktionsfehler.set(null);
+    try {
+      await this.dienstplanStore.updateSchicht(
+        { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
+        schicht.id,
+        {
+          datum: verschiebung.datum,
+          mitarbeiterId: schicht.mitarbeiterId,
+          modellschichtId: verschiebung.modellschichtId,
+        },
+      );
+    } catch (error) {
+      this.aktionsfehler.set(
+        error instanceof Error ? error.message : 'Die Schicht konnte nicht verschoben werden.',
+      );
+    }
   }
+
+  // ===== Interne Helfer =======================
 
   private openSchichtDialogIntern(
     auswahl: TSchichtplanRasterauswahl,
@@ -382,6 +609,7 @@ export class DienstplanPlanungsbereich {
         mitarbeiter: this.mitarbeiter(),
         modellschicht,
         rasterzeit,
+        verschiebeziele: this.createVerschiebeziele(),
         ...(schicht ? { schicht } : {}),
       },
     });
@@ -395,6 +623,36 @@ export class DienstplanPlanungsbereich {
       throw new Error('Der Kalendertag wurde im Monatsplan nicht gefunden.');
     }
     return getDienstplanRasterzeit(kalendertag, modellschicht.id);
+  }
+
+  private createVerschiebeziele(): readonly TSchichtVerschiebeziel[] {
+    const dienstplan = this.dienstplan();
+    const versionId = this.entwurfVersion()?.id;
+    if (!dienstplan || !versionId) return [];
+    const schichten = this.schichten().filter((schicht) => schicht.versionId === versionId);
+    return dienstplan.kalendertage.flatMap((kalendertag) => {
+      return this.modellschichten().flatMap((modellschicht) => {
+        const rasterzeit = kalendertag.rasterzeiten.find((eintrag) => {
+          return eintrag.modellschichtId === modellschicht.id;
+        });
+        if (!rasterzeit) return [];
+        return [
+          {
+            datum: kalendertag.datum,
+            modellschicht,
+            rasterzeit,
+            schichtIds: schichten
+              .filter((schicht) => {
+                return (
+                  schicht.datum === kalendertag.datum &&
+                  schicht.modellschichtId === modellschicht.id
+                );
+              })
+              .map((schicht) => schicht.id),
+          },
+        ];
+      });
+    });
   }
 
   private async loadDienstplan(

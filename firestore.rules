@@ -87,6 +87,10 @@ service cloud.firestore {
       return isMaster() || darfFilialeLesen(unternehmerId, firmaId, filialId);
     }
 
+    function darfMitarbeiterbelegungVerwalten(unternehmerId, firmaId) {
+      return isMaster() || (isScopedUser() && darfFirmaLesen(unternehmerId, firmaId));
+    }
+
     function darfFilialeinstellungenVerwalten(unternehmerId, firmaId, filialId) {
       return isMaster()
         || (
@@ -184,6 +188,10 @@ service cloud.firestore {
           allow read, create, update: if isOffice() && darfFirmaLesen(unternehmerId, firmaId);
           allow read, create, update: if isFiliale() && darfFirmaLesen(unternehmerId, firmaId);
           allow read: if darfMitarbeiterFirmaLesen(unternehmerId, firmaId);
+        }
+
+        match /mitarbeiterbelegung/{mitarbeiterIdDatum} {
+          allow read, write: if darfMitarbeiterbelegungVerwalten(unternehmerId, firmaId);
         }
 
       }

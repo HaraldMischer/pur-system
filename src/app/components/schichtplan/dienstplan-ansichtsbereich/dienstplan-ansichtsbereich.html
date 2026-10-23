@@ -1,0 +1,84 @@
+<!-- pur-system/src/app/components/schichtplan/dienstplan-ansichtsbereich/dienstplan-ansichtsbereich.html -->
+
+<section class="pur-page-section">
+  <header class="pur-page-section__header">
+    <h2 class="pur-page-section__title">{{ filiale().anzeigename }}</h2>
+  </header>
+
+  @if (download() && !isLoaded()) {
+    <p class="pur-message pur-message--surface pur-message--full" role="status">
+      Veröffentlichter Dienstplan wird geladen.
+    </p>
+  } @else if (ladeFehler(); as error) {
+    <div class="pur-page-section__error-state">
+      <p class="pur-message pur-message--error" role="alert">{{ error }}</p>
+      <button matButton="tonal" type="button" (click)="retryLoad()">Erneut laden</button>
+    </div>
+  } @else if (isLoaded()) {
+    @if (veroeffentlichteVersion()) {
+      <dl class="pur-page-section__summary">
+        <div>
+          <span>Zeitraum</span>
+          <span>{{ zeitraumBezeichnung() }}</span>
+        </div>
+        <div>
+          <span>Stand</span>
+          <span>{{ veroeffentlichungBezeichnung() }}</span>
+        </div>
+      </dl>
+
+      @if (tage().length > 0) {
+        <div class="dienstplan-tage">
+          @for (tag of tage(); track tag.datum) {
+            <section class="dienstplan-tag">
+              <h3 class="dienstplan-tag__titel">
+                <time [attr.datetime]="tag.datum">{{ tag.datumBezeichnung }}</time>
+              </h3>
+
+              <div class="pur-list pur-list--outlined dienstplan-tag__schichten">
+                @for (schicht of tag.schichten; track schicht.id) {
+                  <div class="pur-list__row">
+                    <div class="pur-list__row-item schicht-mitarbeiter">
+                      @if (schicht.mitarbeiterFarbe; as farbe) {
+                        <span
+                          class="mitarbeiter-farbe"
+                          [style.background-color]="farbe"
+                          aria-hidden="true"
+                        ></span>
+                      }
+                      <strong>{{ schicht.mitarbeiterAnzeigename }}</strong>
+                    </div>
+                    <div class="pur-list__row-item pur-list__row-item--end schicht-daten">
+                      <span>{{ schicht.zeitBezeichnung }}</span>
+                      <span class="pur-text pur-text--secondary">
+                        {{ schicht.pauseBezeichnung }}
+                      </span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        </div>
+      } @else {
+        <p
+          class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+          role="status"
+        >
+          Der veröffentlichte Dienstplan enthält keine Schichten.
+        </p>
+      }
+    } @else {
+      <p
+        class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+        role="status"
+      >
+        Für diesen Monat ist noch kein Dienstplan veröffentlicht.
+      </p>
+    }
+  } @else {
+    <p class="pur-message pur-message--surface pur-message--full" role="status">
+      Veröffentlichter Dienstplan wird geladen.
+    </p>
+  }
+</section>

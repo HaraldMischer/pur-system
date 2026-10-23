@@ -1,18 +1,28 @@
 // pur-system/src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.ts
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { CdkDrag, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 import { getAktuellerMonat } from '../../../commons/utils/datum/monat';
 import { sortMitarbeiter } from '../../../commons/utils/mitarbeiter/mitarbeiter-dokument';
 import { getMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
+import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { MonatSelector } from '../../../components/date-selectors/monat-selector/monat-selector';
 import { DienstplanPlanungsbereich } from '../../../components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich';
@@ -64,11 +74,37 @@ type TMitarbeiterMonatswerte = {
 export class DienstplanPlanungPage {
   // ===== Interne Dependency Injection =========
   readonly appKontextStore = inject(AppKontextStore);
+  readonly mitarbeiterbelegungStore = inject(MitarbeiterbelegungStore);
   private readonly dienstplanStore = inject(DienstplanStore);
   private readonly mitarbeiterStore = inject(MitarbeiterStore);
 
   // ===== Interner State =======================
   readonly selectedMonat = signal(getAktuellerMonat());
+
+  // ===== Interne Ableitungen ==================
+  private readonly observeMitarbeiterbelegungenEffect = effect((onCleanup) => {
+    const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
+    const firmaId = this.appKontextStore.selectedFirma()?.id;
+    const filialIds = this.filialauswahl().map((auswahl) => auswahl.filiale.id);
+    const monat = this.selectedMonat();
+    const mitarbeiterIds = this.aktiveMitarbeiter().map((mitarbeiter) => mitarbeiter.id);
+
+    untracked(() => {
+      if (!unternehmerId || !firmaId || filialIds.length === 0) {
+        this.mitarbeiterbelegungStore.stopMitarbeiterbelegungen();
+        return;
+      }
+      this.mitarbeiterbelegungStore.observeMitarbeiterbelegungen(
+        { unternehmerId, firmaId },
+        filialIds,
+        monat,
+        mitarbeiterIds,
+      );
+    });
+    onCleanup(() => {
+      this.mitarbeiterbelegungStore.stopMitarbeiterbelegungen();
+    });
+  });
 
   // ===== Öffentliche Ableitungen ==============
   readonly filialauswahl = computed<readonly TDienstplanFilialauswahl[]>(() => {
@@ -83,7 +119,7 @@ export class DienstplanPlanungPage {
       };
     });
   });
-  readonly mitarbeiter = computed<readonly TMitarbeiterAnzeige[]>(() => {
+  readonly aktiveMitarbeiter = computed<readonly IMitarbeiterEintrag[]>(() => {
     const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
     const firmaId = this.appKontextStore.selectedFirma()?.id;
     if (!unternehmerId || !firmaId) return [];
@@ -106,14 +142,17 @@ export class DienstplanPlanungPage {
         eintrag,
       ]),
     );
-    const monatswerteNachMitarbeiterId = this.getMitarbeiterMonatswerte();
     return sortMitarbeiter(
       [...mitarbeiterNachId.values()].filter((eintrag) => {
         return (
           eintrag.aktiv && eintrag.filialIds.some((filialId) => ausgewaehlteFilialIds.has(filialId))
         );
       }),
-    ).map((eintrag) => {
+    );
+  });
+  readonly mitarbeiter = computed<readonly TMitarbeiterAnzeige[]>(() => {
+    const monatswerteNachMitarbeiterId = this.getMitarbeiterMonatswerte();
+    return this.aktiveMitarbeiter().map((eintrag) => {
       const anzeigename = `${eintrag.person.nachname}, ${eintrag.person.vorname}`.trim();
       const monatswerte = monatswerteNachMitarbeiterId.get(eintrag.id) ?? {
         lohnzeitMinuten: 0,
@@ -137,6 +176,22 @@ export class DienstplanPlanungPage {
    */
   setAktuellerMonat(): void {
     this.selectedMonat.set(getAktuellerMonat());
+  }
+
+  /**
+   * Startet die Live-Beobachtung des aktuellen Belegungsstands erneut.
+   */
+  retryMitarbeiterbelegungen(): void {
+    const unternehmerId = this.appKontextStore.selectedUnternehmer()?.id;
+    const firmaId = this.appKontextStore.selectedFirma()?.id;
+    const filialIds = this.filialauswahl().map((auswahl) => auswahl.filiale.id);
+    if (!unternehmerId || !firmaId || filialIds.length === 0) return;
+    this.mitarbeiterbelegungStore.observeMitarbeiterbelegungen(
+      { unternehmerId, firmaId },
+      filialIds,
+      this.selectedMonat(),
+      this.aktiveMitarbeiter().map((mitarbeiter) => mitarbeiter.id),
+    );
   }
 
   // ===== Interne Helfer =======================

@@ -38,6 +38,10 @@
       flex: 33 1 0;
     }
 
+    &--40 {
+      flex: 40 1 0;
+    }
+
     &--50 {
       flex: 50 1 0;
     }
@@ -85,6 +89,7 @@
       > .pur-form__item--20,
       > .pur-form__item--25,
       > .pur-form__item--33,
+      > .pur-form__item--40,
       > .pur-form__item--50,
       > .pur-form__item--80 {
         flex: 1 1 100%;

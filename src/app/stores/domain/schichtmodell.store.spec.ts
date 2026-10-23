@@ -18,7 +18,6 @@ describe('SchichtmodellStore', () => {
   const benutzerId = signal<string | null>('uid-1');
   const anlage: ISchichtrastermodellAnlage = {
     bezeichnung: 'Sommer',
-    besondereRasterzeiten: [],
     modellschichten: [createModellschicht()],
   };
   const sommer = createBestand('sommer', pfad);
@@ -114,9 +113,7 @@ describe('SchichtmodellStore', () => {
 function createModellschicht() {
   return {
     bezeichnung: 'Früh',
-    beginnLokalzeit: '07:00',
-    endeLokalzeit: '12:00',
-    endetAmFolgetag: false,
+    reihenfolge: 0,
     mehrfachbelegungErlaubt: false,
   };
 }
@@ -132,7 +129,6 @@ function createBestand(
       bezeichnung: id === 'sommer' ? 'Sommer' : 'Winter',
       aktiv: true,
       planungsart: 'schichtraster',
-      besondereRasterzeiten: [],
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },

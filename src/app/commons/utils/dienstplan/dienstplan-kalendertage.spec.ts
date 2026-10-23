@@ -6,7 +6,11 @@ import type {
   TOeffnungsregel,
   TWochenoeffnungszeiten,
 } from '../../models/domain/filialeinstellung';
-import { createDienstplanKalendertage, getDienstplanRasterzeit } from './dienstplan-kalendertage';
+import {
+  createDienstplanKalendertage,
+  getDienstplanRasterzeit,
+  type IDienstplanRasterModellschicht,
+} from './dienstplan-kalendertage';
 
 const WOCHENREGELN: TWochenoeffnungszeiten = {
   montag: createGeoeffnet('08:00', '18:00'),
@@ -66,6 +70,10 @@ describe('createDienstplanKalendertage', () => {
 
   it('should keep the monthly snapshot unchanged after later opening-rule changes', () => {
     const montag = createGeoeffnet('08:00', '18:00');
+    const modellschichten = [
+      createModellschicht('frueh', '08:00', '12:00'),
+      createModellschicht('spaet', '12:00', '18:00'),
+    ];
     const wochenregeln: TWochenoeffnungszeiten = {
       ...WOCHENREGELN,
       montag,
@@ -75,14 +83,20 @@ describe('createDienstplanKalendertage', () => {
       wochenregeln,
       sondertage: [],
       ausnahmen: [],
+      modellschichten,
     }).find((eintrag) => {
       return eintrag.datum === '2026-05-04';
     });
 
     montag.beginnLokalzeit = '10:00';
     montag.endeLokalzeit = '16:00';
+    if (modellschichten[0].ende) modellschichten[0].ende.lokalzeit = '14:00';
 
     expect(kalendertag?.oeffnungsregel).toEqual(createGeoeffnet('08:00', '18:00'));
+    expect(kalendertag?.rasterzeiten).toEqual([
+      createRasterzeit('frueh', '08:00', '12:00'),
+      createRasterzeit('spaet', '12:00', '18:00'),
+    ]);
   });
 
   it('should preserve an inactive statutory holiday while using the weekday opening rule', () => {
@@ -127,7 +141,7 @@ describe('createDienstplanKalendertage', () => {
         typ: 'gesetzlicherFeiertag' as const,
         feiertagSchluessel: 'pfingstsonntag' as const,
       }),
-      oeffnungsregel: createGeoeffnet('12:00', '16:00'),
+      oeffnungsregel: createGeoeffnet('12:00', '18:00'),
     };
 
     const kalendertage = createDienstplanKalendertage({
@@ -137,23 +151,7 @@ describe('createDienstplanKalendertage', () => {
       ausnahmen: [],
       modellschichten: [
         createModellschicht('frueh', '08:00', '16:30'),
-        createModellschicht('spaet', '16:30', '01:00', true),
-      ],
-      besondereRasterzeiten: [
-        {
-          sondertagId: 'pfingstsonntag',
-          modellschichtId: 'frueh',
-          beginnLokalzeit: '12:00',
-          endeLokalzeit: '14:00',
-          endetAmFolgetag: false,
-        },
-        {
-          sondertagId: 'pfingstsonntag',
-          modellschichtId: 'spaet',
-          beginnLokalzeit: '14:00',
-          endeLokalzeit: '16:00',
-          endetAmFolgetag: false,
-        },
+        createModellschicht('spaet', '16:30', '01:00'),
       ],
     });
     const werktag = getKalendertag(kalendertage, '2026-05-04');
@@ -200,40 +198,8 @@ describe('createDienstplanKalendertage', () => {
       }),
     );
     expect(feiertagAmSonntag.rasterzeiten).toEqual([
-      createRasterzeit('frueh', '12:00', '14:00'),
-      createRasterzeit('spaet', '14:00', '16:00'),
-    ]);
-  });
-
-  it('should snapshot special raster times without changing the fixed model grid', () => {
-    const neujahr = createSondertag('neujahr', 'Neujahr', true, {
-      typ: 'gesetzlicherFeiertag',
-      feiertagSchluessel: 'neujahr',
-    });
-
-    const [ersterJanuar] = createDienstplanKalendertage({
-      monat: '2026-01',
-      wochenregeln: WOCHENREGELN,
-      sondertage: [neujahr],
-      ausnahmen: [],
-      modellschichten: [
-        createModellschicht('frueh', '07:00', '12:00'),
-        createModellschicht('spaet', '12:00', '18:00'),
-      ],
-      besondereRasterzeiten: [
-        {
-          sondertagId: 'neujahr',
-          modellschichtId: 'frueh',
-          beginnLokalzeit: '09:30',
-          endeLokalzeit: '13:00',
-          endetAmFolgetag: false,
-        },
-      ],
-    });
-
-    expect(ersterJanuar.rasterzeiten).toEqual([
-      createRasterzeit('frueh', '10:00', '13:00'),
-      createRasterzeit('spaet', '12:00', '16:00'),
+      createRasterzeit('frueh', '12:00', '16:30'),
+      createRasterzeit('spaet', '16:30', '18:00'),
     ]);
   });
 
@@ -252,15 +218,6 @@ describe('createDienstplanKalendertage', () => {
       modellschichten: [
         createModellschicht('frueh', '07:00', '12:00'),
         createModellschicht('spaet', '12:00', '18:00'),
-      ],
-      besondereRasterzeiten: [
-        {
-          sondertagId: 'neujahr',
-          modellschichtId: 'frueh',
-          beginnLokalzeit: '09:30',
-          endeLokalzeit: '13:00',
-          endetAmFolgetag: false,
-        },
       ],
     });
 
@@ -292,7 +249,7 @@ describe('createDienstplanKalendertage', () => {
           vorbereitungsminuten: 30,
         },
         {
-          ...createModellschicht('spaet', '16:30', '01:00', true),
+          ...createModellschicht('spaet', '16:30', '01:00'),
           nachbereitungsminuten: 15,
         },
       ],
@@ -303,6 +260,49 @@ describe('createDienstplanKalendertage', () => {
     expect(sonntag?.rasterzeiten).toEqual([
       createRasterzeit('frueh', '09:30', '16:30'),
       createRasterzeit('spaet', '16:30', '01:15', true),
+    ]);
+  });
+
+  it('should resolve inner start-day and following-day boundaries within an overnight opening', () => {
+    const oeffnungsregel = createGeoeffnet('18:00', '01:00', true);
+    const wochenregeln: TWochenoeffnungszeiten = {
+      montag: oeffnungsregel,
+      dienstag: oeffnungsregel,
+      mittwoch: oeffnungsregel,
+      donnerstag: oeffnungsregel,
+      freitag: oeffnungsregel,
+      samstag: oeffnungsregel,
+      sonntag: oeffnungsregel,
+    };
+    const [ersterOktober] = createDienstplanKalendertage({
+      monat: '2026-10',
+      wochenregeln,
+      sondertage: [],
+      ausnahmen: [],
+      modellschichten: [
+        {
+          id: 'frueh',
+          reihenfolge: 0,
+          ende: { lokalzeit: '22:00', tag: 'starttag' },
+        },
+        {
+          id: 'nacht',
+          reihenfolge: 1,
+          beginn: { lokalzeit: '22:00', tag: 'starttag' },
+          ende: { lokalzeit: '00:30', tag: 'folgetag' },
+        },
+        {
+          id: 'spaet',
+          reihenfolge: 2,
+          beginn: { lokalzeit: '00:30', tag: 'folgetag' },
+        },
+      ],
+    });
+
+    expect(ersterOktober.rasterzeiten).toEqual([
+      createRasterzeit('frueh', '18:00', '22:00'),
+      createRasterzeit('nacht', '22:00', '00:30', true),
+      createRasterzeit('spaet', '00:30', '01:00', true, true),
     ]);
   });
 
@@ -320,7 +320,7 @@ describe('createDienstplanKalendertage', () => {
     expect(sonntag?.rasterzeiten).toEqual([]);
   });
 
-  it('should reject a model shift without positive duration after opening adjustment', () => {
+  it('should omit only a model shift that does not fit a short opening day', () => {
     const oeffnungsregel = createGeoeffnet('08:00', '14:00');
     const wochenregeln: TWochenoeffnungszeiten = {
       montag: oeffnungsregel,
@@ -332,20 +332,44 @@ describe('createDienstplanKalendertage', () => {
       sonntag: oeffnungsregel,
     };
 
-    expect(() => {
-      return createDienstplanKalendertage({
-        monat: '2026-10',
-        wochenregeln,
-        sondertage: [],
-        ausnahmen: [],
-        modellschichten: [
-          createModellschicht('frueh', '08:00', '12:00'),
-          createModellschicht('spaet', '16:30', '01:00', true),
-        ],
-      });
-    }).toThrow(
-      'Die Modellschicht spaet hat am 2026-10-01 nach der Anpassung an die Öffnungszeiten keine positive Dauer.',
-    );
+    const [ersterOktober] = createDienstplanKalendertage({
+      monat: '2026-10',
+      wochenregeln,
+      sondertage: [],
+      ausnahmen: [],
+      modellschichten: [
+        createModellschicht('frueh', '08:00', '12:00'),
+        createModellschicht('spaet', '16:30', '01:00'),
+      ],
+    });
+
+    expect(ersterOktober.rasterzeiten).toEqual([createRasterzeit('frueh', '08:00', '12:00')]);
+  });
+
+  it('should keep an opened day without raster times when no model shift fits', () => {
+    const oeffnungsregel = createGeoeffnet('08:00', '10:00');
+    const wochenregeln: TWochenoeffnungszeiten = {
+      montag: oeffnungsregel,
+      dienstag: oeffnungsregel,
+      mittwoch: oeffnungsregel,
+      donnerstag: oeffnungsregel,
+      freitag: oeffnungsregel,
+      samstag: oeffnungsregel,
+      sonntag: oeffnungsregel,
+    };
+    const [ersterOktober] = createDienstplanKalendertage({
+      monat: '2026-10',
+      wochenregeln,
+      sondertage: [],
+      ausnahmen: [],
+      modellschichten: [
+        createModellschicht('frueh', '08:00', '12:00'),
+        createModellschicht('spaet', '16:30', '01:00'),
+      ],
+    });
+
+    expect(ersterOktober.oeffnungsregel).toEqual(oeffnungsregel);
+    expect(ersterOktober.rasterzeiten).toEqual([]);
   });
 
   it('should reject multiple active special days without a date exception', () => {
@@ -381,7 +405,7 @@ describe('createDienstplanKalendertage', () => {
     });
 
     expect(() => getDienstplanRasterzeit(kalendertag, 'frueh')).toThrow(
-      'Die Rasterzeit wurde im Kalendertag nicht gefunden.',
+      'Die Modellschicht ist an diesem Kalendertag nicht verfügbar.',
     );
   });
 });
@@ -433,9 +457,24 @@ function createModellschicht(
   id: string,
   beginnLokalzeit: string,
   endeLokalzeit: string,
-  endetAmFolgetag = false,
-) {
-  return { id, beginnLokalzeit, endeLokalzeit, endetAmFolgetag };
+): IDienstplanRasterModellschicht {
+  const basis = {
+    id,
+    reihenfolge: id === 'spaet' ? 1 : 0,
+  };
+  if (id === 'spaet') {
+    return {
+      ...basis,
+      beginn: { lokalzeit: beginnLokalzeit, tag: 'starttag' },
+    };
+  }
+  return {
+    ...basis,
+    ende: {
+      lokalzeit: endeLokalzeit,
+      tag: 'starttag',
+    },
+  };
 }
 
 function createRasterzeit(
@@ -443,8 +482,15 @@ function createRasterzeit(
   beginnLokalzeit: string,
   endeLokalzeit: string,
   endetAmFolgetag = false,
+  beginntAmFolgetag = false,
 ) {
-  return { modellschichtId, beginnLokalzeit, endeLokalzeit, endetAmFolgetag };
+  return {
+    modellschichtId,
+    beginnLokalzeit,
+    endeLokalzeit,
+    beginntAmFolgetag,
+    endetAmFolgetag,
+  };
 }
 
 function getKalendertag(

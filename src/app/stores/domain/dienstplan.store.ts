@@ -20,9 +20,10 @@ import {
   ISchichtAktualisierung,
   ISchichtAnlage,
   ISchichtEintrag,
+  ISchichtPausenaktualisierung,
 } from '../../commons/models/domain/schicht';
 import { ISchichtrastermodellBestand } from '../../commons/models/domain/schichtmodell';
-import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
+import { compareModellschichtenNachReihenfolge } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { BenutzerStore } from '../app/benutzer.store';
 import { StammdatenStore } from '../app/stammdaten.store';
@@ -326,6 +327,76 @@ export const DienstplanStore = signalStore(
       }
 
       /**
+       * Veröffentlicht eine aktuelle Entwurfsversion und übernimmt den bestätigten Stand lokal.
+       *
+       * @param pfad - Vollständiger Pfad der Entwurfsversion.
+       */
+      async function publishDienstplan(pfad: IDienstplanVersionPfad): Promise<void> {
+        const { kontext, version } = requireEntwurf(pfad);
+        const benutzerUid = requireBenutzerUid();
+        await executeWrite(async () => {
+          const ergebnis = await dienstplanService.publishDienstplan(
+            pfad,
+            version.revision,
+            benutzerUid,
+          );
+          setKontext(pfad, {
+            ...kontext,
+            dienstplaene: kontext.dienstplaene.map((dienstplan) => {
+              return dienstplan.id === pfad.dienstplanId ? ergebnis.dienstplan : dienstplan;
+            }),
+            versionen: kontext.versionen
+              .map((eintrag) => {
+                if (eintrag.id === ergebnis.veroeffentlichteVersion.id) {
+                  return ergebnis.veroeffentlichteVersion;
+                }
+                if (eintrag.id === ergebnis.archivierteVersion?.id) {
+                  return ergebnis.archivierteVersion;
+                }
+                return eintrag;
+              })
+              .sort(sortVersionen),
+          });
+        });
+      }
+
+      /**
+       * Erstellt aus einer veröffentlichten Version einen neuen bearbeitbaren Entwurf.
+       *
+       * @param pfad - Vollständiger Pfad des Monatsplans.
+       */
+      async function createEntwurfAusVeroeffentlichung(pfad: IDienstplanPfad): Promise<void> {
+        const kontext = requireSchreibkontext(pfad, pfad.dienstplanId);
+        const dienstplan = kontext.dienstplaene.find((eintrag) => {
+          return eintrag.id === pfad.dienstplanId;
+        });
+        const version = kontext.versionen.find((eintrag) => {
+          return eintrag.id === dienstplan?.veroeffentlichteVersionId;
+        });
+        if (!dienstplan || dienstplan.entwurfVersionId || version?.status !== 'veroeffentlicht') {
+          throw new Error(
+            'Der veröffentlichte Dienstplan kann nicht als Entwurf übernommen werden.',
+          );
+        }
+        const benutzerUid = requireBenutzerUid();
+        await executeWrite(async () => {
+          const ergebnis = await dienstplanService.createEntwurfAusVeroeffentlichung(
+            pfad,
+            version.revision,
+            benutzerUid,
+          );
+          setKontext(pfad, {
+            ...kontext,
+            dienstplaene: kontext.dienstplaene.map((eintrag) => {
+              return eintrag.id === pfad.dienstplanId ? ergebnis.dienstplan : eintrag;
+            }),
+            versionen: [...kontext.versionen, ergebnis.version].sort(sortVersionen),
+            schichten: [...kontext.schichten, ...ergebnis.schichten].sort(sortSchichten),
+          });
+        });
+      }
+
+      /**
        * Legt eine Schicht in einer Entwurfsversion an.
        *
        * @param pfad - Vollständiger Pfad der Entwurfsversion.
@@ -353,6 +424,7 @@ export const DienstplanStore = signalStore(
             ),
             schichten: [...kontext.schichten, ergebnis.schicht].sort(sortSchichten),
           });
+          applyPausenaktualisierungen(ergebnis.pauseAktualisierungen);
         });
       }
 
@@ -397,6 +469,7 @@ export const DienstplanStore = signalStore(
               })
               .sort(sortSchichten),
           });
+          applyPausenaktualisierungen(ergebnis.pauseAktualisierungen);
         });
       }
 
@@ -431,6 +504,7 @@ export const DienstplanStore = signalStore(
             ),
             schichten: kontext.schichten.filter((eintrag) => eintrag.id !== schichtId),
           });
+          applyPausenaktualisierungen(ergebnis.pauseAktualisierungen);
         });
       }
 
@@ -662,6 +736,51 @@ export const DienstplanStore = signalStore(
         });
       }
 
+      function applyPausenaktualisierungen(
+        aktualisierungen: readonly ISchichtPausenaktualisierung[] | undefined,
+      ): void {
+        if (!aktualisierungen || aktualisierungen.length === 0) return;
+        const pauseNachSchicht = new Map(
+          aktualisierungen.map((aktualisierung) => {
+            return [
+              JSON.stringify([
+                aktualisierung.unternehmerId,
+                aktualisierung.firmaId,
+                aktualisierung.filialeId,
+                aktualisierung.dienstplanId,
+                aktualisierung.versionId,
+                aktualisierung.schichtId,
+              ]),
+              aktualisierung.pauseMinuten,
+            ];
+          }),
+        );
+        const kontexte = Object.fromEntries(
+          Object.entries(store.kontexte()).map(([schluessel, kontext]) => {
+            return [
+              schluessel,
+              {
+                ...kontext,
+                schichten: kontext.schichten.map((schicht) => {
+                  const pauseMinuten = pauseNachSchicht.get(
+                    JSON.stringify([
+                      schicht.unternehmerId,
+                      schicht.firmaId,
+                      schicht.filialeId,
+                      schicht.dienstplanId,
+                      schicht.versionId,
+                      schicht.id,
+                    ]),
+                  );
+                  return pauseMinuten === undefined ? schicht : { ...schicht, pauseMinuten };
+                }),
+              },
+            ];
+          }),
+        );
+        patchState(store, { kontexte });
+      }
+
       function requireSchreibkontext(
         pfad: IFilialPfad,
         monat: string,
@@ -710,6 +829,8 @@ export const DienstplanStore = signalStore(
         loadDienstplanBestand,
         createDienstplan,
         deleteDienstplan,
+        publishDienstplan,
+        createEntwurfAusVeroeffentlichung,
         createSchicht,
         updateSchicht,
         deleteSchicht,
@@ -764,7 +885,9 @@ function mergeMonatBestand(
       ...kontext.modellschichten.filter((modellschicht) => modellschicht.dienstplanId !== monat),
       ...bestand.modellschichten,
     ].sort((a, b) => {
-      return a.dienstplanId.localeCompare(b.dienstplanId) || compareModellschichtenNachBeginn(a, b);
+      return (
+        a.dienstplanId.localeCompare(b.dienstplanId) || compareModellschichtenNachReihenfolge(a, b)
+      );
     }),
   };
 }

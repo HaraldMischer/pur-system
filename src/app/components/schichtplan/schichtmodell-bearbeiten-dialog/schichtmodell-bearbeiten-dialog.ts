@@ -3,6 +3,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   effect,
   inject,
   signal,
@@ -12,37 +13,44 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { filter, firstValueFrom, take } from 'rxjs';
 
+import { MAX_RANDMINUTEN } from '../../../commons/constants/schichtmodell.constants';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
-import { IFilialeinstellungSondertagEintrag } from '../../../commons/models/domain/filialeinstellung';
+import { ISchliesszeitraum } from '../../../commons/models/domain/filialeinstellung';
 import {
-  IBesondereRasterzeit,
   IModellschichtSchreibdaten,
   ISchichtrastermodellAktualisierung,
   ISchichtrastermodellAnlage,
   ISchichtrastermodellBestand,
+  TModellschichtTag,
 } from '../../../commons/models/domain/schichtmodell';
-import { compareModellschichtenNachBeginn } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
-import { calculateSchichtdauerMinuten } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
+import {
+  getLokalzeitMinuten,
+  getModellschichtTagFuerLokalzeit,
+} from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
+import { hatModellschichtLuecken } from '../../../commons/validators/schichtmodell.validator';
 import { schichtZeitfolgeValidator } from '../../../commons/validators/schicht-zeitfolge.validator';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
-import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
-import {
-  IRasterzeitAbweichung,
-  IRasterzeitAbweichungTag,
-  RasterzeitAbweichungen,
-} from '../rasterzeit-abweichungen/rasterzeit-abweichungen';
+import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
+import { EingabeMinuten } from '../../shared/eingabe-minuten/eingabe-minuten';
+import { EingabeZeit } from '../../shared/eingabe-zeit/eingabe-zeit';
 
 // ===== Top-Level Helper =====================
 
 export type TSchichtmodellBearbeitenDialogDaten = {
   readonly pfad: IFilialPfad;
-  readonly sondertage?: readonly IFilialeinstellungSondertagEintrag[];
+  readonly schliesszeitraum: ISchliesszeitraum;
   readonly bestand?: ISchichtrastermodellBestand;
 };
 
@@ -55,8 +63,8 @@ export type TSchichtmodellBearbeitenDialogDaten = {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    LokalzeitEingabe,
-    RasterzeitAbweichungen,
+    EingabeMinuten,
+    EingabeZeit,
     ReactiveFormsModule,
   ],
   templateUrl: './schichtmodell-bearbeiten-dialog.html',
@@ -66,6 +74,8 @@ export type TSchichtmodellBearbeitenDialogDaten = {
 export class SchichtmodellBearbeitenDialog {
   // ===== Interne Dependency Injection =========
 
+  private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly dialogRef = inject(MatDialogRef<SchichtmodellBearbeitenDialog, boolean>);
   readonly daten = inject<TSchichtmodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly schichtmodellStore = inject(SchichtmodellStore);
@@ -78,26 +88,6 @@ export class SchichtmodellBearbeitenDialog {
 
   readonly istBearbeitung = Boolean(this.daten.bestand);
   readonly hatAenderungen = signal(!this.istBearbeitung);
-  readonly rasterzeitAbweichungenGueltig = signal(true);
-  readonly besondereRasterzeiten = signal<readonly IBesondereRasterzeit[]>(
-    this.daten.bestand?.schichtmodell.besondereRasterzeiten ?? [],
-  );
-  readonly besondereTage: readonly IRasterzeitAbweichungTag[] =
-    this.daten.sondertage?.flatMap((sondertag) => {
-      return sondertag.oeffnungsregel.geoeffnet
-        ? [
-            {
-              id: sondertag.id,
-              bezeichnung: sondertag.bezeichnung,
-              oeffnungsregel: sondertag.oeffnungsregel,
-            },
-          ]
-        : [];
-    }) ?? [];
-  readonly initialeRasterzeitAbweichungen: readonly IRasterzeitAbweichung[] =
-    this.daten.bestand?.schichtmodell.besondereRasterzeiten.map((rasterzeit) => {
-      return { ...rasterzeit, tagId: rasterzeit.sondertagId };
-    }) ?? [];
   readonly schichtmodellForm = new FormGroup({
     bezeichnung: new FormControl(this.daten.bestand?.schichtmodell.bezeichnung ?? '', {
       nonNullable: true,
@@ -119,6 +109,7 @@ export class SchichtmodellBearbeitenDialog {
   });
 
   constructor() {
+    this.updateModellschichtPositionen();
     this.urspruenglicheAktualisierung = this.daten.bestand
       ? JSON.stringify(this.getAktualisierung())
       : null;
@@ -143,16 +134,29 @@ export class SchichtmodellBearbeitenDialog {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Fügt am Anfang des Modells eine leere Modellschicht hinzu.
+   * Fügt am Ende des Modells eine leere Modellschicht hinzu.
+   *
+   * Der erstmals eingegebene Beginn belegt einmalig das Ende der bisherigen letzten Schicht vor.
    */
   addModellschicht(): void {
     const modellschichten = this.schichtmodellForm.controls.modellschichten;
-    const bisherigeVorbereitungsminuten =
-      modellschichten.at(0)?.controls.vorbereitungsminuten.value ?? 0;
-    modellschichten.at(0)?.controls.vorbereitungsminuten.setValue(0);
+    const bisherigeLetzteModellschicht = modellschichten.at(-1);
+    const bisherigeNachbereitungsminuten =
+      bisherigeLetzteModellschicht?.controls.nachbereitungsminuten.value ?? 0;
+    bisherigeLetzteModellschicht?.controls.nachbereitungsminuten.setValue(0);
     const neueModellschicht = this.createModellschichtForm();
-    neueModellschicht.controls.vorbereitungsminuten.setValue(bisherigeVorbereitungsminuten);
-    modellschichten.insert(0, neueModellschicht);
+    neueModellschicht.controls.nachbereitungsminuten.setValue(bisherigeNachbereitungsminuten);
+    modellschichten.push(neueModellschicht);
+    this.updateModellschichtPositionen();
+    neueModellschicht.controls.beginnLokalzeit.valueChanges
+      .pipe(
+        filter((lokalzeit) => getLokalzeitMinuten(lokalzeit) !== null),
+        take(1),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((lokalzeit) => {
+        bisherigeLetzteModellschicht?.controls.endeLokalzeit.setValue(lokalzeit);
+      });
   }
 
   /**
@@ -178,38 +182,35 @@ export class SchichtmodellBearbeitenDialog {
         );
     }
     modellschichten.removeAt(index);
-  }
-
-  /**
-   * Liefert die formatierte Dauer einer Modellschicht.
-   *
-   * @param index - Position der Modellschicht.
-   * @returns Dauer in Stunden oder `0` bei noch ungültigen Zeitwerten.
-   */
-  getSchichtdauerStunden(index: number): string {
-    const form = this.schichtmodellForm.controls.modellschichten.at(index);
-    const dauerMinuten = calculateSchichtdauerMinuten(
-      form.controls.beginnLokalzeit.value,
-      form.controls.endeLokalzeit.value,
-    );
-    return dauerMinuten === null
-      ? '0'
-      : new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(dauerMinuten / 60);
+    this.updateModellschichtPositionen();
   }
 
   /**
    * Validiert und speichert das vollständige Schichtmodell.
    */
   async saveSchichtmodell(): Promise<void> {
-    if (
-      this.schichtmodellForm.invalid ||
-      !this.rasterzeitAbweichungenGueltig() ||
-      this.schichtmodellStore.inProgress()
-    ) {
+    if (this.schichtmodellForm.invalid || this.schichtmodellStore.inProgress()) {
       this.schichtmodellForm.markAllAsTouched();
       return;
     }
     if (this.istBearbeitung && !this.hatAenderungen()) return;
+    const anlage = this.getAnlage();
+    if (hatModellschichtLuecken(anlage.modellschichten)) {
+      const bestaetigt = await firstValueFrom(
+        this.dialog
+          .open(BestaetigungDialog, {
+            data: {
+              titel: 'Schichtmodell mit Lücken speichern?',
+              nachricht:
+                'Zwischen den Modellschichten bestehen zeitliche Lücken. In diesen Zeiten ist im Dienstplan keine Rasterbelegung vorgesehen.',
+              bestaetigenText: 'Trotzdem speichern',
+            },
+            panelClass: ['pur-dialog__panel'],
+          })
+          .afterClosed(),
+      );
+      if (!bestaetigt) return;
+    }
     this.dialogRef.disableClose = true;
     try {
       const bestand = this.daten.bestand;
@@ -217,10 +218,13 @@ export class SchichtmodellBearbeitenDialog {
         await this.schichtmodellStore.updateSchichtmodell(
           this.daten.pfad,
           bestand.schichtmodell.id,
-          this.getAktualisierung(),
+          {
+            ...anlage,
+            aktiv: this.schichtmodellForm.controls.aktiv.getRawValue(),
+          },
         );
       } else {
-        await this.schichtmodellStore.createSchichtmodell(this.daten.pfad, this.getAnlage());
+        await this.schichtmodellStore.createSchichtmodell(this.daten.pfad, anlage);
       }
       this.dialogRef.close(true);
     } catch {
@@ -230,81 +234,116 @@ export class SchichtmodellBearbeitenDialog {
     }
   }
 
-  /**
-   * Übernimmt die optionalen inneren Rasterzeitabweichungen aktiver Sondertage.
-   */
-  updateBesondereRasterzeiten(abweichungen: readonly IRasterzeitAbweichung[]): void {
-    const sichtbareSondertagIds = new Set(this.besondereTage.map((tag) => tag.id));
-    this.besondereRasterzeiten.set([
-      ...this.besondereRasterzeiten().filter((rasterzeit) => {
-        return !sichtbareSondertagIds.has(rasterzeit.sondertagId);
-      }),
-      ...abweichungen.map((abweichung) => {
-        return {
-          sondertagId: abweichung.tagId,
-          modellschichtId: abweichung.modellschichtId,
-          beginnLokalzeit: abweichung.beginnLokalzeit,
-          endeLokalzeit: abweichung.endeLokalzeit,
-          endetAmFolgetag: abweichung.endetAmFolgetag,
-        };
-      }),
-    ]);
-    this.updateHatAenderungen();
-  }
-
   // ===== Interne Helfer =======================
 
   private createModellschichtForm(modellschicht?: IModellschichtSchreibdaten) {
-    return new FormGroup(
-      {
-        id: new FormControl(modellschicht?.id ?? '', { nonNullable: true }),
-        bezeichnung: new FormControl(modellschicht?.bezeichnung ?? '', {
-          nonNullable: true,
-          validators: [Validators.required, nichtLeerValidator, Validators.maxLength(80)],
-        }),
-        beginnLokalzeit: new FormControl(modellschicht?.beginnLokalzeit ?? '', {
-          nonNullable: true,
-          validators: [Validators.required],
-        }),
-        endeLokalzeit: new FormControl(modellschicht?.endeLokalzeit ?? '', {
-          nonNullable: true,
-          validators: [Validators.required],
-        }),
-        mehrfachbelegungErlaubt: new FormControl(modellschicht?.mehrfachbelegungErlaubt ?? false, {
-          nonNullable: true,
-        }),
-        vorbereitungsminuten: new FormControl(modellschicht?.vorbereitungsminuten ?? 0, {
-          nonNullable: true,
-          validators: [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)],
-        }),
-        nachbereitungsminuten: new FormControl(modellschicht?.nachbereitungsminuten ?? 0, {
-          nonNullable: true,
-          validators: [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)],
-        }),
-      },
-      { validators: [schichtZeitfolgeValidator] },
-    );
+    const beginnTag = modellschicht?.beginn
+      ? (getModellschichtTagFuerLokalzeit(
+          modellschicht.beginn.lokalzeit,
+          this.daten.schliesszeitraum,
+        ) ?? modellschicht.beginn.tag)
+      : 'starttag';
+    const endeTag = modellschicht?.ende
+      ? (getModellschichtTagFuerLokalzeit(
+          modellschicht.ende.lokalzeit,
+          this.daten.schliesszeitraum,
+        ) ?? modellschicht.ende.tag)
+      : 'starttag';
+    const form = new FormGroup({
+      id: new FormControl(modellschicht?.id ?? '', { nonNullable: true }),
+      bezeichnung: new FormControl(modellschicht?.bezeichnung ?? '', {
+        nonNullable: true,
+        validators: [Validators.required, nichtLeerValidator, Validators.maxLength(80)],
+      }),
+      beginnLokalzeit: new FormControl(modellschicht?.beginn?.lokalzeit ?? '', {
+        nonNullable: true,
+      }),
+      beginnTag: new FormControl<TModellschichtTag>(beginnTag, {
+        nonNullable: true,
+      }),
+      endeLokalzeit: new FormControl(modellschicht?.ende?.lokalzeit ?? '', {
+        nonNullable: true,
+      }),
+      endeTag: new FormControl<TModellschichtTag>(endeTag, {
+        nonNullable: true,
+      }),
+      mehrfachbelegungErlaubt: new FormControl(modellschicht?.mehrfachbelegungErlaubt ?? false, {
+        nonNullable: true,
+      }),
+      vorbereitungsminuten: new FormControl(modellschicht?.vorbereitungsminuten ?? 0, {
+        nonNullable: true,
+        validators: [
+          Validators.required,
+          Validators.min(0),
+          Validators.max(MAX_RANDMINUTEN),
+          Validators.pattern(/^\d+$/),
+        ],
+      }),
+      nachbereitungsminuten: new FormControl(modellschicht?.nachbereitungsminuten ?? 0, {
+        nonNullable: true,
+        validators: [
+          Validators.required,
+          Validators.min(0),
+          Validators.max(MAX_RANDMINUTEN),
+          Validators.pattern(/^\d+$/),
+        ],
+      }),
+    });
+    form.controls.beginnLokalzeit.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((lokalzeit) => {
+        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, this.daten.schliesszeitraum);
+        if (tag) form.controls.beginnTag.setValue(tag);
+      });
+    form.controls.endeLokalzeit.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((lokalzeit) => {
+        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, this.daten.schliesszeitraum);
+        if (tag) form.controls.endeTag.setValue(tag);
+      });
+    return form;
+  }
+
+  private updateModellschichtPositionen(): void {
+    const formen = this.schichtmodellForm.controls.modellschichten.controls;
+    const letzterIndex = formen.length - 1;
+    formen.forEach((form, index) => {
+      form.controls.beginnLokalzeit.setValidators(index > 0 ? [Validators.required] : null);
+      form.controls.endeLokalzeit.setValidators(
+        index < letzterIndex ? [Validators.required] : null,
+      );
+      form.setValidators(index > 0 && index < letzterIndex ? [schichtZeitfolgeValidator] : null);
+      form.controls.beginnLokalzeit.updateValueAndValidity({ emitEvent: false });
+      form.controls.endeLokalzeit.updateValueAndValidity({ emitEvent: false });
+      form.updateValueAndValidity({ emitEvent: false });
+    });
   }
 
   private getModellschichten(): IModellschichtSchreibdaten[] {
     const formen = this.schichtmodellForm.controls.modellschichten.controls;
     const vorbereitungsminuten = formen.at(0)?.controls.vorbereitungsminuten.value ?? 0;
     const nachbereitungsminuten = formen.at(-1)?.controls.nachbereitungsminuten.value ?? 0;
-    const modellschichten = formen
-      .map((form) => {
-        const wert = form.getRawValue();
-        return {
-          ...(wert.id ? { id: wert.id } : {}),
-          bezeichnung: wert.bezeichnung.trim(),
-          beginnLokalzeit: wert.beginnLokalzeit,
-          endeLokalzeit: wert.endeLokalzeit,
-          endetAmFolgetag: wert.endeLokalzeit < wert.beginnLokalzeit,
-          mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
-          vorbereitungsminuten: 0,
-          nachbereitungsminuten: 0,
-        };
-      })
-      .sort(compareModellschichtenNachBeginn);
+    const letzterIndex = formen.length - 1;
+    const modellschichten = formen.map((form, index) => {
+      const wert = form.getRawValue();
+      return {
+        ...(wert.id ? { id: wert.id } : {}),
+        bezeichnung: wert.bezeichnung.trim(),
+        reihenfolge: index,
+        ...(index > 0 ? { beginn: { lokalzeit: wert.beginnLokalzeit, tag: wert.beginnTag } } : {}),
+        ...(index < letzterIndex
+          ? {
+              ende: {
+                lokalzeit: wert.endeLokalzeit,
+                tag: wert.endeTag,
+              },
+            }
+          : {}),
+        mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
+        vorbereitungsminuten: 0,
+        nachbereitungsminuten: 0,
+      };
+    });
     const ersteModellschicht = modellschichten.at(0);
     const letzteModellschicht = modellschichten.at(-1);
     if (ersteModellschicht) ersteModellschicht.vorbereitungsminuten = vorbereitungsminuten;
@@ -313,16 +352,9 @@ export class SchichtmodellBearbeitenDialog {
   }
 
   private getAnlage(): ISchichtrastermodellAnlage {
-    const modellschichten = this.getModellschichten();
-    const modellschichtIds = new Set(
-      modellschichten.flatMap((modellschicht) => (modellschicht.id ? [modellschicht.id] : [])),
-    );
     return {
       bezeichnung: this.schichtmodellForm.controls.bezeichnung.value.trim(),
-      modellschichten,
-      besondereRasterzeiten: this.besondereRasterzeiten().filter((rasterzeit) => {
-        return modellschichtIds.has(rasterzeit.modellschichtId);
-      }),
+      modellschichten: this.getModellschichten(),
     };
   }
 

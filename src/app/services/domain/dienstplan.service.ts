@@ -1,6 +1,7 @@
 // pur-system/src/app/services/domain/dienstplan.service.ts
 
 import { Injectable, inject } from '@angular/core';
+import { FieldValue } from 'firebase/firestore';
 
 import { environment } from '../../../environments/environment';
 import {
@@ -10,6 +11,7 @@ import {
 import {
   IDienstplanPfad,
   IDienstplanVersionPfad,
+  IFirmaPfad,
   IFilialPfad,
 } from '../../commons/models/app/firestore-pfad.types';
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
@@ -17,16 +19,24 @@ import {
   IDienstplanAnlageErgebnis,
   IDienstplanBestand,
   IDienstplanDokument,
+  IDienstplanEntwurfAnlageErgebnis,
   IDienstplanEintrag,
+  IDienstplanVeroeffentlichungErgebnis,
   IDienstplanVersionDokument,
   IDienstplanVersionEintrag,
 } from '../../commons/models/domain/dienstplan';
+import { IMitarbeiterDokument } from '../../commons/models/domain/mitarbeiter';
+import {
+  IMitarbeiterbelegungDokument,
+  IMitarbeiterbelegungReferenz,
+} from '../../commons/models/domain/mitarbeiterbelegung';
 import {
   ISchichtAktualisierung,
   ISchichtAnlage,
   ISchichtDaten,
   ISchichtDokument,
   ISchichtEintrag,
+  ISchichtPausenaktualisierung,
   ISchichtSchreibergebnis,
 } from '../../commons/models/domain/schicht';
 import {
@@ -40,9 +50,23 @@ import {
   getDienstplanRasterzeit,
 } from '../../commons/utils/dienstplan/dienstplan-kalendertage';
 import { createSchichtZeitstempelAusLokalzeiten } from '../../commons/utils/dienstplan/schicht-lokalzeit';
-import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
+import { compareModellschichtenNachReihenfolge } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { calculateSchichtLohnzeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
-import { FirestoreDbService } from '../firebase/firestore-db.service';
+import {
+  createMitarbeiterbelegungId,
+  createMitarbeiterbelegungReferenz,
+  createMitarbeiterbelegungReferenzSchluessel,
+  getMitarbeiterbelegungKonflikte,
+  getMitarbeiterbelegungPausenzuordnungen,
+  getMitarbeiterbelegungTage,
+  updateMitarbeiterbelegungDokument,
+} from '../../commons/utils/dienstplan/mitarbeiterbelegung';
+import {
+  FirestoreDbService,
+  IFirestoreDokument,
+  TFirestoreBatchOperation,
+  TFirestoreTransaktionsDokumente,
+} from '../firebase/firestore-db.service';
 import {
   FilialeinstellungFachfehler,
   FilialeinstellungService,
@@ -64,6 +88,42 @@ export function createDienstplanAnlageFehler(ursache: string): DienstplanFachfeh
   return new DienstplanFachfehler(ursache.startsWith(prefix) ? ursache : `${prefix} ${ursache}`);
 }
 
+function createDienstplanVeroeffentlichungFehler(ursache: string): DienstplanFachfehler {
+  const prefix = 'Der Dienstplan konnte nicht veröffentlicht werden.';
+  return new DienstplanFachfehler(ursache.startsWith(prefix) ? ursache : `${prefix} ${ursache}`);
+}
+
+function createDienstplanEntwurfFehler(ursache: string): DienstplanFachfehler {
+  const prefix = 'Die neue Entwurfsversion konnte nicht angelegt werden.';
+  return new DienstplanFachfehler(ursache.startsWith(prefix) ? ursache : `${prefix} ${ursache}`);
+}
+
+function mergeFirestoreOperationen(
+  operationen: readonly TFirestoreBatchOperation[],
+): readonly TFirestoreBatchOperation[] {
+  const nachPfad = new Map<string, TFirestoreBatchOperation>();
+  operationen.forEach((operation) => {
+    const vorhanden = nachPfad.get(operation.documentPath);
+    if ('delete' in operation) {
+      nachPfad.set(operation.documentPath, operation);
+      return;
+    }
+    if (vorhanden && 'delete' in vorhanden) return;
+    nachPfad.set(operation.documentPath, {
+      documentPath: operation.documentPath,
+      daten: {
+        ...(vorhanden && !('delete' in vorhanden) ? vorhanden.daten : {}),
+        ...operation.daten,
+      },
+      ...(operation.replaceFields ||
+      (vorhanden && !('delete' in vorhanden) && vorhanden.replaceFields)
+        ? { replaceFields: true }
+        : {}),
+    });
+  });
+  return [...nachPfad.values()];
+}
+
 // ===== Konstanten & Typen ===================
 
 export class DienstplanFachfehler extends Error {
@@ -73,6 +133,22 @@ export class DienstplanFachfehler extends Error {
   }
 }
 
+type TSchichtDatenMitZeitzone = {
+  schichtDaten: ISchichtDaten;
+  zeitzone: string;
+};
+
+type TMitarbeiterbelegungTag = {
+  mitarbeiterId: string;
+  datum: string;
+  documentPath: string;
+};
+
+type TMitarbeiterbelegungAenderungen = {
+  readonly operationen: readonly TFirestoreBatchOperation[];
+  readonly pauseAktualisierungen: readonly ISchichtPausenaktualisierung[];
+};
+
 @Injectable({ providedIn: 'root' })
 export class DienstplanService {
   // ===== Interne Dependency Injection =========
@@ -81,6 +157,29 @@ export class DienstplanService {
   private readonly filialeinstellungService = inject(FilialeinstellungService);
 
   // ===== Öffentliche Aktionen =================
+
+  /**
+   * Beobachtet eine begrenzte Gruppe firmenweiter Mitarbeiterbelegungstage.
+   *
+   * @param pfad - Vollständiger Firmenpfad des Belegungsindex.
+   * @param dokumentIds - Ein bis höchstens 30 deterministische Mitarbeiter-Tages-IDs.
+   * @param next - Wird bei jedem vollständigen Listener-Stand aufgerufen.
+   * @param error - Wird bei einem Listenerfehler aufgerufen.
+   * @returns Funktion zum Beenden des Echtzeit-Listeners.
+   */
+  observeMitarbeiterbelegungen(
+    pfad: IFirmaPfad,
+    dokumentIds: readonly string[],
+    next: (dokumente: readonly IFirestoreDokument<IMitarbeiterbelegungDokument>[]) => void,
+    error: (error: unknown) => void,
+  ): () => void {
+    return this.firestoreDbService.observeCollectionByDocumentIds<IMitarbeiterbelegungDokument>(
+      FIRESTORE_COLLECTION_PATHS.mitarbeiterbelegungen(pfad.unternehmerId, pfad.firmaId),
+      dokumentIds,
+      next,
+      error,
+    );
+  }
 
   /**
    * Lädt einen Monatsplan mit seinen aktuellen Versionen und Schichten.
@@ -209,7 +308,6 @@ export class DienstplanService {
         sondertage: filialeinstellungen.sondertage,
         ausnahmen: filialeinstellungen.ausnahmen,
         modellschichten: schichtmodell.modellschichten,
-        besondereRasterzeiten: schichtmodell.schichtmodell.besondereRasterzeiten,
       });
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -237,7 +335,7 @@ export class DienstplanService {
     };
     const modellschichten = schichtmodell.modellschichten
       .slice()
-      .sort(compareModellschichtenNachBeginn)
+      .sort(compareModellschichtenNachReihenfolge)
       .map((modellschicht) => {
         return mapModellschichtMomentaufnahme(dienstplanPfad, modellschicht.id, modellschicht);
       });
@@ -275,9 +373,9 @@ export class DienstplanService {
                 }),
                 daten: {
                   bezeichnung: modellschicht.bezeichnung,
-                  beginnLokalzeit: modellschicht.beginnLokalzeit,
-                  endeLokalzeit: modellschicht.endeLokalzeit,
-                  endetAmFolgetag: modellschicht.endetAmFolgetag,
+                  reihenfolge: modellschicht.reihenfolge,
+                  ...(modellschicht.beginn ? { beginn: { ...modellschicht.beginn } } : {}),
+                  ...(modellschicht.ende ? { ende: { ...modellschicht.ende } } : {}),
                   mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
                   vorbereitungsminuten: modellschicht.vorbereitungsminuten ?? 0,
                   nachbereitungsminuten: modellschicht.nachbereitungsminuten ?? 0,
@@ -369,6 +467,327 @@ export class DienstplanService {
   }
 
   /**
+   * Veröffentlicht einen aktuellen, konfliktfreien Entwurf atomar.
+   *
+   * @param pfad - Vollständiger Pfad der Entwurfsversion.
+   * @param erwarteteRevision - Vom Client zuletzt geladene Revision.
+   * @param benutzerUid - UID des veröffentlichenden Benutzers.
+   * @returns Aktualisierter Dienstplan sowie veröffentlichte und gegebenenfalls archivierte Version.
+   */
+  async publishDienstplan(
+    pfad: IDienstplanVersionPfad,
+    erwarteteRevision: number,
+    benutzerUid: string,
+  ): Promise<IDienstplanVeroeffentlichungErgebnis> {
+    const dienstplanPfad: IDienstplanPfad = pfad;
+    const dienstplanPath = FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad);
+    const entwurfVersionPath = FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad);
+    const [dienstplanDokument, entwurfSchichten] = await Promise.all([
+      this.firestoreDbService.loadDocument<IDienstplanDokument>(dienstplanPath, 'networkOnly'),
+      this.loadSchichten(pfad, 'networkOnly'),
+    ]);
+    if (!dienstplanDokument || dienstplanDokument.daten.entwurfVersionId !== pfad.versionId) {
+      throw createDienstplanVeroeffentlichungFehler(
+        'Der aktuelle Entwurf wurde nicht gefunden. Bitte lade ihn erneut.',
+      );
+    }
+    const alteVersionId = dienstplanDokument.daten.veroeffentlichteVersionId;
+    const alteVersionPfad = alteVersionId ? { ...dienstplanPfad, versionId: alteVersionId } : null;
+    const alteSchichten = alteVersionPfad
+      ? await this.loadSchichten(alteVersionPfad, 'networkOnly')
+      : [];
+    const mitarbeiterIds = [...new Set(entwurfSchichten.map((schicht) => schicht.mitarbeiterId))];
+    const mitarbeiterPfade = mitarbeiterIds.map((mitarbeiterId) => {
+      return FIRESTORE_DOCUMENT_PATHS.mitarbeiter(pfad.unternehmerId, pfad.firmaId, mitarbeiterId);
+    });
+    const belegungstage = this.getMitarbeiterbelegungstageFuerSchichten(
+      pfad,
+      [...entwurfSchichten, ...alteSchichten],
+      dienstplanDokument.daten.zeitzone,
+    );
+    const zeitstempel = this.firestoreDbService.createServerTimestamp();
+    const transaktionsPfade = [
+      dienstplanPath,
+      entwurfVersionPath,
+      ...(alteVersionPfad ? [FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(alteVersionPfad)] : []),
+      ...mitarbeiterPfade,
+      ...belegungstage.map((tag) => tag.documentPath),
+    ];
+
+    return this.firestoreDbService.executeDocumentsTransaction<IDienstplanVeroeffentlichungErgebnis>(
+      transaktionsPfade,
+      (dokumente) => {
+        const aktuellerDienstplan = dokumente.get(dienstplanPath)?.daten as
+          IDienstplanDokument | undefined;
+        const entwurfVersion = dokumente.get(entwurfVersionPath)?.daten as
+          IDienstplanVersionDokument | undefined;
+        if (
+          !aktuellerDienstplan ||
+          aktuellerDienstplan.entwurfVersionId !== pfad.versionId ||
+          aktuellerDienstplan.veroeffentlichteVersionId !== alteVersionId ||
+          !entwurfVersion ||
+          entwurfVersion.status !== 'entwurf' ||
+          entwurfVersion.revision !== erwarteteRevision
+        ) {
+          throw createDienstplanVeroeffentlichungFehler(
+            'Der Dienstplan wurde zwischenzeitlich geändert. Bitte lade ihn erneut.',
+          );
+        }
+        mitarbeiterPfade.forEach((mitarbeiterPath) => {
+          const mitarbeiter = dokumente.get(mitarbeiterPath)?.daten as
+            IMitarbeiterDokument | undefined;
+          if (!mitarbeiter?.aktiv || !mitarbeiter.filialIds.includes(pfad.filialeId)) {
+            throw createDienstplanVeroeffentlichungFehler(
+              'Der Dienstplan enthält einen inaktiven oder dieser Filiale nicht mehr zugeordneten Mitarbeiter.',
+            );
+          }
+        });
+        const alteVersionPath = alteVersionPfad
+          ? FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(alteVersionPfad)
+          : null;
+        const alteVersion = alteVersionPath
+          ? (dokumente.get(alteVersionPath)?.daten as IDienstplanVersionDokument | undefined)
+          : undefined;
+        if (alteVersionPfad && (!alteVersion || alteVersion.status !== 'veroeffentlicht')) {
+          throw createDienstplanVeroeffentlichungFehler(
+            'Der bisher veröffentlichte Stand wurde zwischenzeitlich geändert.',
+          );
+        }
+        const belegungsOperationen = this.createStatuswechselBelegungsoperationen(
+          pfad,
+          dokumente,
+          belegungstage,
+          entwurfSchichten,
+          alteSchichten,
+          aktuellerDienstplan.zeitzone,
+          benutzerUid,
+          zeitstempel,
+          'Der Dienstplan konnte nicht veröffentlicht werden.',
+        );
+        const dienstplanDaten: IDienstplanDokument = {
+          ...aktuellerDienstplan,
+          veroeffentlichteVersionId: pfad.versionId,
+          aktualisiertVonUid: benutzerUid,
+        };
+        delete dienstplanDaten.entwurfVersionId;
+        const veroeffentlichteVersionDaten: IDienstplanVersionDokument = {
+          ...entwurfVersion,
+          status: 'veroeffentlicht',
+          revision: entwurfVersion.revision + 1,
+          aktualisiertVonUid: benutzerUid,
+        };
+        const archivierteVersionDaten = alteVersion
+          ? {
+              ...alteVersion,
+              status: 'archiviert' as const,
+              revision: alteVersion.revision + 1,
+              aktualisiertVonUid: benutzerUid,
+            }
+          : undefined;
+        return {
+          ergebnis: {
+            dienstplan: mapDienstplan(dienstplanPfad, pfad.dienstplanId, dienstplanDaten),
+            veroeffentlichteVersion: mapVersion(pfad, pfad.versionId, veroeffentlichteVersionDaten),
+            ...(alteVersionPfad && archivierteVersionDaten
+              ? {
+                  archivierteVersion: mapVersion(
+                    alteVersionPfad,
+                    alteVersionPfad.versionId,
+                    archivierteVersionDaten,
+                  ),
+                }
+              : {}),
+          },
+          operationen: mergeFirestoreOperationen([
+            {
+              documentPath: dienstplanPath,
+              daten: {
+                veroeffentlichteVersionId: pfad.versionId,
+                entwurfVersionId: this.firestoreDbService.createDeleteField(),
+                aktualisiertAm: zeitstempel,
+                aktualisiertVonUid: benutzerUid,
+              },
+            },
+            {
+              documentPath: entwurfVersionPath,
+              daten: {
+                status: 'veroeffentlicht',
+                revision: veroeffentlichteVersionDaten.revision,
+                veroeffentlichtAm: zeitstempel,
+                veroeffentlichtVonUid: benutzerUid,
+                aktualisiertAm: zeitstempel,
+                aktualisiertVonUid: benutzerUid,
+              },
+            },
+            ...(alteVersionPath && archivierteVersionDaten
+              ? [
+                  {
+                    documentPath: alteVersionPath,
+                    daten: {
+                      status: 'archiviert',
+                      revision: archivierteVersionDaten.revision,
+                      archiviertAm: zeitstempel,
+                      archiviertVonUid: benutzerUid,
+                      aktualisiertAm: zeitstempel,
+                      aktualisiertVonUid: benutzerUid,
+                    },
+                  } satisfies TFirestoreBatchOperation,
+                ]
+              : []),
+            ...belegungsOperationen,
+          ]),
+        };
+      },
+    );
+  }
+
+  /**
+   * Erstellt aus dem veröffentlichten Stand eine neue bearbeitbare Entwurfsversion.
+   *
+   * @param pfad - Vollständiger Pfad des Monatsplans.
+   * @param erwarteteRevision - Vom Client zuletzt geladene Revision der veröffentlichten Version.
+   * @param benutzerUid - UID des ändernden Benutzers.
+   * @returns Aktualisierter Dienstplan, neue Version und kopierte Schichten.
+   */
+  async createEntwurfAusVeroeffentlichung(
+    pfad: IDienstplanPfad,
+    erwarteteRevision: number,
+    benutzerUid: string,
+  ): Promise<IDienstplanEntwurfAnlageErgebnis> {
+    const dienstplanPath = FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad);
+    const dienstplanDokument = await this.firestoreDbService.loadDocument<IDienstplanDokument>(
+      dienstplanPath,
+      'networkOnly',
+    );
+    const veroeffentlichteVersionId = dienstplanDokument?.daten.veroeffentlichteVersionId;
+    if (!dienstplanDokument || !veroeffentlichteVersionId) {
+      throw createDienstplanEntwurfFehler('Der veröffentlichte Dienstplan wurde nicht gefunden.');
+    }
+    if (dienstplanDokument.daten.entwurfVersionId) {
+      throw createDienstplanEntwurfFehler(
+        'Für diesen Dienstplan ist bereits ein Entwurf vorhanden.',
+      );
+    }
+    const veroeffentlichterPfad = { ...pfad, versionId: veroeffentlichteVersionId };
+    const veroeffentlichteSchichten = await this.loadSchichten(
+      veroeffentlichterPfad,
+      'networkOnly',
+    );
+    const versionId = this.firestoreDbService.createDocumentId(
+      FIRESTORE_COLLECTION_PATHS.dienstplanVersionen(pfad),
+    );
+    const entwurfPfad = { ...pfad, versionId };
+    const versionPath = FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(veroeffentlichterPfad);
+    const belegungstage = this.getMitarbeiterbelegungstageFuerSchichten(
+      entwurfPfad,
+      veroeffentlichteSchichten,
+      dienstplanDokument.daten.zeitzone,
+    );
+    const zeitstempel = this.firestoreDbService.createServerTimestamp();
+
+    return this.firestoreDbService.executeDocumentsTransaction<IDienstplanEntwurfAnlageErgebnis>(
+      [dienstplanPath, versionPath, ...belegungstage.map((tag) => tag.documentPath)],
+      (dokumente) => {
+        const aktuellerDienstplan = dokumente.get(dienstplanPath)?.daten as
+          IDienstplanDokument | undefined;
+        const veroeffentlichteVersion = dokumente.get(versionPath)?.daten as
+          IDienstplanVersionDokument | undefined;
+        if (
+          !aktuellerDienstplan ||
+          aktuellerDienstplan.entwurfVersionId ||
+          aktuellerDienstplan.veroeffentlichteVersionId !== veroeffentlichteVersionId ||
+          !veroeffentlichteVersion ||
+          veroeffentlichteVersion.status !== 'veroeffentlicht' ||
+          veroeffentlichteVersion.revision !== erwarteteRevision
+        ) {
+          throw createDienstplanEntwurfFehler(
+            'Der Dienstplan wurde zwischenzeitlich geändert. Bitte lade ihn erneut.',
+          );
+        }
+        const versionDaten: IDienstplanVersionDokument = {
+          nummer: aktuellerDienstplan.naechsteVersionsnummer,
+          revision: 0,
+          status: 'entwurf',
+          erstelltVonUid: benutzerUid,
+          aktualisiertVonUid: benutzerUid,
+        };
+        const kopierteSchichten = veroeffentlichteSchichten.map((schicht) => {
+          const schichtDaten: ISchichtDokument = {
+            datum: schicht.datum,
+            mitarbeiterId: schicht.mitarbeiterId,
+            modellschichtId: schicht.modellschichtId,
+            beginn: schicht.beginn,
+            ende: schicht.ende,
+            pauseMinuten: schicht.pauseMinuten,
+            erstelltVonUid: benutzerUid,
+            aktualisiertVonUid: benutzerUid,
+          };
+          return mapSchicht(entwurfPfad, schicht.id, schichtDaten);
+        });
+        const belegungsOperationen = this.createEntwurfBelegungsoperationen(
+          entwurfPfad,
+          dokumente,
+          belegungstage,
+          kopierteSchichten,
+          aktuellerDienstplan.zeitzone,
+          benutzerUid,
+          zeitstempel,
+          'Die neue Entwurfsversion konnte nicht angelegt werden.',
+        );
+        const aktualisierterDienstplan: IDienstplanDokument = {
+          ...aktuellerDienstplan,
+          entwurfVersionId: versionId,
+          naechsteVersionsnummer: aktuellerDienstplan.naechsteVersionsnummer + 1,
+          aktualisiertVonUid: benutzerUid,
+        };
+        return {
+          ergebnis: {
+            dienstplan: mapDienstplan(pfad, pfad.dienstplanId, aktualisierterDienstplan),
+            version: mapVersion(entwurfPfad, versionId, versionDaten),
+            schichten: kopierteSchichten,
+          },
+          operationen: mergeFirestoreOperationen([
+            {
+              documentPath: dienstplanPath,
+              daten: {
+                entwurfVersionId: versionId,
+                naechsteVersionsnummer: aktualisierterDienstplan.naechsteVersionsnummer,
+                aktualisiertAm: zeitstempel,
+                aktualisiertVonUid: benutzerUid,
+              },
+            },
+            {
+              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(entwurfPfad),
+              daten: { ...versionDaten, erstelltAm: zeitstempel, aktualisiertAm: zeitstempel },
+            },
+            ...kopierteSchichten.map((schicht) => {
+              return {
+                documentPath: FIRESTORE_DOCUMENT_PATHS.schicht({
+                  ...entwurfPfad,
+                  schichtId: schicht.id,
+                }),
+                daten: {
+                  datum: schicht.datum,
+                  mitarbeiterId: schicht.mitarbeiterId,
+                  modellschichtId: schicht.modellschichtId,
+                  beginn: schicht.beginn,
+                  ende: schicht.ende,
+                  pauseMinuten: schicht.pauseMinuten,
+                  erstelltAm: zeitstempel,
+                  erstelltVonUid: benutzerUid,
+                  aktualisiertAm: zeitstempel,
+                  aktualisiertVonUid: benutzerUid,
+                },
+              };
+            }),
+            ...belegungsOperationen,
+          ]),
+        };
+      },
+    );
+  }
+
+  /**
    * Legt eine Schicht an und erhöht die erwartete Entwurfsrevision atomar.
    *
    * @param pfad - Vollständiger Pfad der Entwurfsversion.
@@ -383,7 +802,7 @@ export class DienstplanService {
     anlage: ISchichtAnlage,
     benutzerUid: string,
   ): Promise<ISchichtSchreibergebnis> {
-    const schichtDaten = await this.createSchichtDaten(pfad, anlage);
+    const { schichtDaten, zeitzone } = await this.createSchichtDaten(pfad, anlage);
     calculateSchichtLohnzeitMinuten(schichtDaten);
     await this.assertWeitereBelegungErlaubt(pfad, schichtDaten);
     const schichtId = this.firestoreDbService.createDocumentId(
@@ -407,6 +826,7 @@ export class DienstplanService {
         aktualisiertVonUid: benutzerUid,
       },
       schicht,
+      zeitzone,
     );
   }
 
@@ -414,7 +834,7 @@ export class DienstplanService {
    * Aktualisiert eine Schicht und erhöht die erwartete Entwurfsrevision atomar.
    *
    * @param pfad - Vollständiger Pfad der Entwurfsversion.
-   * @param schichtId - Dokument-ID der Schicht.
+   * @param schicht - Bisheriger Stand der zu aktualisierenden Schicht.
    * @param erwarteteRevision - Vom Client zuletzt geladene Revision.
    * @param aktualisierung - Vollständige bearbeitbare Schichtdaten.
    * @param benutzerUid - UID des ändernden Benutzers.
@@ -427,7 +847,7 @@ export class DienstplanService {
     aktualisierung: ISchichtAktualisierung,
     benutzerUid: string,
   ): Promise<ISchichtSchreibergebnis> {
-    const schichtDaten = await this.createSchichtDaten(pfad, aktualisierung);
+    const { schichtDaten, zeitzone } = await this.createSchichtDaten(pfad, aktualisierung);
     calculateSchichtLohnzeitMinuten(schichtDaten);
     await this.assertWeitereBelegungErlaubt(pfad, schichtDaten, schicht.id);
     const aktualisierteSchicht: ISchichtEintrag = {
@@ -445,7 +865,9 @@ export class DienstplanService {
         aktualisiertVonUid: benutzerUid,
       },
       aktualisierteSchicht,
+      zeitzone,
       false,
+      schicht,
     );
   }
 
@@ -465,29 +887,57 @@ export class DienstplanService {
     benutzerUid: string,
   ): Promise<ISchichtSchreibergebnis> {
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
-    return this.firestoreDbService.executeDocumentTransaction<
-      IDienstplanVersionDokument,
-      ISchichtSchreibergebnis
-    >(FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad), (version) => {
-      const versionRevision = getNaechsteRevision(version?.daten, erwarteteRevision);
-      return {
-        ergebnis: { schicht, versionRevision },
-        operationen: [
-          {
-            documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad),
-            daten: {
-              revision: versionRevision,
-              aktualisiertAm: zeitstempel,
-              aktualisiertVonUid: benutzerUid,
+    const zeitzone = await this.loadDienstplanZeitzone(pfad);
+    const versionPath = FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad);
+    const belegungstage = this.getMitarbeiterbelegungstage(pfad, schicht, zeitzone);
+    return this.firestoreDbService.executeDocumentsTransaction<ISchichtSchreibergebnis>(
+      [versionPath, ...belegungstage.map((eintrag) => eintrag.documentPath)],
+      (dokumente) => {
+        const version = dokumente.get(versionPath)?.daten as IDienstplanVersionDokument | undefined;
+        if (!version) {
+          throw new Error('Der Dienstplan wurde zwischenzeitlich geändert. Bitte lade ihn erneut.');
+        }
+        const versionRevision = getNaechsteRevision(version, erwarteteRevision);
+        const referenz = createMitarbeiterbelegungReferenz(
+          pfad,
+          schicht.id,
+          version.status,
+          schicht,
+        );
+        const belegungsaenderungen = this.createMitarbeiterbelegungAenderungen(
+          pfad,
+          dokumente,
+          belegungstage,
+          referenz,
+          [],
+          null,
+          benutzerUid,
+          zeitstempel,
+        );
+        return {
+          ergebnis: {
+            schicht,
+            versionRevision,
+            pauseAktualisierungen: belegungsaenderungen.pauseAktualisierungen,
+          },
+          operationen: mergeFirestoreOperationen([
+            {
+              documentPath: versionPath,
+              daten: {
+                revision: versionRevision,
+                aktualisiertAm: zeitstempel,
+                aktualisiertVonUid: benutzerUid,
+              },
             },
-          },
-          {
-            documentPath: FIRESTORE_DOCUMENT_PATHS.schicht({ ...pfad, schichtId: schicht.id }),
-            delete: true,
-          },
-        ],
-      };
-    });
+            {
+              documentPath: FIRESTORE_DOCUMENT_PATHS.schicht({ ...pfad, schichtId: schicht.id }),
+              delete: true,
+            },
+            ...belegungsaenderungen.operationen,
+          ]),
+        };
+      },
+    );
   }
 
   // ===== Interne Helfer =======================
@@ -555,7 +1005,7 @@ export class DienstplanService {
       .map((dokument) => {
         return mapModellschichtMomentaufnahme(pfad, dokument.id, dokument.daten);
       })
-      .sort(compareModellschichtenNachBeginn);
+      .sort(compareModellschichtenNachReihenfolge);
   }
 
   private writeSchicht(
@@ -565,42 +1015,93 @@ export class DienstplanService {
     benutzerUid: string,
     daten: Record<string, unknown>,
     schicht: ISchichtEintrag,
+    zeitzone: string,
     istAnlage = true,
+    vorherigeSchicht?: ISchichtEintrag,
   ): Promise<ISchichtSchreibergebnis> {
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
-    return this.firestoreDbService.executeDocumentTransaction<
-      IDienstplanVersionDokument,
-      ISchichtSchreibergebnis
-    >(FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad), (version) => {
-      const versionRevision = getNaechsteRevision(version?.daten, erwarteteRevision);
-      return {
-        ergebnis: { schicht, versionRevision },
-        operationen: [
-          {
-            documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad),
-            daten: {
-              revision: versionRevision,
-              aktualisiertAm: zeitstempel,
-              aktualisiertVonUid: benutzerUid,
-            },
+    const versionPath = FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad);
+    const vorherigeTage = vorherigeSchicht
+      ? this.getMitarbeiterbelegungstage(pfad, vorherigeSchicht, zeitzone)
+      : [];
+    const aktuelleTage = this.getMitarbeiterbelegungstage(pfad, schicht, zeitzone);
+    return this.firestoreDbService.executeDocumentsTransaction<ISchichtSchreibergebnis>(
+      [
+        versionPath,
+        ...vorherigeTage.map((eintrag) => eintrag.documentPath),
+        ...aktuelleTage.map((eintrag) => eintrag.documentPath),
+      ],
+      (dokumente) => {
+        const version = dokumente.get(versionPath)?.daten as IDienstplanVersionDokument | undefined;
+        if (!version) {
+          throw new Error('Der Dienstplan wurde zwischenzeitlich geändert. Bitte lade ihn erneut.');
+        }
+        const versionRevision = getNaechsteRevision(version, erwarteteRevision);
+        const vorherigeReferenz = vorherigeSchicht
+          ? createMitarbeiterbelegungReferenz(
+              pfad,
+              vorherigeSchicht.id,
+              version.status,
+              vorherigeSchicht,
+            )
+          : null;
+        const aktuelleReferenz = createMitarbeiterbelegungReferenz(
+          pfad,
+          schichtId,
+          version.status,
+          schicht,
+        );
+        const belegungsaenderungen = this.createMitarbeiterbelegungAenderungen(
+          pfad,
+          dokumente,
+          vorherigeTage,
+          vorherigeReferenz,
+          aktuelleTage,
+          aktuelleReferenz,
+          benutzerUid,
+          zeitstempel,
+        );
+        const aktuellePause = belegungsaenderungen.pauseAktualisierungen.find(
+          (aktualisierung) => aktualisierung.schichtId === schichtId,
+        )?.pauseMinuten;
+        const aktualisierteSchicht = {
+          ...schicht,
+          ...(aktuellePause === undefined ? {} : { pauseMinuten: aktuellePause }),
+        };
+        return {
+          ergebnis: {
+            schicht: aktualisierteSchicht,
+            versionRevision,
+            pauseAktualisierungen: belegungsaenderungen.pauseAktualisierungen,
           },
-          {
-            documentPath: FIRESTORE_DOCUMENT_PATHS.schicht({ ...pfad, schichtId }),
-            daten: {
-              ...daten,
-              ...(istAnlage ? { erstelltAm: zeitstempel } : {}),
-              aktualisiertAm: zeitstempel,
+          operationen: mergeFirestoreOperationen([
+            {
+              documentPath: versionPath,
+              daten: {
+                revision: versionRevision,
+                aktualisiertAm: zeitstempel,
+                aktualisiertVonUid: benutzerUid,
+              },
             },
-          },
-        ],
-      };
-    });
+            {
+              documentPath: FIRESTORE_DOCUMENT_PATHS.schicht({ ...pfad, schichtId }),
+              daten: {
+                ...daten,
+                ...(istAnlage ? { erstelltAm: zeitstempel } : {}),
+                aktualisiertAm: zeitstempel,
+              },
+            },
+            ...belegungsaenderungen.operationen,
+          ]),
+        };
+      },
+    );
   }
 
   private async createSchichtDaten(
     pfad: IDienstplanVersionPfad,
     anlage: ISchichtAnlage,
-  ): Promise<ISchichtDaten> {
+  ): Promise<TSchichtDatenMitZeitzone> {
     const dienstplanPfad: IDienstplanPfad = pfad;
     const [dienstplanDokument, modellschichtDokument] = await Promise.all([
       this.firestoreDbService.loadDocument<IDienstplanDokument>(
@@ -640,7 +1141,302 @@ export class DienstplanService {
       rasterzeit,
       dienstplan.zeitzone,
     );
-    return { ...anlage, ...zeitdaten };
+    return { schichtDaten: { ...anlage, ...zeitdaten }, zeitzone: dienstplan.zeitzone };
+  }
+
+  private async loadDienstplanZeitzone(pfad: IDienstplanPfad): Promise<string> {
+    const dokument = await this.firestoreDbService.loadDocument<IDienstplanDokument>(
+      FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad),
+      'networkOnly',
+    );
+    if (!dokument) {
+      throw new Error('Der Dienstplan wurde nicht gefunden.');
+    }
+    return dokument.daten.zeitzone;
+  }
+
+  private getMitarbeiterbelegungstage(
+    pfad: IDienstplanVersionPfad,
+    schicht: ISchichtDaten,
+    zeitzone: string,
+  ): readonly TMitarbeiterbelegungTag[] {
+    const tage = [...new Set([schicht.datum, ...getMitarbeiterbelegungTage(schicht, zeitzone)])]
+      .slice()
+      .sort();
+    return tage.map((datum) => {
+      const mitarbeiterbelegungId = createMitarbeiterbelegungId(schicht.mitarbeiterId, datum);
+      return {
+        mitarbeiterId: schicht.mitarbeiterId,
+        datum,
+        documentPath: FIRESTORE_DOCUMENT_PATHS.mitarbeiterbelegung({
+          unternehmerId: pfad.unternehmerId,
+          firmaId: pfad.firmaId,
+          mitarbeiterbelegungId,
+        }),
+      };
+    });
+  }
+
+  private getMitarbeiterbelegungstageFuerSchichten(
+    pfad: IDienstplanVersionPfad,
+    schichten: readonly ISchichtEintrag[],
+    zeitzone: string,
+  ): readonly TMitarbeiterbelegungTag[] {
+    const tage = new Map<string, TMitarbeiterbelegungTag>();
+    schichten.forEach((schicht) => {
+      this.getMitarbeiterbelegungstage(pfad, schicht, zeitzone).forEach((tag) => {
+        tage.set(tag.documentPath, tag);
+      });
+    });
+    return [...tage.values()];
+  }
+
+  private createStatuswechselBelegungsoperationen(
+    pfad: IDienstplanVersionPfad,
+    dokumente: TFirestoreTransaktionsDokumente,
+    tage: readonly TMitarbeiterbelegungTag[],
+    entwurfSchichten: readonly ISchichtEintrag[],
+    alteSchichten: readonly ISchichtEintrag[],
+    zeitzone: string,
+    benutzerUid: string,
+    zeitstempel: FieldValue,
+    fehlerPrefix: string,
+  ): readonly TFirestoreBatchOperation[] {
+    return this.createMehrfachBelegungsoperationen(
+      dokumente,
+      tage,
+      [
+        ...alteSchichten.map((schicht) => {
+          return {
+            schicht,
+            entfernen: createMitarbeiterbelegungReferenz(
+              { ...pfad, versionId: schicht.versionId },
+              schicht.id,
+              'veroeffentlicht' as const,
+              schicht,
+            ),
+            hinzufuegen: null,
+          };
+        }),
+        ...entwurfSchichten.map((schicht) => {
+          return {
+            schicht,
+            entfernen: createMitarbeiterbelegungReferenz(
+              pfad,
+              schicht.id,
+              'entwurf' as const,
+              schicht,
+            ),
+            hinzufuegen: createMitarbeiterbelegungReferenz(
+              pfad,
+              schicht.id,
+              'veroeffentlicht' as const,
+              schicht,
+            ),
+          };
+        }),
+      ],
+      zeitzone,
+      benutzerUid,
+      zeitstempel,
+      fehlerPrefix,
+    );
+  }
+
+  private createEntwurfBelegungsoperationen(
+    pfad: IDienstplanVersionPfad,
+    dokumente: TFirestoreTransaktionsDokumente,
+    tage: readonly TMitarbeiterbelegungTag[],
+    schichten: readonly ISchichtEintrag[],
+    zeitzone: string,
+    benutzerUid: string,
+    zeitstempel: FieldValue,
+    fehlerPrefix: string,
+  ): readonly TFirestoreBatchOperation[] {
+    return this.createMehrfachBelegungsoperationen(
+      dokumente,
+      tage,
+      schichten.map((schicht) => {
+        return {
+          schicht,
+          entfernen: null,
+          hinzufuegen: createMitarbeiterbelegungReferenz(pfad, schicht.id, 'entwurf', schicht),
+        };
+      }),
+      zeitzone,
+      benutzerUid,
+      zeitstempel,
+      fehlerPrefix,
+    );
+  }
+
+  private createMehrfachBelegungsoperationen(
+    dokumente: TFirestoreTransaktionsDokumente,
+    tage: readonly TMitarbeiterbelegungTag[],
+    aenderungen: readonly {
+      schicht: ISchichtEintrag;
+      entfernen: IMitarbeiterbelegungReferenz | null;
+      hinzufuegen: IMitarbeiterbelegungReferenz | null;
+    }[],
+    zeitzone: string,
+    benutzerUid: string,
+    zeitstempel: FieldValue,
+    fehlerPrefix: string,
+  ): readonly TFirestoreBatchOperation[] {
+    const aktualisierteDokumente: IMitarbeiterbelegungDokument[] = [];
+    const operationen = tage.flatMap((tag): TFirestoreBatchOperation[] => {
+      const vorhanden = (dokumente.get(tag.documentPath)?.daten ??
+        null) as IMitarbeiterbelegungDokument | null;
+      let aktualisiert = vorhanden;
+      aenderungen.forEach((aenderung) => {
+        if (aenderung.schicht.mitarbeiterId !== tag.mitarbeiterId) return;
+        const giltAmTag = getMitarbeiterbelegungTage(aenderung.schicht, zeitzone).includes(
+          tag.datum,
+        );
+        if (!giltAmTag && aenderung.schicht.datum !== tag.datum) return;
+        aktualisiert = updateMitarbeiterbelegungDokument(
+          aktualisiert,
+          tag.mitarbeiterId,
+          tag.datum,
+          aenderung.entfernen,
+          aenderung.hinzufuegen,
+          benutzerUid,
+        );
+      });
+      if (!aktualisiert) {
+        return vorhanden ? [{ documentPath: tag.documentPath, delete: true }] : [];
+      }
+      aktualisierteDokumente.push(aktualisiert);
+      return [
+        {
+          documentPath: tag.documentPath,
+          daten: { ...aktualisiert, aktualisiertAm: zeitstempel },
+          replaceFields: true,
+        },
+      ];
+    });
+    const nachMitarbeiter = new Map<string, IMitarbeiterbelegungReferenz[]>();
+    aktualisierteDokumente.forEach((dokument) => {
+      nachMitarbeiter.set(dokument.mitarbeiterId, [
+        ...(nachMitarbeiter.get(dokument.mitarbeiterId) ?? []),
+        ...dokument.belegungen,
+      ]);
+    });
+    const konflikt = [...nachMitarbeiter.values()]
+      .flatMap((belegungen) => getMitarbeiterbelegungKonflikte(belegungen))
+      .at(0);
+    if (konflikt) {
+      throw new DienstplanFachfehler(`${fehlerPrefix} ${konflikt.meldung}`);
+    }
+    return operationen;
+  }
+
+  private createMitarbeiterbelegungAenderungen(
+    pfad: IFirmaPfad,
+    dokumente: TFirestoreTransaktionsDokumente,
+    vorherigeTage: readonly TMitarbeiterbelegungTag[],
+    vorherigeReferenz: IMitarbeiterbelegungReferenz | null,
+    aktuelleTage: readonly TMitarbeiterbelegungTag[],
+    aktuelleReferenz: IMitarbeiterbelegungReferenz | null,
+    benutzerUid: string,
+    zeitstempel: FieldValue,
+  ): TMitarbeiterbelegungAenderungen {
+    const tage = new Map<string, TMitarbeiterbelegungTag>();
+    [...vorherigeTage, ...aktuelleTage].forEach((tag) => {
+      tage.set(tag.documentPath, tag);
+    });
+    const operationen: TFirestoreBatchOperation[] = [];
+    const aktualisierteDokumente: IMitarbeiterbelegungDokument[] = [];
+    for (const tag of tage.values()) {
+      const vorherigeGilt = vorherigeTage.some((eintrag) => {
+        return eintrag.documentPath === tag.documentPath;
+      });
+      const aktuelleGilt = aktuelleTage.some((eintrag) => {
+        return eintrag.documentPath === tag.documentPath;
+      });
+      const dokument = (dokumente.get(tag.documentPath)?.daten ??
+        null) as IMitarbeiterbelegungDokument | null;
+      const aktualisiert = updateMitarbeiterbelegungDokument(
+        dokument,
+        tag.mitarbeiterId,
+        tag.datum,
+        vorherigeGilt ? vorherigeReferenz : null,
+        aktuelleGilt ? aktuelleReferenz : null,
+        benutzerUid,
+      );
+      if (!aktualisiert) {
+        if (dokument) {
+          operationen.push({ documentPath: tag.documentPath, delete: true });
+        }
+        continue;
+      }
+      aktualisierteDokumente.push(aktualisiert);
+      operationen.push({
+        documentPath: tag.documentPath,
+        daten: { ...aktualisiert, aktualisiertAm: zeitstempel },
+        replaceFields: true,
+      });
+    }
+    const dokumenteNachMitarbeiter = new Map<string, IMitarbeiterbelegungDokument[]>();
+    aktualisierteDokumente.forEach((dokument) => {
+      dokumenteNachMitarbeiter.set(dokument.mitarbeiterId, [
+        ...(dokumenteNachMitarbeiter.get(dokument.mitarbeiterId) ?? []),
+        dokument,
+      ]);
+    });
+    const pauseAktualisierungen = [...dokumenteNachMitarbeiter.values()].flatMap(
+      (mitarbeiterDokumente) => {
+        return getMitarbeiterbelegungPausenzuordnungen(
+          mitarbeiterDokumente.flatMap((dokument) => dokument.belegungen),
+        ).map(({ belegung, pauseMinuten }) => {
+          return {
+            ...pfad,
+            filialeId: belegung.filialeId,
+            dienstplanId: belegung.dienstplanId,
+            versionId: belegung.versionId,
+            schichtId: belegung.schichtId,
+            pauseMinuten,
+          };
+        });
+      },
+    );
+    const pauseNachReferenz = new Map(
+      pauseAktualisierungen.map((aktualisierung) => {
+        return [
+          createMitarbeiterbelegungReferenzSchluessel(aktualisierung),
+          aktualisierung.pauseMinuten,
+        ];
+      }),
+    );
+    const indexOperationen = operationen.map((operation) => {
+      if ('delete' in operation || !Array.isArray(operation.daten['belegungen'])) return operation;
+      const belegungen = operation.daten['belegungen'] as IMitarbeiterbelegungReferenz[];
+      return {
+        ...operation,
+        daten: {
+          ...operation.daten,
+          belegungen: belegungen.map((belegung) => {
+            const pauseMinuten = pauseNachReferenz.get(
+              createMitarbeiterbelegungReferenzSchluessel(belegung),
+            );
+            return pauseMinuten === undefined ? belegung : { ...belegung, pauseMinuten };
+          }),
+        },
+      };
+    });
+    const pausenOperationen: TFirestoreBatchOperation[] = pauseAktualisierungen.map(
+      (aktualisierung) => {
+        return {
+          documentPath: FIRESTORE_DOCUMENT_PATHS.schicht(aktualisierung),
+          daten: {
+            pauseMinuten: aktualisierung.pauseMinuten,
+            aktualisiertAm: zeitstempel,
+            aktualisiertVonUid: benutzerUid,
+          },
+        };
+      },
+    );
+    return { operationen: [...indexOperationen, ...pausenOperationen], pauseAktualisierungen };
   }
 
   /**
@@ -713,6 +1509,7 @@ function mapSchicht(
     modellschichtId: daten.modellschichtId,
     beginn: daten.beginn,
     ende: daten.ende,
+    pauseMinuten: daten.pauseMinuten ?? 0,
     erstelltVonUid: daten.erstelltVonUid,
     aktualisiertVonUid: daten.aktualisiertVonUid,
     ...(daten.erstelltAm ? { erstelltAm: daten.erstelltAm } : {}),
@@ -729,9 +1526,9 @@ function mapModellschichtMomentaufnahme(
     ...pfad,
     id,
     bezeichnung: daten.bezeichnung,
-    beginnLokalzeit: daten.beginnLokalzeit,
-    endeLokalzeit: daten.endeLokalzeit,
-    endetAmFolgetag: daten.endetAmFolgetag,
+    reihenfolge: daten.reihenfolge,
+    ...(daten.beginn ? { beginn: { ...daten.beginn } } : {}),
+    ...(daten.ende ? { ende: { ...daten.ende } } : {}),
     mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt,
     vorbereitungsminuten: daten.vorbereitungsminuten ?? 0,
     nachbereitungsminuten: daten.nachbereitungsminuten ?? 0,

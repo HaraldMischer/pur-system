@@ -9,6 +9,7 @@ import type {
   IFilialeinstellungPfad,
   IFilialeinstellungSondertagPfad,
   IModellschichtPfad,
+  IMitarbeiterbelegungPfad,
   ISchichtPfad,
   ISchichtmodellPfad,
 } from '../models/app/firestore-pfad.types';
@@ -47,6 +48,9 @@ export const FIRESTORE_COLLECTION_PATHS = {
   },
   mitarbeiter(unternehmerId: string, firmaId: string): string {
     return `unternehmer/${unternehmerId}/firma/${firmaId}/mitarbeiter`;
+  },
+  mitarbeiterbelegungen(unternehmerId: string, firmaId: string): string {
+    return `unternehmer/${unternehmerId}/firma/${firmaId}/mitarbeiterbelegung`;
   },
   filialeinstellungen(pfad: IFilialPfad): string {
     return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/einstellung`;
@@ -119,6 +123,12 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   },
   mitarbeiter(unternehmerId: string, firmaId: string, mitarbeiterId: string): string {
     return `${FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId)}/${mitarbeiterId}`;
+  },
+  mitarbeiterbelegung(pfad: IMitarbeiterbelegungPfad): string {
+    return `${FIRESTORE_COLLECTION_PATHS.mitarbeiterbelegungen(
+      pfad.unternehmerId,
+      pfad.firmaId,
+    )}/${pfad.mitarbeiterbelegungId}`;
   },
   filialeinstellung(pfad: IFilialeinstellungPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.filialeinstellungen(pfad)}/${pfad.einstellungId}`;

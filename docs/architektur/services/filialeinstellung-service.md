@@ -16,11 +16,10 @@ Zustand als Fehler behandelt.
 Die Initialisierung verlangt Bundesland, Schließzeitraum und vollständige Wochenregeln für alle sieben Tage. Die Oberfläche
 übergibt zunächst fest Nordrhein-Westfalen (`DE-NW`) und den Schließzeitraum `01:00` bis `06:00` Uhr. Daraus wird für alle
 Wochentage der maximale Öffnungsrahmen `06:00` bis `01:00` Uhr am Folgetag abgeleitet. Der Service legt die dafür geltenden
-systemdefinierten Feiertage sowie die zentral vorgesehenen festen Sondertage inaktiv an,
-sodass zunächst die Wochentagsregel gilt. Ihre geschlossenen Öffnungsregeln benötigen initial keine Zeitfelder; die Oberfläche
-verwendet bei fehlenden Zeitwerten den aus dem Schließzeitraum abgeleiteten maximalen Öffnungsrahmen als Formularvorbelegung.
-Werte werden nicht aus Adresse oder Postleitzahl abgeleitet. Die anwendungsweit feste technische Zeitzone `Europe/Berlin` wird
-nicht in den Filialeinstellungen gespeichert.
+systemdefinierten Feiertage sowie die zentral vorgesehenen festen Sondertage inaktiv an, sodass zunächst die Wochentagsregel
+gilt. Ihre geschlossenen Öffnungsregeln erhalten Beginn, Ende und Folgetagskennzeichen aus dem aktuellen maximalen
+Öffnungsrahmen. Werte werden nicht aus Adresse oder Postleitzahl abgeleitet. Die anwendungsweit feste technische Zeitzone
+`Europe/Berlin` wird nicht in den Filialeinstellungen gespeichert.
 
 ## Schreiben
 

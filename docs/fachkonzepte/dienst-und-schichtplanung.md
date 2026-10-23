@@ -30,7 +30,7 @@ unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/einstellung/allge
 unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/einstellung/oeffnungszeiten
   /sondertag/{sondertagId}
   /ausnahme/{YYYY-MM-DD}
-unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiterbelegung/{mitarbeiterId}_{datum}
+unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiterbelegung/{mitarbeiterId}__{datum}
 ```
 
 Die filialbezogenen Dienstpläne bleiben die fachliche Quelle der einzelnen Schichten. Der Belegungsindex ist eine gemeinsam mit
@@ -66,9 +66,8 @@ entweder ein jährlich festes Datum oder einen zentral definierten gesetzlichen 
 Feiertage werden aus einem lokalen Katalog bundeslandspezifisch berechnet. Lokal oder kommunal begrenzte Feiertage werden nicht
 allein aus dem Bundesland abgeleitet und müssen als eigener fester Sondertag gepflegt werden. Heiligabend und Silvester werden
 wie die landesweit geltenden gesetzlichen Feiertage bei der Initialisierung inaktiv angelegt. Damit gilt zunächst die
-Wochentagsregel, bis ein abweichender besonderer Tag gezielt aktiviert wird. Die geschlossenen Regeln dieser systemdefinierten
-Tage benötigen initial keine Zeitwerte. Der Bearbeitungsdialog verwendet bei fehlenden Zeitwerten für Feiertage und jährliche
-Sondertage den aus dem Schließzeitraum abgeleiteten größtmöglichen Öffnungsrahmen als Vorbelegung.
+Wochentagsregel, bis ein abweichender besonderer Tag gezielt aktiviert wird. Ihre geschlossenen Öffnungsregeln erhalten bereits
+bei der Initialisierung den aus dem Schließzeitraum abgeleiteten größtmöglichen Öffnungsrahmen als zeitliche Vorbelegung.
 
 Der Aktivstatus steuert ausschließlich, ob die besondere Öffnungsregel die Wochentagsregel überschreibt. Ein gesetzlicher
 Feiertag bleibt unabhängig davon kalendarisch ein gesetzlicher Feiertag. Diese Unterscheidung wird bei den tagesabhängigen
@@ -103,20 +102,21 @@ oder Postleitzahl abgeleitet. Der `FilialeinstellungStore` hält vollständige B
 für jeden Filialpfad getrennt und stellt die Datumsauflösung bereit.
 
 Allgemeine Einstellungen, Wochenregeln und der automatische Sondertagsabgleich eines Bundeslandwechsels werden atomar
-geschrieben. Benutzerdefinierte Sondertage und Datumsausnahmen bleiben einzeln anleg-, änder- und löschbar. Systemdefinierte
-Sondertage können nur in Aktivstatus und Öffnungsregel verändert werden. Der Schließzeitraum wird gemeinsam mit den
-Wochenregeln gespeichert. Eine Änderung wird nicht automatisch auf vorhandene Öffnungsregeln übertragen. Überschneidet danach
-eine gespeicherte geöffnete Wochen-, Sondertags- oder Ausnahmeregel den neuen Schließzeitraum, wird der Schreibvorgang mit einem
-konkreten Hinweis auf die widersprechende Regel verhindert. Die Firestore Rules gewähren Masterkonten aufgrund ihrer Rolle
-sowie zugeordneten Office- und Filialkonten mit dem Bereich `einstellungen` Zugriff. Mitarbeiterkonten und nicht zugeordnete
-Filialen bleiben ausgeschlossen. Die Rules prüfen dafür Rolle, aktives Profil, Filialzugriff, Bereich und Collection-Pfad;
-Dokument-IDs, Feldinhalte, Datumsregeltypen und lokale Zeitwerte validiert der TypeScript-Code.
+geschrieben. Neu hinzukommende systemdefinierte Sondertage erhalten dabei ebenfalls die aus dem aktuellen Schließzeitraum
+abgeleitete zeitliche Vorbelegung. Benutzerdefinierte Sondertage und Datumsausnahmen bleiben einzeln anleg-, änder- und
+löschbar. Systemdefinierte Sondertage können nur in Aktivstatus und Öffnungsregel verändert werden. Der Schließzeitraum wird
+gemeinsam mit den Wochenregeln gespeichert. Eine Änderung wird nicht automatisch auf vorhandene Öffnungsregeln übertragen.
+Überschneidet danach eine gespeicherte geöffnete Wochen-, Sondertags- oder Ausnahmeregel den neuen Schließzeitraum, wird der
+Schreibvorgang mit einem konkreten Hinweis auf die widersprechende Regel verhindert. Die Firestore Rules gewähren Masterkonten
+aufgrund ihrer Rolle sowie zugeordneten Office- und Filialkonten mit dem Bereich `einstellungen` Zugriff. Mitarbeiterkonten und
+nicht zugeordnete Filialen bleiben ausgeschlossen. Die Rules prüfen dafür Rolle, aktives Profil, Filialzugriff, Bereich und
+Collection-Pfad; Dokument-IDs, Feldinhalte, Datumsregeltypen und lokale Zeitwerte validiert der TypeScript-Code.
 
 ## Planungsart Schichtraster
 
 Jede Filiale besitzt eigene vorkonfigurierte Schichtmodelle, damit unterschiedliche Öffnungs- und Betriebszeiten unabhängig
-voneinander abgebildet werden können. Ein Schichtmodell enthält eine Bezeichnung, einen Aktivstatus und eine chronologisch nach
-Beginn geordnete Liste eigener Modellschichten. Jede Modellschicht gehört ausschließlich zu ihrem Modell und wird nicht als
+voneinander abgebildet werden können. Ein Schichtmodell enthält eine Bezeichnung, einen Aktivstatus und eine fachlich geordnete
+Liste eigener Modellschichten. Jede Modellschicht gehört ausschließlich zu ihrem Modell und wird nicht als
 eigenständige, wiederverwendbare Schichtvorlage geführt. Dadurch können beispielsweise die Modelle `Sommer` mit Früh-,
 Mittags- und Spätschicht sowie `Winter` mit nur Früh- und Spätschicht vollständig unabhängig voneinander definiert werden.
 
@@ -137,25 +137,32 @@ und Mehrfachbelegung ändern sich nicht abhängig von Wochentag, Feiertag oder S
 Spätschicht bleibt deshalb an jedem Tag dreispaltig; ein Modell mit Früh- und Spätschicht bleibt durchgehend zweispaltig.
 Sonntag und Samstag verwenden dasselbe Schichtraster wie die übrigen Kalendertage.
 
-Die frei gepflegten Zeiten der Modellschichten bilden die Grundzeiten des Rasters. Für jeden Kalendertag wird daraus anhand der
-wirksamen Öffnungsregel eine tagesabhängige Rasterzeit abgeleitet. Der Beginn des ersten Rasterplatzes entspricht grundsätzlich
-dem Öffnungsbeginn, das Ende des letzten Rasterplatzes dem Öffnungsende. Bei einem Modell mit nur einem Rasterplatz werden beide
-Grenzen angepasst. Die inneren Schichtgrenzen bleiben unverändert. So wird beispielsweise aus einer Frühschicht von
-`08:00–16:30 Uhr` bei einem sonntäglichen Öffnungsbeginn um `10:00 Uhr` die Rasterzeit `10:00–16:30 Uhr`.
+Die Modellschichten besitzen eine ausdrücklich gespeicherte Reihenfolge. Der Beginn des ersten Rasterplatzes wird nicht als
+feste Modellzeit gepflegt, sondern für jeden Kalendertag aus dessen wirksamem Öffnungsbeginn abgeleitet. Entsprechend wird das
+Ende des letzten Rasterplatzes aus dem wirksamen Öffnungsende abgeleitet. Bei einem Modell mit nur einem Rasterplatz gelten
+beide tagesabhängigen Außengrenzen. Deshalb werden die beiden äußeren Zeitfelder im Modell nicht bearbeitet und für einen
+allein vorhandenen Rasterplatz keine feste Schichtdauer angezeigt. Auch für innere Rasterplätze wird im Modelldialog keine
+berechnete Schichtdauer dargestellt.
+
+Bei mehreren Rasterplätzen bleiben die inneren Beginn- und Endzeiten unabhängig voneinander bearbeitbar. Sobald der Beginn
+einer neu hinzugefügten Modellschicht erstmals eingegeben wird, wird er zunächst als Ende der vorherigen Modellschicht
+vorbelegt; anschließend können beide Werte getrennt geändert werden. Für beide inneren Grenzen wird nur die Uhrzeit erfasst.
+Ihre Zuordnung zum Start- oder Folgetag ergibt sich automatisch aus dem Schließzeitraum der Filiale. Dadurch sind lückenlose
+Übergaben, bewusste Lücken und auch gleichzeitige Überlappungen von mehr als zwei Rasterplätzen möglich. Eine Lücke
+verhindert das Speichern des Modells nicht, wird aber vor dem Speichern als fachlicher Hinweis angezeigt. Jeder für einen
+konkreten Kalendertag angebotene Rasterplatz muss weiterhin eine positive Dauer besitzen.
 
 Die erste Modellschicht kann zusätzliche Vorbereitungsminuten und die letzte Modellschicht zusätzliche Nachbereitungsminuten
-festlegen. Diese nicht negativen Minutenwerte erweitern ausschließlich die automatisch angepassten äußeren Grenzen: Der erste
-Rasterplatz beginnt entsprechend vor dem Öffnungsbeginn, der letzte endet entsprechend nach dem Öffnungsende. Bei einem Modell
-mit nur einem Rasterplatz können beide Werte gelten. Vor- und Nachbereitung werden damit ausdrücklich modelliert und nicht über
-von den Öffnungszeiten unabhängige Schichtzeiten abgebildet.
+festlegen. Diese ganzen Minutenwerte von 0 bis 999 erweitern ausschließlich die automatisch angepassten äußeren Grenzen: Der
+erste Rasterplatz beginnt entsprechend vor dem Öffnungsbeginn, der letzte endet entsprechend nach dem Öffnungsende. Bei einem
+Modell mit nur einem Rasterplatz können beide Werte gelten. Vor- und Nachbereitung werden damit ausdrücklich modelliert und
+nicht über von den Öffnungszeiten unabhängige Schichtzeiten abgebildet.
 
-Feiertage, Sondertage und einmalige Datumsausnahmen wirken über ihre jeweils gültige Öffnungsregel automatisch auf die äußeren
-Rastergrenzen. Optionale besondere Rasterzeiten bleiben ausschließlich für abweichende innere Schichtgrenzen jährlich
-wiederkehrender Sondertage erforderlich. Einmalige Datumsausnahmen behalten die inneren Grenzen des Schichtmodells unverändert.
-Besondere Rasterzeiten dürfen keine Modellschicht hinzufügen, entfernen oder umsortieren. Die automatische Anpassung an
-Öffnungsbeginn und Öffnungsende erfolgt anschließend verbindlich. Ergibt sich dadurch für einen Rasterplatz keine positive
-Dauer, ist das Schichtmodell für diese Öffnungsregel ungeeignet; die Modellpflege beziehungsweise Dienstplananlage muss den
-Konflikt verständlich benennen. An einem geschlossenen Tag stehen keine wirksamen Rasterzeiten zur Schichtanlage bereit.
+Feiertage, Sondertage und einmalige Datumsausnahmen wirken ausschließlich über ihre jeweils gültige Öffnungsregel auf die
+tagesabhängigen Außengrenzen. Eigene besondere Rasterzeiten für Sondertage werden nicht gepflegt. Lässt sich ein Rasterplatz
+an einem Kalendertag nicht vollständig und mit positiver Dauer in die wirksamen Tagesgrenzen einordnen, erhält er an diesem Tag
+keine wirksame Rasterzeit und kann nicht belegt werden. Passen an einem Tag keine Rasterplätze, werden dort keine Schichten zur
+Anlage angeboten. An einem geschlossenen Tag stehen ebenfalls keine wirksamen Rasterzeiten zur Verfügung.
 
 Wird eine besondere Öffnungsregel später deaktiviert, gilt wieder die nachrangige Öffnungsregel. Bereits angelegte Monatspläne
 bleiben aufgrund ihrer Momentaufnahme unverändert. Unabhängig von den wirksamen Rasterzeiten bleiben die Eigenschaften als
@@ -163,9 +170,10 @@ Sonntag, gesetzlicher Feiertag oder sonstiger Sondertag in der Monatsplan-Moment
 
 Der Monatsdienstplan speichert für jeden seiner höchstens 31 Kalendertage eine vollständig aufgelöste Tagesmomentaufnahme. Sie
 enthält Datum, Wochentag, wirksame Öffnungsregel, deren Quelle, vorhandene Quell-IDs und Bezeichnungen sowie die unabhängig
-davon ermittelten Kalendereigenschaften. Hinzu kommen für jeden stabilen Rasterplatz die an diesem Tag wirksamen Beginn- und
-Endzeiten. Die Tagesmomentaufnahme wird bei späteren Änderungen an Filialeinstellungen, Feiertagsregeln oder Schichtmodellen
-nicht neu berechnet.
+davon ermittelten Kalendereigenschaften. Hinzu kommen die an diesem Tag tatsächlich passenden Rasterplätze mit ihren wirksamen
+Beginn- und Endzeiten. Die stabilen Modellschicht-IDs und die Spaltenstruktur des Monatsrasters bleiben dabei erhalten; eine
+fehlende Rasterzeit sperrt nur die betreffende Zelle. Die Tagesmomentaufnahme wird bei späteren Änderungen an
+Filialeinstellungen, Feiertagsregeln oder Schichtmodellen nicht neu berechnet.
 
 Die Tagesmomentaufnahmen liegen als auf höchstens 31 Einträge begrenzte Liste `kalendertage` direkt im Dokument des
 Monatsdienstplans. Sie werden gemeinsam mit dem Dienstplan atomar angelegt und bei jeder Dienstplanladung ohne zusätzliche
@@ -176,17 +184,17 @@ Nacht-, Sonntags- und Feiertagszuschläge werden in der ersten Ausbaustufe weder
 Bewertung leitet sie aus den tatsächlichen Schichtzeiten und den Kalendereigenschaften ab und nicht aus der Herkunft einer
 Rasterzeit.
 
-Eine Modellschicht enthält mindestens eine innerhalb ihres Modells eindeutige ID, eine Bezeichnung sowie eine lokale Beginn-
-und Endzeit. Die erste Modellschicht kann zusätzlich Vorbereitungsminuten, die letzte Nachbereitungsminuten enthalten. Liegt die
-Endzeit vor der Beginnzeit, wird der Folgetag automatisch abgeleitet; identische Uhrzeiten sind ungültig.
-Die Reihenfolge der Modellschichten ergibt sich automatisch aus ihrer lokalen Beginnzeit; bei identischem Beginn werden Ende,
-Bezeichnung und ID als stabile Sortiermerkmale verwendet. Zusätzlich bestimmt `mehrfachbelegungErlaubt`, ob eine Rasterzelle
-dieser Modellschicht mit mehreren Mitarbeitern besetzt werden darf. Der Standardwert ist `false`; ohne aktivierte
-Mehrfachbelegung ist höchstens eine konkrete Mitarbeiterschicht je Kalendertag und Modellschicht zulässig. Weder Reihenfolge
-noch Anzahl werden redundant gespeichert. Nicht mehr verwendete Schichtmodelle werden deaktiviert und nicht physisch gelöscht.
+Eine Modellschicht enthält mindestens eine innerhalb ihres Modells eindeutige ID, eine Bezeichnung und eine ausdrücklich
+gespeicherte Reihenfolge. Feste innere Beginn- und Endzeiten enthalten zusätzlich die eindeutige Zuordnung zum Start- oder
+Folgetag. Bei der ersten Modellschicht wird der Beginn, bei der letzten das Ende nicht redundant gespeichert. Die erste
+Modellschicht kann zusätzlich Vorbereitungsminuten, die letzte Nachbereitungsminuten enthalten. Zusätzlich bestimmt
+`mehrfachbelegungErlaubt`, ob eine Rasterzelle dieser Modellschicht mit mehreren Mitarbeitern besetzt werden darf. Der
+Standardwert ist `false`; ohne aktivierte Mehrfachbelegung ist höchstens eine konkrete Mitarbeiterschicht je Kalendertag und
+Modellschicht zulässig. Nicht mehr verwendete Modelle der neuen Struktur werden deaktiviert und nicht physisch gelöscht. Für
+die Umstellung werden vorhandene alte Schichtmodelle nicht migriert, sondern gelöscht und vollständig neu angelegt.
 
 Beim Anlegen eines Monatsdienstplans wählt der Planer ein aktives Schichtmodell der konkreten Filiale. Der Monatsdienstplan
-speichert die Modell-ID, die Modellbezeichnung und die vollständige chronologisch geordnete Liste ihrer Modellschichten als
+speichert die Modell-ID, die Modellbezeichnung und die vollständige fachlich geordnete Liste ihrer Modellschichten als
 Momentaufnahme. Noch nicht initialisierte Filialeinstellungen verhindern die Anlage; die Oberfläche weist dann darauf hin, dass
 zuerst die Öffnungszeiten der Filiale initialisiert werden müssen. Unvollständige Filialeinstellungen, mehrere am selben Datum
 wirksame Kalenderregeln und ein zwischenzeitlich ungültiges Schichtmodell verhindern die Anlage ebenfalls und werden mit ihrer
@@ -253,10 +261,11 @@ Zielmodellschicht sowie die aus den Rasterzeiten der Zielzeile abgeleiteten Zeit
 bisherige Rasterzelle bewirkt keinen eigenen Schreibzugriff. Belegung und zeitliche Konflikte werden für die Zielzelle nach
 denselben Regeln wie bei einer Neuanlage geprüft. Veröffentlichte und archivierte Schichten sind nicht verschiebbar.
 
-Schichtmodelle dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. In der Filial-App gilt
-zusätzlich die clientseitige Bedienbegrenzung auf einen aktiven Firma-Mitarbeiter mit `dienstplaner`. Mitarbeiterzugänge lesen
-keine verwaltbaren Schichtmodelle; die für ihre veröffentlichten Schichten benötigten Angaben stehen über die unveränderliche
-Schichtmodell-Momentaufnahme des Monatsplans und die gespeicherten konkreten Schichtzeiten bereit.
+Schichtmodelle dürfen durch dieselben berechtigten Planer wie Dienstplanentwürfe verwaltet werden. Aktuell sind das Master- und
+berechtigte Office-Konten. Filialkonten verwenden bis zur Umsetzung des betrieblichen `dienstplaner`-Sitzungszustands
+ausschließlich die veröffentlichte Ansicht. Mitarbeiterzugänge lesen keine verwaltbaren Schichtmodelle; die für ihre
+veröffentlichten Schichten benötigten Angaben stehen über die unveränderliche Schichtmodell-Momentaufnahme des Monatsplans und
+die gespeicherten konkreten Schichtzeiten bereit.
 
 ## Abfrage- und Cache-Strategie
 
@@ -301,6 +310,14 @@ Oberfläche angezeigt. Die Firestore Rules gewähren gemäß Matrix Leserechte a
 Nach dem Laden werden die eindeutigen Mitarbeiter-IDs der sichtbaren Schichten ermittelt. Bereits
 im Mitarbeiter-Store vorhandene Einträge werden wiederverwendet; nur fehlende Mitarbeiterdokumente werden gezielt über ihre
 Dokument-ID nachgeladen.
+
+Die Dienstplanübersicht führt die veröffentlichten Monatsstände aller ausgewählten Filialen in einer gemeinsamen, lesenden
+Ansicht zusammen. Innerhalb jeder Filiale werden die Schichten nach Kalendertagen gruppiert und mit Zeitspanne, Mitarbeiter,
+bezahlter Pause sowie Veröffentlichungsstand angezeigt. Fehlt die veröffentlichte Referenz, gilt der Monat in der
+Mitarbeiteransicht als nicht veröffentlicht; ein Entwurf wird nicht ersatzweise angezeigt. Wird eine Veröffentlichung später
+ersetzt, erscheint nach der nächsten Netzwerkladung ausschließlich die neu referenzierte Version. Ein eigenständiger
+Zurückziehungsablauf ist derzeit nicht vorgesehen; ein zukünftig zurückgezogener Stand ohne Veröffentlichungsreferenz würde
+denselben Leerzustand verwenden.
 
 Alle Auslieferungsvarianten lösen Anzeigename und `farbkennung` einer Schicht über deren `mitarbeiterId` aus den aktuellen
 Mitarbeiterstammdaten auf. Master, Office und Filiale können dabei regelmäßig bereits geladene Mitarbeiter verwenden. Auch für
@@ -366,16 +383,19 @@ vollständiger Filialzuordnung.
 Die verbindlichen Collection-Rechte und Bedingungen stehen in der
 [Berechtigungsmatrix](../matrizen/berechtigungen.md). Kurz zusammengefasst:
 
-- `master` plant in allen Filialen, `office` nur in freigegebenen Filialen und `filiale` nur in der eigenen Filiale.
-- Diese drei Rollen besitzen die in der Matrix aufgeführten CRUD-Rechte. Welche Zustände bearbeitet oder gelöscht werden dürfen,
-  prüft der TypeScript-Code.
+- `master` plant in allen Filialen und `office` nur in freigegebenen Filialen. Filialkonten verwenden in der aktuellen
+  Oberfläche ausschließlich die veröffentlichte Ansicht.
+- Die Firestore Rules gewähren `master`, `office` und `filiale` die in der Matrix aufgeführten Pfad- und CRUD-Rechte. Welche
+  Rollen die Planungsoberfläche anbietet und welche Zustände bearbeitet oder gelöscht werden dürfen, prüft der
+  TypeScript-Code.
 - `mitarbeiter` besitzt in zugeordneten Filialen Leserechte auf alle Dienstplanpfade und keine Schreibrechte. Das Frontend lädt
   und zeigt ausschließlich die aktuelle veröffentlichte Version mit ihren Schichten.
 
-In der Filial-App werden diese Planungsaktionen zusätzlich im Frontend auf einen aktiven Firma-Mitarbeiter der eigenen Filiale
-mit der betrieblichen Rolle `dienstplaner` begrenzt. Die Rolle erweitert nicht die Firestore-Rechte des Mitarbeiterzugangs. Die
-Firestore Rules erkennen bei einem Filialkonto ausschließlich die Auth-Rolle `filiale` und den eigenen Filialpfad; sie können
-den im Frontend geführten Firma-Mitarbeiter und dessen Rolle nicht vertrauenswürdig prüfen. Die zusätzliche Rollenprüfung ist
+Die spätere Freigabe von Planungsaktionen in der Filial-App ist auf einen aktiven Firma-Mitarbeiter der eigenen Filiale mit der
+betrieblichen Rolle `dienstplaner` begrenzt. Dieser Sitzungszustand ist noch nicht umgesetzt; Filialkonten bleiben deshalb in
+der aktuellen Oberfläche rein lesend. Die Rolle erweitert nicht die Firestore-Rechte des Mitarbeiterzugangs. Die Firestore
+Rules erkennen bei einem Filialkonto ausschließlich die Auth-Rolle `filiale` und den eigenen Filialpfad; sie können den im
+Frontend geführten Firma-Mitarbeiter und dessen Rolle nicht vertrauenswürdig prüfen. Die zusätzliche Rollenprüfung wäre
 daher bei einem manipulierten Client umgehbar und keine serverseitig abgesicherte Berechtigungsgrenze.
 
 Jeder Zugriff auf einen Dienstplan bezieht sich auf eine konkrete Filiale. Benutzer mit Zugriff auf mehrere Filialen können

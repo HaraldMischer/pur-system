@@ -1,4 +1,4 @@
-// pur-system/src/app/components/shared/datum-eingabe/datum-eingabe.ts
+// pur-system/src/app/components/shared/eingabe-datum/eingabe-datum.ts
 
 import {
   ChangeDetectionStrategy,
@@ -32,7 +32,7 @@ const MONAT_TAG_PATTERN = /^(\d{2})-(\d{2})$/;
 const DEUTSCHES_DATUM_PATTERN = /^(\d{2})\.(\d{2})\.(\d{4})$/;
 const DEUTSCHER_MONAT_TAG_PATTERN = /^(\d{2})\.(\d{2})\.$/;
 
-export type TDatumEingabeModus = 'datum' | 'monat-tag';
+export type TEingabeDatumModus = 'datum' | 'monat-tag';
 
 function istGueltigesDatum(jahr: number, monat: number, tag: number): boolean {
   if (jahr < 1000 || jahr > 9999 || monat < 1 || monat > 12 || tag < 1 || tag > 31) {
@@ -46,7 +46,7 @@ function istGueltigesDatum(jahr: number, monat: number, tag: number): boolean {
   );
 }
 
-function formatDatumEingabe(wert: string, modus: TDatumEingabeModus): string {
+function formatEingabeDatum(wert: string, modus: TEingabeDatumModus): string {
   const maximaleLaenge = modus === 'datum' ? 8 : 4;
   const ziffern = wert.replace(/\D/g, '').slice(0, maximaleLaenge);
   let formatiert = ziffern.slice(0, 2);
@@ -73,7 +73,7 @@ function parseDeutschenMonatTag(wert: string): string | null {
   return istGueltigesDatum(2000, monat, tag) ? `${treffer[2]}-${treffer[1]}` : null;
 }
 
-function formatFormularwert(wert: string, modus: TDatumEingabeModus): string {
+function formatFormularwert(wert: string, modus: TEingabeDatumModus): string {
   if (modus === 'datum') {
     const treffer = ISO_DATUM_PATTERN.exec(wert);
     return treffer ? `${treffer[3]}.${treffer[2]}.${treffer[1]}` : '';
@@ -82,7 +82,7 @@ function formatFormularwert(wert: string, modus: TDatumEingabeModus): string {
   return treffer ? `${treffer[2]}.${treffer[1]}.` : '';
 }
 
-function getFormularwert(wert: string, modus: TDatumEingabeModus): string {
+function getFormularwert(wert: string, modus: TEingabeDatumModus): string {
   const normalisiert = modus === 'datum' ? parseDeutschesDatum(wert) : parseDeutschenMonatTag(wert);
   return normalisiert ?? wert;
 }
@@ -90,7 +90,7 @@ function getFormularwert(wert: string, modus: TDatumEingabeModus): string {
 function getDatumFehler(
   wert: unknown,
   erforderlich: boolean,
-  modus: TDatumEingabeModus,
+  modus: TEingabeDatumModus,
 ): ValidationErrors | null {
   if (typeof wert !== 'string' || wert.length === 0) {
     return erforderlich ? { required: true } : null;
@@ -108,29 +108,29 @@ function getDatumFehler(
 }
 
 @Component({
-  selector: 'app-datum-eingabe',
+  selector: 'app-eingabe-datum',
   imports: [MatFormFieldModule, MatIconModule, MatInputModule, ReactiveFormsModule],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => DatumEingabe),
+      useExisting: forwardRef(() => EingabeDatum),
       multi: true,
     },
     {
       provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => DatumEingabe),
+      useExisting: forwardRef(() => EingabeDatum),
       multi: true,
     },
   ],
-  templateUrl: './datum-eingabe.html',
-  styleUrl: './datum-eingabe.scss',
+  templateUrl: './eingabe-datum.html',
+  styleUrl: './eingabe-datum.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DatumEingabe implements ControlValueAccessor, Validator {
+export class EingabeDatum implements ControlValueAccessor, Validator {
   // ===== Öffentliche API ======================
 
   readonly label = input.required<string>();
-  readonly modus = input<TDatumEingabeModus>('datum');
+  readonly modus = input<TEingabeDatumModus>('datum');
   readonly required = input(false, { transform: booleanAttribute });
   readonly schreibgeschuetzt = input(false, {
     alias: 'readonly',
@@ -159,7 +159,7 @@ export class DatumEingabe implements ControlValueAccessor, Validator {
 
   constructor() {
     this.eingabeControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((wert) => {
-      const formatiert = formatDatumEingabe(wert, this.modus());
+      const formatiert = formatEingabeDatum(wert, this.modus());
       if (formatiert !== wert) {
         this.eingabeControl.setValue(formatiert, { emitEvent: false });
       }

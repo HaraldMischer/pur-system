@@ -22,6 +22,7 @@ export interface IDienstplanRasterzeit {
   modellschichtId: string;
   beginnLokalzeit: string;
   endeLokalzeit: string;
+  beginntAmFolgetag: boolean;
   endetAmFolgetag: boolean;
 }
 

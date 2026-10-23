@@ -1,33 +1,31 @@
 // pur-system/src/app/commons/utils/dienstplan/modellschicht-sortierung.spec.ts
 
-import { compareModellschichtenNachBeginn } from './modellschicht-sortierung';
+import { compareModellschichtenNachReihenfolge } from './modellschicht-sortierung';
 
-describe('compareModellschichtenNachBeginn', () => {
-  it('should sort model shifts by start time', () => {
+describe('compareModellschichtenNachReihenfolge', () => {
+  it('should sort model shifts by their stored order', () => {
     const modellschichten = [
-      { bezeichnung: 'Spät', beginnLokalzeit: '16:00', endeLokalzeit: '01:00' },
-      { bezeichnung: 'Früh', beginnLokalzeit: '07:00', endeLokalzeit: '16:00' },
-      { bezeichnung: 'Mittel', beginnLokalzeit: '11:00', endeLokalzeit: '19:00' },
+      { bezeichnung: 'Spät', reihenfolge: 2 },
+      { bezeichnung: 'Früh', reihenfolge: 0 },
+      { bezeichnung: 'Mittel', reihenfolge: 1 },
     ];
 
     expect(
-      modellschichten.sort(compareModellschichtenNachBeginn).map(({ bezeichnung }) => bezeichnung),
+      modellschichten
+        .sort(compareModellschichtenNachReihenfolge)
+        .map(({ bezeichnung }) => bezeichnung),
     ).toEqual(['Früh', 'Mittel', 'Spät']);
   });
 
-  it('should use end time, label and id as deterministic tie breakers', () => {
+  it('should use label and id as deterministic tie breakers', () => {
     const modellschichten = [
-      { id: 'b', bezeichnung: 'B', beginnLokalzeit: '08:00', endeLokalzeit: '16:00' },
-      { id: 'c', bezeichnung: 'A', beginnLokalzeit: '08:00', endeLokalzeit: '16:00' },
-      { id: 'a', bezeichnung: 'A', beginnLokalzeit: '08:00', endeLokalzeit: '16:00' },
-      { id: 'd', bezeichnung: 'D', beginnLokalzeit: '08:00', endeLokalzeit: '15:00' },
+      { id: 'b', bezeichnung: 'B', reihenfolge: 0 },
+      { id: 'c', bezeichnung: 'A', reihenfolge: 0 },
+      { id: 'a', bezeichnung: 'A', reihenfolge: 0 },
     ];
 
-    expect(modellschichten.sort(compareModellschichtenNachBeginn).map(({ id }) => id)).toEqual([
-      'd',
-      'a',
-      'c',
-      'b',
-    ]);
+    expect(modellschichten.sort(compareModellschichtenNachReihenfolge).map(({ id }) => id)).toEqual(
+      ['a', 'c', 'b'],
+    );
   });
 });

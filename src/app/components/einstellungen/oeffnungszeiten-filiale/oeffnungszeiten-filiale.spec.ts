@@ -4,8 +4,8 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 
+import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../../commons/constants/filialeinstellung.constants';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
-import { STANDARD_SCHLIESSZEITRAUM } from '../../../commons/models/domain/filialeinstellung';
 import {
   FilialeinstellungStore,
   TFilialeinstellungKontext,
@@ -102,7 +102,7 @@ describe('OeffnungszeitenFiliale', () => {
     expect(gespeicherteGrundlagen).toEqual(
       expect.objectContaining({
         bundesland: 'DE-NW',
-        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM,
+        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
         wochenregeln: expect.objectContaining({
           montag: {
             geoeffnet: true,
@@ -190,14 +190,14 @@ describe('OeffnungszeitenFiliale', () => {
       1,
       SondertagBearbeitenDialog,
       expect.objectContaining({
-        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM },
+        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
       }),
     );
     expect(open).toHaveBeenNthCalledWith(
       2,
       DatumsausnahmeBearbeitenDialog,
       expect.objectContaining({
-        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM },
+        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
       }),
     );
   });
@@ -257,7 +257,7 @@ describe('OeffnungszeitenFiliale', () => {
             aktualisiertVonUid: 'uid-1',
           },
           oeffnungszeiten: {
-            schliesszeitraum: STANDARD_SCHLIESSZEITRAUM,
+            schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
             wochenregeln: {
               montag: {
                 geoeffnet: false,

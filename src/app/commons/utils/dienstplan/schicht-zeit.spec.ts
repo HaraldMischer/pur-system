@@ -29,6 +29,22 @@ describe('calculateSchichtLohnzeitMinuten', () => {
 });
 
 describe('calculateArbeitsbloecke', () => {
+  it('should join directly consecutive shifts and calculate the pause from their total work time', () => {
+    const ersteSchicht = createSchicht('2026-10-05T07:00', '2026-10-05T11:00');
+    const zweiteSchicht = createSchicht('2026-10-05T11:00', '2026-10-05T14:00');
+
+    const bloecke = calculateArbeitsbloecke([zweiteSchicht, ersteSchicht]);
+
+    expect(bloecke).toHaveLength(1);
+    expect(bloecke[0]).toEqual(
+      expect.objectContaining({
+        schichten: [ersteSchicht, zweiteSchicht],
+        arbeitszeitMinuten: 420,
+        pauseMinuten: 30,
+      }),
+    );
+  });
+
   it('should join shifts separated by less than 30 minutes without counting the gap as work', () => {
     const bloecke = calculateArbeitsbloecke([
       createSchicht('2026-10-05T07:00', '2026-10-05T11:00'),

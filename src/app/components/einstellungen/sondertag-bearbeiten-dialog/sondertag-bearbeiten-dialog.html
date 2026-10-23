@@ -13,15 +13,15 @@
   }
   <form id="sondertag-form" class="pur-form pur-form--grid" [formGroup]="form" (ngSubmit)="save()">
     @if (istSystemtag) {
-      <p>
-        <strong>{{ daten.sondertag?.bezeichnung }}</strong
-        ><br />
+      <div class="pur-text__container">
+        <p class="pur-text pur-text--title-medium">{{ daten.sondertag?.bezeichnung }}</p>
         @if (istGesetzlicherFeiertag) {
-          Die gesetzliche Datumsregel wird zentral berechnet und kann hier nicht geändert werden.
+          <p class="pur-text">Das Feiertagsdatum wird automatisch berechnet.</p>
         } @else {
-          Dieser vordefinierte Sondertag kann zeitlich angepasst, aber nicht umdatiert werden.
+          <p class="pur-text">Dieser Sondertag gilt jedes Jahr am festgelegten Datum.</p>
         }
-      </p>
+        <p class="pur-text">Öffnungsstatus und Zeiten können geändert werden.</p>
+      </div>
     } @else {
       <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Bezeichnung</mat-label>
@@ -30,7 +30,7 @@
     }
     <div class="pur-form__row">
       @if (!istSystemtag) {
-        <app-datum-eingabe
+        <app-eingabe-datum
           class="pur-form__item pur-form__item--field pur-form__item--33"
           label="Datum"
           modus="monat-tag"
@@ -50,13 +50,13 @@
       >
     </div>
     <div class="pur-form__row">
-      <app-lokalzeit-eingabe
+      <app-eingabe-zeit
         class="pur-form__item pur-form__item--field pur-form__item--50"
         label="Beginn"
         formControlName="beginnLokalzeit"
         required
       />
-      <app-lokalzeit-eingabe
+      <app-eingabe-zeit
         class="pur-form__item pur-form__item--field pur-form__item--50"
         label="Ende"
         formControlName="endeLokalzeit"

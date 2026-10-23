@@ -2,9 +2,14 @@
 
 import { Timestamp } from 'firebase/firestore';
 
+import { ISchliesszeitraum } from '../../models/domain/filialeinstellung';
+import { IModellschichtZeitgrenze, TModellschichtTag } from '../../models/domain/schichtmodell';
+import { getMaximalerOeffnungsrahmen } from '../filialeinstellung/schliesszeitraum';
+
 type TSchichtLokalzeiten = {
   readonly beginnLokalzeit: string;
   readonly endeLokalzeit: string;
+  readonly beginntAmFolgetag: boolean;
   readonly endetAmFolgetag: boolean;
 };
 
@@ -25,6 +30,25 @@ export function getLokalzeitMinuten(lokalzeit: string): number | null {
   const stunden = Number(treffer[1]);
   const minuten = Number(treffer[2]);
   return stunden <= 23 && minuten <= 59 ? stunden * 60 + minuten : null;
+}
+
+/**
+ * Ordnet eine innere Modellschichtgrenze anhand des Öffnungsrahmens dem Start- oder Folgetag zu.
+ *
+ * @param lokalzeit - Lokale Uhrzeit im Format `HH:mm`.
+ * @param schliesszeitraum - Täglich geltender Schließzeitraum der Filiale.
+ * @returns Tageszuordnung oder `null` bei einer ungültigen Uhrzeit.
+ */
+export function getModellschichtTagFuerLokalzeit(
+  lokalzeit: string,
+  schliesszeitraum: ISchliesszeitraum,
+): TModellschichtTag | null {
+  const minuten = getLokalzeitMinuten(lokalzeit);
+  if (minuten === null) return null;
+  const oeffnungsrahmen = getMaximalerOeffnungsrahmen(schliesszeitraum);
+  if (!oeffnungsrahmen.endetAmFolgetag) return 'starttag';
+  const oeffnungsbeginn = getLokalzeitMinuten(oeffnungsrahmen.beginnLokalzeit);
+  return oeffnungsbeginn !== null && minuten < oeffnungsbeginn ? 'folgetag' : 'starttag';
 }
 
 /**
@@ -61,10 +85,29 @@ export function calculateSchichtdauerMinuten(beginn: string, ende: string): numb
 }
 
 /**
+ * Berechnet die Dauer zwischen zwei ausdrücklich einem Tag zugeordneten Modellschichtgrenzen.
+ *
+ * @param beginn - Feste Beginnzeit mit Zuordnung zum Start- oder Folgetag.
+ * @param ende - Feste Endzeit mit Zuordnung zum Start- oder Folgetag.
+ * @returns Positive Dauer in Minuten oder `null` bei ungültigen beziehungsweise widersprüchlichen Grenzen.
+ */
+export function calculateModellschichtdauerMinuten(
+  beginn: IModellschichtZeitgrenze,
+  ende: IModellschichtZeitgrenze,
+): number | null {
+  const beginnMinuten = getLokalzeitMinuten(beginn.lokalzeit);
+  const endeMinuten = getLokalzeitMinuten(ende.lokalzeit);
+  if (beginnMinuten === null || endeMinuten === null) return null;
+  const absoluterBeginn = beginnMinuten + (beginn.tag === 'folgetag' ? 24 * 60 : 0);
+  const absolutesEnde = endeMinuten + (ende.tag === 'folgetag' ? 24 * 60 : 0);
+  return absolutesEnde > absoluterBeginn ? absolutesEnde - absoluterBeginn : null;
+}
+
+/**
  * Erzeugt absolute Zeitpunkte aus einem Datum und lokalen Schichtzeiten.
  *
  * @param datum - Lokales Schichtdatum im Format `YYYY-MM-DD`.
- * @param lokalzeiten - Beginn, Ende und Folgetagsangabe der Modellschicht.
+ * @param lokalzeiten - Beginn, Ende und deren Tageszuordnung im Dienstplantag.
  * @param zeitzone - IANA-Zeitzone des Dienstplans.
  * @returns Absolute Zeitstempel für Beginn und Ende.
  */
@@ -73,9 +116,10 @@ export function createSchichtZeitstempelAusLokalzeiten(
   lokalzeiten: TSchichtLokalzeiten,
   zeitzone: string,
 ): ISchichtZeitstempel {
+  const beginnDatum = lokalzeiten.beginntAmFolgetag ? addKalendertag(datum) : datum;
   const endeDatum = lokalzeiten.endetAmFolgetag ? addKalendertag(datum) : datum;
   return {
-    beginn: createSchichtZeitstempel(datum, lokalzeiten.beginnLokalzeit, zeitzone),
+    beginn: createSchichtZeitstempel(beginnDatum, lokalzeiten.beginnLokalzeit, zeitzone),
     ende: createSchichtZeitstempel(endeDatum, lokalzeiten.endeLokalzeit, zeitzone),
   };
 }

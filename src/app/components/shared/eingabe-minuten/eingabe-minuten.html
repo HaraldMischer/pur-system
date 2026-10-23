@@ -1,0 +1,24 @@
+<!-- pur-system/src/app/components/shared/eingabe-minuten/eingabe-minuten.html -->
+
+<mat-form-field
+  appearance="outline"
+  class="eingabe-minuten-feld"
+  [subscriptSizing]="subscriptSizing()"
+>
+  <mat-label>{{ label() }}</mat-label>
+  <input
+    matInput
+    type="text"
+    inputmode="numeric"
+    autocomplete="off"
+    maxlength="3"
+    [formControl]="eingabeControl"
+    [required]="required()"
+    [readonly]="schreibgeschuetzt()"
+    (blur)="handleBlur()"
+  />
+  <span matTextSuffix>Min.</span>
+  @if (eingabeControl.hasError('minuten')) {
+    <mat-error>Es sind nur ganze Minuten von 0 bis 999 zulässig.</mat-error>
+  }
+</mat-form-field>

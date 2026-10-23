@@ -14,23 +14,20 @@ describe('SchichtmodellService', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
   const anlage: ISchichtrastermodellAnlage = {
     bezeichnung: ' Sommer ',
-    besondereRasterzeiten: [],
     modellschichten: [
       {
-        bezeichnung: 'Spät',
-        beginnLokalzeit: '16:00',
-        endeLokalzeit: '01:00',
-        endetAmFolgetag: true,
-        mehrfachbelegungErlaubt: true,
-        nachbereitungsminuten: 15,
-      },
-      {
         bezeichnung: ' Früh ',
-        beginnLokalzeit: '07:00',
-        endeLokalzeit: '12:00',
-        endetAmFolgetag: false,
+        reihenfolge: 0,
+        ende: { lokalzeit: '16:00', tag: 'starttag' },
         mehrfachbelegungErlaubt: false,
         vorbereitungsminuten: 30,
+      },
+      {
+        bezeichnung: 'Spät',
+        reihenfolge: 1,
+        beginn: { lokalzeit: '16:00', tag: 'starttag' },
+        mehrfachbelegungErlaubt: true,
+        nachbereitungsminuten: 15,
       },
     ],
   };
@@ -67,7 +64,7 @@ describe('SchichtmodellService', () => {
     });
   });
 
-  it('should load branch models with chronologically ordered model shifts', async () => {
+  it('should load branch models with their stored model shift order', async () => {
     loadCollection.mockImplementation((collectionPath: string) => {
       if (collectionPath.endsWith('/schichtmodell')) {
         return Promise.resolve([
@@ -76,8 +73,8 @@ describe('SchichtmodellService', () => {
         ]);
       }
       const daten: IModellschichtDokument[] = [
-        createModellschichtDokument('Spät', '16:00', '01:00'),
-        createModellschichtDokument('Früh', '07:00', '12:00'),
+        createModellschichtDokument('Spät', 1),
+        createModellschichtDokument('Früh', 0),
       ];
       return Promise.resolve(daten.map((wert, index) => ({ id: `s-${index}`, daten: wert })));
     });
@@ -90,7 +87,7 @@ describe('SchichtmodellService', () => {
       'Früh',
       'Spät',
     ]);
-    expect(ergebnis[0].modellschichten[0]).not.toHaveProperty('reihenfolge');
+    expect(ergebnis[0].modellschichten[0].reihenfolge).toBe(0);
     expect(loadCollection).toHaveBeenCalledWith(
       'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/sommer/modellschicht',
       'networkOnly',
@@ -114,7 +111,7 @@ describe('SchichtmodellService', () => {
     );
   });
 
-  it('should create a model and its normalized chronologically ordered shifts atomically', async () => {
+  it('should create a model and its explicitly ordered shifts atomically', async () => {
     const service = TestBed.inject(SchichtmodellService);
 
     const ergebnis = await service.createSchichtmodell(pfad, anlage, 'uid-1');
@@ -145,12 +142,16 @@ describe('SchichtmodellService', () => {
         }),
         expect.objectContaining({
           documentPath:
-            'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1/modellschicht/schicht-2',
+            'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1/modellschicht/schicht-1',
           daten: expect.objectContaining({ bezeichnung: 'Früh' }),
         }),
       ]),
     );
-    expect(updateDocumentsAtomically.mock.calls[0][0][1].daten).not.toHaveProperty('reihenfolge');
+    expect(updateDocumentsAtomically.mock.calls[0][0][1].daten).toEqual(
+      expect.objectContaining({ reihenfolge: 0 }),
+    );
+    expect(updateDocumentsAtomically.mock.calls[0][0][1].daten).not.toHaveProperty('beginn');
+    expect(updateDocumentsAtomically.mock.calls[0][0][2].daten).not.toHaveProperty('ende');
   });
 
   it('should retain known shift ids and delete removed shifts while updating', async () => {
@@ -160,35 +161,19 @@ describe('SchichtmodellService', () => {
         ...pfad,
         id: 'modell-1',
         ...createSchichtmodellDokument('Sommer'),
-        besondereRasterzeiten: [
-          {
-            sondertagId: 'heiligabend',
-            modellschichtId: 'alt-1',
-            beginnLokalzeit: '08:00',
-            endeLokalzeit: '11:00',
-            endetAmFolgetag: false,
-          },
-          {
-            sondertagId: 'heiligabend',
-            modellschichtId: 'alt-2',
-            beginnLokalzeit: '11:00',
-            endeLokalzeit: '16:00',
-            endetAmFolgetag: false,
-          },
-        ],
       },
       modellschichten: [
         {
           ...pfad,
           schichtmodellId: 'modell-1',
           id: 'alt-1',
-          ...createModellschichtDokument('Früh', '07:00', '12:00'),
+          ...createModellschichtDokument('Früh', 0),
         },
         {
           ...pfad,
           schichtmodellId: 'modell-1',
           id: 'alt-2',
-          ...createModellschichtDokument('Spät', '16:00', '01:00'),
+          ...createModellschichtDokument('Spät', 1),
         },
       ],
     };
@@ -199,8 +184,14 @@ describe('SchichtmodellService', () => {
       {
         bezeichnung: 'Sommer neu',
         aktiv: false,
-        besondereRasterzeiten: [bestand.schichtmodell.besondereRasterzeiten[0]],
-        modellschichten: [{ ...anlage.modellschichten[0], id: 'alt-1' }],
+        modellschichten: [
+          {
+            ...anlage.modellschichten[0],
+            id: 'alt-1',
+            ende: undefined,
+            nachbereitungsminuten: 15,
+          },
+        ],
       },
       'uid-2',
     );
@@ -209,18 +200,11 @@ describe('SchichtmodellService', () => {
       expect.arrayContaining([
         expect.objectContaining({
           documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1',
-          daten: expect.objectContaining({
-            besondereRasterzeiten: [
-              expect.objectContaining({
-                sondertagId: 'heiligabend',
-                modellschichtId: 'alt-1',
-              }),
-            ],
-          }),
+          daten: expect.objectContaining({ bezeichnung: 'Sommer neu', aktiv: false }),
         }),
         expect.objectContaining({
           documentPath: expect.stringMatching(/\/alt-1$/),
-          daten: expect.objectContaining({ bezeichnung: 'Spät' }),
+          daten: expect.objectContaining({ bezeichnung: 'Früh' }),
         }),
         {
           documentPath:
@@ -231,57 +215,11 @@ describe('SchichtmodellService', () => {
     );
   });
 
-  it('should reject special raster times for an unknown or removed model shift', async () => {
-    const service = TestBed.inject(SchichtmodellService);
-    const bestand = {
-      schichtmodell: {
-        ...pfad,
-        id: 'modell-1',
-        ...createSchichtmodellDokument('Sommer'),
-      },
-      modellschichten: [
-        {
-          ...pfad,
-          schichtmodellId: 'modell-1',
-          id: 'alt-1',
-          ...createModellschichtDokument('Früh', '07:00', '12:00'),
-        },
-      ],
-    };
-
-    await expect(
-      service.updateSchichtmodell(
-        pfad,
-        bestand,
-        {
-          bezeichnung: 'Sommer',
-          aktiv: true,
-          besondereRasterzeiten: [
-            {
-              sondertagId: 'heiligabend',
-              modellschichtId: 'entfernt',
-              beginnLokalzeit: '09:00',
-              endeLokalzeit: '12:00',
-              endetAmFolgetag: false,
-            },
-          ],
-          modellschichten: [{ ...anlage.modellschichten[0], id: 'alt-1' }],
-        },
-        'uid-2',
-      ),
-    ).rejects.toThrow('Die besondere Rasterzeit ist nicht eindeutig oder fachlich ungültig.');
-    expect(updateDocumentsAtomically).not.toHaveBeenCalled();
-  });
-
   it('should reject a model without model shifts and deactivate without deleting it', async () => {
     const service = TestBed.inject(SchichtmodellService);
 
     await expect(
-      service.createSchichtmodell(
-        pfad,
-        { bezeichnung: 'Leer', modellschichten: [], besondereRasterzeiten: [] },
-        'uid-1',
-      ),
+      service.createSchichtmodell(pfad, { bezeichnung: 'Leer', modellschichten: [] }, 'uid-1'),
     ).rejects.toThrow('mindestens eine Modellschicht');
     await service.deactivateSchichtmodell(pfad, 'modell-1', 'uid-2');
 
@@ -291,7 +229,7 @@ describe('SchichtmodellService', () => {
     );
   });
 
-  it('should reject invalid local times and normalize valid overnight information', async () => {
+  it('should reject an empty shift label', async () => {
     const service = TestBed.inject(SchichtmodellService);
 
     await expect(
@@ -299,31 +237,43 @@ describe('SchichtmodellService', () => {
         pfad,
         {
           bezeichnung: 'Ungültig',
-          besondereRasterzeiten: [],
-          modellschichten: [
-            { ...anlage.modellschichten[0], beginnLokalzeit: '08:00', endeLokalzeit: '08:00' },
-          ],
+          modellschichten: [{ ...anlage.modellschichten[0], bezeichnung: ' ' }],
         },
         'uid-1',
       ),
-    ).rejects.toThrow('gültige Bezeichnung oder Zeitfolge');
+    ).rejects.toThrow('gültige Bezeichnung');
+  });
 
-    await service.createSchichtmodell(
-      pfad,
-      {
-        bezeichnung: 'Sommer',
-        besondereRasterzeiten: [],
-        modellschichten: [
-          {
-            ...anlage.modellschichten[0],
-            beginnLokalzeit: '08:00',
-            endeLokalzeit: '17:01',
-          },
-        ],
-      },
-      'uid-1',
+  it('should reject invalid model shift structures before writing', async () => {
+    const service = TestBed.inject(SchichtmodellService);
+    const ungueltigeAnlage: ISchichtrastermodellAnlage = {
+      ...anlage,
+      modellschichten: [
+        { ...anlage.modellschichten[0], id: 'doppelt' },
+        { ...anlage.modellschichten[1], id: 'doppelt', reihenfolge: 2 },
+      ],
+    };
+
+    await expect(service.createSchichtmodell(pfad, ungueltigeAnlage, 'uid-1')).rejects.toThrow(
+      'Reihenfolge',
     );
-    expect(updateDocumentsAtomically).toHaveBeenCalledOnce();
+    expect(updateDocumentsAtomically).not.toHaveBeenCalled();
+  });
+
+  it('should reject preparation or follow-up values above three digits', async () => {
+    const service = TestBed.inject(SchichtmodellService);
+    const ungueltigeAnlage: ISchichtrastermodellAnlage = {
+      ...anlage,
+      modellschichten: [
+        { ...anlage.modellschichten[0], vorbereitungsminuten: 1000 },
+        anlage.modellschichten[1],
+      ],
+    };
+
+    await expect(service.createSchichtmodell(pfad, ungueltigeAnlage, 'uid-1')).rejects.toThrow(
+      '0 bis 999',
+    );
+    expect(updateDocumentsAtomically).not.toHaveBeenCalled();
   });
 });
 
@@ -332,7 +282,6 @@ function createSchichtmodellDokument(bezeichnung: string): ISchichtrastermodellD
     bezeichnung,
     aktiv: true,
     planungsart: 'schichtraster',
-    besondereRasterzeiten: [],
     erstelltVonUid: 'uid-1',
     aktualisiertVonUid: 'uid-1',
   };
@@ -340,14 +289,11 @@ function createSchichtmodellDokument(bezeichnung: string): ISchichtrastermodellD
 
 function createModellschichtDokument(
   bezeichnung: string,
-  beginnLokalzeit: string,
-  endeLokalzeit: string,
+  reihenfolge: number,
 ): IModellschichtDokument {
   return {
     bezeichnung,
-    beginnLokalzeit,
-    endeLokalzeit,
-    endetAmFolgetag: endeLokalzeit < beginnLokalzeit,
+    reihenfolge,
     mehrfachbelegungErlaubt: false,
   };
 }

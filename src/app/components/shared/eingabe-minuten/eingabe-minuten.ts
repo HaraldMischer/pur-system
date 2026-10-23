@@ -1,4 +1,4 @@
-// pur-system/src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.ts
+// pur-system/src/app/components/shared/eingabe-minuten/eingabe-minuten.ts
 
 import {
   ChangeDetectionStrategy,
@@ -21,59 +21,49 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatFormFieldModule, SubscriptSizing } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+
+import { MAX_RANDMINUTEN } from '../../../commons/constants/schichtmodell.constants';
 
 // ===== Top-Level Helper =====================
 
-const LOKALZEIT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-
-function formatLokalzeitEingabe(wert: string): string {
-  const bereinigt = wert.trim();
-  const eingabeMitDoppelpunkt = /^(\d{1,2}):(\d{0,2})$/.exec(bereinigt);
-  if (eingabeMitDoppelpunkt) {
-    return `${eingabeMitDoppelpunkt[1]}:${eingabeMitDoppelpunkt[2]}`;
-  }
-  const ziffern = bereinigt.replace(/\D/g, '').slice(0, 4);
-  return ziffern.length > 2 ? `${ziffern.slice(0, 2)}:${ziffern.slice(2)}` : ziffern;
+function formatEingabeMinuten(wert: string): string {
+  return wert.replace(/\D/g, '');
 }
 
-function normalisiereLokalzeitEingabe(wert: string): string {
-  const formatiert = formatLokalzeitEingabe(wert);
-  const vollstaendigeEingabe = /^(\d{1,2}):(\d{2})$/.exec(formatiert);
-  if (!vollstaendigeEingabe) {
-    return formatiert;
-  }
-  return `${vollstaendigeEingabe[1].padStart(2, '0')}:${vollstaendigeEingabe[2]}`;
+function getMinutenWert(wert: string): number | null {
+  return wert.length === 0 ? null : Number(wert);
 }
 
-function getLokalzeitFehler(wert: unknown, erforderlich: boolean): ValidationErrors | null {
-  if (typeof wert !== 'string' || wert.length === 0) {
+function getMinutenFehler(wert: unknown, erforderlich: boolean): ValidationErrors | null {
+  if (wert === null || wert === undefined || wert === '') {
     return erforderlich ? { required: true } : null;
   }
-  return LOKALZEIT_PATTERN.test(wert) ? null : { lokalzeit: true };
+  return typeof wert === 'number' && Number.isInteger(wert) && wert >= 0 && wert <= MAX_RANDMINUTEN
+    ? null
+    : { minuten: true };
 }
 
 @Component({
-  selector: 'app-lokalzeit-eingabe',
-  imports: [MatFormFieldModule, MatIconModule, MatInputModule, ReactiveFormsModule],
+  selector: 'app-eingabe-minuten',
+  imports: [MatFormFieldModule, MatInputModule, ReactiveFormsModule],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => LokalzeitEingabe),
+      useExisting: forwardRef(() => EingabeMinuten),
       multi: true,
     },
     {
       provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => LokalzeitEingabe),
+      useExisting: forwardRef(() => EingabeMinuten),
       multi: true,
     },
   ],
-  templateUrl: './lokalzeit-eingabe.html',
-  styleUrl: './lokalzeit-eingabe.scss',
+  templateUrl: './eingabe-minuten.html',
+  styleUrl: './eingabe-minuten.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LokalzeitEingabe implements ControlValueAccessor, Validator {
+export class EingabeMinuten implements ControlValueAccessor, Validator {
   // ===== Öffentliche API ======================
 
   readonly label = input.required<string>();
@@ -90,24 +80,25 @@ export class LokalzeitEingabe implements ControlValueAccessor, Validator {
 
   // ===== Interner State =======================
 
-  private onChange: (wert: string) => void = () => {};
+  private onChange: (wert: number | null) => void = () => {};
   private onTouched: () => void = () => {};
   private onValidatorChange: () => void = () => {};
 
   constructor() {
     this.eingabeControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((wert) => {
-      const formatiert = formatLokalzeitEingabe(wert);
+      const formatiert = formatEingabeMinuten(wert);
       if (formatiert !== wert) {
         this.eingabeControl.setValue(formatiert, { emitEvent: false });
       }
-      this.onChange(formatiert);
+      this.onChange(getMinutenWert(formatiert));
+      this.onValidatorChange();
     });
     effect(() => {
       const erforderlich = this.required();
       this.eingabeControl.setValidators([
         ...(erforderlich ? [Validators.required] : []),
         (control) => {
-          return getLokalzeitFehler(control.value, erforderlich);
+          return getMinutenFehler(getMinutenWert(control.value), erforderlich);
         },
       ]);
       this.eingabeControl.updateValueAndValidity({ emitEvent: false });
@@ -118,16 +109,18 @@ export class LokalzeitEingabe implements ControlValueAccessor, Validator {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Übernimmt einen externen Formularwert in das Eingabefeld.
+   * Übernimmt einen Minutenwert in das sichtbare Eingabefeld.
    */
-  writeValue(wert: string | null): void {
-    this.eingabeControl.setValue(normalisiereLokalzeitEingabe(wert ?? ''), { emitEvent: false });
+  writeValue(wert: number | null): void {
+    this.eingabeControl.setValue(wert === null || wert === undefined ? '' : String(wert), {
+      emitEvent: false,
+    });
   }
 
   /**
-   * Registriert die Weitergabe geänderter Zeitwerte.
+   * Registriert die Weitergabe geänderter Minutenwerte.
    */
-  registerOnChange(onChange: (wert: string) => void): void {
+  registerOnChange(onChange: (wert: number | null) => void): void {
     this.onChange = onChange;
   }
 
@@ -151,10 +144,10 @@ export class LokalzeitEingabe implements ControlValueAccessor, Validator {
   }
 
   /**
-   * Prüft den Formularwert auf eine vollständige gültige Lokalzeit.
+   * Prüft den Formularwert als ganze Minutenzahl zwischen 0 und 999.
    */
   validate(control: AbstractControl): ValidationErrors | null {
-    return getLokalzeitFehler(control.value, this.required());
+    return getMinutenFehler(control.value, this.required());
   }
 
   /**
@@ -165,12 +158,12 @@ export class LokalzeitEingabe implements ControlValueAccessor, Validator {
   }
 
   /**
-   * Normalisiert eine vollständige Eingabe und markiert das Formularfeld als berührt.
+   * Entfernt führende Nullen und markiert das Formularfeld als berührt.
    */
   handleBlur(): void {
-    const normalisiert = normalisiereLokalzeitEingabe(this.eingabeControl.value);
-    if (normalisiert !== this.eingabeControl.value) {
-      this.eingabeControl.setValue(normalisiert);
+    const wert = getMinutenWert(this.eingabeControl.value);
+    if (wert !== null) {
+      this.eingabeControl.setValue(String(wert));
     }
     this.onTouched();
   }

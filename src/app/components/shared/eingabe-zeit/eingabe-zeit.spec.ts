@@ -1,15 +1,15 @@
-// pur-system/src/app/components/shared/lokalzeit-eingabe/lokalzeit-eingabe.spec.ts
+// pur-system/src/app/components/shared/eingabe-zeit/eingabe-zeit.spec.ts
 
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { LokalzeitEingabe } from './lokalzeit-eingabe';
+import { EingabeZeit } from './eingabe-zeit';
 
 @Component({
-  imports: [LokalzeitEingabe, ReactiveFormsModule],
+  imports: [EingabeZeit, ReactiveFormsModule],
   template: `
-    <app-lokalzeit-eingabe
+    <app-eingabe-zeit
       label="Beginn"
       required
       [formControl]="control"
@@ -25,7 +25,7 @@ class TestHost {
   schreibgeschuetzt = false;
 }
 
-describe('LokalzeitEingabe', () => {
+describe('EingabeZeit', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({ imports: [TestHost] }).compileComponents();
   });
@@ -84,6 +84,54 @@ describe('LokalzeitEingabe', () => {
     expect(input.value).toBe('08:00');
     expect(input.selectionStart).toBe(2);
     expect(fixture.componentInstance.control.value).toBe('08:00');
+    expect(fixture.componentInstance.control.valid).toBe(true);
+  });
+
+  it('should allow replacing the complete hour and minute segments', () => {
+    const fixture = TestBed.createComponent(TestHost);
+    fixture.componentInstance.control.setValue('06:00');
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+
+    input.focus();
+    input.value = ':00';
+    input.setSelectionRange(0, 0);
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(input.value).toBe(':00');
+    expect(input.selectionStart).toBe(0);
+    expect(fixture.componentInstance.control.value).toBe(':00');
+    expect(fixture.componentInstance.control.hasError('lokalzeit')).toBe(true);
+
+    input.value = '08:00';
+    input.setSelectionRange(2, 2);
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(input.value).toBe('08:00');
+    expect(input.selectionStart).toBe(2);
+    expect(fixture.componentInstance.control.value).toBe('08:00');
+    expect(fixture.componentInstance.control.valid).toBe(true);
+
+    input.value = '08:';
+    input.setSelectionRange(3, 3);
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(input.value).toBe('08:');
+    expect(input.selectionStart).toBe(3);
+    expect(fixture.componentInstance.control.value).toBe('08:');
+    expect(fixture.componentInstance.control.hasError('lokalzeit')).toBe(true);
+
+    input.value = '08:45';
+    input.setSelectionRange(5, 5);
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(input.value).toBe('08:45');
+    expect(input.selectionStart).toBe(5);
+    expect(fixture.componentInstance.control.value).toBe('08:45');
     expect(fixture.componentInstance.control.valid).toBe(true);
   });
 

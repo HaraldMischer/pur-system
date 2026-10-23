@@ -7,10 +7,10 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
+import { MAX_RANDMINUTEN } from '../../commons/constants/schichtmodell.constants';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import {
-  IBesondereRasterzeit,
   IModellschichtDaten,
   IModellschichtDokument,
   IModellschichtEintrag,
@@ -22,8 +22,8 @@ import {
   ISchichtrastermodellEintrag,
   TSchichtmodellDokument,
 } from '../../commons/models/domain/schichtmodell';
-import { compareModellschichtenNachBeginn } from '../../commons/utils/dienstplan/modellschicht-sortierung';
-import { calculateSchichtdauerMinuten } from '../../commons/utils/dienstplan/schicht-lokalzeit';
+import { compareModellschichtenNachReihenfolge } from '../../commons/utils/dienstplan/modellschicht-sortierung';
+import { assertGueltigeModellschichten } from '../../commons/validators/schichtmodell.validator';
 import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
 
 // ===== Top-Level Helper =====================
@@ -36,7 +36,7 @@ function sortSchichtmodelle(
 }
 
 function sortModellschichten(a: IModellschichtEintrag, b: IModellschichtEintrag): number {
-  return compareModellschichtenNachBeginn(a, b);
+  return compareModellschichtenNachReihenfolge(a, b);
 }
 
 function assertSchichtrastermodellDokument(
@@ -50,19 +50,15 @@ function assertSchichtrastermodellDokument(
 function normalizeModellschicht(
   modellschicht: IModellschichtSchreibdaten,
 ): IModellschichtSchreibdaten {
-  const dauerMinuten = calculateSchichtdauerMinuten(
-    modellschicht.beginnLokalzeit,
-    modellschicht.endeLokalzeit,
-  );
-  if (dauerMinuten === null || !modellschicht.bezeichnung.trim()) {
-    throw new Error('Die Modellschicht enthält keine gültige Bezeichnung oder Zeitfolge.');
+  if (!modellschicht.bezeichnung.trim()) {
+    throw new Error('Die Modellschicht enthält keine gültige Bezeichnung.');
   }
   return {
     ...(modellschicht.id ? { id: modellschicht.id } : {}),
     bezeichnung: modellschicht.bezeichnung.trim(),
-    beginnLokalzeit: modellschicht.beginnLokalzeit,
-    endeLokalzeit: modellschicht.endeLokalzeit,
-    endetAmFolgetag: modellschicht.endeLokalzeit < modellschicht.beginnLokalzeit,
+    reihenfolge: modellschicht.reihenfolge,
+    ...(modellschicht.beginn ? { beginn: { ...modellschicht.beginn } } : {}),
+    ...(modellschicht.ende ? { ende: { ...modellschicht.ende } } : {}),
     mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
     vorbereitungsminuten: normalizeRandminuten(modellschicht.vorbereitungsminuten),
     nachbereitungsminuten: normalizeRandminuten(modellschicht.nachbereitungsminuten),
@@ -72,74 +68,29 @@ function normalizeModellschicht(
 function mapModellschichtDokument(daten: IModellschichtDaten): IModellschichtDokument {
   return {
     bezeichnung: daten.bezeichnung,
-    beginnLokalzeit: daten.beginnLokalzeit,
-    endeLokalzeit: daten.endeLokalzeit,
-    endetAmFolgetag: daten.endetAmFolgetag,
+    reihenfolge: daten.reihenfolge,
+    ...(daten.beginn ? { beginn: { ...daten.beginn } } : {}),
+    ...(daten.ende ? { ende: { ...daten.ende } } : {}),
     mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt,
     vorbereitungsminuten: daten.vorbereitungsminuten ?? 0,
     nachbereitungsminuten: daten.nachbereitungsminuten ?? 0,
   };
 }
 
+function normalizeModellschichten(
+  modellschichten: readonly IModellschichtSchreibdaten[],
+): IModellschichtSchreibdaten[] {
+  return modellschichten
+    .map((modellschicht) => normalizeModellschicht(modellschicht))
+    .sort(compareModellschichtenNachReihenfolge);
+}
+
 function normalizeRandminuten(wert: number | undefined): number {
   const minuten = wert ?? 0;
-  if (!Number.isInteger(minuten) || minuten < 0) {
-    throw new Error('Vor- und Nachbereitungsminuten müssen nicht negative ganze Zahlen sein.');
+  if (!Number.isInteger(minuten) || minuten < 0 || minuten > MAX_RANDMINUTEN) {
+    throw new Error('Vor- und Nachbereitungsminuten müssen ganze Zahlen von 0 bis 999 sein.');
   }
   return minuten;
-}
-
-function validateRandminuten(
-  modellschichten: readonly Pick<
-    IModellschichtDaten,
-    'vorbereitungsminuten' | 'nachbereitungsminuten'
-  >[],
-): void {
-  modellschichten.forEach((modellschicht, index) => {
-    const istErste = index === 0;
-    const istLetzte = index === modellschichten.length - 1;
-    if (
-      (!istErste && (modellschicht.vorbereitungsminuten ?? 0) !== 0) ||
-      (!istLetzte && (modellschicht.nachbereitungsminuten ?? 0) !== 0)
-    ) {
-      throw new Error(
-        'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Modellschicht erlaubt.',
-      );
-    }
-  });
-}
-
-function normalizeBesondereRasterzeiten(
-  rasterzeiten: readonly IBesondereRasterzeit[],
-  modellschichtIds: ReadonlySet<string>,
-): readonly IBesondereRasterzeit[] {
-  const schluessel = new Set<string>();
-  return rasterzeiten.map((rasterzeit) => {
-    const dauerMinuten = calculateSchichtdauerMinuten(
-      rasterzeit.beginnLokalzeit,
-      rasterzeit.endeLokalzeit,
-    );
-    const aktuellerSchluessel = JSON.stringify([
-      rasterzeit.sondertagId,
-      rasterzeit.modellschichtId,
-    ]);
-    if (
-      !rasterzeit.sondertagId ||
-      !modellschichtIds.has(rasterzeit.modellschichtId) ||
-      dauerMinuten === null ||
-      schluessel.has(aktuellerSchluessel)
-    ) {
-      throw new Error('Die besondere Rasterzeit ist nicht eindeutig oder fachlich ungültig.');
-    }
-    schluessel.add(aktuellerSchluessel);
-    return {
-      sondertagId: rasterzeit.sondertagId,
-      modellschichtId: rasterzeit.modellschichtId,
-      beginnLokalzeit: rasterzeit.beginnLokalzeit,
-      endeLokalzeit: rasterzeit.endeLokalzeit,
-      endetAmFolgetag: rasterzeit.endeLokalzeit < rasterzeit.beginnLokalzeit,
-    };
-  });
 }
 
 @Injectable({ providedIn: 'root' })
@@ -155,7 +106,7 @@ export class SchichtmodellService {
    *
    * @param pfad - Vollständiger Filialpfad.
    * @param strategie - Datenquellenstrategie für den Ladevorgang.
-   * @returns Nach Bezeichnung sortierte Schichtmodelle mit chronologisch geordneten Modellschichten.
+   * @returns Nach Bezeichnung sortierte Schichtmodelle mit fachlich geordneten Modellschichten.
    */
   async loadSchichtmodelle(
     pfad: IFilialPfad,
@@ -221,13 +172,11 @@ export class SchichtmodellService {
       bezeichnung: anlage.bezeichnung.trim(),
       aktiv: true,
       planungsart: 'schichtraster',
-      besondereRasterzeiten: [],
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
-    const modellschichten = anlage.modellschichten
-      .map((modellschicht) => normalizeModellschicht(modellschicht))
-      .map((modellschicht) => {
+    const modellschichten = normalizeModellschichten(anlage.modellschichten).map(
+      (modellschicht) => {
         const id = this.firestoreDbService.createDocumentId(
           FIRESTORE_COLLECTION_PATHS.modellschichten({ ...pfad, schichtmodellId }),
         );
@@ -237,14 +186,8 @@ export class SchichtmodellService {
           id,
           schichtmodellId,
         };
-      })
-      .sort(compareModellschichtenNachBeginn);
-    validateRandminuten(modellschichten);
-    const besondereRasterzeiten = normalizeBesondereRasterzeiten(
-      anlage.besondereRasterzeiten,
-      new Set(modellschichten.map((modellschicht) => modellschicht.id)),
+      },
     );
-    schichtmodell.besondereRasterzeiten = besondereRasterzeiten;
     const operationen: TFirestoreBatchOperation[] = [
       {
         documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
@@ -252,7 +195,6 @@ export class SchichtmodellService {
           bezeichnung: schichtmodell.bezeichnung,
           aktiv: true,
           planungsart: 'schichtraster',
-          besondereRasterzeiten,
           erstelltAm: zeitstempel,
           erstelltVonUid: benutzerUid,
           aktualisiertAm: zeitstempel,
@@ -293,9 +235,8 @@ export class SchichtmodellService {
     const schichtmodellId = bestand.schichtmodell.id;
     const bekannteIds = new Set(bestand.modellschichten.map((modellschicht) => modellschicht.id));
     const verwendeteIds = new Set<string>();
-    const modellschichten = aktualisierung.modellschichten
-      .map((modellschicht) => normalizeModellschicht(modellschicht))
-      .map((modellschicht) => {
+    const modellschichten = normalizeModellschichten(aktualisierung.modellschichten).map(
+      (modellschicht) => {
         const id =
           modellschicht.id &&
           bekannteIds.has(modellschicht.id) &&
@@ -311,12 +252,7 @@ export class SchichtmodellService {
           id,
           schichtmodellId,
         };
-      })
-      .sort(compareModellschichtenNachBeginn);
-    validateRandminuten(modellschichten);
-    const besondereRasterzeiten = normalizeBesondereRasterzeiten(
-      aktualisierung.besondereRasterzeiten,
-      verwendeteIds,
+      },
     );
     const operationen: TFirestoreBatchOperation[] = [
       {
@@ -325,7 +261,6 @@ export class SchichtmodellService {
           bezeichnung: aktualisierung.bezeichnung.trim(),
           aktiv: aktualisierung.aktiv,
           planungsart: 'schichtraster',
-          besondereRasterzeiten,
           aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
           aktualisiertVonUid: benutzerUid,
         },
@@ -359,7 +294,6 @@ export class SchichtmodellService {
         ...bestand.schichtmodell,
         bezeichnung: aktualisierung.bezeichnung.trim(),
         aktiv: aktualisierung.aktiv,
-        besondereRasterzeiten,
         aktualisiertVonUid: benutzerUid,
       },
       modellschichten,
@@ -394,8 +328,6 @@ export class SchichtmodellService {
     if (!anlage.bezeichnung.trim()) {
       throw new Error('Ein Schichtmodell benötigt eine Bezeichnung.');
     }
-    if (anlage.modellschichten.length === 0) {
-      throw new Error('Ein Schichtmodell benötigt mindestens eine Modellschicht.');
-    }
+    assertGueltigeModellschichten(anlage.modellschichten);
   }
 }

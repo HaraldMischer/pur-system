@@ -1,6 +1,8 @@
 // pur-system/src/app/commons/utils/filialeinstellung/feiertag.ts
 
 import type {
+  IGeschlosseneOeffnungsregel,
+  IGeoeffneteOeffnungsregel,
   IFilialeinstellungSondertagVorlage,
   TBundeslandCode,
   TGesetzlicherFeiertagSchluessel,
@@ -196,10 +198,12 @@ export function getGesetzlicherFeiertagDatum(
  * Erstellt die initial inaktiven Sondertage einer Filiale.
  *
  * @param bundesland - Bundesland der Filiale.
+ * @param oeffnungsrahmen - Aus dem Schließzeitraum abgeleitete zeitliche Vorbelegung.
  * @returns Gesetzliche Feiertage des Bundeslands sowie Heiligabend und Silvester.
  */
 export function createInitialeSondertage(
   bundesland: TBundeslandCode,
+  oeffnungsrahmen: IGeoeffneteOeffnungsregel,
 ): readonly IFilialeinstellungSondertagVorlage[] {
   const gesetzlicheFeiertage = GESETZLICHE_FEIERTAGE_KATALOG.filter((eintrag) => {
     return eintrag.automatischeBundeslaender.includes(bundesland);
@@ -213,15 +217,13 @@ export function createInitialeSondertage(
         typ: 'gesetzlicherFeiertag' as const,
         feiertagSchluessel: eintrag.schluessel,
       },
-      oeffnungsregel: {
-        geoeffnet: false as const,
-      },
+      oeffnungsregel: createGeschlosseneOeffnungsregel(oeffnungsrahmen),
     };
   });
   return [
     ...gesetzlicheFeiertage,
-    createFesterSondertag('heiligabend', 'Heiligabend', 12, 24),
-    createFesterSondertag('silvester', 'Silvester', 12, 31),
+    createFesterSondertag('heiligabend', 'Heiligabend', 12, 24, oeffnungsrahmen),
+    createFesterSondertag('silvester', 'Silvester', 12, 31, oeffnungsrahmen),
   ];
 }
 
@@ -233,13 +235,15 @@ export function createInitialeSondertage(
  *
  * @param vorhandeneSondertage - Bisherige Sondertagsvorlagen der Filiale.
  * @param bundesland - Neu ausgewähltes Bundesland.
+ * @param oeffnungsrahmen - Zeitliche Vorbelegung für neu hinzukommende Systemtage.
  * @returns Abgeglichene Sondertagsvorlagen.
  */
 export function reconcileInitialeSondertage(
   vorhandeneSondertage: readonly IFilialeinstellungSondertagVorlage[],
   bundesland: TBundeslandCode,
+  oeffnungsrahmen: IGeoeffneteOeffnungsregel,
 ): readonly IFilialeinstellungSondertagVorlage[] {
-  const initialeSondertage = createInitialeSondertage(bundesland);
+  const initialeSondertage = createInitialeSondertage(bundesland, oeffnungsrahmen);
   const vorhandeneNachId = new Map(
     vorhandeneSondertage.map((sondertag) => {
       return [sondertag.id, sondertag] as const;
@@ -291,6 +295,7 @@ function createFesterSondertag(
   bezeichnung: string,
   monat: number,
   tag: number,
+  oeffnungsrahmen: IGeoeffneteOeffnungsregel,
 ): IFilialeinstellungSondertagVorlage {
   return {
     id,
@@ -302,9 +307,18 @@ function createFesterSondertag(
       monat,
       tag,
     },
-    oeffnungsregel: {
-      geoeffnet: false,
-    },
+    oeffnungsregel: createGeschlosseneOeffnungsregel(oeffnungsrahmen),
+  };
+}
+
+function createGeschlosseneOeffnungsregel(
+  oeffnungsrahmen: IGeoeffneteOeffnungsregel,
+): IGeschlosseneOeffnungsregel {
+  return {
+    geoeffnet: false,
+    beginnLokalzeit: oeffnungsrahmen.beginnLokalzeit,
+    endeLokalzeit: oeffnungsrahmen.endeLokalzeit,
+    endetAmFolgetag: oeffnungsrahmen.endetAmFolgetag,
   };
 }
 

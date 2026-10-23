@@ -8,6 +8,13 @@ import {
   reconcileInitialeSondertage,
 } from './feiertag';
 
+const OEFFNUNGSRAHMEN = {
+  geoeffnet: true as const,
+  beginnLokalzeit: '06:00',
+  endeLokalzeit: '01:00',
+  endetAmFolgetag: true,
+};
+
 describe('Feiertagsauflösung', () => {
   it.each([
     [2024, '2024-03-31'],
@@ -124,7 +131,7 @@ describe('Feiertagsauflösung', () => {
   });
 
   it('should create inactive initial holidays including Christmas Eve and New Years Eve', () => {
-    const sondertage = createInitialeSondertage('DE-NW');
+    const sondertage = createInitialeSondertage('DE-NW', OEFFNUNGSRAHMEN);
     const heiligabend = sondertage.find((sondertag) => {
       return sondertag.id === 'heiligabend';
     });
@@ -135,6 +142,15 @@ describe('Feiertagsauflösung', () => {
     expect(sondertage.every((sondertag) => !sondertag.aktiv)).toBe(true);
     expect(sondertage.every((sondertag) => sondertag.herkunft === 'system')).toBe(true);
     expect(sondertage.every((sondertag) => !sondertag.oeffnungsregel.geoeffnet)).toBe(true);
+    expect(
+      sondertage.every((sondertag) => {
+        return (
+          sondertag.oeffnungsregel.beginnLokalzeit === '06:00' &&
+          sondertag.oeffnungsregel.endeLokalzeit === '01:00' &&
+          sondertag.oeffnungsregel.endetAmFolgetag === true
+        );
+      }),
+    ).toBe(true);
     expect(heiligabend?.datumsregel).toEqual({
       typ: 'jaehrlichFestesDatum',
       monat: 12,
@@ -148,19 +164,21 @@ describe('Feiertagsauflösung', () => {
   });
 
   it('should reconcile state holidays while preserving existing and user-defined special days', () => {
-    const nordrheinWestfalen = createInitialeSondertage('DE-NW').map((sondertag) => {
-      return sondertag.id === 'fronleichnam'
-        ? {
-            ...sondertag,
-            oeffnungsregel: {
-              geoeffnet: true as const,
-              beginnLokalzeit: '10:00',
-              endeLokalzeit: '14:00',
-              endetAmFolgetag: false,
-            },
-          }
-        : sondertag;
-    });
+    const nordrheinWestfalen = createInitialeSondertage('DE-NW', OEFFNUNGSRAHMEN).map(
+      (sondertag) => {
+        return sondertag.id === 'fronleichnam'
+          ? {
+              ...sondertag,
+              oeffnungsregel: {
+                geoeffnet: true as const,
+                beginnLokalzeit: '10:00',
+                endeLokalzeit: '14:00',
+                endetAmFolgetag: false,
+              },
+            }
+          : sondertag;
+      },
+    );
     const eigenerSondertag = {
       id: 'jubilaeum',
       bezeichnung: 'Jubiläum',
@@ -179,6 +197,7 @@ describe('Feiertagsauflösung', () => {
     const abgeglichen = reconcileInitialeSondertage(
       [...nordrheinWestfalen, eigenerSondertag],
       'DE-HE',
+      OEFFNUNGSRAHMEN,
     );
 
     expect(
@@ -200,15 +219,23 @@ describe('Feiertagsauflösung', () => {
   });
 
   it('should add newly applicable state holidays as inactive', () => {
-    const hessen = createInitialeSondertage('DE-HE');
+    const hessen = createInitialeSondertage('DE-HE', OEFFNUNGSRAHMEN);
 
-    const abgeglichen = reconcileInitialeSondertage(hessen, 'DE-BW');
+    const abgeglichen = reconcileInitialeSondertage(hessen, 'DE-BW', OEFFNUNGSRAHMEN);
 
     expect(
       abgeglichen.find((sondertag) => {
         return sondertag.id === 'heiligeDreiKoenige';
-      })?.aktiv,
-    ).toBe(false);
+      }),
+    ).toMatchObject({
+      aktiv: false,
+      oeffnungsregel: {
+        geoeffnet: false,
+        beginnLokalzeit: '06:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+    });
   });
 
   it.each([1582, 10.5, 10_000])('should reject the invalid year %s', (jahr) => {
