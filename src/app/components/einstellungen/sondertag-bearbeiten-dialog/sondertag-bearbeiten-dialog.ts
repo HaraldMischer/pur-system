@@ -9,14 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  AbstractControl,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -26,8 +19,11 @@ import { MatInputModule } from '@angular/material/input';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import {
   IFilialeinstellungSondertagEintrag,
+  ISchliesszeitraum,
   TOeffnungsregel,
 } from '../../../commons/models/domain/filialeinstellung';
+import { getMaximalerOeffnungsrahmen } from '../../../commons/utils/filialeinstellung/schliesszeitraum';
+import { createOeffnungsregelZeitraumValidator } from '../../../commons/validators/oeffnungsregel-zeitraum.validator';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { DatumEingabe } from '../../shared/datum-eingabe/datum-eingabe';
 import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-eingabe';
@@ -36,14 +32,8 @@ import { LokalzeitEingabe } from '../../shared/lokalzeit-eingabe/lokalzeit-einga
 
 export interface ISondertagBearbeitenDialogDaten {
   readonly pfad: IFilialPfad;
+  readonly schliesszeitraum: ISchliesszeitraum;
   readonly sondertag?: IFilialeinstellungSondertagEintrag;
-}
-
-function oeffnungszeitValidator(control: AbstractControl): ValidationErrors | null {
-  const geoeffnet = control.get('geoeffnet')?.value;
-  const beginn = control.get('beginnLokalzeit')?.value;
-  const ende = control.get('endeLokalzeit')?.value;
-  return geoeffnet && beginn === ende ? { identischeOeffnungszeiten: true } : null;
 }
 
 @Component({
@@ -103,7 +93,7 @@ export class SondertagBearbeitenDialog {
         validators: [Validators.required],
       }),
     },
-    { validators: [oeffnungszeitValidator] },
+    { validators: [createOeffnungsregelZeitraumValidator(this.daten.schliesszeitraum)] },
   );
   readonly hatAenderungen = signal(!this.istBestehenderEintrag);
   readonly inProgress = computed(() => {
@@ -185,12 +175,17 @@ export class SondertagBearbeitenDialog {
 
   private getBeginn(): string {
     const regel = this.daten.sondertag?.oeffnungsregel;
-    return regel?.beginnLokalzeit ?? '06:00';
+    return (
+      regel?.beginnLokalzeit ??
+      getMaximalerOeffnungsrahmen(this.daten.schliesszeitraum).beginnLokalzeit
+    );
   }
 
   private getEnde(): string {
     const regel = this.daten.sondertag?.oeffnungsregel;
-    return regel?.endeLokalzeit ?? '01:00';
+    return (
+      regel?.endeLokalzeit ?? getMaximalerOeffnungsrahmen(this.daten.schliesszeitraum).endeLokalzeit
+    );
   }
 
   private buildOeffnungsregel(): TOeffnungsregel {

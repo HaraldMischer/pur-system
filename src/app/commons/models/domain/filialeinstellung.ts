@@ -24,6 +24,18 @@ export type TBundeslandCode =
 
 export const STANDARD_BUNDESLAND: TBundeslandCode = 'DE-NW';
 
+export interface ISchliesszeitraum {
+  beginnLokalzeit: string;
+  endeLokalzeit: string;
+  endetAmFolgetag: boolean;
+}
+
+export const STANDARD_SCHLIESSZEITRAUM: Readonly<ISchliesszeitraum> = {
+  beginnLokalzeit: '01:00',
+  endeLokalzeit: '06:00',
+  endetAmFolgetag: false,
+};
+
 export type TWochentag =
   'montag' | 'dienstag' | 'mittwoch' | 'donnerstag' | 'freitag' | 'samstag' | 'sonntag';
 
@@ -121,6 +133,7 @@ export interface IFilialeinstellungAllgemeinDokument extends IFilialeinstellungD
 }
 
 export interface IFilialeinstellungOeffnungszeitenDokument extends IFilialeinstellungDokumentMetadaten {
+  schliesszeitraum: ISchliesszeitraum;
   wochenregeln: TWochenoeffnungszeiten;
 }
 

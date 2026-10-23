@@ -514,12 +514,14 @@ Die Sidebar enthält die Hauptnavigation der Anwendung. Aktuell sind fünf Berei
    ausgewählter Filiale die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`
    verwaltet. Jährliche Sondertage können deaktiviert werden; einmalige Sondertage gelten genau für ein vollständiges
    Kalenderdatum, werden getrennt angelegt und technisch als Datumsausnahmen gespeichert. Das Bundesland wird zunächst
-   fest mit Nordrhein-Westfalen (`DE-NW`) initialisiert und nicht zur Auswahl angeboten. Die sieben Wochenregeln werden bei
-   einer neuen Filiale zunächst als geöffnet von `06:00` bis `01:00` Uhr am Folgetag vorbelegt. Die technische Zeitzone
-   `Europe/Berlin` wird nicht als Filialeinstellung gespeichert. Fehlende Zeitwerte von Feiertagen und jährlichen Sondertagen
-   werden im Bearbeitungsdialog ebenfalls mit `06:00` bis `01:00` Uhr vorbelegt. Weitere filialbezogene Einstellungsseiten
-   können später als gleichrangige Unterpunkte ergänzt werden. Sichtbarkeit und Route der gesamten Gruppe werden über den
-   App-Bereich `einstellungen` geschützt.
+   fest mit Nordrhein-Westfalen (`DE-NW`) initialisiert und nicht zur Auswahl angeboten. Ein täglich geltender
+   Schließzeitraum gehört zu den Öffnungszeiteinstellungen der Filiale, wird mit `01:00` bis `06:00` Uhr initialisiert und kann
+   später durch berechtigte Benutzer geändert werden. Aus ihm wird der größtmögliche Öffnungsrahmen abgeleitet. Die sieben
+   Wochenregeln werden bei einer neuen Filiale zunächst mit diesem Rahmen vorbelegt. Beim initialen Schließzeitraum entspricht
+   er `06:00` bis `01:00` Uhr am Folgetag. Die technische Zeitzone `Europe/Berlin` wird nicht als Filialeinstellung gespeichert.
+   Fehlende Zeitwerte von Feiertagen und jährlichen Sondertagen werden im Bearbeitungsdialog ebenfalls mit dem jeweils
+   abgeleiteten Öffnungsrahmen vorbelegt. Weitere filialbezogene Einstellungsseiten können später als gleichrangige Unterpunkte
+   ergänzt werden. Sichtbarkeit und Route der gesamten Gruppe werden über den App-Bereich `einstellungen` geschützt.
 
 5. **System (`/system`):** Administrativer Bereich für `master`, der in der Sidebar als `System` bezeichnet wird. Er umfasst die
    Page `StrukturAnlegenPage` unter `/system/struktur/anlegen`, die `StrukturVerwaltenPage` für vorhandene Firmen und
@@ -542,12 +544,18 @@ ist. Ein Monatsplan übernimmt die Planungsart des gewählten Modells und behäl
 Planungsarten werden fachlich getrennt und nicht mit derselben Planungslogik verarbeitet.
 
 Filialbezogene Konfiguration wird unterhalb der jeweiligen Filiale in einer eigenen Collection `einstellung` geführt. Das
-Dokument `allgemein` enthält das Bundesland. Das Dokument `oeffnungszeiten` enthält die regelmäßigen
-Wochenregeln. Eine geöffnete Regel beschreibt genau einen durchgehenden lokalen Zeitraum mit Beginn, Ende und der Angabe, ob
-das Ende am Folgetag liegt. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht vorgesehen. Wiederkehrende
-und berechnete besondere Tage
+Dokument `allgemein` enthält das Bundesland. Das Dokument `oeffnungszeiten` enthält den täglich geltenden Schließzeitraum und
+die regelmäßigen Wochenregeln. Eine geöffnete Regel beschreibt genau einen durchgehenden lokalen Zeitraum mit Beginn, Ende und
+der Angabe, ob das Ende am Folgetag liegt. Sie darf den Schließzeitraum nicht überschneiden. Diese Begrenzung gilt ebenso für
+geöffnete Regeln besonderer Tage und Datumsausnahmen. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht
+vorgesehen. Wiederkehrende und berechnete besondere Tage
 liegen als bezeichnete Einträge unter `einstellung/oeffnungszeiten/sondertag`; konkrete Abweichungen für ein Datum unter
 `einstellung/oeffnungszeiten/ausnahme`.
+
+Der Schließzeitraum begrenzt ausschließlich die Kundenöffnung. Er begrenzt keine Arbeitszeit und wird insbesondere nicht auf
+die aus Vorbereitungs- und Nachbereitungsminuten abgeleiteten Schichtzeiten angewendet. Eine Änderung des Schließzeitraums passt
+vorhandene Öffnungsregeln nicht automatisch an. Widerspricht eine gespeicherte geöffnete Regel dem neuen Zeitraum, muss sie
+zuerst fachlich angepasst werden; bis dahin wird das Speichern des neuen Schließzeitraums verhindert.
 
 Die Oberfläche trennt `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`. Heiligabend und Silvester
 sind keine gesetzlichen Feiertage und werden deshalb als jährliche Sondertage dargestellt. Eigene jährliche Sondertage

@@ -18,6 +18,7 @@ import {
   IFilialeinstellungSondertagEintrag,
   IFilialeinstellungSondertagVorlage,
   IJaehrlichFestesDatum,
+  ISchliesszeitraum,
   TBundeslandCode,
   TOeffnungsregel,
   TWochenoeffnungszeiten,
@@ -27,6 +28,10 @@ import {
   reconcileInitialeSondertage,
 } from '../../commons/utils/filialeinstellung/feiertag';
 import { assertKeineAktiveSondertagDatumskollision } from '../../commons/utils/filialeinstellung/sondertag-kollision';
+import {
+  isGueltigerSchliesszeitraum,
+  isOeffnungsregelInnerhalbOeffnungsrahmen,
+} from '../../commons/utils/filialeinstellung/schliesszeitraum';
 import {
   FirestoreDbService,
   IFirestoreDokument,
@@ -103,6 +108,18 @@ function assertOeffnungsregel(oeffnungsregel: TOeffnungsregel | undefined): void
   }
 }
 
+function assertOeffnungsregelImOeffnungsrahmen(
+  oeffnungsregel: TOeffnungsregel,
+  schliesszeitraum: ISchliesszeitraum,
+  bezeichnung: string,
+): void {
+  if (!isOeffnungsregelInnerhalbOeffnungsrahmen(oeffnungsregel, schliesszeitraum)) {
+    throw new FilialeinstellungFachfehler(
+      `Die Öffnungsregel „${bezeichnung}“ überschneidet den Schließzeitraum.`,
+    );
+  }
+}
+
 function assertDatum(datum: string): void {
   if (!DATUM_PATTERN.test(datum)) {
     throw new FilialeinstellungFachfehler('Das Datum muss dem Format YYYY-MM-DD entsprechen.');
@@ -136,6 +153,7 @@ export interface IFilialeinstellungRohdaten {
 
 export interface IFilialeinstellungGrundlagen {
   bundesland: TBundeslandCode;
+  schliesszeitraum: ISchliesszeitraum;
   wochenregeln: TWochenoeffnungszeiten;
 }
 
@@ -280,19 +298,26 @@ export class FilialeinstellungService {
         'Die Filialeinstellungen sind unvollständig und müssen repariert werden.',
       );
     }
-    this.assertGrundlagen({
-      bundesland: allgemein.daten.bundesland,
-      wochenregeln: oeffnungszeiten.daten.wochenregeln,
+    const sondertagEintraege = sondertage.map((dokument) => {
+      return { ...pfad, id: dokument.id, ...dokument.daten };
     });
+    const ausnahmeEintraege = ausnahmen.map((dokument) => {
+      return { ...pfad, id: dokument.id, ...dokument.daten };
+    });
+    this.assertGrundlagen(
+      {
+        bundesland: allgemein.daten.bundesland,
+        schliesszeitraum: oeffnungszeiten.daten.schliesszeitraum,
+        wochenregeln: oeffnungszeiten.daten.wochenregeln,
+      },
+      sondertagEintraege,
+      ausnahmeEintraege,
+    );
     return {
       allgemein: mapAllgemeineFilialeinstellung(allgemein.daten),
       oeffnungszeiten: oeffnungszeiten.daten,
-      sondertage: sondertage.map((dokument) => {
-        return { ...pfad, id: dokument.id, ...dokument.daten };
-      }),
-      ausnahmen: ausnahmen.map((dokument) => {
-        return { ...pfad, id: dokument.id, ...dokument.daten };
-      }),
+      sondertage: sondertagEintraege,
+      ausnahmen: ausnahmeEintraege,
     };
   }
 
@@ -323,6 +348,7 @@ export class FilialeinstellungService {
       aktualisiertVonUid: benutzerUid,
     };
     const oeffnungszeiten: IFilialeinstellungOeffnungszeitenDokument = {
+      schliesszeitraum: grundlagen.schliesszeitraum,
       wochenregeln: grundlagen.wochenregeln,
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
@@ -391,7 +417,7 @@ export class FilialeinstellungService {
     grundlagen: IFilialeinstellungGrundlagen,
     benutzerUid: string,
   ): Promise<IFilialeinstellungBestand> {
-    this.assertGrundlagen(grundlagen);
+    this.assertGrundlagen(grundlagen, bestand.sondertage, bestand.ausnahmen);
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
     const sondertagVorlagen = reconcileInitialeSondertage(
       bestand.sondertage,
@@ -422,6 +448,7 @@ export class FilialeinstellungService {
           einstellungId: 'oeffnungszeiten',
         }),
         daten: {
+          schliesszeitraum: grundlagen.schliesszeitraum,
           wochenregeln: grundlagen.wochenregeln,
           aktualisiertAm: zeitstempel,
           aktualisiertVonUid: benutzerUid,
@@ -468,6 +495,7 @@ export class FilialeinstellungService {
       },
       oeffnungszeiten: {
         ...bestand.oeffnungszeiten,
+        schliesszeitraum: grundlagen.schliesszeitraum,
         wochenregeln: grundlagen.wochenregeln,
         aktualisiertVonUid: benutzerUid,
       },
@@ -492,9 +520,15 @@ export class FilialeinstellungService {
     pfad: IFilialPfad,
     anlage: IFilialeinstellungSondertagAnlage,
     bestehendeSondertage: readonly IFilialeinstellungSondertagEintrag[],
+    schliesszeitraum: ISchliesszeitraum,
     benutzerUid: string,
   ): Promise<IFilialeinstellungSondertagEintrag> {
     this.assertSondertagAnlage(anlage);
+    assertOeffnungsregelImOeffnungsrahmen(
+      anlage.oeffnungsregel,
+      schliesszeitraum,
+      anlage.bezeichnung,
+    );
     assertKeineAktiveSondertagDatumskollision(bestehendeSondertage, anlage);
     const id = this.firestoreDbService.createDocumentId(
       FIRESTORE_COLLECTION_PATHS.filialeinstellungSondertage(pfad),
@@ -522,6 +556,7 @@ export class FilialeinstellungService {
     sondertag: IFilialeinstellungSondertagEintrag,
     aktualisierung: IFilialeinstellungSondertagAktualisierung,
     bestehendeSondertage: readonly IFilialeinstellungSondertagEintrag[],
+    schliesszeitraum: ISchliesszeitraum,
     benutzerUid: string,
   ): Promise<IFilialeinstellungSondertagEintrag> {
     if (sondertag.herkunft !== 'benutzer') {
@@ -530,6 +565,11 @@ export class FilialeinstellungService {
       );
     }
     this.assertSondertagAnlage(aktualisierung);
+    assertOeffnungsregelImOeffnungsrahmen(
+      aktualisierung.oeffnungsregel,
+      schliesszeitraum,
+      aktualisierung.bezeichnung,
+    );
     assertKeineAktiveSondertagDatumskollision(bestehendeSondertage, aktualisierung, sondertag.id);
     const daten = { ...aktualisierung, bezeichnung: aktualisierung.bezeichnung.trim() };
     await this.firestoreDbService.updateDocument(
@@ -554,12 +594,18 @@ export class FilialeinstellungService {
     sondertag: IFilialeinstellungSondertagEintrag,
     aktualisierung: IFilialeinstellungSystemSondertagAktualisierung,
     bestehendeSondertage: readonly IFilialeinstellungSondertagEintrag[],
+    schliesszeitraum: ISchliesszeitraum,
     benutzerUid: string,
   ): Promise<IFilialeinstellungSondertagEintrag> {
     if (sondertag.herkunft !== 'system') {
       throw new FilialeinstellungFachfehler('Der Sondertag ist nicht systemdefiniert.');
     }
     assertOeffnungsregel(aktualisierung.oeffnungsregel);
+    assertOeffnungsregelImOeffnungsrahmen(
+      aktualisierung.oeffnungsregel,
+      schliesszeitraum,
+      sondertag.bezeichnung,
+    );
     if (sondertag.datumsregel.typ === 'jaehrlichFestesDatum') {
       assertKeineAktiveSondertagDatumskollision(
         bestehendeSondertage,
@@ -611,9 +657,15 @@ export class FilialeinstellungService {
   async createAusnahme(
     pfad: IFilialPfad,
     anlage: IFilialeinstellungAusnahmeSchreibdaten,
+    schliesszeitraum: ISchliesszeitraum,
     benutzerUid: string,
   ): Promise<IFilialeinstellungAusnahmeEintrag> {
     this.assertAusnahme(anlage);
+    assertOeffnungsregelImOeffnungsrahmen(
+      anlage.oeffnungsregel,
+      schliesszeitraum,
+      anlage.bezeichnung,
+    );
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
     const dokument: IFilialeinstellungAusnahmeDokument = {
       ...anlage,
@@ -635,9 +687,15 @@ export class FilialeinstellungService {
     pfad: IFilialPfad,
     ausnahme: IFilialeinstellungAusnahmeEintrag,
     aktualisierung: IFilialeinstellungAusnahmeSchreibdaten,
+    schliesszeitraum: ISchliesszeitraum,
     benutzerUid: string,
   ): Promise<IFilialeinstellungAusnahmeEintrag> {
     this.assertAusnahme(aktualisierung);
+    assertOeffnungsregelImOeffnungsrahmen(
+      aktualisierung.oeffnungsregel,
+      schliesszeitraum,
+      aktualisierung.bezeichnung,
+    );
     if (aktualisierung.datum !== ausnahme.datum || ausnahme.id !== ausnahme.datum) {
       throw new FilialeinstellungFachfehler(
         'Das Datum einer bestehenden Ausnahme kann nicht geändert werden.',
@@ -667,9 +725,16 @@ export class FilialeinstellungService {
 
   // ===== Interne Helfer =======================
 
-  private assertGrundlagen(grundlagen: IFilialeinstellungGrundlagen): void {
+  private assertGrundlagen(
+    grundlagen: IFilialeinstellungGrundlagen,
+    sondertage: readonly IFilialeinstellungSondertagEintrag[] = [],
+    ausnahmen: readonly IFilialeinstellungAusnahmeEintrag[] = [],
+  ): void {
     if (!BUNDESLAENDER.has(grundlagen.bundesland)) {
       throw new FilialeinstellungFachfehler('Das Bundesland der Filiale ist ungültig.');
+    }
+    if (!isGueltigerSchliesszeitraum(grundlagen.schliesszeitraum)) {
+      throw new FilialeinstellungFachfehler('Der Schließzeitraum enthält keine gültige Zeitfolge.');
     }
     if (Object.keys(grundlagen.wochenregeln).length !== WOCHENTAGE.length) {
       throw new FilialeinstellungFachfehler(
@@ -677,7 +742,25 @@ export class FilialeinstellungService {
       );
     }
     for (const wochentag of WOCHENTAGE) {
-      assertOeffnungsregel(grundlagen.wochenregeln[wochentag]);
+      const oeffnungsregel = grundlagen.wochenregeln[wochentag];
+      assertOeffnungsregel(oeffnungsregel);
+      assertOeffnungsregelImOeffnungsrahmen(oeffnungsregel, grundlagen.schliesszeitraum, wochentag);
+    }
+    for (const sondertag of sondertage) {
+      assertOeffnungsregel(sondertag.oeffnungsregel);
+      assertOeffnungsregelImOeffnungsrahmen(
+        sondertag.oeffnungsregel,
+        grundlagen.schliesszeitraum,
+        sondertag.bezeichnung,
+      );
+    }
+    for (const ausnahme of ausnahmen) {
+      assertOeffnungsregel(ausnahme.oeffnungsregel);
+      assertOeffnungsregelImOeffnungsrahmen(
+        ausnahme.oeffnungsregel,
+        grundlagen.schliesszeitraum,
+        ausnahme.bezeichnung,
+      );
     }
   }
 

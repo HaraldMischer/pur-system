@@ -5,6 +5,7 @@
   display: grid;
   gap: 12px;
   min-width: 0;
+  margin-block: 12px;
 
   // Ordnet Listentitel und zugehörige Aktionen in einer Kopfzeile an.
   &__header {

@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { STANDARD_SCHLIESSZEITRAUM } from '../../../commons/models/domain/filialeinstellung';
 import {
   FilialeinstellungStore,
   TFilialeinstellungKontext,
@@ -76,6 +77,10 @@ describe('OeffnungszeitenFiliale', () => {
     expect(fixture.componentInstance.wochentage).toHaveLength(7);
     expect(fixture.componentInstance.form.contains('bundesland')).toBe(false);
     expect(fixture.componentInstance.form.contains('zeitzone')).toBe(false);
+    expect(fixture.componentInstance.form.controls.schliesszeitraum.getRawValue()).toEqual({
+      beginnLokalzeit: '01:00',
+      endeLokalzeit: '06:00',
+    });
   });
 
   it('should initialize weekdays with the overnight standard opening hours', async () => {
@@ -97,6 +102,7 @@ describe('OeffnungszeitenFiliale', () => {
     expect(gespeicherteGrundlagen).toEqual(
       expect.objectContaining({
         bundesland: 'DE-NW',
+        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM,
         wochenregeln: expect.objectContaining({
           montag: {
             geoeffnet: true,
@@ -148,6 +154,30 @@ describe('OeffnungszeitenFiliale', () => {
     expect(component.form.controls.dienstag.controls.beginnLokalzeit.disabled).toBe(true);
   });
 
+  it('should block weekly opening hours that overlap the closing period', async () => {
+    const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
+    fixture.componentRef.setInput('filiale', FILIALE);
+    fixture.componentRef.setInput('pfad', PFAD);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.form.controls.schliesszeitraum.controls.endeLokalzeit.setValue(
+      '07:00',
+    );
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.hasError('oeffnungsregelAusserhalbOeffnungsrahmen')).toBe(
+      true,
+    );
+    const submit = fixture.nativeElement.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Die Öffnungsregel „Montag“ überschneidet den Schließzeitraum.',
+    );
+  });
+
   it('should open separate dialogs for annual special days and concrete date exceptions', () => {
     const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
@@ -159,12 +189,16 @@ describe('OeffnungszeitenFiliale', () => {
     expect(open).toHaveBeenNthCalledWith(
       1,
       SondertagBearbeitenDialog,
-      expect.objectContaining({ data: { pfad: PFAD } }),
+      expect.objectContaining({
+        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM },
+      }),
     );
     expect(open).toHaveBeenNthCalledWith(
       2,
       DatumsausnahmeBearbeitenDialog,
-      expect.objectContaining({ data: { pfad: PFAD } }),
+      expect.objectContaining({
+        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM },
+      }),
     );
   });
 
@@ -185,9 +219,7 @@ describe('OeffnungszeitenFiliale', () => {
     await fixture.whenStable();
 
     const text = (fixture.nativeElement as HTMLElement).textContent;
-    expect(text).toContain(
-      'Die Filialeinstellungen konnten nicht gespeichert werden.',
-    );
+    expect(text).toContain('Die Filialeinstellungen konnten nicht gespeichert werden.');
     expect(text).toContain('Die Öffnungsregel enthält keine gültige Zeitfolge.');
   });
 
@@ -225,6 +257,7 @@ describe('OeffnungszeitenFiliale', () => {
             aktualisiertVonUid: 'uid-1',
           },
           oeffnungszeiten: {
+            schliesszeitraum: STANDARD_SCHLIESSZEITRAUM,
             wochenregeln: {
               montag: {
                 geoeffnet: false,
@@ -329,8 +362,6 @@ describe('OeffnungszeitenFiliale', () => {
     expect(text).toContain('Aktiv · Geöffnet 08:00–18:00 Uhr');
     expect(text).toContain('Aktiv · Geschlossen · Jährlich am 24.12.');
     expect(text).toContain('Aktiv · Geschlossen · Einmalig am 12.11.2026');
-    expect(text).not.toContain('Folgetag');
-
     kontext.update((wert) => {
       if (!wert.bestand) {
         return wert;

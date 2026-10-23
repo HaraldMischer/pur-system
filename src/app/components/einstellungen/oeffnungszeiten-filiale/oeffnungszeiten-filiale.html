@@ -19,8 +19,33 @@
   }
 
   @if (kontext()?.isLoaded) {
-    <!-- Wochentage -->
-    <form [formGroup]="form" (ngSubmit)="saveGrundlagen()">
+    <form class="pur-form pur-form--flex" [formGroup]="form" (ngSubmit)="saveGrundlagen()">
+      <!-- Schließzeiten -->
+      <div
+        class="pur-form__group pur-form__group--full schliesszeiten"
+        [formGroup]="form.controls.schliesszeitraum"
+      >
+        <h2 class="pur-form__group-titel">Schließzeiten</h2>
+
+        <div class="pur-form__row schliesszeitfelder">
+          <app-lokalzeit-eingabe
+            class="pur-flex__item pur-flex__item--time"
+            label="Beginn"
+            subscriptSizing="dynamic"
+            formControlName="beginnLokalzeit"
+            required
+          />
+          <app-lokalzeit-eingabe
+            class="pur-flex__item pur-flex__item--time"
+            label="Ende"
+            subscriptSizing="dynamic"
+            formControlName="endeLokalzeit"
+            required
+          />
+        </div>
+      </div>
+
+      <!-- Wochentage -->
       <section class="pur-list pur-list--divided wochentage">
         <header class="pur-list__header pur-list__header--outlined">
           <h3 class="pur-text pur-text--title-medium">Wochentage</h3>
@@ -61,8 +86,17 @@
         }
       </section>
 
-      <div class="formular-aktionen">
+      @if (form.hasError('oeffnungsregelAusserhalbOeffnungsrahmen')) {
+        <p class="pur-message pur-message--error pur-message--full" role="alert">
+          Die Öffnungsregel „{{ form.getError('oeffnungsregelAusserhalbOeffnungsrahmen') }}“
+          überschneidet den Schließzeitraum.
+        </p>
+      }
+
+      <!-- Öffnungszeiten speichern -->
+      <div class="pur-form__row pur-form__item pur-form__item--full">
         <button
+          class="pur-form__item pur-form__item--auto pur-form__item--end"
           matButton="filled"
           type="submit"
           [disabled]="
@@ -76,7 +110,7 @@
 
     @if (bestand(); as daten) {
       <!-- Gesetzliche Feiertage -->
-      <section class="pur-list pur-list--divided liste">
+      <section class="pur-list pur-list--divided">
         <header class="pur-list__header pur-list__header--outlined">
           <h3 class="pur-text pur-text--title-medium">Gesetzliche Feiertage</h3>
         </header>
@@ -103,7 +137,7 @@
       </section>
 
       <!-- Jährliche Sondertage -->
-      <section class="pur-list pur-list--divided liste">
+      <section class="pur-list pur-list--divided">
         <header class="pur-list__header pur-list__header--outlined">
           <h3 class="pur-text pur-text--title-medium">Jährliche Sondertage</h3>
           <button
@@ -157,7 +191,7 @@
       </section>
 
       <!-- Einmalige Sondertage -->
-      <section class="pur-list pur-list--divided liste">
+      <section class="pur-list pur-list--divided">
         <header class="pur-list__header pur-list__header--outlined">
           <h3 class="pur-text pur-text--title-medium">Einmalige Sondertage</h3>
           <button

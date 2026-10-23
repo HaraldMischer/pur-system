@@ -40,12 +40,21 @@ den Schichten atomar gepflegte Prüfstruktur und ersetzt weder die Dienstplandok
 
 Die allgemeinen Filialeinstellungen speichern das Bundesland. Die Oberfläche verwendet zunächst fest Nordrhein-Westfalen
 (`DE-NW`) und bietet keine Bundeslandauswahl an. Die technische Zeitzone `Europe/Berlin` gilt anwendungsweit und wird nicht als
-Filialeinstellung gespeichert. Die regelmäßigen Öffnungszeiten enthalten genau eine Regel für jeden Wochentag. Eine geöffnete
-Regel besitzt eine lokale Beginn- und Endzeit sowie `endetAmFolgetag`. Neue Filialeinstellungen belegen alle sieben
-Wochenregeln als geöffnet von `06:00` bis `01:00` Uhr am Folgetag vor. Damit wird beispielsweise die Montagsöffnung eindeutig
-dem Montag zugeordnet. Eine Öffnungsregel beschreibt immer einen durchgehenden Zeitraum. Pausen und mehrere
-Öffnungszeiträume innerhalb eines Tages sind nicht Teil des Modells. Eine geschlossene Regel darf Zeitwerte für eine spätere
-Wiederaktivierung behalten; solange sie geschlossen ist, werden diese Werte fachlich nicht berücksichtigt.
+Filialeinstellung gespeichert. Das Dokument `einstellung/oeffnungszeiten` speichert zusätzlich einen für die Filiale täglich
+geltenden Schließzeitraum. Er wird bei der Initialisierung mit `01:00` bis `06:00` Uhr vorbelegt und kann anschließend durch
+berechtigte Benutzer geändert werden. Der Schließzeitraum begrenzt ausschließlich die Kundenöffnung. Vorbereitungs- und
+Nachbereitungszeiten von Schichten dürfen in ihn hineinreichen.
+
+Die regelmäßigen Öffnungszeiten enthalten genau eine Regel für jeden Wochentag. Eine geöffnete Regel besitzt eine lokale
+Beginn- und Endzeit sowie `endetAmFolgetag`. Aus dem Schließzeitraum wird der größtmögliche tägliche Öffnungsrahmen
+abgeleitet.
+Beim initialen Schließzeitraum von `01:00` bis `06:00` Uhr reicht er von `06:00` bis `01:00` Uhr am Folgetag. Neue
+Filialeinstellungen belegen alle sieben Wochenregeln mit diesem vollständig abgeleiteten Öffnungsrahmen vor. Damit wird
+beispielsweise die Montagsöffnung eindeutig dem Montag zugeordnet. Eine Öffnungsregel beschreibt immer einen durchgehenden
+Zeitraum und darf den Schließzeitraum nicht überschneiden. Diese Begrenzung gilt auch für geöffnete Regeln von Sondertagen und
+Datumsausnahmen. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht Teil des Modells. Eine geschlossene
+Regel darf Zeitwerte für eine spätere Wiederaktivierung behalten; solange sie geschlossen ist, werden diese Werte fachlich
+nicht berücksichtigt.
 
 Die Oberfläche unterscheidet die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und
 `Einmalige Sondertage`. Einmalige Sondertage werden technisch als konkrete Datumsausnahmen gespeichert. Heiligabend und
@@ -59,7 +68,7 @@ allein aus dem Bundesland abgeleitet und müssen als eigener fester Sondertag ge
 wie die landesweit geltenden gesetzlichen Feiertage bei der Initialisierung inaktiv angelegt. Damit gilt zunächst die
 Wochentagsregel, bis ein abweichender besonderer Tag gezielt aktiviert wird. Die geschlossenen Regeln dieser systemdefinierten
 Tage benötigen initial keine Zeitwerte. Der Bearbeitungsdialog verwendet bei fehlenden Zeitwerten für Feiertage und jährliche
-Sondertage `06:00` bis `01:00` Uhr am Folgetag als Vorbelegung.
+Sondertage den aus dem Schließzeitraum abgeleiteten größtmöglichen Öffnungsrahmen als Vorbelegung.
 
 Der Aktivstatus steuert ausschließlich, ob die besondere Öffnungsregel die Wochentagsregel überschreibt. Ein gesetzlicher
 Feiertag bleibt unabhängig davon kalendarisch ein gesetzlicher Feiertag. Diese Unterscheidung wird bei den tagesabhängigen
@@ -95,10 +104,13 @@ für jeden Filialpfad getrennt und stellt die Datumsauflösung bereit.
 
 Allgemeine Einstellungen, Wochenregeln und der automatische Sondertagsabgleich eines Bundeslandwechsels werden atomar
 geschrieben. Benutzerdefinierte Sondertage und Datumsausnahmen bleiben einzeln anleg-, änder- und löschbar. Systemdefinierte
-Sondertage können nur in Aktivstatus und Öffnungsregel verändert werden. Die Firestore Rules gewähren Masterkonten aufgrund
-ihrer Rolle sowie zugeordneten Office- und Filialkonten mit dem Bereich `einstellungen` Zugriff. Mitarbeiterkonten und nicht
-zugeordnete Filialen bleiben ausgeschlossen. Die Rules prüfen dafür Rolle, aktives Profil, Filialzugriff, Bereich und
-Collection-Pfad; Dokument-IDs, Feldinhalte, Datumsregeltypen und lokale Zeitwerte validiert der TypeScript-Code.
+Sondertage können nur in Aktivstatus und Öffnungsregel verändert werden. Der Schließzeitraum wird gemeinsam mit den
+Wochenregeln gespeichert. Eine Änderung wird nicht automatisch auf vorhandene Öffnungsregeln übertragen. Überschneidet danach
+eine gespeicherte geöffnete Wochen-, Sondertags- oder Ausnahmeregel den neuen Schließzeitraum, wird der Schreibvorgang mit einem
+konkreten Hinweis auf die widersprechende Regel verhindert. Die Firestore Rules gewähren Masterkonten aufgrund ihrer Rolle
+sowie zugeordneten Office- und Filialkonten mit dem Bereich `einstellungen` Zugriff. Mitarbeiterkonten und nicht zugeordnete
+Filialen bleiben ausgeschlossen. Die Rules prüfen dafür Rolle, aktives Profil, Filialzugriff, Bereich und Collection-Pfad;
+Dokument-IDs, Feldinhalte, Datumsregeltypen und lokale Zeitwerte validiert der TypeScript-Code.
 
 ## Planungsart Schichtraster
 

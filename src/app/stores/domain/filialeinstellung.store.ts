@@ -251,6 +251,7 @@ export const FilialeinstellungStore = signalStore(
               pfad,
               anlage,
               bestand.sondertage,
+              bestand.oeffnungszeiten.schliesszeitraum,
               benutzerUid,
             );
             return {
@@ -283,6 +284,7 @@ export const FilialeinstellungStore = signalStore(
               sondertag,
               aktualisierung,
               bestand.sondertage,
+              bestand.oeffnungszeiten.schliesszeitraum,
               benutzerUid,
             );
             return {
@@ -315,6 +317,7 @@ export const FilialeinstellungStore = signalStore(
               sondertag,
               aktualisierung,
               bestand.sondertage,
+              bestand.oeffnungszeiten.schliesszeitraum,
               benutzerUid,
             );
             return {
@@ -372,6 +375,7 @@ export const FilialeinstellungStore = signalStore(
             const ausnahme = await filialeinstellungService.createAusnahme(
               pfad,
               anlage,
+              bestand.oeffnungszeiten.schliesszeitraum,
               benutzerUid,
             );
             return { ...bestand, ausnahmen: sortAusnahmen([...bestand.ausnahmen, ausnahme]) };
@@ -400,6 +404,7 @@ export const FilialeinstellungStore = signalStore(
               pfad,
               ausnahme,
               aktualisierung,
+              bestand.oeffnungszeiten.schliesszeitraum,
               benutzerUid,
             );
             return {

@@ -4,7 +4,10 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
-import { TWochenoeffnungszeiten } from '../../commons/models/domain/filialeinstellung';
+import {
+  STANDARD_SCHLIESSZEITRAUM,
+  TWochenoeffnungszeiten,
+} from '../../commons/models/domain/filialeinstellung';
 import { SondertagDatumskollisionFehler } from '../../commons/utils/filialeinstellung/sondertag-kollision';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
@@ -240,6 +243,19 @@ describe('FilialeinstellungStore', () => {
       oeffnungsregel: { geoeffnet: false },
     });
 
+    expect(createSondertag).toHaveBeenCalledWith(
+      pfad,
+      expect.objectContaining({ bezeichnung: 'Inventur' }),
+      bestand.sondertage,
+      bestand.oeffnungszeiten.schliesszeitraum,
+      'uid-1',
+    );
+    expect(createAusnahme).toHaveBeenCalledWith(
+      pfad,
+      expect.objectContaining({ datum: '2026-12-23' }),
+      bestand.oeffnungszeiten.schliesszeitraum,
+      'uid-1',
+    );
     expect(store.getFilialeinstellungKontext(pfad)?.bestand?.sondertage).toHaveLength(2);
     expect(store.getFilialeinstellungKontext(pfad)?.bestand?.ausnahmen).toHaveLength(1);
     expect(store.getFilialeinstellungKontext(andererPfad)?.bestand).toEqual(andererBestand);
@@ -359,7 +375,7 @@ function createGrundlagen(): IFilialeinstellungGrundlagen {
     samstag: { geoeffnet: false },
     sonntag: { geoeffnet: false },
   };
-  return { bundesland: 'DE-NW', wochenregeln };
+  return { bundesland: 'DE-NW', schliesszeitraum: STANDARD_SCHLIESSZEITRAUM, wochenregeln };
 }
 
 function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {
@@ -371,6 +387,7 @@ function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {
       aktualisiertVonUid: 'uid-1',
     },
     oeffnungszeiten: {
+      schliesszeitraum: grundlagen.schliesszeitraum,
       wochenregeln: grundlagen.wochenregeln,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',

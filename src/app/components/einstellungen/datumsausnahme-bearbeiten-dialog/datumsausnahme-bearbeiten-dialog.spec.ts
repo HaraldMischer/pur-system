@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
+import { STANDARD_SCHLIESSZEITRAUM } from '../../../commons/models/domain/filialeinstellung';
 import {
   FilialeinstellungStore,
   IFilialeinstellungFehler,
@@ -31,7 +32,10 @@ describe('DatumsausnahmeBearbeitenDialog', () => {
     await TestBed.configureTestingModule({
       imports: [DatumsausnahmeBearbeitenDialog],
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: { pfad: PFAD } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM },
+        },
         { provide: MatDialogRef, useValue: { close } },
         {
           provide: FilialeinstellungStore,
@@ -94,5 +98,20 @@ describe('DatumsausnahmeBearbeitenDialog', () => {
       beginnLokalzeit: '09:00',
       endeLokalzeit: '17:30',
     });
+  });
+
+  it('should reject opening times that overlap the closing period', () => {
+    const fixture = TestBed.createComponent(DatumsausnahmeBearbeitenDialog);
+    fixture.componentInstance.form.patchValue({
+      bezeichnung: 'Sonderöffnung',
+      datum: '2026-11-12',
+      geoeffnet: true,
+      beginnLokalzeit: '06:00',
+      endeLokalzeit: '01:30',
+    });
+
+    expect(fixture.componentInstance.form.hasError('oeffnungsregelAusserhalbOeffnungsrahmen')).toBe(
+      true,
+    );
   });
 });

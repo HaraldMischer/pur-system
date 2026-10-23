@@ -2,12 +2,24 @@
 
 @use '../../../../assets/scss/variables/breakpoints' as breakpoints;
 
-.wochentage,
-.liste {
-  margin-top: 24px;
+.schliesszeiten {
+  container-type: inline-size;
+  margin-block-end: 12px;
+}
+
+.schliesszeitfelder {
+  row-gap: 16px;
+}
+
+@container (max-width: #{breakpoints.$breakpoint-extra-small-device}) {
+  .schliesszeitfelder > .pur-flex__item--time {
+    width: 100%;
+    flex-basis: 100%;
+  }
 }
 
 .wochentage {
+  flex: 1 1 480px;
   container-type: inline-size;
 
   .wochentag {
@@ -28,10 +40,4 @@
       }
     }
   }
-}
-
-.formular-aktionen {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
 }

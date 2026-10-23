@@ -54,6 +54,11 @@
         required
       />
     </div>
+    @if (form.hasError('oeffnungsregelAusserhalbOeffnungsrahmen')) {
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
+        Die Öffnungszeit überschneidet den Schließzeitraum.
+      </p>
+    }
   </form>
 </mat-dialog-content>
 <mat-dialog-actions align="end">

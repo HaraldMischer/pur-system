@@ -13,7 +13,7 @@
       width: 100%;
     }
 
-    &--button {
+    &--field-button {
       flex: 0 0 auto;
       --mat-button-outlined-container-height: 56px;
     }
@@ -76,7 +76,7 @@
       width: auto;
     }
 
-    > .pur-form__item--button {
+    > .pur-form__item--field-button {
       align-self: flex-start;
       margin-block-end: 20px;
     }
@@ -105,6 +105,13 @@
     margin: 0;
     padding: 0;
     border: 0;
+
+    // Lässt die Formulargruppe eine vollständige Layoutzeile belegen.
+    &--full {
+      width: 100%;
+      flex: 1 0 100%;
+      grid-column: 1 / -1;
+    }
 
     // Ordnet mehrere Formulargruppen untereinander an.
     &-list {

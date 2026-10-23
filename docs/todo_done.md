@@ -2871,3 +2871,102 @@ Neu hinzuzufügen:
 - [x] Öffnungszeiten bleiben von den Arbeitszeiten der Schichtmodelle fachlich und technisch getrennt.
 - [x] Service, Store, UI und Firestore Rules arbeiten ausschließlich im konkreten Filialpfad.
 - [x] Tests, Builds, Dokumentation und der beschlossene Datenübergang sind abgeschlossen.
+
+## 24. Filialbezogenen Schließzeitraum für Öffnungszeiten umsetzen
+
+Der täglich geltende Schließzeitraum wird als bearbeitbare Filialeinstellung eingeführt. Er begrenzt ausschließlich die
+Kundenöffnungszeiten und bildet die Grundlage für deren Vorbelegung. Vorbereitungs- und Nachbereitungszeiten von Schichten
+dürfen weiterhin in diesen Zeitraum hineinreichen.
+
+### [x] 24.1 Schließzeitraum modellieren, verwalten und validieren
+
+#### Ziel
+
+Jede Filiale besitzt im Dokument `einstellung/oeffnungszeiten` einen täglich geltenden Schließzeitraum. Bei der
+Initialisierung wird er mit `01:00` bis `06:00` Uhr vorbelegt und kann anschließend durch berechtigte Benutzer geändert werden.
+Aus seinem Komplement wird der größtmögliche tägliche Öffnungsrahmen abgeleitet. Jede geöffnete Wochen-, Sondertags- und
+Ausnahmeregel muss vollständig außerhalb des Schließzeitraums liegen. Schichtzeiten werden durch diese Prüfung nicht begrenzt.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/models/domain/filialeinstellung.ts
+- src/app/services/domain/dienstplan.service.spec.ts
+- src/app/services/domain/filialeinstellung.service.ts
+- src/app/services/domain/filialeinstellung.service.spec.ts
+- src/app/stores/domain/filialeinstellung.store.ts
+- src/app/stores/domain/filialeinstellung.store.spec.ts
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.ts
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.html
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.scss
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.spec.ts
+- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.ts
+- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.html
+- src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.spec.ts
+- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.ts
+- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.html
+- src/app/components/einstellungen/datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog.spec.ts
+- src/assets/scss/modules/_form.scss
+- docs/architektur/components/einstellungen.md
+- docs/architektur/services/filialeinstellung-service.md
+- docs/architektur/stores/filialeinstellung-store.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_next.md
+- docs/todo_done.md
+
+Neu hinzuzufügen:
+
+- src/app/commons/utils/filialeinstellung/schliesszeitraum.ts
+- src/app/commons/utils/filialeinstellung/schliesszeitraum.spec.ts
+- src/app/commons/validators/oeffnungsregel-zeitraum.validator.ts
+
+#### Schritt 1: Datenmodell und Pflichtfeld festlegen
+
+- [x] Im Dokument `einstellung/oeffnungszeiten` einen Schließzeitraum mit lokaler Beginn- und Endzeit sowie eindeutiger
+      Abbildung eines gegebenenfalls über Mitternacht reichenden Zeitraums ergänzen.
+- [x] Neue Filialeinstellungen mit `01:00` bis `06:00` Uhr vorbelegen und daraus den maximalen Öffnungsrahmen `06:00` bis
+      `01:00` Uhr am Folgetag ableiten.
+- [x] Den Schließzeitraum als verbindliches Pflichtfeld behandeln. Bestehende Firestore-Einstellungsdokumente werden für diese
+      Umstellung nicht übernommen, sondern anschließend neu angelegt.
+- [x] Den Schließzeitraum ausschließlich als Grenze der Kundenöffnung behandeln. Vorbereitungs- und Nachbereitungsminuten der
+      äußeren Modellschichten bleiben davon unberührt.
+
+#### Schritt 2: Öffnungsregeln gegen den Schließzeitraum validieren
+
+- [x] Sicherstellen, dass jede geöffnete Wochen-, Sondertags- und Ausnahmeregel den Schließzeitraum nicht überschneidet.
+- [x] Die Vorbelegung neuer Wochenregeln und fehlender Zeitwerte besonderer Tage aus dem aktuellen Schließzeitraum ableiten.
+- [x] Beim Ändern des Schließzeitraums alle gespeicherten geöffneten Regeln prüfen und den Schreibvorgang bei einem
+      Widerspruch mit einem konkreten Hinweis auf die betroffene Regel verhindern.
+- [x] Vorhandene Öffnungsregeln bei einer Änderung des Schließzeitraums weder kürzen noch anderweitig automatisch anpassen.
+- [x] Ungültige oder nicht eindeutig ableitbare Schließzeiträume als fachlichen Fehler behandeln und dem Benutzer mit der
+      fehlgeschlagenen Aktion und konkreten Ursache anzeigen.
+
+#### Schritt 3: Einstellungsoberfläche erweitern
+
+- [x] Den Schließzeitraum im Bereich `Einstellungen → Öffnungszeiten` je ausgewählter Filiale anzeigen und bearbeiten lassen.
+- [x] Während des Speicherns das vollständige betroffene Formular deaktivieren und wiederholte Schreibzugriffe verhindern.
+- [x] Den maximalen Öffnungsrahmen intern aus dem Schließzeitraum ableiten und für Vorbelegung sowie Validierung verwenden,
+      ohne ihn redundant in der Oberfläche anzuzeigen.
+- [x] Bei widersprechenden Öffnungsregeln die fehlgeschlagene Aktion und die konkrete betroffene Regel sichtbar benennen.
+
+#### Tests und Abschluss
+
+- [x] Modell- und Validierungstests für den initialen, verkürzten und über Mitternacht reichenden Schließzeitraum ergänzen.
+- [x] Service- und Store-Tests für Initialisierung, Pflichtfeld, Änderung und Fehlerweitergabe ergänzen.
+- [x] Component-Tests für Bearbeitung, abgeleitete Vorbelegungen und blockierende Regelkonflikte ergänzen.
+- [x] Prüfen, dass Vor- und Nachbereitungszeiten weiterhin in den Schließzeitraum hineinreichen dürfen.
+- [x] Fachkonzept, Architektur und Projektstand nach der Umsetzung auf den tatsächlichen Stand aktualisieren.
+- [x] 69 gezielte Tests sowie `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich ausgeführt.
+
+#### Erledigt, wenn
+
+- [x] Jede Filiale besitzt einen gültigen, bearbeitbaren Schließzeitraum mit der initialen Vorgabe `01:00–06:00 Uhr`.
+- [x] Der größtmögliche Öffnungsrahmen und alle davon abhängigen Vorbelegungen werden aus diesem Zeitraum abgeleitet.
+- [x] Keine geöffnete Öffnungsregel überschneidet den Schließzeitraum.
+- [x] Widersprechende bestehende Regeln werden konkret benannt und niemals automatisch verändert.
+- [x] Vorbereitungs- und Nachbereitungszeiten bleiben außerhalb der Kundenöffnung zulässig.
+- [x] Neu angelegte Filialeinstellungen enthalten den Schließzeitraum als Pflichtfeld.
+- [x] Tests, Builds und Dokumentation sind abgeschlossen.

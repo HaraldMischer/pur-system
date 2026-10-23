@@ -23,7 +23,7 @@ Ladeausgang als auch die konkrete Ursache an.
 Der Store stellt Aktionen für folgende Abläufe bereit:
 
 - vollständigen Filialbestand laden und einen leeren Bestand initialisieren,
-- allgemeine Einstellungen und Wochenregeln speichern,
+- allgemeine Einstellungen, Schließzeitraum und Wochenregeln speichern,
 - eigene Sondertage anlegen, bearbeiten und löschen,
 - Aktivstatus und Öffnungsregel systemdefinierter Sondertage bearbeiten,
 - Datumsausnahmen anlegen, bearbeiten und löschen,
@@ -31,6 +31,9 @@ Der Store stellt Aktionen für folgende Abläufe bereit:
 
 Während eines Schreibvorgangs ist ausschließlich der betroffene Filialkontext mit `inProgress` gesperrt. Erfolgreiche Ergebnisse
 werden sortiert in den lokalen Bestand übernommen; Fehler bleiben im Kontext für die Oberfläche verfügbar.
+
+Der Store übergibt bei Sondertagen und Datumsausnahmen den aktuell gespeicherten Schließzeitraum an den Service. Dadurch gilt
+dieselbe fachliche Begrenzung beim gemeinsamen Speichern der Grundlagen und bei späteren einzelnen Änderungen.
 
 ## Datumsauflösung
 

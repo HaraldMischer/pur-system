@@ -548,6 +548,11 @@ describe('DienstplanService', () => {
         aktualisiertVonUid: 'uid-1',
       },
       oeffnungszeiten: {
+        schliesszeitraum: {
+          beginnLokalzeit: '01:00',
+          endeLokalzeit: '06:00',
+          endetAmFolgetag: false,
+        },
         wochenregeln: {
           montag: wochenregel,
           dienstag: wochenregel,

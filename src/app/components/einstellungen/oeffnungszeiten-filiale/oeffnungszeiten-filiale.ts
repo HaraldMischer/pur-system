@@ -25,15 +25,22 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
+import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import {
   IFilialeinstellungAusnahmeEintrag,
   IFilialeinstellungSondertagEintrag,
+  ISchliesszeitraum,
   STANDARD_BUNDESLAND,
+  STANDARD_SCHLIESSZEITRAUM,
   TOeffnungsregel,
   TWochenoeffnungszeiten,
   TWochentag,
 } from '../../../commons/models/domain/filialeinstellung';
-import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import {
+  getMaximalerOeffnungsrahmen,
+  isGueltigerSchliesszeitraum,
+  isOeffnungsregelInnerhalbOeffnungsrahmen,
+} from '../../../commons/utils/filialeinstellung/schliesszeitraum';
 import { IFilialeinstellungGrundlagen } from '../../../services/domain/filialeinstellung.service';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
@@ -49,6 +56,11 @@ type TTagForm = FormGroup<{
   endeLokalzeit: FormControl<string>;
 }>;
 
+type TSchliesszeitraumForm = FormGroup<{
+  beginnLokalzeit: FormControl<string>;
+  endeLokalzeit: FormControl<string>;
+}>;
+
 const WOCHENTAGE: ReadonlyArray<{ value: TWochentag; label: string }> = [
   { value: 'montag', label: 'Montag' },
   { value: 'dienstag', label: 'Dienstag' },
@@ -58,9 +70,6 @@ const WOCHENTAGE: ReadonlyArray<{ value: TWochentag; label: string }> = [
   { value: 'samstag', label: 'Samstag' },
   { value: 'sonntag', label: 'Sonntag' },
 ];
-const STANDARD_BEGINN_LOKALZEIT = '06:00';
-const STANDARD_ENDE_LOKALZEIT = '01:00';
-
 function oeffnungszeitValidator(control: AbstractControl): ValidationErrors | null {
   const geoeffnet = control.get('geoeffnet')?.value;
   const beginn = control.get('beginnLokalzeit')?.value;
@@ -68,21 +77,68 @@ function oeffnungszeitValidator(control: AbstractControl): ValidationErrors | nu
   return geoeffnet && beginn === ende ? { identischeOeffnungszeiten: true } : null;
 }
 
-function createTagForm(): TTagForm {
+function schliesszeitraumValidator(control: AbstractControl): ValidationErrors | null {
+  const beginn = control.get('beginnLokalzeit')?.value;
+  const ende = control.get('endeLokalzeit')?.value;
+  return beginn === ende ? { identischeSchliesszeiten: true } : null;
+}
+
+function createSchliesszeitraumForm(): TSchliesszeitraumForm {
   return new FormGroup(
     {
-      geoeffnet: new FormControl(true, { nonNullable: true }),
-      beginnLokalzeit: new FormControl(STANDARD_BEGINN_LOKALZEIT, {
+      beginnLokalzeit: new FormControl(STANDARD_SCHLIESSZEITRAUM.beginnLokalzeit, {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      endeLokalzeit: new FormControl(STANDARD_ENDE_LOKALZEIT, {
+      endeLokalzeit: new FormControl(STANDARD_SCHLIESSZEITRAUM.endeLokalzeit, {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+    },
+    { validators: [schliesszeitraumValidator] },
+  );
+}
+
+function createTagForm(schliesszeitraum: ISchliesszeitraum = STANDARD_SCHLIESSZEITRAUM): TTagForm {
+  const oeffnungsrahmen = getMaximalerOeffnungsrahmen(schliesszeitraum);
+  return new FormGroup(
+    {
+      geoeffnet: new FormControl(true, { nonNullable: true }),
+      beginnLokalzeit: new FormControl(oeffnungsrahmen.beginnLokalzeit, {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+      endeLokalzeit: new FormControl(oeffnungsrahmen.endeLokalzeit, {
         nonNullable: true,
         validators: [Validators.required],
       }),
     },
     { validators: [oeffnungszeitValidator] },
   );
+}
+
+function getSchliesszeitraum(form: TSchliesszeitraumForm): ISchliesszeitraum {
+  const wert = form.getRawValue();
+  return {
+    beginnLokalzeit: wert.beginnLokalzeit,
+    endeLokalzeit: wert.endeLokalzeit,
+    endetAmFolgetag: wert.endeLokalzeit < wert.beginnLokalzeit,
+  };
+}
+
+function oeffnungszeitenFormValidator(control: AbstractControl): ValidationErrors | null {
+  const schliesszeitraumForm = control.get('schliesszeitraum') as TSchliesszeitraumForm | null;
+  if (!schliesszeitraumForm) return null;
+  const schliesszeitraum = getSchliesszeitraum(schliesszeitraumForm);
+  if (!isGueltigerSchliesszeitraum(schliesszeitraum)) return null;
+  const widerspruch = WOCHENTAGE.find(({ value }) => {
+    const tagForm = control.get(value) as TTagForm | null;
+    return (
+      tagForm !== null &&
+      !isOeffnungsregelInnerhalbOeffnungsrahmen(getOeffnungsregel(tagForm), schliesszeitraum)
+    );
+  });
+  return widerspruch ? { oeffnungsregelAusserhalbOeffnungsrahmen: widerspruch.label } : null;
 }
 
 function updateZeitfelderStatus(form: TTagForm, geoeffnet: boolean): void {
@@ -139,15 +195,19 @@ export class OeffnungszeitenFiliale {
   // ===== Öffentliche Werte ====================
 
   readonly wochentage = WOCHENTAGE;
-  readonly form = new FormGroup({
-    montag: createTagForm(),
-    dienstag: createTagForm(),
-    mittwoch: createTagForm(),
-    donnerstag: createTagForm(),
-    freitag: createTagForm(),
-    samstag: createTagForm(),
-    sonntag: createTagForm(),
-  });
+  readonly form = new FormGroup(
+    {
+      schliesszeitraum: createSchliesszeitraumForm(),
+      montag: createTagForm(),
+      dienstag: createTagForm(),
+      mittwoch: createTagForm(),
+      donnerstag: createTagForm(),
+      freitag: createTagForm(),
+      samstag: createTagForm(),
+      sonntag: createTagForm(),
+    },
+    { validators: [oeffnungszeitenFormValidator] },
+  );
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -238,7 +298,7 @@ export class OeffnungszeitenFiliale {
   openSondertagAnlegen(): void {
     this.dialog.open(SondertagBearbeitenDialog, {
       panelClass: ['pur-dialog__panel'],
-      data: { pfad: this.pfad() },
+      data: { pfad: this.pfad(), schliesszeitraum: this.getGespeichertenSchliesszeitraum() },
     });
   }
 
@@ -248,7 +308,11 @@ export class OeffnungszeitenFiliale {
   openSondertagBearbeiten(sondertag: IFilialeinstellungSondertagEintrag): void {
     this.dialog.open(SondertagBearbeitenDialog, {
       panelClass: ['pur-dialog__panel'],
-      data: { pfad: this.pfad(), sondertag },
+      data: {
+        pfad: this.pfad(),
+        sondertag,
+        schliesszeitraum: this.getGespeichertenSchliesszeitraum(),
+      },
     });
   }
 
@@ -278,7 +342,7 @@ export class OeffnungszeitenFiliale {
   openDatumsausnahmeAnlegen(): void {
     this.dialog.open(DatumsausnahmeBearbeitenDialog, {
       panelClass: ['pur-dialog__panel'],
-      data: { pfad: this.pfad() },
+      data: { pfad: this.pfad(), schliesszeitraum: this.getGespeichertenSchliesszeitraum() },
     });
   }
 
@@ -288,7 +352,11 @@ export class OeffnungszeitenFiliale {
   openDatumsausnahmeBearbeiten(ausnahme: IFilialeinstellungAusnahmeEintrag): void {
     this.dialog.open(DatumsausnahmeBearbeitenDialog, {
       panelClass: ['pur-dialog__panel'],
-      data: { pfad: this.pfad(), ausnahme },
+      data: {
+        pfad: this.pfad(),
+        ausnahme,
+        schliesszeitraum: this.getGespeichertenSchliesszeitraum(),
+      },
     });
   }
 
@@ -352,19 +420,28 @@ export class OeffnungszeitenFiliale {
       await this.store.loadFilialeinstellung(pfad);
       const bestand = this.store.getFilialeinstellungKontext(pfad)?.bestand;
       if (!bestand) return;
+      this.form.controls.schliesszeitraum.reset(
+        {
+          beginnLokalzeit: bestand.oeffnungszeiten.schliesszeitraum.beginnLokalzeit,
+          endeLokalzeit: bestand.oeffnungszeiten.schliesszeitraum.endeLokalzeit,
+        },
+        { emitEvent: false },
+      );
+      const oeffnungsrahmen = getMaximalerOeffnungsrahmen(bestand.oeffnungszeiten.schliesszeitraum);
       for (const { value } of WOCHENTAGE) {
         const regel = bestand.oeffnungszeiten.wochenregeln[value];
         const tagForm = this.getTagForm(value);
         tagForm.reset(
           {
             geoeffnet: regel.geoeffnet,
-            beginnLokalzeit: regel.beginnLokalzeit ?? STANDARD_BEGINN_LOKALZEIT,
-            endeLokalzeit: regel.endeLokalzeit ?? STANDARD_ENDE_LOKALZEIT,
+            beginnLokalzeit: regel.beginnLokalzeit ?? oeffnungsrahmen.beginnLokalzeit,
+            endeLokalzeit: regel.endeLokalzeit ?? oeffnungsrahmen.endeLokalzeit,
           },
           { emitEvent: false },
         );
         updateZeitfelderStatus(tagForm, regel.geoeffnet);
       }
+      this.form.updateValueAndValidity({ emitEvent: false });
       this.form.markAsPristine();
     } catch {
       // Der Store stellt den Fehler im Filialkontext bereit.
@@ -375,6 +452,18 @@ export class OeffnungszeitenFiliale {
     const wochenregeln = Object.fromEntries(
       WOCHENTAGE.map(({ value }) => [value, getOeffnungsregel(this.getTagForm(value))]),
     ) as unknown as TWochenoeffnungszeiten;
-    return { bundesland: STANDARD_BUNDESLAND, wochenregeln };
+    return {
+      bundesland: STANDARD_BUNDESLAND,
+      schliesszeitraum: this.getAktuellenSchliesszeitraum(),
+      wochenregeln,
+    };
+  }
+
+  private getAktuellenSchliesszeitraum(): ISchliesszeitraum {
+    return getSchliesszeitraum(this.form.controls.schliesszeitraum);
+  }
+
+  private getGespeichertenSchliesszeitraum(): ISchliesszeitraum {
+    return this.bestand()?.oeffnungszeiten.schliesszeitraum ?? this.getAktuellenSchliesszeitraum();
   }
 }

@@ -100,11 +100,12 @@ Das vollständige fachliche und architektonische Zielbild steht im
 - Das Domainmodell und die zentralen Firestore-Pfade für allgemeine Filialeinstellungen, Wochenöffnungszeiten, Sondertage und
   Datumsausnahmen sind festgelegt. Eine Öffnungsregel beschreibt genau einen durchgehenden Zeitraum und kann mit
   `endetAmFolgetag` über Mitternacht reichen; Pausen beziehungsweise mehrere Öffnungszeiträume je Tag sind nicht vorgesehen.
-  Neue Filialeinstellungen werden für alle sieben Wochentage mit `06:00` bis `01:00` Uhr am Folgetag vorbelegt. Der lokale
-  Feiertagskatalog berechnet feste und bewegliche gesetzliche Feiertage nach Jahr und Bundesland und erzeugt die initial
+  Neue Filialeinstellungen leiten die Vorbelegung aller sieben Wochentage aus dem filialbezogenen Schließzeitraum ab. Der
+  lokale Feiertagskatalog berechnet feste und bewegliche gesetzliche Feiertage nach Jahr und Bundesland und erzeugt die initial
   inaktiven Einträge einschließlich Heiligabend und Silvester, sodass zunächst die Wochentagsregel gilt. Die Oberfläche trennt
-  die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`. Fehlende Zeitwerte von
-  Feiertagen und jährlichen Sondertagen werden im Bearbeitungsdialog mit `06:00` bis `01:00` Uhr am Folgetag vorbelegt.
+  die Bereiche `Schließzeiten`, `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`.
+  Fehlende Zeitwerte von Feiertagen und jährlichen Sondertagen werden im Bearbeitungsdialog mit dem maximalen Öffnungsrahmen
+  vorbelegt.
   Heiligabend, Silvester und eigene jährliche Sondertage besitzen einen Aktivstatus; einmalige Sondertage gelten für genau ein
   vollständiges Datum, besitzen keinen Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Der Aktivstatus einer
   Feiertagsregel verändert nicht die kalendarische Eigenschaft als gesetzlicher Feiertag. Die Auflösung verwendet intern
@@ -124,6 +125,12 @@ Das vollständige fachliche und architektonische Zielbild steht im
   Die Oberfläche erläutert die Auflösungsreihenfolge mit den sichtbaren Begriffen einmaliger Sondertag, gesetzlicher Feiertag,
   jährlicher Sondertag und Wochentag. Ein noch nicht initialisierter gültiger Bestand kann ohne vorherige Formularänderung
   gespeichert werden; bestehende Einstellungen erfordern weiterhin eine fachliche Änderung.
+- Das Öffnungszeitendokument enthält einen täglich geltenden, filialbezogenen Schließzeitraum. Er wird mit `01:00` bis
+  `06:00` Uhr initialisiert, kann durch berechtigte Benutzer geändert werden und begrenzt die Kundenöffnungszeiten. Die
+  Vorbelegung der Öffnungsregeln wird aus seinem Komplement abgeleitet. Dieser Öffnungsrahmen wird intern verwendet und nicht
+  zusätzlich angezeigt. Formulare und Service verhindern widersprechende Wochen-, Sondertags- und Ausnahmeregeln.
+  Vorbereitungs- und Nachbereitungszeiten von Schichten dürfen in den Schließzeitraum hineinreichen. Vorhandene
+  Firestore-Einstellungsdokumente werden nicht übernommen, sondern neu angelegt.
 - Das Mitarbeiter-Domainmodell führt optional `farbkennung` in den Anlage-, Firestore- und Anwendungsdaten. Die Dialoge zum
   Anlegen und Bearbeiten verwenden eine gemeinsame Formular-Component mit einem Farbkachel-Menü einschließlich der Auswahl
   „Keine Farbe“. Die zentrale Farbzuordnung löst die gespeicherte Kennung im Schichtraster und in der Mitarbeiterübersicht in

@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
+import { STANDARD_SCHLIESSZEITRAUM } from '../../../commons/models/domain/filialeinstellung';
 import {
   FilialeinstellungStore,
   IFilialeinstellungFehler,
@@ -32,7 +33,10 @@ describe('SondertagBearbeitenDialog', () => {
     await TestBed.configureTestingModule({
       imports: [SondertagBearbeitenDialog],
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: { pfad: PFAD } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM },
+        },
         { provide: MatDialogRef, useValue: { close } },
         {
           provide: FilialeinstellungStore,
@@ -94,6 +98,7 @@ describe('SondertagBearbeitenDialog', () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
         pfad: PFAD,
+        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM,
         sondertag: {
           id: 'karfreitag',
           unternehmerId: PFAD.unternehmerId,
@@ -145,6 +150,7 @@ describe('SondertagBearbeitenDialog', () => {
     TestBed.overrideProvider(MAT_DIALOG_DATA, {
       useValue: {
         pfad: PFAD,
+        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM,
         sondertag: {
           id: 'karfreitag',
           unternehmerId: PFAD.unternehmerId,
@@ -183,6 +189,22 @@ describe('SondertagBearbeitenDialog', () => {
     });
 
     expect(fixture.componentInstance.form.hasError('identischeOeffnungszeiten')).toBe(true);
+  });
+
+  it('should reject opening times that overlap the closing period', () => {
+    const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
+    fixture.componentInstance.form.patchValue({
+      bezeichnung: 'Testtag',
+      monatTag: '02-15',
+      aktiv: true,
+      geoeffnet: true,
+      beginnLokalzeit: '05:30',
+      endeLokalzeit: '20:00',
+    });
+
+    expect(fixture.componentInstance.form.hasError('oeffnungsregelAusserhalbOeffnungsrahmen')).toBe(
+      true,
+    );
   });
 
   it('should keep opening times visible and disabled while the special day is closed', () => {

@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import {
   IFilialeinstellungSondertagEintrag,
+  STANDARD_SCHLIESSZEITRAUM,
   TOeffnungsregel,
   TWochenoeffnungszeiten,
 } from '../../commons/models/domain/filialeinstellung';
@@ -97,6 +98,7 @@ describe('FilialeinstellungService', () => {
       .mockResolvedValueOnce({
         id: 'oeffnungszeiten',
         daten: {
+          schliesszeitraum: grundlagen.schliesszeitraum,
           wochenregeln: grundlagen.wochenregeln,
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
@@ -165,6 +167,7 @@ describe('FilialeinstellungService', () => {
       .mockResolvedValueOnce({
         id: 'oeffnungszeiten',
         daten: {
+          schliesszeitraum: grundlagen.schliesszeitraum,
           wochenregeln: wochenregelnMitGeschlossenenZeiten,
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
@@ -277,12 +280,19 @@ describe('FilialeinstellungService', () => {
       oeffnungsregel: { geoeffnet: false } as const,
     };
 
-    const sondertag = await service.createSondertag(pfad, anlage, [], 'uid-1');
+    const sondertag = await service.createSondertag(
+      pfad,
+      anlage,
+      [],
+      grundlagen.schliesszeitraum,
+      'uid-1',
+    );
     const aktualisiert = await service.updateSondertag(
       pfad,
       sondertag,
       { ...anlage, bezeichnung: ' Inventurtag ' },
       [sondertag],
+      grundlagen.schliesszeitraum,
       'uid-2',
     );
     await service.deleteSondertag(pfad, aktualisiert);
@@ -307,6 +317,7 @@ describe('FilialeinstellungService', () => {
           oeffnungsregel: { geoeffnet: false },
         },
         [createSondertag('heiligabend', 'system')],
+        grundlagen.schliesszeitraum,
         'uid-1',
       ),
     ).rejects.toThrow('Betriebsruhe');
@@ -331,6 +342,7 @@ describe('FilialeinstellungService', () => {
         },
       },
       [sondertag],
+      grundlagen.schliesszeitraum,
       'uid-2',
     );
 
@@ -352,10 +364,21 @@ describe('FilialeinstellungService', () => {
       bezeichnung: 'Sonderöffnung',
       oeffnungsregel: { geoeffnet: false } as const,
     };
-    const ausnahme = await service.createAusnahme(pfad, anlage, 'uid-1');
+    const ausnahme = await service.createAusnahme(
+      pfad,
+      anlage,
+      grundlagen.schliesszeitraum,
+      'uid-1',
+    );
 
     await expect(
-      service.updateAusnahme(pfad, ausnahme, { ...anlage, datum: '2026-12-24' }, 'uid-2'),
+      service.updateAusnahme(
+        pfad,
+        ausnahme,
+        { ...anlage, datum: '2026-12-24' },
+        grundlagen.schliesszeitraum,
+        'uid-2',
+      ),
     ).rejects.toThrow('nicht geändert');
     await service.deleteAusnahme(pfad, '2026-12-23');
 
@@ -391,6 +414,92 @@ describe('FilialeinstellungService', () => {
     expect((fehler as Error).message).toContain('Zeitfolge');
     expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
   });
+
+  it('should require a closing period in stored opening settings', () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const rohdaten = {
+      allgemein: {
+        id: 'allgemein',
+        daten: {
+          bundesland: 'DE-NW',
+          erstelltVonUid: 'uid-1',
+          aktualisiertVonUid: 'uid-1',
+        },
+      },
+      oeffnungszeiten: {
+        id: 'oeffnungszeiten',
+        daten: {
+          wochenregeln: grundlagen.wochenregeln,
+          erstelltVonUid: 'uid-1',
+          aktualisiertVonUid: 'uid-1',
+        },
+      },
+      sondertage: [],
+      ausnahmen: [],
+    } as unknown as Parameters<typeof service.validateFilialeinstellungRohdaten>[1];
+
+    expect(() => service.validateFilialeinstellungRohdaten(pfad, rohdaten)).toThrow(
+      'Der Schließzeitraum enthält keine gültige Zeitfolge.',
+    );
+  });
+
+  it('should reject weekly opening hours that overlap the closing period', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const widerspruechlicheGrundlagen: IFilialeinstellungGrundlagen = {
+      ...grundlagen,
+      wochenregeln: {
+        ...grundlagen.wochenregeln,
+        montag: {
+          geoeffnet: true,
+          beginnLokalzeit: '05:30',
+          endeLokalzeit: '01:00',
+          endetAmFolgetag: true,
+        },
+      },
+    };
+
+    await expect(
+      service.initializeFilialeinstellung(pfad, widerspruechlicheGrundlagen, 'uid-1'),
+    ).rejects.toThrow('montag');
+    expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
+  });
+
+  it('should reject a closing-period change that conflicts with a stored special day', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const bestand = createBestand([
+      {
+        ...createSondertag('sonderoeffnung', 'benutzer'),
+        oeffnungsregel: {
+          geoeffnet: true,
+          beginnLokalzeit: '06:30',
+          endeLokalzeit: '22:00',
+          endetAmFolgetag: false,
+        },
+      },
+    ]);
+
+    await expect(
+      service.saveGrundlagen(
+        pfad,
+        bestand,
+        {
+          ...grundlagen,
+          schliesszeitraum: {
+            beginnLokalzeit: '01:00',
+            endeLokalzeit: '07:00',
+            endetAmFolgetag: false,
+          },
+          wochenregeln: Object.fromEntries(
+            Object.entries(grundlagen.wochenregeln).map(([wochentag, regel]) => {
+              return [wochentag, regel.geoeffnet ? { ...regel, beginnLokalzeit: '07:00' } : regel];
+            }),
+          ) as TWochenoeffnungszeiten,
+        },
+        'uid-2',
+      ),
+    ).rejects.toThrow('sonderoeffnung');
+    expect(firestoreDbServiceMock.updateDocumentsAtomically).not.toHaveBeenCalled();
+  });
 });
 
 function createGrundlagen(): IFilialeinstellungGrundlagen {
@@ -409,7 +518,7 @@ function createGrundlagen(): IFilialeinstellungGrundlagen {
     samstag: geoeffnet,
     sonntag: { geoeffnet: false },
   };
-  return { bundesland: 'DE-NW', wochenregeln };
+  return { bundesland: 'DE-NW', schliesszeitraum: STANDARD_SCHLIESSZEITRAUM, wochenregeln };
 }
 
 function createSondertag(
@@ -440,6 +549,7 @@ function createBestand(
       aktualisiertVonUid: 'uid-1',
     },
     oeffnungszeiten: {
+      schliesszeitraum: grundlagen.schliesszeitraum,
       wochenregeln: grundlagen.wochenregeln,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
