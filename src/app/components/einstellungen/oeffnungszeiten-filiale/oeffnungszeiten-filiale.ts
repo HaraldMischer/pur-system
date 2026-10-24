@@ -41,6 +41,10 @@ import {
   isGueltigerSchliesszeitraum,
   isOeffnungsregelInnerhalbOeffnungsrahmen,
 } from '../../../commons/utils/filialeinstellung/schliesszeitraum';
+import {
+  getGesetzlicherFeiertagDatum,
+  getGesetzlicherFeiertagKatalogeintrag,
+} from '../../../commons/utils/filialeinstellung/feiertag';
 import { IFilialeinstellungGrundlagen } from '../../../services/domain/filialeinstellung.service';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
@@ -191,6 +195,7 @@ export class OeffnungszeitenFiliale {
   // ===== Öffentliche Werte ====================
 
   readonly wochentage = WOCHENTAGE;
+  readonly kalenderjahr = new Date().getFullYear();
   readonly form = new FormGroup(
     {
       schliesszeitraum: createSchliesszeitraumForm(),
@@ -215,9 +220,15 @@ export class OeffnungszeitenFiliale {
   });
   readonly feiertage = computed(() => {
     return (
-      this.bestand()?.sondertage.filter((sondertag) => {
-        return sondertag.datumsregel.typ === 'gesetzlicherFeiertag';
-      }) ?? []
+      this.bestand()
+        ?.sondertage.filter((sondertag) => {
+          return sondertag.datumsregel.typ === 'gesetzlicherFeiertag';
+        })
+        .sort((links, rechts) => {
+          return this.getFeiertagSortierdatum(links).localeCompare(
+            this.getFeiertagSortierdatum(rechts),
+          );
+        }) ?? []
     );
   });
   readonly sondertage = computed(() => {
@@ -226,8 +237,18 @@ export class OeffnungszeitenFiliale {
         ?.sondertage.filter((sondertag) => {
           return sondertag.datumsregel.typ === 'jaehrlichFestesDatum';
         })
-        .sort((a, b) => {
-          return a.bezeichnung.localeCompare(b.bezeichnung, 'de');
+        .sort((links, rechts) => {
+          const linkeDatumsregel = links.datumsregel;
+          const rechteDatumsregel = rechts.datumsregel;
+          if (
+            linkeDatumsregel.typ !== 'jaehrlichFestesDatum' ||
+            rechteDatumsregel.typ !== 'jaehrlichFestesDatum'
+          )
+            return 0;
+          return (
+            linkeDatumsregel.monat - rechteDatumsregel.monat ||
+            linkeDatumsregel.tag - rechteDatumsregel.tag
+          );
         }) ?? []
     );
   });
@@ -389,7 +410,24 @@ export class OeffnungszeitenFiliale {
   getJaehrlichesDatum(sondertag: IFilialeinstellungSondertagEintrag): string {
     const datumsregel = sondertag.datumsregel;
     if (datumsregel.typ !== 'jaehrlichFestesDatum') return '';
-    return `${datumsregel.tag}.${datumsregel.monat}.`;
+    const tag = String(datumsregel.tag).padStart(2, '0');
+    const monat = String(datumsregel.monat).padStart(2, '0');
+    return `${tag}.${monat}.`;
+  }
+
+  /**
+   * Formatiert das Datum eines gesetzlichen Feiertags für die Listendarstellung.
+   */
+  getFeiertagDatum(sondertag: IFilialeinstellungSondertagEintrag): string {
+    const datumsregel = sondertag.datumsregel;
+    if (datumsregel.typ !== 'gesetzlicherFeiertag') return '';
+    const katalogeintrag = getGesetzlicherFeiertagKatalogeintrag(datumsregel.feiertagSchluessel);
+    const datum = getGesetzlicherFeiertagDatum(this.kalenderjahr, datumsregel.feiertagSchluessel);
+    if (!datum) return '–';
+    const [jahr, monat, tag] = datum.split('-');
+    return katalogeintrag.datumsart === 'fest'
+      ? `${tag}.${monat}.`
+      : `${tag}.${monat}.${jahr.slice(-2)}`;
   }
 
   /**
@@ -461,5 +499,14 @@ export class OeffnungszeitenFiliale {
 
   private getGespeichertenSchliesszeitraum(): ISchliesszeitraum {
     return this.bestand()?.oeffnungszeiten.schliesszeitraum ?? this.getAktuellenSchliesszeitraum();
+  }
+
+  private getFeiertagSortierdatum(sondertag: IFilialeinstellungSondertagEintrag): string {
+    const datumsregel = sondertag.datumsregel;
+    if (datumsregel.typ !== 'gesetzlicherFeiertag') return '9999-12-31';
+    return (
+      getGesetzlicherFeiertagDatum(this.kalenderjahr, datumsregel.feiertagSchluessel) ??
+      '9999-12-31'
+    );
   }
 }

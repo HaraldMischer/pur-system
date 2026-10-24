@@ -30,7 +30,7 @@ import { MatInputModule } from '@angular/material/input';
 const ISO_DATUM_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MONAT_TAG_PATTERN = /^(\d{2})-(\d{2})$/;
 const DEUTSCHES_DATUM_PATTERN = /^(\d{2})\.(\d{2})\.(\d{4})$/;
-const DEUTSCHER_MONAT_TAG_PATTERN = /^(\d{2})\.(\d{2})\.$/;
+const DEUTSCHER_MONAT_TAG_PATTERN = /^(\d{2})\.(\d{2})$/;
 
 export type TEingabeDatumModus = 'datum' | 'monat-tag';
 
@@ -52,7 +52,6 @@ function formatEingabeDatum(wert: string, modus: TEingabeDatumModus): string {
   let formatiert = ziffern.slice(0, 2);
   if (ziffern.length > 2) formatiert += `.${ziffern.slice(2, 4)}`;
   if (modus === 'datum' && ziffern.length > 4) formatiert += `.${ziffern.slice(4, 8)}`;
-  if (modus === 'monat-tag' && ziffern.length === 4) formatiert += '.';
   return formatiert;
 }
 
@@ -79,7 +78,7 @@ function formatFormularwert(wert: string, modus: TEingabeDatumModus): string {
     return treffer ? `${treffer[3]}.${treffer[2]}.${treffer[1]}` : '';
   }
   const treffer = MONAT_TAG_PATTERN.exec(wert);
-  return treffer ? `${treffer[2]}.${treffer[1]}.` : '';
+  return treffer ? `${treffer[2]}.${treffer[1]}` : '';
 }
 
 function getFormularwert(wert: string, modus: TEingabeDatumModus): string {
@@ -145,10 +144,10 @@ export class EingabeDatum implements ControlValueAccessor, Validator {
   // ===== Öffentliche Ableitungen ==============
 
   readonly maxlength = computed(() => {
-    return this.modus() === 'datum' ? 10 : 6;
+    return this.modus() === 'datum' ? 10 : 5;
   });
   readonly placeholder = computed(() => {
-    return this.modus() === 'datum' ? 'TT.MM.JJJJ' : 'TT.MM.';
+    return this.modus() === 'datum' ? 'TT.MM.JJJJ' : 'TT.MM';
   });
 
   // ===== Interner State =======================

@@ -86,6 +86,7 @@ describe('EingabeDatum', () => {
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     expect(input.readOnly).toBe(true);
     expect(input.disabled).toBe(false);
+    expect(input.tabIndex).toBe(-1);
 
     fixture.componentInstance.control.disable();
     fixture.detectChanges();
@@ -97,14 +98,14 @@ describe('EingabeDatum', () => {
     fixture.detectChanges();
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
 
-    expect(input.value).toBe('29.02.');
-    expect(input.placeholder).toBe('TT.MM.');
+    expect(input.value).toBe('29.02');
+    expect(input.placeholder).toBe('TT.MM');
 
     input.value = '2412';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    expect(input.value).toBe('24.12.');
+    expect(input.value).toBe('24.12');
     expect(fixture.componentInstance.control.value).toBe('12-24');
     expect(fixture.componentInstance.control.valid).toBe(true);
   });
@@ -118,7 +119,7 @@ describe('EingabeDatum', () => {
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    expect(input.value).toBe('31.02.');
+    expect(input.value).toBe('31.02');
     expect(fixture.componentInstance.control.invalid).toBe(true);
   });
 });

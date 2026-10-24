@@ -1,5 +1,9 @@
 // pur-system/src/app/components/einstellungen/sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog.scss
 
-.pur-text--title-medium {
-  margin-bottom: 4px;
+.pur-text__container {
+  margin-block-end: 18px;
+
+  .pur-text--title-medium {
+    margin-bottom: 4px;
+  }
 }

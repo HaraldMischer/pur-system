@@ -11,6 +11,17 @@
   row-gap: 16px;
 }
 
+.besonderer-tag-details {
+  display: flex;
+  column-gap: 8px;
+}
+
+.besonderer-tag-datum {
+  flex: 0 0 60px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 @container (max-width: #{breakpoints.$breakpoint-extra-small-device}) {
   .schliesszeitfelder > .pur-flex__item--time {
     width: 100%;

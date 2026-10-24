@@ -16,6 +16,7 @@
     [formControl]="eingabeControl"
     [required]="required()"
     [readonly]="schreibgeschuetzt()"
+    [attr.tabindex]="schreibgeschuetzt() ? -1 : null"
     (blur)="handleBlur()"
   />
   <mat-icon matIconSuffix>calendar_today</mat-icon>

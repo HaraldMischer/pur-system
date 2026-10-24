@@ -130,6 +130,11 @@ describe('Feiertagsauflösung', () => {
     expect(mariaHimmelfahrt.lokalBegrenzteBundeslaender).toEqual(['DE-BY']);
   });
 
+  it('should distinguish fixed and calculated holiday dates', () => {
+    expect(getGesetzlicherFeiertagKatalogeintrag('tagDerDeutschenEinheit').datumsart).toBe('fest');
+    expect(getGesetzlicherFeiertagKatalogeintrag('karfreitag').datumsart).toBe('berechnet');
+  });
+
   it('should create inactive initial holidays including Christmas Eve and New Years Eve', () => {
     const sondertage = createInitialeSondertage('DE-NW', OEFFNUNGSRAHMEN);
     const heiligabend = sondertage.find((sondertag) => {

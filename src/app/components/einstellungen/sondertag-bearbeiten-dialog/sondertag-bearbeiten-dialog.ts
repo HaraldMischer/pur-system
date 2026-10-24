@@ -22,6 +22,10 @@ import {
   ISchliesszeitraum,
   TOeffnungsregel,
 } from '../../../commons/models/domain/filialeinstellung';
+import {
+  getGesetzlicherFeiertagDatum,
+  getGesetzlicherFeiertagKatalogeintrag,
+} from '../../../commons/utils/filialeinstellung/feiertag';
 import { getMaximalerOeffnungsrahmen } from '../../../commons/utils/filialeinstellung/schliesszeitraum';
 import { createOeffnungsregelZeitraumValidator } from '../../../commons/validators/oeffnungsregel-zeitraum.validator';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
@@ -65,20 +69,24 @@ export class SondertagBearbeitenDialog {
   readonly istGesetzlicherFeiertag =
     this.daten.sondertag?.datumsregel.typ === 'gesetzlicherFeiertag';
   readonly istBestehenderEintrag = Boolean(this.daten.sondertag);
+  readonly kalenderjahr = new Date().getFullYear();
+  readonly istBerechneterFeiertag = this.getIstBerechneterFeiertag();
+  readonly datumModus = this.istBerechneterFeiertag ? ('datum' as const) : ('monat-tag' as const);
   readonly dialogTitel = this.istGesetzlicherFeiertag
     ? 'Gesetzlichen Feiertag bearbeiten'
     : this.istBestehenderEintrag
       ? 'Jährlichen Sondertag bearbeiten'
       : 'Jährlichen Sondertag anlegen';
+  readonly systemtagHinweis = this.getSystemtagHinweis();
   readonly form = new FormGroup(
     {
       bezeichnung: new FormControl(this.daten.sondertag?.bezeichnung ?? '', {
         nonNullable: true,
         validators: [Validators.required, Validators.maxLength(80)],
       }),
-      monatTag: new FormControl(this.getMonatTag(), {
+      monatTag: new FormControl(this.getDatum(), {
         nonNullable: true,
-        validators: [Validators.required],
+        validators: this.istSystemtag ? [] : [Validators.required],
       }),
       aktiv: new FormControl(this.daten.sondertag?.aktiv ?? true, { nonNullable: true }),
       geoeffnet: new FormControl(this.daten.sondertag?.oeffnungsregel.geoeffnet ?? false, {
@@ -165,12 +173,35 @@ export class SondertagBearbeitenDialog {
 
   // ===== Interne Helfer =======================
 
-  private getMonatTag(): string {
+  private getSystemtagHinweis(): string {
+    const datumsregel = this.daten.sondertag?.datumsregel;
+    if (datumsregel?.typ !== 'gesetzlicherFeiertag') return 'Sondertag mit festem Datum.';
+    const katalogeintrag = getGesetzlicherFeiertagKatalogeintrag(datumsregel.feiertagSchluessel);
+    return katalogeintrag.datumsart === 'berechnet'
+      ? 'Gesetzlicher Feiertag mit berechnetem Datum.'
+      : 'Gesetzlicher Feiertag mit festem Datum.';
+  }
+
+  private getIstBerechneterFeiertag(): boolean {
+    const datumsregel = this.daten.sondertag?.datumsregel;
+    if (datumsregel?.typ !== 'gesetzlicherFeiertag') return false;
+    return (
+      getGesetzlicherFeiertagKatalogeintrag(datumsregel.feiertagSchluessel).datumsart ===
+      'berechnet'
+    );
+  }
+
+  private getDatum(): string {
     const regel = this.daten.sondertag?.datumsregel;
-    if (regel?.typ !== 'jaehrlichFestesDatum') return '';
-    const monat = String(regel.monat).padStart(2, '0');
-    const tag = String(regel.tag).padStart(2, '0');
-    return `${monat}-${tag}`;
+    if (regel?.typ === 'jaehrlichFestesDatum') {
+      const monat = String(regel.monat).padStart(2, '0');
+      const tag = String(regel.tag).padStart(2, '0');
+      return `${monat}-${tag}`;
+    }
+    if (regel?.typ !== 'gesetzlicherFeiertag') return '';
+    const datum = getGesetzlicherFeiertagDatum(this.kalenderjahr, regel.feiertagSchluessel);
+    if (!datum || this.istBerechneterFeiertag) return datum ?? '';
+    return datum.slice(5);
   }
 
   private getBeginn(): string {
@@ -209,7 +240,6 @@ export class SondertagBearbeitenDialog {
   private updateOeffnungszeitenStatus(): void {
     if (this.istSystemtag) {
       this.form.controls.bezeichnung.disable({ emitEvent: false });
-      this.form.controls.monatTag.disable({ emitEvent: false });
     }
     const aktiv = this.form.controls.aktiv.getRawValue();
     const geoeffnet = this.form.controls.geoeffnet.getRawValue();

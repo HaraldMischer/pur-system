@@ -13,31 +13,32 @@
   }
   <form id="sondertag-form" class="pur-form pur-form--grid" [formGroup]="form" (ngSubmit)="save()">
     @if (istSystemtag) {
+      <!-- Systemdefinierter Sondertag -->
       <div class="pur-text__container">
         <p class="pur-text pur-text--title-medium">{{ daten.sondertag?.bezeichnung }}</p>
-        @if (istGesetzlicherFeiertag) {
-          <p class="pur-text">Das Feiertagsdatum wird automatisch berechnet.</p>
-        } @else {
-          <p class="pur-text">Dieser Sondertag gilt jedes Jahr am festgelegten Datum.</p>
-        }
+        <p class="pur-text">{{ systemtagHinweis }}</p>
         <p class="pur-text">Öffnungsstatus und Zeiten können geändert werden.</p>
       </div>
     } @else {
+      <!-- Benutzerdefinierter Sondertag -->
       <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
         <mat-label>Bezeichnung</mat-label>
         <input matInput formControlName="bezeichnung" required maxlength="80" />
       </mat-form-field>
+      <div class="pur-text__container">
+        <p class="pur-text">Benutzerdefinierter Sondertag mit festem Datum.</p>
+        <p class="pur-text">Öffnungsstatus und Zeiten können geändert werden.</p>
+      </div>
     }
     <div class="pur-form__row">
-      @if (!istSystemtag) {
-        <app-eingabe-datum
-          class="pur-form__item pur-form__item--field pur-form__item--33"
-          label="Datum"
-          modus="monat-tag"
-          formControlName="monatTag"
-          required
-        />
-      }
+      <app-eingabe-datum
+        class="pur-form__item pur-form__item--field pur-form__item--33"
+        label="Datum"
+        [modus]="datumModus"
+        formControlName="monatTag"
+        [readonly]="istSystemtag"
+        required
+      />
       <mat-checkbox
         class="pur-form__item pur-form__item--checkbox pur-form__item--auto"
         formControlName="aktiv"

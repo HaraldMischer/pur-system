@@ -13,6 +13,7 @@ import type {
 export interface IGesetzlicherFeiertagKatalogeintrag {
   schluessel: TGesetzlicherFeiertagSchluessel;
   bezeichnung: string;
+  datumsart: 'fest' | 'berechnet';
   automatischeBundeslaender: readonly TBundeslandCode[];
   lokalBegrenzteBundeslaender: readonly TBundeslandCode[];
 }
@@ -48,23 +49,33 @@ export const GESETZLICHE_FEIERTAGE_KATALOG: readonly IGesetzlicherFeiertagKatalo
   createKatalogeintrag('neujahr', 'Neujahr', ALLE_BUNDESLAENDER),
   createKatalogeintrag('heiligeDreiKoenige', 'Heilige Drei Könige', ['DE-BW', 'DE-BY', 'DE-ST']),
   createKatalogeintrag('internationalerFrauentag', 'Internationaler Frauentag', ['DE-BE', 'DE-MV']),
-  createKatalogeintrag('karfreitag', 'Karfreitag', ALLE_BUNDESLAENDER),
-  createKatalogeintrag('ostersonntag', 'Ostersonntag', ['DE-BB']),
-  createKatalogeintrag('ostermontag', 'Ostermontag', ALLE_BUNDESLAENDER),
+  createKatalogeintrag('karfreitag', 'Karfreitag', ALLE_BUNDESLAENDER, 'berechnet'),
+  createKatalogeintrag('ostersonntag', 'Ostersonntag', ['DE-BB'], 'berechnet'),
+  createKatalogeintrag('ostermontag', 'Ostermontag', ALLE_BUNDESLAENDER, 'berechnet'),
   createKatalogeintrag('tagDerArbeit', 'Tag der Arbeit', ALLE_BUNDESLAENDER),
-  createKatalogeintrag('christiHimmelfahrt', 'Christi Himmelfahrt', ALLE_BUNDESLAENDER),
-  createKatalogeintrag('pfingstsonntag', 'Pfingstsonntag', ['DE-BB']),
-  createKatalogeintrag('pfingstmontag', 'Pfingstmontag', ALLE_BUNDESLAENDER),
+  createKatalogeintrag(
+    'christiHimmelfahrt',
+    'Christi Himmelfahrt',
+    ALLE_BUNDESLAENDER,
+    'berechnet',
+  ),
+  createKatalogeintrag('pfingstsonntag', 'Pfingstsonntag', ['DE-BB'], 'berechnet'),
+  createKatalogeintrag('pfingstmontag', 'Pfingstmontag', ALLE_BUNDESLAENDER, 'berechnet'),
   createKatalogeintrag(
     'fronleichnam',
     'Fronleichnam',
     ['DE-BW', 'DE-BY', 'DE-HE', 'DE-NW', 'DE-RP', 'DE-SL'],
+    'berechnet',
     ['DE-SN', 'DE-TH'],
   ),
-  createKatalogeintrag('augsburgerFriedensfest', 'Augsburger Friedensfest', KEINE_BUNDESLAENDER, [
-    'DE-BY',
-  ]),
-  createKatalogeintrag('mariaHimmelfahrt', 'Mariä Himmelfahrt', ['DE-SL'], ['DE-BY']),
+  createKatalogeintrag(
+    'augsburgerFriedensfest',
+    'Augsburger Friedensfest',
+    KEINE_BUNDESLAENDER,
+    'fest',
+    ['DE-BY'],
+  ),
+  createKatalogeintrag('mariaHimmelfahrt', 'Mariä Himmelfahrt', ['DE-SL'], 'fest', ['DE-BY']),
   createKatalogeintrag('weltkindertag', 'Weltkindertag', ['DE-TH']),
   createKatalogeintrag('tagDerDeutschenEinheit', 'Tag der Deutschen Einheit', ALLE_BUNDESLAENDER),
   createKatalogeintrag('reformationstag', 'Reformationstag', [
@@ -85,7 +96,7 @@ export const GESETZLICHE_FEIERTAGE_KATALOG: readonly IGesetzlicherFeiertagKatalo
     'DE-RP',
     'DE-SL',
   ]),
-  createKatalogeintrag('bussUndBettag', 'Buß- und Bettag', ['DE-SN']),
+  createKatalogeintrag('bussUndBettag', 'Buß- und Bettag', ['DE-SN'], 'berechnet'),
   createKatalogeintrag('ersterWeihnachtstag', '1. Weihnachtstag', ALLE_BUNDESLAENDER),
   createKatalogeintrag('zweiterWeihnachtstag', '2. Weihnachtstag', ALLE_BUNDESLAENDER),
   createKatalogeintrag('aufstand17Juni2028', '75. Jahrestag des Aufstands vom 17. Juni 1953', [
@@ -280,11 +291,13 @@ function createKatalogeintrag(
   schluessel: TGesetzlicherFeiertagSchluessel,
   bezeichnung: string,
   automatischeBundeslaender: readonly TBundeslandCode[],
+  datumsart: 'fest' | 'berechnet' = 'fest',
   lokalBegrenzteBundeslaender: readonly TBundeslandCode[] = KEINE_BUNDESLAENDER,
 ): IGesetzlicherFeiertagKatalogeintrag {
   return {
     schluessel,
     bezeichnung,
+    datumsart,
     automatischeBundeslaender,
     lokalBegrenzteBundeslaender,
   };

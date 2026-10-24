@@ -311,11 +311,36 @@ describe('OeffnungszeitenFiliale', () => {
             },
             {
               ...PFAD,
+              id: 'karfreitag',
+              bezeichnung: 'Karfreitag',
+              aktiv: false,
+              herkunft: 'system',
+              datumsregel: {
+                typ: 'gesetzlicherFeiertag',
+                feiertagSchluessel: 'karfreitag',
+              },
+              oeffnungsregel: { geoeffnet: false },
+              erstelltVonUid: 'uid-1',
+              aktualisiertVonUid: 'uid-1',
+            },
+            {
+              ...PFAD,
               id: 'heiligabend',
               bezeichnung: 'Heiligabend',
               aktiv: true,
               herkunft: 'system',
               datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
+              oeffnungsregel: { geoeffnet: false },
+              erstelltVonUid: 'uid-1',
+              aktualisiertVonUid: 'uid-1',
+            },
+            {
+              ...PFAD,
+              id: 'winteraktion',
+              bezeichnung: 'Winteraktion',
+              aktiv: false,
+              herkunft: 'benutzer',
+              datumsregel: { typ: 'jaehrlichFestesDatum', monat: 2, tag: 3 },
               oeffnungsregel: { geoeffnet: false },
               erstelltVonUid: 'uid-1',
               aktualisiertVonUid: 'uid-1',
@@ -356,11 +381,22 @@ describe('OeffnungszeitenFiliale', () => {
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Tag der Arbeit');
+    expect(text).toContain('01.05.');
+    expect(text).toContain('25.12.');
+    expect(text).toMatch(/\d{2}\.\d{2}\.\d{2}(?!\d)/);
+    expect(text).not.toContain('Festes Datum');
+    expect(text).not.toContain('Berechnetes Datum');
+    expect(text.indexOf('Karfreitag')).toBeLessThan(text.indexOf('Tag der Arbeit'));
+    expect(text.indexOf('Tag der Arbeit')).toBeLessThan(text.indexOf('1. Weihnachtstag'));
+    expect(text.indexOf('Winteraktion')).toBeLessThan(text.indexOf('Heiligabend'));
+    expect(text).toContain('03.02.');
     expect(text).toContain('Heiligabend');
     expect(text).toContain('Betriebsversammlung');
     expect(text).toContain('Inaktiv · Wochentagsregel gilt');
     expect(text).toContain('Aktiv · Geöffnet 08:00–18:00 Uhr');
-    expect(text).toContain('Aktiv · Geschlossen · Jährlich am 24.12.');
+    expect(text).toContain('24.12.');
+    expect(text).not.toContain('Jährlich am');
+    expect(text).toContain('Aktiv · Geschlossen');
     expect(text).toContain('Aktiv · Geschlossen · Einmalig am 12.11.2026');
     kontext.update((wert) => {
       if (!wert.bestand) {

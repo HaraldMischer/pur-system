@@ -118,8 +118,9 @@
           <div class="pur-list__row" [class.pur-list__row--inactive]="!feiertag.aktiv">
             <div class="pur-list__row-item">
               <p class="pur-text pur-text--label">{{ feiertag.bezeichnung }}</p>
-              <p class="pur-text pur-text--secondary">
-                {{ getOeffnungsstatus(feiertag.oeffnungsregel, feiertag.aktiv) }}
+              <p class="pur-text pur-text--secondary besonderer-tag-details">
+                <span class="besonderer-tag-datum">{{ getFeiertagDatum(feiertag) }}</span>
+                <span>{{ getOeffnungsstatus(feiertag.oeffnungsregel, feiertag.aktiv) }}</span>
               </p>
             </div>
             <div class="pur-list__row-item pur-list__row-item--end">
@@ -161,9 +162,9 @@
           <div class="pur-list__row" [class.pur-list__row--inactive]="!sondertag.aktiv">
             <div class="pur-list__row-item">
               <p class="pur-text pur-text--label">{{ sondertag.bezeichnung }}</p>
-              <p class="pur-text pur-text--secondary">
-                {{ getOeffnungsstatus(sondertag.oeffnungsregel, sondertag.aktiv) }} · Jährlich am
-                {{ getJaehrlichesDatum(sondertag) }}
+              <p class="pur-text pur-text--secondary besonderer-tag-details">
+                <span class="besonderer-tag-datum">{{ getJaehrlichesDatum(sondertag) }}</span>
+                <span>{{ getOeffnungsstatus(sondertag.oeffnungsregel, sondertag.aktiv) }}</span>
               </p>
             </div>
             <div class="pur-list__row-item pur-list__row-item--end">

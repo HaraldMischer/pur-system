@@ -89,6 +89,9 @@ describe('SondertagBearbeitenDialog', () => {
     expect(fixture.componentInstance.form.contains('jaehrlichWiederkehrend')).toBe(false);
     expect(fixture.componentInstance.form.controls.monatTag.value).toBe('');
     expect(fixture.componentInstance.form.controls.monatTag.hasError('required')).toBe(true);
+    expect(
+      (fixture.nativeElement.querySelector('app-eingabe-datum input') as HTMLInputElement).readOnly,
+    ).toBe(false);
     expect(fixture.componentInstance.form.controls.beginnLokalzeit.value).toBe('06:00');
     expect(fixture.componentInstance.form.controls.endeLokalzeit.value).toBe('01:00');
     expect(fixture.nativeElement.textContent).not.toContain('Jährlich wiederholen');
@@ -126,9 +129,18 @@ describe('SondertagBearbeitenDialog', () => {
     const component = fixture.componentInstance;
 
     component.form.controls.geoeffnet.setValue(true);
+    fixture.detectChanges();
 
     expect(component.dialogTitel).toBe('Gesetzlichen Feiertag bearbeiten');
-    expect(component.form.controls.monatTag.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain(
+      'Gesetzlicher Feiertag mit berechnetem Datum.',
+    );
+    const datumEingabe = fixture.nativeElement.querySelector(
+      'app-eingabe-datum input',
+    ) as HTMLInputElement;
+    expect(component.form.controls.monatTag.disabled).toBe(false);
+    expect(datumEingabe.readOnly).toBe(true);
+    expect(datumEingabe.value).toMatch(/^\d{2}\.\d{2}\.\d{4}$/);
     expect(component.form.valid).toBe(true);
     expect(component.hatAenderungen()).toBe(true);
 
@@ -144,6 +156,71 @@ describe('SondertagBearbeitenDialog', () => {
       },
     });
     expect(close).toHaveBeenCalledWith(true);
+  });
+
+  it('should describe a legal holiday with a fixed date', () => {
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: {
+        pfad: PFAD,
+        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
+        sondertag: {
+          id: 'tagDerDeutschenEinheit',
+          unternehmerId: PFAD.unternehmerId,
+          firmaId: PFAD.firmaId,
+          filialeId: PFAD.filialeId,
+          bezeichnung: 'Tag der Deutschen Einheit',
+          aktiv: true,
+          herkunft: 'system',
+          datumsregel: {
+            typ: 'gesetzlicherFeiertag',
+            feiertagSchluessel: 'tagDerDeutschenEinheit',
+          },
+          oeffnungsregel: { geoeffnet: false },
+          erstelltVonUid: 'system',
+          aktualisiertVonUid: 'system',
+        },
+      },
+    });
+    const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Gesetzlicher Feiertag mit festem Datum.');
+    const datumEingabe = fixture.nativeElement.querySelector(
+      'app-eingabe-datum input',
+    ) as HTMLInputElement;
+    expect(datumEingabe.readOnly).toBe(true);
+    expect(datumEingabe.value).toBe('03.10');
+  });
+
+  it('should describe a system special day with a fixed date', () => {
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: {
+        pfad: PFAD,
+        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
+        sondertag: {
+          id: 'heiligabend',
+          unternehmerId: PFAD.unternehmerId,
+          firmaId: PFAD.firmaId,
+          filialeId: PFAD.filialeId,
+          bezeichnung: 'Heiligabend',
+          aktiv: true,
+          herkunft: 'system',
+          datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
+          oeffnungsregel: { geoeffnet: false },
+          erstelltVonUid: 'system',
+          aktualisiertVonUid: 'system',
+        },
+      },
+    });
+    const fixture = TestBed.createComponent(SondertagBearbeitenDialog);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Sondertag mit festem Datum.');
+    const datumEingabe = fixture.nativeElement.querySelector(
+      'app-eingabe-datum input',
+    ) as HTMLInputElement;
+    expect(datumEingabe.readOnly).toBe(true);
+    expect(datumEingabe.value).toBe('24.12');
   });
 
   it('should provide the standard times for a system holiday without stored times', () => {
