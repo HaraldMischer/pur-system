@@ -147,13 +147,19 @@ Hauptquellen.
   fachlich erhalten; das Tagesmodell besitzt unabhängige Wochentags- und Sonntagsvorlagen.
 - Das Schicht-Tagesmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Geöffnete Feier- und
   Sondertage werden vor dem atomaren Schreiben frei konfiguriert, geschlossene Tage bleiben ohne Tagesschichten.
-- Die Umsetzung von Todo 26 ist noch nicht durch die vollständigen Unit-, Rules-, Build- und manuellen Prüfungen bestätigt.
-- Beim Anlegen eines Monatsplans werden Schichtmodell, Planungsart, Kalendertage, wirksame Öffnungen und tagesabhängige
-  Rasterzeiten als unveränderliche Momentaufnahme gespeichert.
+- Die vollständige Unit-Test-Suite mit 143 Testdateien und 1.051 Tests sowie `npm run build:master` wurden am 06.11.2026 als
+  Zwischenstand erfolgreich ausgeführt. Nach der anschließenden Änderung der Datumsanzeige stehen die erneute gezielte
+  Unit-Prüfung sowie Rules-Tests, weitere App-Builds und die vollständige manuelle Prüfung von Todo 26 noch aus.
+- Beim Anlegen eines Monatsplans werden Schichtmodell, Planungsart, Kalendertage und wirksame Öffnungen als unveränderliche
+  Momentaufnahme gespeichert. Rasterpläne ergänzen tagesabhängige Rasterzeiten; Tagesmodellpläne speichern stattdessen
+  konkrete datumsgebundene Tagesschichten.
 - Die erste und letzte Rastergrenze folgen der Tagesöffnung einschließlich Vor- und Nachbereitung. Innere Übergänge bleiben
   Modellbestandteil; bestätigte Lücken und Überlappungen sind möglich. Geschlossene oder zu kurze Tage bleiben unbelegbar.
 - Mitarbeiter können per Drag-and-drop eingeplant, verschoben und entfernt werden. Mehrfachbelegung, Pausen und
   filialübergreifende Zeitkonflikte werden fachlich geprüft.
+- Die Monatsdarstellung des Tagesmodells ordnet konkrete Tagesschichten minutengenau auf einer gemeinsamen Zeitachse an.
+  Geschlossene Außenbereiche werden als eigene Karten dargestellt, offene Lücken bleiben frei und zeitliche Überschneidungen
+  verwenden getrennte Spuren. Tagesköpfe zeigen gesetzliche Feiertage und aktive Sondertage mit ihrer Bezeichnung.
 - Der firmenweite Belegungsindex wird live angezeigt und vor jedem Schreibzugriff innerhalb einer Firestore-Transaktion erneut
   geprüft. Veraltete Revisionen und parallele Konflikte brechen den Vorgang nachvollziehbar ab.
 - Ein leerer Erstentwurf kann gelöscht und neu angelegt werden. Veröffentlichungen archivieren einen vorherigen Stand und

@@ -1,31 +1,104 @@
 // pur-system/src/app/components/schichtplan/dienstplan-monatsliste/dienstplan-monatsliste.scss
 
-.monatsliste,
-.listentag__schichten {
+.monatsliste-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.monatsliste {
+  width: max(100%, calc(var(--zeitachsenbreite) + 144px));
   display: grid;
-  gap: 12px;
+  gap: 8px;
+}
+
+.zeitachsenkopf,
+.listentag {
+  display: grid;
+  grid-template-columns: 120px minmax(var(--zeitachsenbreite), 1fr);
+  gap: 8px;
+  padding-inline: 8px;
+}
+
+.zeitachsenkopf {
+  align-items: stretch;
+}
+
+.zeitachsenkopf__titel {
+  position: sticky;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  background: var(--mat-sys-surface-container-low);
+  font: var(--mat-sys-title-small);
+}
+
+.zeitachse {
+  position: relative;
+  height: 48px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.stundenmarke {
+  position: absolute;
+  bottom: 15px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  transform: translateX(-50%);
+  white-space: nowrap;
+
+  &::after {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    width: 1px;
+    height: 6px;
+    background: var(--mat-sys-outline-variant);
+    content: '';
+  }
+
+  &:first-child {
+    padding-left: 12px;
+    transform: none;
+
+    &::after {
+      left: 0;
+    }
+  }
+
+  &:last-child {
+    padding-right: 12px;
+    transform: translateX(-100%);
+
+    &::after {
+      left: 100%;
+    }
+  }
 }
 
 .listentag {
-  display: grid;
-  grid-template-columns: 140px minmax(0, 1fr);
-  gap: 12px;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.tagesschicht {
-  display: flex;
-  gap: 12px;
+  align-items: stretch;
 }
 
 .listentag__kopf {
+  position: sticky;
+  left: 8px;
+  z-index: 2;
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   padding: 12px;
-  border-radius: 6px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  background: var(--mat-sys-surface-container-low);
+  font: var(--mat-sys-title-small);
+  text-transform: capitalize;
 
   &--sonntag {
     background: var(--pur-sys-tag-sonntag);
@@ -43,6 +116,15 @@
 .tag {
   display: grid;
   gap: 2px;
+  min-width: 0;
+
+  > * {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .oeffnungszeit {
@@ -51,22 +133,61 @@
 }
 
 .listentag__schichten {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  display: grid;
+  grid-template-columns: repeat(var(--zeitachsenminuten), minmax(0, 1fr));
+  grid-auto-rows: minmax(88px, auto);
+  gap: 8px 0;
+}
+
+.geschlossen {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  min-height: 88px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  color: var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface-container-low);
+  font: var(--mat-sys-label-large);
+  overflow: hidden;
+  margin-inline: 4px;
 }
 
 .tagesschicht {
+  min-width: 0;
+  display: flex;
   flex-direction: column;
+  gap: 8px;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px;
-  min-height: 96px;
+  min-height: 88px;
+  background: var(--mat-sys-surface-container-lowest);
+  margin-inline: 4px;
+}
+
+.zeitachsenkarte--am-anfang {
+  margin-inline-start: 0;
+}
+
+.zeitachsenkarte--am-ende {
+  margin-inline-end: 0;
 }
 
 .zellenkopf {
   display: flex;
+  min-width: 0;
   gap: 8px;
   align-items: center;
   justify-content: space-between;
+
+  strong,
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .schicht {
@@ -96,12 +217,6 @@
   }
 }
 
-.zelle--konflikt {
+.tagesschicht.zelle--konflikt {
   background: var(--mat-sys-error-container);
-}
-
-@media (max-width: 700px) {
-  .listentag {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }

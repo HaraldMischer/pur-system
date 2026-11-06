@@ -15,6 +15,12 @@ import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import { ITagesschichtEintrag } from '../../../commons/models/domain/schichtmodell';
 import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 import {
+  createGeschlosseneZeitachsenPositionen,
+  createDienstplanZeitachse,
+  createDienstplanZeitachsenPositionen,
+  IDienstplanZeitachsenPosition,
+} from '../../../commons/utils/dienstplan/dienstplan-zeitachse';
+import {
   TSchichtplanDragDaten,
   TSchichtplanTagesschichtMitarbeiterAblage,
   TSchichtplanTagesschichtauswahl,
@@ -26,13 +32,16 @@ type TSchichtplanTagesschichtZelle = {
   readonly schichten: readonly ISchichtEintrag[];
   readonly mitarbeiterIds: readonly string[];
   readonly hatKonflikt: boolean;
+  readonly zeitachsenposition: IDienstplanZeitachsenPosition;
 };
 
 type TSchichtplanListentag = {
   readonly kalendertag: IDienstplanKalendertag;
   readonly wochentagBezeichnung: string;
   readonly datumBezeichnung: string;
+  readonly kalendereigenschaftBezeichnung: string | null;
   readonly hervorhebung: 'sonntag' | 'feiertag' | 'sondertag' | null;
+  readonly geschlosseneBereiche: readonly IDienstplanZeitachsenPosition[];
   readonly zellen: readonly TSchichtplanTagesschichtZelle[];
 };
 
@@ -70,9 +79,31 @@ export class DienstplanMonatsliste {
       this.darfSchreiben() && this.aktiveVersion()?.status === 'entwurf' && !this.schreibvorgang()
     );
   });
+  readonly zeitachse = computed(() => {
+    const zeitfenster = this.dienstplan().kalendertage.flatMap((kalendertag) => {
+      if (!kalendertag.oeffnungsregel.geoeffnet) return [];
+      return [
+        {
+          beginn: {
+            lokalzeit: kalendertag.oeffnungsregel.beginnLokalzeit,
+            amFolgetag: false,
+          },
+          ende: {
+            lokalzeit: kalendertag.oeffnungsregel.endeLokalzeit,
+            amFolgetag: kalendertag.oeffnungsregel.endetAmFolgetag,
+          },
+        },
+      ];
+    });
+    return createDienstplanZeitachse(zeitfenster);
+  });
+  readonly zeitachsenbreite = computed(() => {
+    return this.zeitachse().stundenAnzahl * 48;
+  });
   readonly tage = computed<readonly TSchichtplanListentag[]>(() => {
     const dienstplanId = this.dienstplan().id;
     const versionId = this.aktiveVersion()?.id;
+    const zeitachse = this.zeitachse();
     const tagesschichten = this.tagesschichten().filter((tagesschicht) => {
       return tagesschicht.dienstplanId === dienstplanId;
     });
@@ -81,7 +112,17 @@ export class DienstplanMonatsliste {
       : [];
     return this.dienstplan().kalendertage.map((kalendertag) => {
       const datum = new Date(`${kalendertag.datum}T12:00:00Z`);
-      const zellen: TSchichtplanTagesschichtZelle[] = tagesschichten
+      const kalendereigenschaftBezeichnungen = new Set<string>();
+      if (kalendertag.gesetzlicherFeiertag) {
+        kalendereigenschaftBezeichnungen.add(kalendertag.gesetzlicherFeiertag.bezeichnung);
+      }
+      if (kalendertag.bezeichnung) {
+        kalendereigenschaftBezeichnungen.add(kalendertag.bezeichnung);
+      }
+      for (const sondertag of kalendertag.aktiveSondertage) {
+        kalendereigenschaftBezeichnungen.add(sondertag.bezeichnung);
+      }
+      const zellenOhnePosition = tagesschichten
         .filter((tagesschicht) => tagesschicht.datum === kalendertag.datum)
         .sort((a, b) => a.reihenfolge - b.reihenfolge)
         .map((tagesschicht) => {
@@ -97,11 +138,56 @@ export class DienstplanMonatsliste {
             }),
           };
         });
+      const positionen = createDienstplanZeitachsenPositionen(
+        zellenOhnePosition.map((zelle) => {
+          return {
+            id: zelle.tagesschicht.id,
+            beginn: {
+              lokalzeit: zelle.tagesschicht.kernbeginnLokalzeit,
+              amFolgetag: zelle.tagesschicht.kernbeginnAmFolgetag,
+            },
+            ende: {
+              lokalzeit: zelle.tagesschicht.kernendeLokalzeit,
+              amFolgetag: zelle.tagesschicht.kernendeAmFolgetag,
+            },
+          };
+        }),
+        zeitachse,
+      );
+      const positionenNachId = new Map(positionen.map((position) => [position.id, position]));
+      const zellen: TSchichtplanTagesschichtZelle[] = zellenOhnePosition.map((zelle) => {
+        const zeitachsenposition = positionenNachId.get(zelle.tagesschicht.id);
+        if (!zeitachsenposition) {
+          throw new Error('Die Tagesschicht konnte nicht auf der Zeitachse positioniert werden.');
+        }
+        return { ...zelle, zeitachsenposition };
+      });
+      const oeffnungsregel = kalendertag.oeffnungsregel;
+      const geschlosseneBereiche = createGeschlosseneZeitachsenPositionen(
+        oeffnungsregel.geoeffnet
+          ? {
+              beginn: {
+                lokalzeit: oeffnungsregel.beginnLokalzeit,
+                amFolgetag: false,
+              },
+              ende: {
+                lokalzeit: oeffnungsregel.endeLokalzeit,
+                amFolgetag: oeffnungsregel.endetAmFolgetag,
+              },
+            }
+          : null,
+        zeitachse,
+      );
       return {
         kalendertag,
         wochentagBezeichnung: formatWochentag(datum),
         datumBezeichnung: formatDatum(datum),
+        kalendereigenschaftBezeichnung:
+          kalendereigenschaftBezeichnungen.size > 0
+            ? [...kalendereigenschaftBezeichnungen].join(' · ')
+            : null,
         hervorhebung: getKalendertagHervorhebung(kalendertag),
+        geschlosseneBereiche,
         zellen,
       };
     });

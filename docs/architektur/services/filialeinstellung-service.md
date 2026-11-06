@@ -32,8 +32,9 @@ Bundeslandwechsel gleicht die systemdefinierten Feiertage atomar ab: gemeinsame 
 Benutzerdefinierte Sondertage bleiben erhalten.
 
 Eigene jährliche Sondertage werden über Serviceaktionen angelegt, aktualisiert und gelöscht. Sie besitzen Monat und Tag sowie
-einen Aktivstatus. Systemdefinierte Sondertage behalten Identität, Bezeichnung, Herkunft und Datumsregel; veränderbar sind nur
-Aktivstatus und Öffnungsregel. Jeder Schreibvorgang ergänzt die fachlichen Metadaten mit Benutzer-UID und Serverzeitstempel.
+einen Öffnungsmodus. Systemdefinierte Sondertage behalten Identität, Bezeichnung, Herkunft und Datumsregel; veränderbar sind nur
+Öffnungsmodus und Öffnungsregel. Der technische Aktivstatus wird einheitlich aus dem Modus abgeleitet: `Standard` ist inaktiv,
+alle anderen Modi sind aktiv. Jeder Schreibvorgang ergänzt die fachlichen Metadaten mit Benutzer-UID und Serverzeitstempel.
 
 ## Validierung
 

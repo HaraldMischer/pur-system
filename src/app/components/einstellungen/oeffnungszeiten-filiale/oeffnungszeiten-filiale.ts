@@ -43,7 +43,6 @@ import {
   createInitialeSondertage,
   getBerechneterSondertagDatum,
   getGesetzlicherFeiertagDatum,
-  getGesetzlicherFeiertagKatalogeintrag,
 } from '../../../commons/utils/filialeinstellung/feiertag';
 import {
   getSondertagsmodus as getGespeichertenSondertagsmodus,
@@ -443,14 +442,14 @@ export class OeffnungszeitenFiliale {
   }
 
   /**
-   * Formatiert das feste Datum eines jährlich wiederkehrenden Sondertags.
+   * Formatiert das Datum eines jährlichen Sondertags für das aktuelle Kalenderjahr.
    */
   getJaehrlichesDatum(sondertag: IFilialeinstellungSondertagEintrag): string {
     const datumsregel = sondertag.datumsregel;
     if (datumsregel.typ === 'jaehrlichFestesDatum') {
       const tag = String(datumsregel.tag).padStart(2, '0');
       const monat = String(datumsregel.monat).padStart(2, '0');
-      return `${tag}.${monat}.`;
+      return `${tag}.${monat}.${String(this.kalenderjahr).slice(-2)}`;
     }
     if (datumsregel.typ !== 'berechneterSondertag') return '';
     const datum = getBerechneterSondertagDatum(this.kalenderjahr, datumsregel.sondertagSchluessel);
@@ -459,18 +458,15 @@ export class OeffnungszeitenFiliale {
   }
 
   /**
-   * Formatiert das Datum eines gesetzlichen Feiertags für die Listendarstellung.
+   * Formatiert das Datum eines gesetzlichen Feiertags für das aktuelle Kalenderjahr.
    */
   getFeiertagDatum(sondertag: IFilialeinstellungSondertagEintrag): string {
     const datumsregel = sondertag.datumsregel;
     if (datumsregel.typ !== 'gesetzlicherFeiertag') return '';
-    const katalogeintrag = getGesetzlicherFeiertagKatalogeintrag(datumsregel.feiertagSchluessel);
     const datum = getGesetzlicherFeiertagDatum(this.kalenderjahr, datumsregel.feiertagSchluessel);
     if (!datum) return '–';
     const [jahr, monat, tag] = datum.split('-');
-    return katalogeintrag.datumsart === 'fest'
-      ? `${tag}.${monat}.`
-      : `${tag}.${monat}.${jahr.slice(-2)}`;
+    return `${tag}.${monat}.${jahr.slice(-2)}`;
   }
 
   /**

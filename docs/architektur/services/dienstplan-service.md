@@ -27,8 +27,8 @@ ergänzt und anschließend fachlich sortiert.
 
 ## Schreiben
 
-- `createDienstplan()` prüft ein aktives, nicht leeres Schichtmodell derselben Filiale und legt den Monatsplan, seine erste
-  Entwurfsversion und die vollständige Modell-Momentaufnahme in einer Transaktion an. Die Transaktion liest zuerst den
+- `createDienstplan()` prüft ein aktives, nicht leeres Schicht-Rastermodell derselben Filiale und legt den Monatsplan, seine
+  erste Entwurfsversion und die vollständige Rastermodell-Momentaufnahme in einer Transaktion an. Die Transaktion liest zuerst den
   Monatsplanpfad und verhindert dadurch auch bei parallelen Aufrufen eine zweite Anlage desselben Filialmonats. Zuvor lädt die
   Methode die Filialeinstellungen verbindlich mit `networkOnly`. Fehlende, unvollständige oder für den Zielmonat
   widersprüchliche Einstellungen verhindern die Anlage. Sind die Filialeinstellungen noch nicht angelegt, liefert der Service
@@ -37,6 +37,9 @@ ergänzt und anschließend fachlich sortiert.
   widersprüchliche Kalenderregeln und ein zwischenzeitlich ungültiges Schichtmodell werden als konkrete Fehler der
   Dienstplananlage weitergegeben. Unbekannte technische Fehler erhalten weiterhin nur eine allgemeine sichtbare Meldung und
   werden vollständig über den `DebugLogService` protokolliert.
+- `createDienstplanAusTagesmodell()` prüft ein aktives Schicht-Tagesmodell, löst alle Kalendertage und wirksamen Öffnungen auf
+  und erzeugt aus den Vorlagen sowie den frei erfassten Sondertagsstrukturen konkrete Tagesschichten. Monatsplan, erste
+  Entwurfsversion, Kalender-Momentaufnahme und sämtliche Tagesschichten werden atomar angelegt.
 - `deleteDienstplan()` lädt Dienstplan, Entwurfsschichten und Modell-Momentaufnahme verbindlich vom Server. Nur einen leeren,
   noch nie veröffentlichten Entwurf löscht die Methode gemeinsam mit dem Dienstplan und dessen Momentaufnahme.
 - `publishDienstplan()` lädt den aktuellen Entwurf und einen gegebenenfalls bisher veröffentlichten Stand verbindlich vom
@@ -48,9 +51,9 @@ ergänzt und anschließend fachlich sortiert.
   Die Modell-Momentaufnahme bleibt unverändert am Monatsplan bestehen.
 - `createSchicht()`, `updateSchicht()` und `deleteSchicht()` schreiben eine Schicht gemeinsam mit der nächsten Versionsrevision
   und allen betroffenen Tagesdokumenten des firmenweiten Mitarbeiterbelegungsindex in einer Firestore-Transaktion. Vor Anlage
-  und Änderung prüft der Service anhand der Modell-Momentaufnahme und der vorhandenen Schichten, ob die betroffene Rasterzelle
-  eine weitere Belegung erlaubt. In derselben Transaktion verhindert der Index zeitliche Überschneidungen des Mitarbeiters
-  über alle Filialen der Firma hinweg.
+  und Änderung prüft der Service abhängig von der Planungsart die Rastermodellschicht oder konkrete Tagesschicht sowie deren
+  vorhandene Belegungen. In derselben Transaktion verhindert der Index zeitliche Überschneidungen des Mitarbeiters über alle
+  Filialen der Firma hinweg.
 
 `updateSchicht()` deckt auch das Verschieben einer bestehenden Entwurfsschicht ab. Die Dokument-ID und die
 Mitarbeiterzuordnung bleiben dabei erhalten, während Datum, Modellschicht und die daraus abgeleiteten absoluten Zeitwerte
@@ -58,13 +61,12 @@ ersetzt werden. Die Transaktion erhöht die Revision genau einmal, entfernt die 
 Belegungstage und berechnet die Pausen der betroffenen Arbeitsblöcke neu. Eine abweichende Revision verhindert, dass eine
 zwischen Vorprüfung und Transaktion geänderte Zielbelegung überschrieben wird.
 
-Schichten enthalten die Mitarbeiter-ID sowie die ID ihrer Modellschicht aus der Momentaufnahme des Monatsplans. Beginn und Ende
-sind absolute Firestore-Zeitstempel; zusätzlich wird das zugehörige Dienstplandatum gespeichert. Der Service erhält für Anlage
-und Änderung nur Datum, Modellschicht-ID und Mitarbeiter-ID. Beginn und Ende leitet er verbindlich aus der im Monatsplan
-gespeicherten Tagesrasterzeit und der Zeitzone ab. Schichtdokumente benötigen das Dienstplandatum sowie Beginn und Ende
-verbindlich. Eine abweichende Entwurfsrevision verhindert veraltete Schreibzugriffe. Dadurch kann auch eine parallele Anlage die
-Begrenzung einer Einfachbelegung nicht umgehen. Nach der ersten Veröffentlichung verhindert der TypeScript-Service das
-Löschen des Monatsplans.
+Schichten enthalten die Mitarbeiter-ID sowie abhängig von der Planungsart genau eine `modellschichtId` oder
+`tagesschichtId`. Beginn und Ende sind absolute Firestore-Zeitstempel; zusätzlich wird das zugehörige Dienstplandatum
+gespeichert. Bei Rasterplänen leitet der Service die Zeitwerte aus der Tagesrasterzeit und der Zeitzone ab. Bei
+Tagesmodellplänen übernimmt er die historisch stabile tatsächliche Arbeitszeit der konkreten Tagesschicht. Eine abweichende
+Entwurfsrevision verhindert veraltete Schreibzugriffe. Dadurch kann auch eine parallele Anlage die Begrenzung einer
+Einfachbelegung nicht umgehen. Nach der ersten Veröffentlichung verhindert der TypeScript-Service das Löschen des Monatsplans.
 
 Der Mitarbeiterbelegungsindex liegt unter
 `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiterbelegung/{mitarbeiterId}__{datum}`. Jede enthaltene Referenz nennt
@@ -97,8 +99,7 @@ Planungsmomentaufnahme übernommen. Der Statuswechsel der Entwurfsreferenzen und
 veröffentlichten Stands erfolgen in derselben Transaktion. Eine abweichende Revision oder eine parallele Änderung eines
 beteiligten Dokuments lässt Firestore die Prüfung wiederholen beziehungsweise den Vorgang kontrolliert abbrechen.
 
-Beim Anlegen löst der Service im aktuellen technischen Stand alle 28 bis 31 Kalendertage über die zentrale Öffnungsregel- und
-Feiertagslogik aus Todo 20 auf.
+Beim Anlegen löst der Service alle 28 bis 31 Kalendertage über die zentrale Öffnungsregel- und Feiertagslogik auf.
 Die Liste `kalendertage` liegt direkt im Monatsdienstplandokument und enthält je Datum Wochentag, wirksame Öffnungsregel, deren
 Quelle, vorhandene Quellangaben, alle aktiven Sondertage und die tatsächlich passenden Rasterzeiten. Feiertage und jährliche
 Sondertage beeinflussen das Raster ausschließlich über ihre wirksame Öffnungsregel. Der
@@ -115,9 +116,9 @@ Ein unpassender Rasterplatz bleibt an diesem Tag ohne Rasterzeit, statt die gesa
 geöffneter Tag darf dadurch eine leere Rasterzeitliste enthalten. Eine konkrete Schicht kann ausschließlich für eine vorhandene
 Tagesrasterzeit angelegt werden. Geschlossene Tage enthalten ebenfalls keine Rasterzeiten.
 
-## Geplante Unterstützung des Schicht-Tagesmodells
+## Unterstützung des Schicht-Tagesmodells
 
-Der Dienstplan-Service verarbeitet künftig die diskriminierten Planungsarten `schichtrastermodell` und
+Der Dienstplan-Service verarbeitet die diskriminierten Planungsarten `schichtrastermodell` und
 `schichttagesmodell` über getrennte interne Anlage- und Validierungswege. Rastermodell-Momentaufnahmen behalten ihre
 Modellschichten und Rasterzeiten. Schicht-Tagesmodellpläne speichern stattdessen konkrete Tagesschichten mit eigenen
 Tagesinstanz-IDs. Beide Strukturen werden nicht über optionale Mischfelder vereinheitlicht.
@@ -142,8 +143,7 @@ Konfliktprüfung und dieselbe Pausenberechnung ein. Entwurf, Veröffentlichung, 
 veröffentlichten Stand übernehmen Tagesschichten und Belegungen historisch stabil.
 
 Die Firestore Rules sichern gemäß Berechtigungsmatrix ausschließlich aktives Profil, Rolle, Filialpfad und erlaubte
-CRUD-Aktion. Die neue Feldstruktur, Modellschicht-IDs, Reihenfolge und sämtliche Zeitregeln validiert der TypeScript-Code mit
-seinen Tests.
+CRUD-Aktion. Feldstruktur, Zielreferenzen, Reihenfolge und sämtliche Zeitregeln validiert der TypeScript-Code mit seinen Tests.
 
 ## Beteiligte Dateien
 
@@ -154,6 +154,8 @@ seinen Tests.
 - `src/app/commons/models/domain/mitarbeiterbelegung.ts`
 - `src/app/commons/models/domain/schicht.ts`
 - `src/app/commons/models/domain/schichtmodell.ts`
+- `src/app/commons/models/domain/schicht-tagesmodell.ts`
 - `src/app/commons/utils/dienstplan/mitarbeiterbelegung.ts`
 - `src/app/commons/utils/dienstplan/schicht-zeit.ts`
 - `src/app/commons/utils/dienstplan/dienstplan-kalendertage.ts`
+- `src/app/commons/utils/dienstplan/dienstplan-tagesschichten.ts`

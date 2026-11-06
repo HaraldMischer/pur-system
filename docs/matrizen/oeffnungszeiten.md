@@ -43,19 +43,20 @@ Grundlohn gezahlten Zuschlags. Er begründet weder einen Zahlungsanspruch noch l
 
 ## Wochentage und regelmäßige Öffnung
 
-Jede Filiale pflegt für jeden Wochentag eine eigene regelmäßige Öffnungsregel. Die Matrix legt keine einheitlichen konkreten
-Öffnungszeiten für alle Filialen fest. Sie beschreibt, welche Regel als betriebliche Grundlage dient und welche gesetzlichen
-oder steuerlichen Eigenschaften unabhängig davon gelten.
+Jede Filiale pflegt eine allgemeine Standardöffnungsregel. Jeder Wochentag übernimmt diese Regel im Modus `Standard`, verwendet
+im Modus `Abweichend` eine eigene Öffnungsregel oder bleibt im Modus `Geschlossen` ohne Kundenöffnung. Die Matrix legt keine
+einheitlichen konkreten Öffnungszeiten für alle Filialen fest. Sie beschreibt, welche Regel als betriebliche Grundlage dient
+und welche gesetzlichen oder steuerlichen Eigenschaften unabhängig davon gelten.
 
-| Regel-ID               | Wochentag  | Betriebliche Grundlage                  | Verbindliche tägliche Grenze für Spielhallen in NRW | Steuerliches Grundprofil                          |
-| ---------------------- | ---------- | --------------------------------------- | --------------------------------------------------- | ------------------------------------------------- |
-| `wochentag-montag`     | Montag     | Eigene konfigurierbare Montagsregel     | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
-| `wochentag-dienstag`   | Dienstag   | Eigene konfigurierbare Dienstagsregel   | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
-| `wochentag-mittwoch`   | Mittwoch   | Eigene konfigurierbare Mittwochsregel   | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
-| `wochentag-donnerstag` | Donnerstag | Eigene konfigurierbare Donnerstagsregel | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
-| `wochentag-freitag`    | Freitag    | Eigene konfigurierbare Freitagsregel    | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
-| `wochentag-samstag`    | Samstag    | Eigene konfigurierbare Samstagsregel    | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
-| `wochentag-sonntag`    | Sonntag    | Eigene konfigurierbare Sonntagsregel    | Geschlossen von 01:00 bis 06:00 Uhr                 | Sonntag, 50 %; Nachtprofil kann zusätzlich gelten |
+| Regel-ID               | Wochentag  | Betriebliche Grundlage                       | Verbindliche tägliche Grenze für Spielhallen in NRW | Steuerliches Grundprofil                          |
+| ---------------------- | ---------- | -------------------------------------------- | --------------------------------------------------- | ------------------------------------------------- |
+| `wochentag-montag`     | Montag     | Standard, eigene Abweichung oder geschlossen | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
+| `wochentag-dienstag`   | Dienstag   | Standard, eigene Abweichung oder geschlossen | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
+| `wochentag-mittwoch`   | Mittwoch   | Standard, eigene Abweichung oder geschlossen | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
+| `wochentag-donnerstag` | Donnerstag | Standard, eigene Abweichung oder geschlossen | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
+| `wochentag-freitag`    | Freitag    | Standard, eigene Abweichung oder geschlossen | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
+| `wochentag-samstag`    | Samstag    | Standard, eigene Abweichung oder geschlossen | Geschlossen von 01:00 bis 06:00 Uhr                 | Kein Tageszuschlag; Nachtprofil kann gelten       |
+| `wochentag-sonntag`    | Sonntag    | Standard, eigene Abweichung oder geschlossen | Geschlossen von 01:00 bis 06:00 Uhr                 | Sonntag, 50 %; Nachtprofil kann zusätzlich gelten |
 
 Für die betriebliche Öffnungsregel gilt die Reihenfolge `aktiver benutzerdefinierter jährlicher Sondertag` vor `aktivem
 systemdefiniertem Sondertag` vor `Wochentagsregel`. Gesetzliche Sperr- und Spielverbotszeiten werden anschließend als
@@ -149,8 +150,9 @@ nicht ungeprüft addieren. Die konkrete Zuschlagsberechnung wird erst in einem e
 
 - [ ] Festlegen, ob Ostersonntag und Pfingstsonntag als sichtbare systemdefinierte besondere Tage in NRW geführt werden oder
       ausschließlich über die Sonntagsregel erkennbar bleiben.
-- [ ] Festlegen, ob Sperr- und Spielverbotszeiten unveränderliche Grenzen oder nur dokumentierte Vorbelegungen bilden. Vor der
-      Umsetzung ist zu klären, welche Abweichungen rechtlich überhaupt zulässig sind.
+- [ ] Die als verbindliche Grenzen eingeordneten Sperr- und Spielverbotszeiten anhand ihres Geltungsbereichs und
+      Gültigkeitszeitraums abschließend prüfen und technisch erzwingen. Die bestehende Einstellungsoberfläche bildet sie bis
+      dahin nur durch getrennt dokumentierte Vorbelegungen ab.
 - [ ] Festlegen, welche Zuschläge das Unternehmen tatsächlich zahlt. Die steuerlichen Höchstsätze allein erzeugen keinen
       Zahlungsanspruch.
 - [ ] Prüfen, ob weitere landesrechtlich relevante Tage oder zeitlich begrenzte Sonderregelungen ergänzt werden müssen.

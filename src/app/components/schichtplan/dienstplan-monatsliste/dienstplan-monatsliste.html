@@ -1,97 +1,139 @@
 <!-- pur-system/src/app/components/schichtplan/dienstplan-monatsliste/dienstplan-monatsliste.html -->
 
-<div class="monatsliste">
-  @for (tag of tage(); track tag.kalendertag.datum) {
-    <section class="listentag">
-      <header
-        class="listentag__kopf"
-        [class.listentag__kopf--sonntag]="tag.hervorhebung === 'sonntag'"
-        [class.listentag__kopf--feiertag]="tag.hervorhebung === 'feiertag'"
-        [class.listentag__kopf--sondertag]="tag.hervorhebung === 'sondertag'"
-      >
-        <time class="tag" [attr.datetime]="tag.kalendertag.datum">
-          <strong>{{ tag.wochentagBezeichnung }}</strong>
-          <span>{{ tag.datumBezeichnung }}</span>
-        </time>
-        <span class="oeffnungszeit">
-          @if (tag.kalendertag.oeffnungsregel.geoeffnet) {
-            {{ tag.kalendertag.oeffnungsregel.beginnLokalzeit }}–{{
-              tag.kalendertag.oeffnungsregel.endeLokalzeit
-            }}
-            Uhr
-          } @else {
-            Geschlossen
+<div class="monatsliste-scroll">
+  <div
+    class="monatsliste"
+    [style.--zeitachsenbreite]="zeitachsenbreite() + 'px'"
+    [style.--zeitachsenminuten]="zeitachse().dauerMinuten"
+  >
+    <div class="zeitachsenkopf">
+      <strong class="zeitachsenkopf__titel">Uhrzeit</strong>
+      <div class="zeitachse" aria-hidden="true">
+        @for (marke of zeitachse().marken; track marke.positionProzent) {
+          <span class="stundenmarke" [style.left.%]="marke.positionProzent">
+            {{ marke.bezeichnung }}
+          </span>
+        }
+      </div>
+    </div>
+    @for (tag of tage(); track tag.kalendertag.datum) {
+      <section class="listentag">
+        <header
+          class="listentag__kopf"
+          [class.listentag__kopf--sonntag]="tag.hervorhebung === 'sonntag'"
+          [class.listentag__kopf--feiertag]="tag.hervorhebung === 'feiertag'"
+          [class.listentag__kopf--sondertag]="tag.hervorhebung === 'sondertag'"
+        >
+          <time class="tag" [attr.datetime]="tag.kalendertag.datum">
+            <strong>{{ tag.wochentagBezeichnung }}</strong>
+            <span>{{ tag.datumBezeichnung }}</span>
+          </time>
+          <span class="oeffnungszeit">
+            @if (tag.kalendertag.oeffnungsregel.geoeffnet) {
+              {{ tag.kalendertag.oeffnungsregel.beginnLokalzeit }}–{{
+                tag.kalendertag.oeffnungsregel.endeLokalzeit
+              }}
+            } @else {
+              Geschlossen
+            }
+          </span>
+          @if (tag.kalendereigenschaftBezeichnung; as bezeichnung) {
+            <span class="pur-text pur-text--small" [attr.title]="bezeichnung">
+              {{ bezeichnung }}
+            </span>
           }
-        </span>
-      </header>
-      <div class="listentag__schichten">
-        @for (zelle of tag.zellen; track zelle.tagesschicht.id) {
-          <div
-            cdkDropList
-            class="tagesschicht"
-            [class.zelle--konflikt]="zelle.hatKonflikt"
-            [cdkDropListData]="zelle"
-            [cdkDropListDisabled]="!kannSchichtenAblegen()"
-            [cdkDropListSortingDisabled]="true"
-            (cdkDropListDropped)="handleTagesschichtDrop($event)"
-          >
-            <div class="zellenkopf">
-              <strong>{{ zelle.tagesschicht.bezeichnung }}</strong>
-              <span>
-                {{ zelle.tagesschicht.kernbeginnLokalzeit }}–{{
-                  zelle.tagesschicht.kernendeLokalzeit
-                }}
-                Uhr
-              </span>
-              @if (
-                zelle.tagesschicht.vorbereitungsminuten > 0 ||
-                zelle.tagesschicht.nachbereitungsminuten > 0
-              ) {
-                <span class="pur-text pur-text--small pur-text--secondary">
-                  +{{ zelle.tagesschicht.vorbereitungsminuten }} Min. Vorbereitung · +{{
-                    zelle.tagesschicht.nachbereitungsminuten
-                  }}
-                  Min. Nachbereitung
-                </span>
-              }
-              @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
-                <button
-                  matIconButton
-                  type="button"
-                  [disabled]="
-                    schreibvorgang() ||
-                    (!zelle.tagesschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
-                  "
-                  (click)="
-                    tagesschichtAnlegen.emit({
-                      datum: zelle.tagesschicht.datum,
-                      tagesschichtId: zelle.tagesschicht.id,
-                    })
-                  "
-                >
-                  <mat-icon>add</mat-icon>
-                </button>
-              }
+        </header>
+        <div class="listentag__schichten">
+          @for (bereich of tag.geschlosseneBereiche; track bereich.id) {
+            <div
+              class="geschlossen"
+              title="Geschlossen"
+              [class.zeitachsenkarte--am-anfang]="bereich.beginnRasterlinie === 1"
+              [class.zeitachsenkarte--am-ende]="
+                bereich.endeRasterlinie === zeitachse().dauerMinuten + 1
+              "
+              [style.grid-column-start]="bereich.beginnRasterlinie"
+              [style.grid-column-end]="bereich.endeRasterlinie"
+              [style.grid-row]="bereich.spur + 1"
+            >
+              Geschlossen
             </div>
-            @for (schicht of zelle.schichten; track schicht.id) {
-              <div
-                cdkDrag
-                class="schicht"
-                [cdkDragData]="{ art: 'schicht', schicht }"
-                [cdkDragDisabled]="!kannSchichtenAblegen()"
-              >
-                <strong>{{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}</strong>
-                <span>Lohnzeit: {{ formatLohnzeit(schicht) }}</span>
+          }
+          @for (zelle of tag.zellen; track zelle.tagesschicht.id) {
+            <div
+              cdkDropList
+              class="tagesschicht"
+              [class.zeitachsenkarte--am-anfang]="zelle.zeitachsenposition.beginnRasterlinie === 1"
+              [class.zeitachsenkarte--am-ende]="
+                zelle.zeitachsenposition.endeRasterlinie === zeitachse().dauerMinuten + 1
+              "
+              [style.grid-column-start]="zelle.zeitachsenposition.beginnRasterlinie"
+              [style.grid-column-end]="zelle.zeitachsenposition.endeRasterlinie"
+              [style.grid-row]="zelle.zeitachsenposition.spur + 1"
+              [class.zelle--konflikt]="zelle.hatKonflikt"
+              [cdkDropListData]="zelle"
+              [cdkDropListDisabled]="!kannSchichtenAblegen()"
+              [cdkDropListSortingDisabled]="true"
+              (cdkDropListDropped)="handleTagesschichtDrop($event)"
+            >
+              <div class="zellenkopf">
+                <strong>{{ zelle.tagesschicht.bezeichnung }}</strong>
+                <span>
+                  {{ zelle.tagesschicht.kernbeginnLokalzeit }}–{{
+                    zelle.tagesschicht.kernendeLokalzeit
+                  }}
+                  Uhr
+                </span>
+                @if (
+                  zelle.tagesschicht.vorbereitungsminuten > 0 ||
+                  zelle.tagesschicht.nachbereitungsminuten > 0
+                ) {
+                  <span class="pur-text pur-text--small pur-text--secondary">
+                    +{{ zelle.tagesschicht.vorbereitungsminuten }} Min. Vorbereitung · +{{
+                      zelle.tagesschicht.nachbereitungsminuten
+                    }}
+                    Min. Nachbereitung
+                  </span>
+                }
                 @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
-                  <button matButton type="button" (click)="tagesschichtBearbeiten.emit(schicht)">
-                    Bearbeiten
+                  <button
+                    matIconButton
+                    type="button"
+                    [disabled]="
+                      schreibvorgang() ||
+                      (!zelle.tagesschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
+                    "
+                    (click)="
+                      tagesschichtAnlegen.emit({
+                        datum: zelle.tagesschicht.datum,
+                        tagesschichtId: zelle.tagesschicht.id,
+                      })
+                    "
+                  >
+                    <mat-icon>add</mat-icon>
                   </button>
                 }
               </div>
-            }
-          </div>
-        }
-      </div>
-    </section>
-  }
+              @for (schicht of zelle.schichten; track schicht.id) {
+                <div
+                  cdkDrag
+                  class="schicht"
+                  [cdkDragData]="{ art: 'schicht', schicht }"
+                  [cdkDragDisabled]="!kannSchichtenAblegen()"
+                >
+                  <strong>{{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}</strong>
+                  <span>Lohnzeit: {{ formatLohnzeit(schicht) }}</span>
+                  @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
+                    <button matButton type="button" (click)="tagesschichtBearbeiten.emit(schicht)">
+                      Bearbeiten
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
 </div>

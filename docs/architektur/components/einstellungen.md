@@ -31,21 +31,22 @@ abgeleitet. Das Formular initialisiert den vollständigen Einstellungsbestand; a
 Grundlagen und Wochenregeln atomar. Bei einem noch nicht initialisierten Bestand kann die gültige Vorbelegung unmittelbar
 gespeichert werden. Bei einem bestehenden Bestand ist dafür eine fachliche Änderung erforderlich.
 
-Gesetzliche Feiertage zeigen Bezeichnung und berechnetes Datum sowie ein Auswahlmenü mit `Standard`, `Wie Sonntag`,
-`Abweichend` und `Geschlossen`. `Standard` verwendet die allgemeine Standardöffnungsregel, `Wie Sonntag` dynamisch die wirksame
-Sonntagsöffnung. `Abweichend` und `Geschlossen` werden direkt als bestehender Aktivstatus und bestehende Öffnungsregel
-gespeichert. Die Stiftaktion bleibt in jeder Zeile sichtbar, ist aber nur für `Abweichend` aktiv und öffnet den
+Gesetzliche Feiertage zeigen Bezeichnung und das für das aktuelle Kalenderjahr aufgelöste Datum einheitlich mit Jahreszahl
+sowie ein Auswahlmenü mit `Standard`, `Wie Sonntag`, `Abweichend` und `Geschlossen`. `Standard` verwendet die allgemeine
+Standardöffnungsregel, `Wie Sonntag` dynamisch die wirksame Sonntagsöffnung. Der gewählte Modus wird zusammen mit der für
+`Abweichend` oder `Geschlossen` benötigten Öffnungsregel gespeichert; der technische Aktivstatus wird daraus abgeleitet. Die
+Stiftaktion bleibt in jeder Zeile sichtbar, ist aber nur für `Abweichend` aktiv und öffnet den
 `AbweichendeOeffnungszeitBearbeitenDialog`. Eine vorhandene abweichende Zeit wird beibehalten; andernfalls dient die wirksame
 Wochentagszeit oder bei einem geschlossenen Wochentag die Standardöffnungszeit als Vorbelegung.
 
 Jährliche Sondertage verwenden dieselbe Zeilenstruktur und die Öffnungsarten `Standard`, `Abweichend` und `Geschlossen`. In
 Nordrhein-Westfalen werden Heiligabend und Silvester aktiv vom Standardbeginn bis `16:00 Uhr` vorbelegt; bei einem
 Standardbeginn ab `16:00 Uhr` beginnen sie geschlossen. Der berechnete Volkstrauertag und Totensonntag werden aktiv mit
-`13:00–01:00 Uhr` beziehungsweise `18:00–01:00 Uhr` vorbelegt. Ihr jährlich berechnetes Datum wird in der Liste angezeigt. Der
-`SondertagBearbeitenDialog` pflegt bei benutzerdefinierten jährlichen Sondertagen ausschließlich Bezeichnung sowie Monat und
-Tag; neue Einträge beginnen im Modus `Standard`. Eine getrennte Stammdatenaktion öffnet den Dialog erneut, während Öffnungsart
-und abweichende Zeit direkt in der Liste gepflegt werden. Systemdefinierte jährliche Sondertage besitzen keine
-Stammdatenaktion und können nicht gelöscht werden.
+`13:00–01:00 Uhr` beziehungsweise `18:00–01:00 Uhr` vorbelegt. Feste und berechnete jährliche Sondertage zeigen ihr für das
+aktuelle Kalenderjahr aufgelöstes Datum einheitlich mit Jahreszahl. Der `SondertagBearbeitenDialog` pflegt bei
+benutzerdefinierten jährlichen Sondertagen ausschließlich Bezeichnung sowie Monat und Tag; neue Einträge beginnen im Modus
+`Standard`. Eine getrennte Stammdatenaktion öffnet den Dialog erneut, während Öffnungsart und abweichende Zeit direkt in der
+Liste gepflegt werden. Systemdefinierte jährliche Sondertage besitzen keine Stammdatenaktion und können nicht gelöscht werden.
 
 Ein nur einmal benötigter Tag wird als benutzerdefinierter jährlicher Sondertag angelegt und nach Anlage der betroffenen
 Monatspläne deaktiviert oder gelöscht. Die Tagesmomentaufnahmen bestehender Dienstpläne bleiben davon unberührt.

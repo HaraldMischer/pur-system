@@ -3,123 +3,205 @@
 <section class="pur-page-section schichtmodelle-filiale">
   <header class="pur-page-section__header">
     <h3 class="pur-page-section__title">{{ filiale().anzeigename }}</h3>
-    <div class="pur-page-section__header-actions">
-      <button
-        matButton="filled"
-        type="button"
-        [disabled]="
-          schichtmodellStore.inProgress() || schichtTagesmodellStore.inProgress() || !istBereit()
-        "
-        [matMenuTriggerFor]="planungsartMenu"
-      >
-        <mat-icon>add</mat-icon>
-        Modell anlegen
-        <mat-icon>arrow_drop_down</mat-icon>
-      </button>
-      <mat-menu #planungsartMenu="matMenu">
-        <button mat-menu-item type="button" (click)="openSchichtrastermodellDialog()">
-          <mat-icon>grid_view</mat-icon>
-          <span>Schicht-Rastermodell</span>
-        </button>
-        <button mat-menu-item type="button" (click)="openSchichtTagesmodellDialog()">
-          <mat-icon>view_agenda</mat-icon>
-          <span>Schicht-Tagesmodell</span>
-        </button>
-      </mat-menu>
-    </div>
   </header>
 
-  @if (kontext(); as filialkontext) {
-    @if (filialkontext.download && !filialkontext.isLoaded) {
-      <p class="pur-message pur-message--surface pur-message--full" role="status">
-        Schichtmodelle werden geladen …
-      </p>
-    } @else if (filialkontext.error; as fehlermeldung) {
-      <div class="pur-page-section__error-state" role="alert">
-        <p class="pur-message pur-message--error">
-          {{ fehlermeldung }}
-        </p>
-        <button matButton type="button" (click)="retryLoad()">Erneut laden</button>
-      </div>
-    } @else if (filialkontext.isLoaded && filialkontext.schichtmodelle.length === 0) {
-      <p class="pur-message pur-message--surface pur-message--full" role="status">
-        Für diese Filiale sind noch keine Schichtmodelle angelegt.
-      </p>
-    } @else if (filialkontext.isLoaded) {
-      <div class="pur-page__card-grid">
-        @for (bestand of filialkontext.schichtmodelle; track bestand.schichtmodell.id) {
-          <mat-card class="pur-card" [class.pur-card--inaktiv]="!bestand.schichtmodell.aktiv">
-            <mat-card-header>
-              <mat-card-title>{{ bestand.schichtmodell.bezeichnung }}</mat-card-title>
-              <mat-card-subtitle>{{
-                bestand.schichtmodell.aktiv ? 'Aktiv' : 'Inaktiv'
-              }}</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-              <ol>
-                @for (modellschicht of bestand.modellschichten; track modellschicht.id) {
-                  <li>
-                    <strong>{{ modellschicht.bezeichnung }}</strong>
-                    <span>
-                      {{ formatZeitgrenze(modellschicht.beginn) }}–{{
-                        formatZeitgrenze(modellschicht.ende)
-                      }}
-                    </span>
-                  </li>
-                }
-              </ol>
-            </mat-card-content>
-            <mat-card-actions align="end">
-              <button
-                matButton
-                type="button"
-                [disabled]="schichtmodellStore.inProgress() || !istBereit()"
-                (click)="openSchichtrastermodellDialog(bestand)"
-              >
-                Bearbeiten
-              </button>
-            </mat-card-actions>
-          </mat-card>
-        }
-      </div>
-    }
-  } @else {
-    <p class="pur-message pur-message--surface pur-message--full" role="status">
-      Schichtmodelle werden geladen …
-    </p>
-  }
+  <mat-form-field
+    class="pur-form__item pur-form__item--field modellart-auswahl"
+    appearance="outline"
+    subscriptSizing="dynamic"
+  >
+    <mat-label>Modellart</mat-label>
+    <mat-select [value]="selectedPlanungsart()" (selectionChange)="selectPlanungsart($event.value)">
+      <mat-option value="schichtrastermodell">Schicht-Rastermodelle</mat-option>
+      <mat-option value="schichttagesmodell">Schicht-Tagesmodelle</mat-option>
+    </mat-select>
+  </mat-form-field>
 
-  @if (tagesmodellKontext(); as tageskontext) {
-    @if (tageskontext.isLoaded && tageskontext.schichttagesmodelle.length > 0) {
-      <div class="pur-page__card-grid">
-        @for (bestand of tageskontext.schichttagesmodelle; track bestand.schichtmodell.id) {
-          <mat-card class="pur-card" [class.pur-card--inaktiv]="!bestand.schichtmodell.aktiv">
-            <mat-card-header>
-              <mat-card-title>{{ bestand.schichtmodell.bezeichnung }}</mat-card-title>
-              <mat-card-subtitle
-                >Schicht-Tagesmodell ·
-                {{ bestand.schichtmodell.aktiv ? 'Aktiv' : 'Inaktiv' }}</mat-card-subtitle
-              >
-            </mat-card-header>
-            <mat-card-content>
-              <p>
-                {{ bestand.tagesvorlagenschichten.length }} Vorlagenschichten in Wochentags- und
-                Sonntagsvorlage
-              </p>
-            </mat-card-content>
-            <mat-card-actions align="end">
-              <button
-                matButton
-                type="button"
-                [disabled]="schichtTagesmodellStore.inProgress() || !istBereit()"
-                (click)="openSchichtTagesmodellDialog(bestand)"
-              >
-                Bearbeiten
-              </button>
-            </mat-card-actions>
-          </mat-card>
+  @if (selectedPlanungsart() === 'schichtrastermodell') {
+    <!-- Schicht-Rastermodelle -->
+    <section class="pur-list pur-list--divided modellbereich">
+      <header class="pur-list__header pur-list__header--outlined">
+        <h4 class="pur-text pur-text--title-medium">Schicht-Rastermodelle</h4>
+        <button
+          matButton="filled"
+          type="button"
+          [disabled]="schichtmodellStore.inProgress() || !istSchichtrastermodellBereit()"
+          (click)="openSchichtrastermodellDialog()"
+        >
+          <mat-icon>add</mat-icon>
+          Rastermodell hinzufügen
+        </button>
+      </header>
+
+      @if (kontext(); as filialkontext) {
+        @if (filialkontext.download && !filialkontext.isLoaded) {
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
+            Schicht-Rastermodelle werden geladen …
+          </p>
+        } @else if (filialkontext.error; as fehlermeldung) {
+          <div class="pur-page-section__error-state" role="alert">
+            <p class="pur-message pur-message--error">
+              {{ fehlermeldung }}
+            </p>
+            <button matButton type="button" (click)="retryLoad()">Erneut laden</button>
+          </div>
+        } @else if (filialkontext.isLoaded && filialkontext.schichtmodelle.length === 0) {
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
+            Für diese Filiale sind noch keine Schicht-Rastermodelle angelegt.
+          </p>
+        } @else if (filialkontext.isLoaded) {
+          <mat-form-field
+            class="pur-form__item pur-form__item--field modell-auswahl"
+            appearance="outline"
+            subscriptSizing="dynamic"
+          >
+            <mat-label>Rastermodell</mat-label>
+            <mat-select
+              [value]="selectedSchichtrastermodell()?.schichtmodell?.id"
+              (selectionChange)="selectSchichtrastermodell($event.value)"
+            >
+              @for (bestand of filialkontext.schichtmodelle; track bestand.schichtmodell.id) {
+                <mat-option [value]="bestand.schichtmodell.id">
+                  {{ bestand.schichtmodell.bezeichnung }}
+                  {{ bestand.schichtmodell.aktiv ? '' : '(inaktiv)' }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (selectedSchichtrastermodell(); as bestand) {
+            <div
+              class="pur-list__row modell-details"
+              [class.pur-list__row--inactive]="!bestand.schichtmodell.aktiv"
+            >
+              <div class="pur-list__row-item modell-inhalt">
+                <h5 class="pur-text pur-text--title-large">
+                  {{ bestand.schichtmodell.bezeichnung }}
+                </h5>
+                <p class="pur-text pur-text--secondary">
+                  {{ bestand.schichtmodell.aktiv ? 'Aktiv' : 'Inaktiv' }}
+                </p>
+                <ol>
+                  @for (modellschicht of bestand.modellschichten; track modellschicht.id) {
+                    <li>
+                      <strong>{{ modellschicht.bezeichnung }}</strong>
+                      <span>
+                        {{ formatZeitgrenze(modellschicht.beginn) }}–{{
+                          formatZeitgrenze(modellschicht.ende)
+                        }}
+                      </span>
+                    </li>
+                  }
+                </ol>
+              </div>
+              <div class="pur-list__row-item pur-list__row-item--end">
+                <button
+                  matButton
+                  type="button"
+                  [disabled]="schichtmodellStore.inProgress() || !istSchichtrastermodellBereit()"
+                  (click)="openSchichtrastermodellDialog(bestand)"
+                >
+                  Bearbeiten
+                </button>
+              </div>
+            </div>
+          }
         }
-      </div>
-    }
+      } @else {
+        <p class="pur-message pur-message--surface pur-message--full" role="status">
+          Schicht-Rastermodelle werden geladen …
+        </p>
+      }
+    </section>
+  } @else {
+    <!-- Schicht-Tagesmodelle -->
+    <section class="pur-list pur-list--divided modellbereich">
+      <header class="pur-list__header pur-list__header--outlined">
+        <h4 class="pur-text pur-text--title-medium">Schicht-Tagesmodelle</h4>
+        <button
+          matButton="filled"
+          type="button"
+          [disabled]="schichtTagesmodellStore.inProgress() || !istSchichtTagesmodellBereit()"
+          (click)="openSchichtTagesmodellDialog()"
+        >
+          <mat-icon>add</mat-icon>
+          Tagesmodell hinzufügen
+        </button>
+      </header>
+
+      @if (tagesmodellKontext(); as tageskontext) {
+        @if (tageskontext.download && !tageskontext.isLoaded) {
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
+            Schicht-Tagesmodelle werden geladen …
+          </p>
+        } @else if (tageskontext.error; as fehlermeldung) {
+          <div class="pur-page-section__error-state" role="alert">
+            <p class="pur-message pur-message--error">
+              {{ fehlermeldung }}
+            </p>
+            <button matButton type="button" (click)="retryLoad()">Erneut laden</button>
+          </div>
+        } @else if (tageskontext.isLoaded && tageskontext.schichttagesmodelle.length === 0) {
+          <p class="pur-message pur-message--surface pur-message--full" role="status">
+            Für diese Filiale sind noch keine Schicht-Tagesmodelle angelegt.
+          </p>
+        } @else if (tageskontext.isLoaded) {
+          <mat-form-field
+            class="pur-form__item pur-form__item--field modell-auswahl"
+            appearance="outline"
+            subscriptSizing="dynamic"
+          >
+            <mat-label>Tagesmodell</mat-label>
+            <mat-select
+              [value]="selectedSchichtTagesmodell()?.schichtmodell?.id"
+              (selectionChange)="selectSchichtTagesmodell($event.value)"
+            >
+              @for (bestand of tageskontext.schichttagesmodelle; track bestand.schichtmodell.id) {
+                <mat-option [value]="bestand.schichtmodell.id">
+                  {{ bestand.schichtmodell.bezeichnung }}
+                  {{ bestand.schichtmodell.aktiv ? '' : '(inaktiv)' }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (selectedSchichtTagesmodell(); as bestand) {
+            <div
+              class="pur-list__row modell-details"
+              [class.pur-list__row--inactive]="!bestand.schichtmodell.aktiv"
+            >
+              <div class="pur-list__row-item modell-inhalt">
+                <h5 class="pur-text pur-text--title-large">
+                  {{ bestand.schichtmodell.bezeichnung }}
+                </h5>
+                <p class="pur-text pur-text--secondary">
+                  Schicht-Tagesmodell · {{ bestand.schichtmodell.aktiv ? 'Aktiv' : 'Inaktiv' }}
+                </p>
+                <p>
+                  {{ bestand.tagesvorlagenschichten.length }} Vorlagenschichten in Wochentags- und
+                  Sonntagsvorlage
+                </p>
+              </div>
+              <div class="pur-list__row-item pur-list__row-item--end">
+                <button
+                  matButton
+                  type="button"
+                  [disabled]="
+                    schichtTagesmodellStore.inProgress() || !istSchichtTagesmodellBereit()
+                  "
+                  (click)="openSchichtTagesmodellDialog(bestand)"
+                >
+                  Bearbeiten
+                </button>
+              </div>
+            </div>
+          }
+        }
+      } @else {
+        <p class="pur-message pur-message--surface pur-message--full" role="status">
+          Schicht-Tagesmodelle werden geladen …
+        </p>
+      }
+    </section>
   }
 </section>

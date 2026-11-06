@@ -28,7 +28,7 @@ Der Store stellt Aktionen für folgende Abläufe bereit:
 - vollständigen Filialbestand laden und einen leeren Bestand initialisieren,
 - allgemeine Einstellungen, Standardöffnungsregel und Wochentagsmodi speichern,
 - eigene Sondertage anlegen, bearbeiten und löschen,
-- Aktivstatus und Öffnungsregel systemdefinierter Sondertage bearbeiten,
+- Öffnungsmodus und Öffnungsregel systemdefinierter Sondertage bearbeiten; der Aktivstatus wird daraus abgeleitet,
 - Fehler eines Filialkontexts zurücksetzen und sitzungsbezogene Bestände vollständig verwerfen.
 
 Während eines Schreibvorgangs ist ausschließlich der betroffene Filialkontext mit `inProgress` gesperrt. Erfolgreiche Ergebnisse

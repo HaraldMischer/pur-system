@@ -3,17 +3,19 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  WritableSignal,
   computed,
   effect,
   inject,
   input,
+  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
+import { MatSelectModule } from '@angular/material/select';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
@@ -21,6 +23,7 @@ import {
   IModellschichtZeitgrenze,
   ISchichtrastermodellBestand,
   ISchichttagesmodellBestand,
+  TPlanungsart,
 } from '../../../commons/models/domain/schichtmodell';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
@@ -36,7 +39,7 @@ import {
 
 @Component({
   selector: 'app-schichtmodelle-filiale',
-  imports: [MatButtonModule, MatCardModule, MatIconModule, MatMenuModule],
+  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatSelectModule],
   templateUrl: './schichtmodelle-filiale.html',
   styleUrl: './schichtmodelle-filiale.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,6 +57,11 @@ export class SchichtmodelleFiliale {
   readonly filiale = input.required<IFilialeEintrag>();
   readonly pfad = input.required<IFilialPfad>();
 
+  // ===== Interner State =======================
+
+  private readonly selectedSchichtrastermodellId = signal<string | null>(null);
+  private readonly selectedSchichtTagesmodellId = signal<string | null>(null);
+
   // ===== Interne Ableitungen ==================
 
   private readonly loadSchichtmodelleEffect = effect(() => {
@@ -62,6 +70,22 @@ export class SchichtmodelleFiliale {
       void this.loadSchichtmodelle(pfad);
     });
   });
+  private readonly selectedSchichtrastermodellEffect = effect(() => {
+    this.updateSelectedModellId(
+      this.kontext()?.schichtmodelle ?? [],
+      this.selectedSchichtrastermodellId,
+    );
+  });
+  private readonly selectedSchichtTagesmodellEffect = effect(() => {
+    this.updateSelectedModellId(
+      this.tagesmodellKontext()?.schichttagesmodelle ?? [],
+      this.selectedSchichtTagesmodellId,
+    );
+  });
+
+  // ===== Öffentliche Werte ====================
+
+  readonly selectedPlanungsart = signal<TPlanungsart>('schichtrastermodell');
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -74,14 +98,37 @@ export class SchichtmodelleFiliale {
   readonly filialeinstellungKontext = computed(() => {
     return this.filialeinstellungStore.getFilialeinstellungKontext(this.pfad());
   });
-  readonly istBereit = computed(() => {
+  readonly istSchichtrastermodellBereit = computed(() => {
     return (
       this.kontext()?.isLoaded === true &&
+      this.filialeinstellungKontext()?.isLoaded === true &&
+      this.filialeinstellungKontext()?.bestand !== null
+    );
+  });
+  readonly istSchichtTagesmodellBereit = computed(() => {
+    return (
       this.tagesmodellKontext()?.isLoaded === true &&
       this.filialeinstellungKontext()?.isLoaded === true &&
       this.filialeinstellungKontext()?.bestand !== null
     );
   });
+  readonly selectedSchichtrastermodell = computed(() => {
+    const selectedId = this.selectedSchichtrastermodellId();
+    return (
+      this.kontext()?.schichtmodelle.find((bestand) => {
+        return bestand.schichtmodell.id === selectedId;
+      }) ?? null
+    );
+  });
+  readonly selectedSchichtTagesmodell = computed(() => {
+    const selectedId = this.selectedSchichtTagesmodellId();
+    return (
+      this.tagesmodellKontext()?.schichttagesmodelle.find((bestand) => {
+        return bestand.schichtmodell.id === selectedId;
+      }) ?? null
+    );
+  });
+
   // ===== Öffentliche Aktionen =================
 
   /**
@@ -89,6 +136,33 @@ export class SchichtmodelleFiliale {
    */
   retryLoad(): void {
     void this.loadSchichtmodelle(this.pfad());
+  }
+
+  /**
+   * Wählt die anzuzeigende Modellart aus.
+   *
+   * @param planungsart - Ausgewählte Planungsart.
+   */
+  selectPlanungsart(planungsart: TPlanungsart): void {
+    this.selectedPlanungsart.set(planungsart);
+  }
+
+  /**
+   * Wählt das anzuzeigende Schicht-Rastermodell aus.
+   *
+   * @param schichtmodellId - ID des ausgewählten Schicht-Rastermodells.
+   */
+  selectSchichtrastermodell(schichtmodellId: string): void {
+    this.selectedSchichtrastermodellId.set(schichtmodellId);
+  }
+
+  /**
+   * Wählt das anzuzeigende Schicht-Tagesmodell aus.
+   *
+   * @param schichtmodellId - ID des ausgewählten Schicht-Tagesmodells.
+   */
+  selectSchichtTagesmodell(schichtmodellId: string): void {
+    this.selectedSchichtTagesmodellId.set(schichtmodellId);
   }
 
   /**
@@ -162,5 +236,25 @@ export class SchichtmodelleFiliale {
     } catch {
       // Der Store stellt die benutzerfreundliche Fehlermeldung im Filialkontext bereit.
     }
+  }
+
+  private updateSelectedModellId(
+    bestaende: readonly (ISchichtrastermodellBestand | ISchichttagesmodellBestand)[],
+    selectedId: WritableSignal<string | null>,
+  ): void {
+    const aktuelleId = selectedId();
+    if (
+      aktuelleId &&
+      bestaende.some((bestand) => {
+        return bestand.schichtmodell.id === aktuelleId;
+      })
+    ) {
+      return;
+    }
+    const vorauswahl =
+      bestaende.find((bestand) => {
+        return bestand.schichtmodell.aktiv;
+      }) ?? bestaende[0];
+    selectedId.set(vorauswahl?.schichtmodell.id ?? null);
   }
 }

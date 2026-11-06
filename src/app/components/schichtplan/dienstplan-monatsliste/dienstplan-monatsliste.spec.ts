@@ -12,7 +12,7 @@ describe('DienstplanMonatsliste', () => {
     }).compileComponents();
   });
 
-  it('should show weekday, formatted date and the day-specific shifts', () => {
+  it('should show weekday, formatted date, calendar properties and the day-specific shifts', () => {
     const fixture = createFixture();
     fixture.detectChanges();
 
@@ -25,6 +25,7 @@ describe('DienstplanMonatsliste', () => {
     expect(text).toContain('Sonntag');
     expect(text).toContain('01.11.2026');
     expect(text).toContain('10:00–01:00 Uhr');
+    expect(text).toContain('Allerheiligen · Sonderöffnung');
   });
 
   it('should emit creating for the selected day shift', () => {
@@ -57,8 +58,13 @@ describe('DienstplanMonatsliste', () => {
           datum: '2026-11-01',
           wochentag: 'sonntag',
           istSonntag: true,
-          aktiveSondertage: [],
-          oeffnungsregelQuelle: 'wochentag',
+          bezeichnung: 'Sonderöffnung',
+          gesetzlicherFeiertag: {
+            schluessel: 'allerheiligen',
+            bezeichnung: 'Allerheiligen',
+          },
+          aktiveSondertage: [{ id: 'sonderoeffnung', bezeichnung: 'Sonderöffnung' }],
+          oeffnungsregelQuelle: 'sondertag',
           oeffnungsregel: {
             geoeffnet: true,
             beginnLokalzeit: '10:00',

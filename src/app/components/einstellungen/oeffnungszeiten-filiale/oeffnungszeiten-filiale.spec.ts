@@ -457,6 +457,10 @@ describe('OeffnungszeitenFiliale', () => {
     expect(tagDerArbeit).toBeDefined();
     expect(ersterWeihnachtstag).toBeDefined();
     if (!tagDerArbeit || !ersterWeihnachtstag) return;
+    const kalenderjahrKurz = String(fixture.componentInstance.kalenderjahr).slice(-2);
+    expect(fixture.componentInstance.getFeiertagDatum(tagDerArbeit)).toBe(
+      `01.05.${kalenderjahrKurz}`,
+    );
     expect(fixture.componentInstance.getSondertagOeffnungsregel(tagDerArbeit)).toEqual({
       geoeffnet: true,
       beginnLokalzeit: '06:00',
@@ -544,6 +548,12 @@ describe('OeffnungszeitenFiliale', () => {
     expect(fixture.componentInstance.getSondertagsmodus(winteraktion)).toBe('standard');
     expect(fixture.componentInstance.getSondertagsmodus(heiligabend)).toBe('geschlossen');
     expect(fixture.componentInstance.getSondertagsmodus(volkstrauertag)).toBe('abweichend');
+    expect(fixture.componentInstance.getJaehrlichesDatum(winteraktion)).toBe(
+      `03.02.${kalenderjahrKurz}`,
+    );
+    expect(fixture.componentInstance.getJaehrlichesDatum(heiligabend)).toBe(
+      `24.12.${kalenderjahrKurz}`,
+    );
     expect(fixture.componentInstance.getJaehrlichesDatum(volkstrauertag)).toMatch(
       /^\d{2}\.\d{2}\.\d{2}$/,
     );
