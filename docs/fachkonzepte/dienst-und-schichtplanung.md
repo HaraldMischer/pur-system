@@ -2,6 +2,13 @@
 
 # Dienst- und Schichtplanung
 
+## Einordnung und Hauptquellen
+
+Dieses Dokument ist die fachliche Hauptquelle für Dienst- und Schichtplanung. Gesetzliche und betriebliche Öffnungsgrenzen
+stehen in der [Öffnungszeiten-Matrix](../matrizen/oeffnungszeiten.md), Pfad- und CRUD-Rechte in der
+[Berechtigungsmatrix](../matrizen/berechtigungen.md). Der [Projektstand](../projekt-stand.md) fasst ausschließlich zusammen,
+welche Teile umgesetzt, geprüft und veröffentlicht sind.
+
 ## Allgemeine Beschreibung
 
 Ein Dienstplan gehört genau zu einer Filiale und umfasst in der ersten Ausbaustufe einen vollständigen Kalendermonat. Der
@@ -29,7 +36,6 @@ unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/dienstplan/{monat
 unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/einstellung/allgemein
 unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialId}/einstellung/oeffnungszeiten
   /sondertag/{sondertagId}
-  /ausnahme/{YYYY-MM-DD}
 unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiterbelegung/{mitarbeiterId}__{datum}
 ```
 
@@ -40,77 +46,88 @@ den Schichten atomar gepflegte Prüfstruktur und ersetzt weder die Dienstplandok
 
 Die allgemeinen Filialeinstellungen speichern das Bundesland. Die Oberfläche verwendet zunächst fest Nordrhein-Westfalen
 (`DE-NW`) und bietet keine Bundeslandauswahl an. Die technische Zeitzone `Europe/Berlin` gilt anwendungsweit und wird nicht als
-Filialeinstellung gespeichert. Das Dokument `einstellung/oeffnungszeiten` speichert zusätzlich einen für die Filiale täglich
-geltenden Schließzeitraum. Er wird bei der Initialisierung mit `01:00` bis `06:00` Uhr vorbelegt und kann anschließend durch
-berechtigte Benutzer geändert werden. Der Schließzeitraum begrenzt ausschließlich die Kundenöffnung. Vorbereitungs- und
-Nachbereitungszeiten von Schichten dürfen in ihn hineinreichen.
+Filialeinstellung gespeichert. Das Dokument `einstellung/oeffnungszeiten` speichert zusätzlich die Standardöffnungsregel und
+die sieben Wochentagsmodi. Die verpflichtende Standardöffnungsregel wird bei der Initialisierung mit `06:00` bis `01:00` Uhr am
+Folgetag vorbelegt. Vorbereitungs- und Nachbereitungszeiten von Schichten dürfen außerhalb der Kundenöffnung liegen.
 
-Die regelmäßigen Öffnungszeiten enthalten genau eine Regel für jeden Wochentag. Eine geöffnete Regel besitzt eine lokale
-Beginn- und Endzeit sowie `endetAmFolgetag`. Aus dem Schließzeitraum wird der größtmögliche tägliche Öffnungsrahmen
-abgeleitet.
-Beim initialen Schließzeitraum von `01:00` bis `06:00` Uhr reicht er von `06:00` bis `01:00` Uhr am Folgetag. Neue
-Filialeinstellungen belegen alle sieben Wochenregeln mit diesem vollständig abgeleiteten Öffnungsrahmen vor. Damit wird
-beispielsweise die Montagsöffnung eindeutig dem Montag zugeordnet. Eine Öffnungsregel beschreibt immer einen durchgehenden
-Zeitraum und darf den Schließzeitraum nicht überschneiden. Diese Begrenzung gilt auch für geöffnete Regeln von Sondertagen und
-Datumsausnahmen. Pausen und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht Teil des Modells. Eine geschlossene
-Regel darf Zeitwerte für eine spätere Wiederaktivierung behalten; solange sie geschlossen ist, werden diese Werte fachlich
-nicht berücksichtigt.
+Jeder Wochentag besitzt genau einen Modus: `standard`, `abweichend` oder `geschlossen`. Im Modus `standard` wird seine wirksame
+Öffnungsregel bei jeder Auflösung aus der aktuellen Standardöffnungsregel abgeleitet. Im Modus `abweichend` besitzt er eine
+eigene geöffnete Regel mit lokaler Beginn- und Endzeit sowie `endetAmFolgetag`. Im Modus `geschlossen` besitzt er keine
+wirksame Kundenöffnung. Eine Änderung der Standardöffnungsregel wirkt damit automatisch auf alle vererbenden Wochentage, ohne
+abweichende oder geschlossene Tage zu verändern.
 
-Die Oberfläche unterscheidet die Bereiche `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und
-`Einmalige Sondertage`. Einmalige Sondertage werden technisch als konkrete Datumsausnahmen gespeichert. Heiligabend und
+Die Standardöffnungsregel und jede abweichende Regel beschreiben jeweils genau einen durchgehenden positiven Zeitraum. Pausen
+und mehrere Öffnungszeiträume innerhalb eines Tages sind nicht Teil des Modells. Neue Filialeinstellungen setzen alle sieben
+Wochentage auf `standard`. Damit wird beispielsweise die Montagsöffnung weiterhin eindeutig dem Montag zugeordnet, auch wenn
+sie ihre konkrete Zeit aus der filialbezogenen Standardöffnung erbt.
+
+Die Oberfläche unterscheidet die Bereiche `Wochentage`, `Gesetzliche Feiertage` und `Jährliche Sondertage`. Heiligabend und
 Silvester sind keine gesetzlichen Feiertage und werden daher als jährliche Sondertage geführt. Damit kann die spätere
 Dienstplanung gesetzliche Feiertage eindeutig von sonstigen besonderen Tagen unterscheiden.
 
 Wiederkehrende Sondertage besitzen eine sichtbare Bezeichnung, einen Aktivstatus, eine Herkunft, eine eigene Öffnungsregel und
 entweder ein jährlich festes Datum oder einen zentral definierten gesetzlichen Feiertagsschlüssel. Systemdefinierte gesetzliche
 Feiertage werden aus einem lokalen Katalog bundeslandspezifisch berechnet. Lokal oder kommunal begrenzte Feiertage werden nicht
-allein aus dem Bundesland abgeleitet und müssen als eigener fester Sondertag gepflegt werden. Heiligabend und Silvester werden
-wie die landesweit geltenden gesetzlichen Feiertage bei der Initialisierung inaktiv angelegt. Damit gilt zunächst die
-Wochentagsregel, bis ein abweichender besonderer Tag gezielt aktiviert wird. Ihre geschlossenen Öffnungsregeln erhalten bereits
-bei der Initialisierung den aus dem Schließzeitraum abgeleiteten größtmöglichen Öffnungsrahmen als zeitliche Vorbelegung.
+allein aus dem Bundesland abgeleitet und müssen als eigener fester Sondertag gepflegt werden. In Nordrhein-Westfalen beginnen
+gesetzliche Feiertage grundsätzlich im Modus `Wie Sonntag`; Karfreitag beginnt `Geschlossen`, Allerheiligen `Abweichend` mit
+`18:00–01:00 Uhr`. Heiligabend und Silvester beginnen `Abweichend` vom Standardbeginn bis `16:00 Uhr`. Liegt der Standardbeginn
+bei `16:00 Uhr` oder später, beginnen beide Tage stattdessen `Geschlossen`. In anderen Bundesländern bleiben neu angelegte
+Systemtage ohne eigene bundeslandspezifische Vorbelegung im Modus `Standard`.
 
-Der Aktivstatus steuert ausschließlich, ob die besondere Öffnungsregel die Wochentagsregel überschreibt. Ein gesetzlicher
-Feiertag bleibt unabhängig davon kalendarisch ein gesetzlicher Feiertag. Diese Unterscheidung wird bei den tagesabhängigen
-Rasterzeiten und späteren Zuschlagsbewertungen beibehalten.
+Gesetzliche Feiertage verwenden in der Oberfläche die Öffnungsarten `Standard`, `Wie Sonntag`, `Abweichend` und
+`Geschlossen`. `Standard` wendet unabhängig vom Wochentag die allgemeine Standardöffnungsregel der Filiale an. `Wie Sonntag`
+verknüpft den Feiertag dynamisch mit der aktuell wirksamen Sonntagsöffnung der Filiale; die Sonntagszeit wird nicht in den
+Feiertag kopiert. `Abweichend` aktiviert eine eigene geöffnete Regel und `Geschlossen` eine geschlossene Regel. Jährliche
+Sondertage verwenden weiterhin `Standard`, `Abweichend` und `Geschlossen`. Name und Datum bleiben in jeder Zeile sichtbar.
+Beginn und Ende werden nur für eine abweichende Regel in einem eigenen Dialog bearbeitet. Bei benutzerdefinierten jährlichen
+Sondertagen werden Bezeichnung und Datum getrennt von der Öffnungsart gepflegt.
+
+Die gewählte Öffnungsart steuert ausschließlich, welche betriebliche Öffnungsregel wirksam wird. Ein gesetzlicher Feiertag
+bleibt unabhängig davon kalendarisch ein gesetzlicher Feiertag. Diese Unterscheidung wird bei den tagesabhängigen Rasterzeiten,
+den Tagesvorlagen und späteren Zuschlagsbewertungen beibehalten.
 
 Bei einem Bundeslandwechsel bleiben gemeinsame systemdefinierte Feiertage mit ihrer angepassten Öffnungsregel erhalten. Nicht
-mehr landesweit geltende Feiertage werden entfernt, neu geltende inaktiv ergänzt. Benutzerdefinierte Sondertage bleiben
-unverändert. Schlüssel, Bezeichnung und Datumsberechnung gesetzlicher Feiertage sind systemdefiniert; Benutzer ändern nur
-Aktivstatus und Öffnungsregel. Bei eigenen festen Sondertagen sind Bezeichnung, Monat, Tag, Aktivstatus und Öffnungsregel
-bearbeitbar.
+mehr landesweit geltende Feiertage werden entfernt, neu geltende mit ihrer bundeslandspezifischen Vorbelegung ergänzt.
+Benutzerdefinierte Sondertage bleiben unverändert. Schlüssel, Bezeichnung und Datumsberechnung gesetzlicher Feiertage sind
+systemdefiniert; Benutzer wählen nur die Öffnungsart und bearbeiten gegebenenfalls die abweichende Öffnungszeit. Bei eigenen
+festen Sondertagen sind Bezeichnung, Monat, Tag, Aktivstatus und Öffnungsregel bearbeitbar.
+
+Volkstrauertag und Totensonntag sind für Nordrhein-Westfalen als systemdefinierte, aber nicht gesetzliche Feiertage modelliert.
+Ihr Datum wird jährlich relativ zum ersten Advent berechnet. Sie beginnen aktiv mit den abweichenden Öffnungszeiten
+`13:00–01:00 Uhr` beziehungsweise `18:00–01:00 Uhr`; Bezeichnung und Datumsregel sind nicht bearbeitbar oder löschbar.
 
 Benutzerdefinierte Sondertage gelten immer jährlich und besitzen Monat und Tag ohne Jahresangabe. Werden sie nicht mehr
-benötigt, bleiben ihre Daten erhalten und sie werden über ihren Aktivstatus deaktiviert. Konkrete Datumsausnahmen sind davon
-getrennte Einträge mit einer Dokument-ID im Format `YYYY-MM-DD`, einer Bezeichnung und einer vollständigen Öffnungsregel. Sie
-besitzen keinen Aktivstatus. Ihr Datum bildet zugleich die Dokument-ID und bleibt bei der Bearbeitung unverändert; bei Bedarf
-wird der Eintrag gelöscht und für ein anderes Datum neu angelegt. Die wirksame Regel wird in der Reihenfolge
-`Ausnahme → Sondertag → Wochentag` aufgelöst. Treffen mehrere aktive Sondertage auf dasselbe Datum, liegt ein
-Konfigurationsfehler vor; nur eine konkrete Datumsausnahme darf diese Kollision bewusst überschreiben. Fehlende Wochenregeln
-werden nicht als geöffnet interpretiert. Eine über Mitternacht reichende Öffnungsregel gehört vollständig zu ihrem
-Startdatum, auch wenn der Folgetag ein Feiertag oder Sondertag ist.
+benötigt, werden sie deaktiviert oder gelöscht. Ein nur einmal benötigtes Ereignis wird ebenfalls als benutzerdefinierter
+jährlicher Sondertag gepflegt und nach Anlage der betroffenen Monatspläne deaktiviert oder gelöscht. Die bereits gespeicherten
+Tagesmomentaufnahmen bleiben dabei unverändert. Die wirksame Regel wird in der Reihenfolge `benutzerdefinierter jährlicher
+Sondertag → systemdefinierter Sondertag → wirksame Wochenöffnung` aufgelöst. Dadurch darf ein benutzerdefinierter Sondertag
+auch auf einen gesetzlichen Feiertag oder einen anderen systemdefinierten Sondertag fallen und dessen Öffnungsregel gezielt
+überschreiben. Der gesetzliche Feiertagsstatus bleibt dabei unabhängig von der wirksamen Öffnungsregel erhalten. Die wirksame
+Wochenöffnung stammt je nach Modus aus der Standardöffnungsregel, einer abweichenden Wochentagsregel oder einem geschlossenen
+Wochentag. Fehlende Wochenregeln werden nicht als geöffnet interpretiert. Eine über Mitternacht reichende Öffnungsregel gehört
+vollständig zu ihrem Startdatum, auch wenn der Folgetag ein Feiertag oder Sondertag ist.
 
-Direkte Kollisionen mehrerer jährlich fester aktiver Sondertage am selben Monatstag werden bereits beim Speichern oder
-Aktivieren verhindert. Eine Kollision zwischen einem festen Sondertag und einem beweglichen Feiertag kann vom konkreten Jahr
-abhängen und wird deshalb spätestens bei der Auflösung des betroffenen Monats gemeldet. Eine vorrangige Datumsausnahme löst die
-Öffnungsregel für dieses konkrete Datum eindeutig auf. Ohne vollständige und fachlich gültige Filialeinstellungen oder bei
-einer nicht aufgelösten Kollision darf kein Monatsdienstplan angelegt werden.
+Direkte Kollisionen mehrerer jährlich fester aktiver benutzerdefinierter Sondertage am selben Monatstag werden bereits beim
+Speichern oder Aktivieren verhindert. Dasselbe gilt innerhalb der systemdefinierten Sondertage. Treffen ein
+benutzerdefinierter und ein systemdefinierter Sondertag zusammen, gilt die benutzerdefinierte Regel. Ohne vollständige und
+fachlich gültige Filialeinstellungen oder bei einer nicht aufgelösten Kollision darf kein Monatsdienstplan angelegt werden.
 
 Der `FilialeinstellungService` behandelt vollständig fehlende Einstellungsdokumente als noch nicht initialisierten Zustand.
 Existiert dagegen nur ein Teil der beiden verbindlichen Hauptdokumente, wird ein Initialisierungsfehler gemeldet. Die erstmalige
-Anlage verwendet Nordrhein-Westfalen und verlangt alle sieben Wochenregeln ausdrücklich; das Bundesland wird nicht aus Anschrift
-oder Postleitzahl abgeleitet. Der `FilialeinstellungStore` hält vollständige Bestände sowie Lade-, Schreib- und Fehlerzustände
-für jeden Filialpfad getrennt und stellt die Datumsauflösung bereit.
+Anlage verwendet Nordrhein-Westfalen und verlangt eine Standardöffnungsregel sowie alle sieben Wochentagsmodi ausdrücklich; das
+Bundesland wird nicht aus Anschrift oder Postleitzahl abgeleitet. Der `FilialeinstellungStore` hält vollständige Bestände sowie
+Lade-, Schreib- und Fehlerzustände für jeden Filialpfad getrennt und stellt die Datumsauflösung bereit.
 
-Allgemeine Einstellungen, Wochenregeln und der automatische Sondertagsabgleich eines Bundeslandwechsels werden atomar
-geschrieben. Neu hinzukommende systemdefinierte Sondertage erhalten dabei ebenfalls die aus dem aktuellen Schließzeitraum
-abgeleitete zeitliche Vorbelegung. Benutzerdefinierte Sondertage und Datumsausnahmen bleiben einzeln anleg-, änder- und
-löschbar. Systemdefinierte Sondertage können nur in Aktivstatus und Öffnungsregel verändert werden. Der Schließzeitraum wird
-gemeinsam mit den Wochenregeln gespeichert. Eine Änderung wird nicht automatisch auf vorhandene Öffnungsregeln übertragen.
-Überschneidet danach eine gespeicherte geöffnete Wochen-, Sondertags- oder Ausnahmeregel den neuen Schließzeitraum, wird der
-Schreibvorgang mit einem konkreten Hinweis auf die widersprechende Regel verhindert. Die Firestore Rules gewähren Masterkonten
-aufgrund ihrer Rolle sowie zugeordneten Office- und Filialkonten mit dem Bereich `einstellungen` Zugriff. Mitarbeiterkonten und
-nicht zugeordnete Filialen bleiben ausgeschlossen. Die Rules prüfen dafür Rolle, aktives Profil, Filialzugriff, Bereich und
-Collection-Pfad; Dokument-IDs, Feldinhalte, Datumsregeltypen und lokale Zeitwerte validiert der TypeScript-Code.
+Allgemeine Einstellungen, Standardöffnungsregel, Wochentagsmodi und der automatische Sondertagsabgleich eines
+Bundeslandwechsels werden atomar geschrieben. Neu hinzukommende systemdefinierte Sondertage erhalten dabei ebenfalls die
+fachlich festgelegte zeitliche Vorbelegung. Benutzerdefinierte Sondertage bleiben einzeln anleg-, änder- und löschbar.
+Fehlen bei einem bestehenden Bestand vordefinierte Systemtage, bleibt die Speicheraktion auch ohne Formularänderung aktiv und
+führt den Abgleich ausdrücklich aus.
+Systemdefinierte Sondertage können nur in Aktivstatus und Öffnungsregel verändert werden. Die Firestore
+Rules gewähren Masterkonten aufgrund ihrer Rolle sowie zugeordneten Office- und
+Filialkonten mit dem Bereich `einstellungen` Zugriff. Mitarbeiterkonten und nicht zugeordnete Filialen bleiben ausgeschlossen.
+Die Rules prüfen dafür Rolle, aktives Profil, Filialzugriff, Bereich und Collection-Pfad; Dokument-IDs, Feldinhalte,
+Datumsregeltypen und lokale Zeitwerte validiert der TypeScript-Code.
 
 ## Planungsart Schichtraster
 
@@ -129,8 +146,10 @@ konkrete Schicht benötigt dagegen eine positive Dauer, und die konkreten Schich
 Jedes Schichtmodell und jeder daraus angelegte Monatsdienstplan speichern die Planungsart verbindlich. Solange ausschließlich
 das Schichtraster umgesetzt ist, setzt die Anwendung den Wert automatisch auf `schichtraster`. Die Einstiege zur Modell- und
 Monatsplananlage zeigen das Schichtraster bereits als auswählbare Planungsart und `Schichtbausteine` als noch nicht verfügbare
-Variante. Der Monatsdienstplan übernimmt die Planungsart als Teil seiner unveränderlichen Modellreferenz. Sobald eine weitere
-Planungsart umgesetzt ist, wird ihr Einstieg freigeschaltet und anschließend nur ein dazu passendes Schichtmodell angeboten.
+Variante. Dieser deaktivierte Platzhalter entspricht dem aktuellen technischen Stand. Todo 26 ersetzt die vorbereiteten Werte
+durch die verbindlichen Planungsarten `schichtrastermodell` und `schichttagesmodell`. Der Monatsdienstplan übernimmt die
+Planungsart als Teil seiner unveränderlichen Modellreferenz. Sobald das Schicht-Tagesmodell umgesetzt ist, wird sein eigener
+Einstieg freigeschaltet und anschließend nur ein dazu passendes Modell angeboten.
 
 Die Modellschichten eines Schichtmodells bilden das Schichtraster für alle Kalendertage. Ihre IDs, Bezeichnungen, Reihenfolge
 und Mehrfachbelegung ändern sich nicht abhängig von Wochentag, Feiertag oder Sondertag. Ein Modell mit Früh-, Mittel- und
@@ -147,7 +166,7 @@ berechnete Schichtdauer dargestellt.
 Bei mehreren Rasterplätzen bleiben die inneren Beginn- und Endzeiten unabhängig voneinander bearbeitbar. Sobald der Beginn
 einer neu hinzugefügten Modellschicht erstmals eingegeben wird, wird er zunächst als Ende der vorherigen Modellschicht
 vorbelegt; anschließend können beide Werte getrennt geändert werden. Für beide inneren Grenzen wird nur die Uhrzeit erfasst.
-Ihre Zuordnung zum Start- oder Folgetag ergibt sich automatisch aus dem Schließzeitraum der Filiale. Dadurch sind lückenlose
+Ihre Zuordnung zum Start- oder Folgetag ergibt sich automatisch aus der Standardöffnungszeit der Filiale. Dadurch sind lückenlose
 Übergaben, bewusste Lücken und auch gleichzeitige Überlappungen von mehr als zwei Rasterplätzen möglich. Eine Lücke
 verhindert das Speichern des Modells nicht, wird aber vor dem Speichern als fachlicher Hinweis angezeigt. Jeder für einen
 konkreten Kalendertag angebotene Rasterplatz muss weiterhin eine positive Dauer besitzen.
@@ -158,7 +177,7 @@ erste Rasterplatz beginnt entsprechend vor dem Öffnungsbeginn, der letzte endet
 Modell mit nur einem Rasterplatz können beide Werte gelten. Vor- und Nachbereitung werden damit ausdrücklich modelliert und
 nicht über von den Öffnungszeiten unabhängige Schichtzeiten abgebildet.
 
-Feiertage, Sondertage und einmalige Datumsausnahmen wirken ausschließlich über ihre jeweils gültige Öffnungsregel auf die
+Feiertage und Sondertage wirken ausschließlich über ihre jeweils gültige Öffnungsregel auf die
 tagesabhängigen Außengrenzen. Eigene besondere Rasterzeiten für Sondertage werden nicht gepflegt. Lässt sich ein Rasterplatz
 an einem Kalendertag nicht vollständig und mit positiver Dauer in die wirksamen Tagesgrenzen einordnen, erhält er an diesem Tag
 keine wirksame Rasterzeit und kann nicht belegt werden. Passen an einem Tag keine Rasterplätze, werden dort keine Schichten zur
@@ -212,17 +231,60 @@ werden, wenn mehrere Mitarbeiter dieselbe Schichtart mit identischen Zeiten bese
 Mitarbeiter eine eigene konkrete Schicht. Die Mehrfachbelegung fasst diese Schichten lediglich in derselben Rasterzelle
 zusammen.
 
-## Spätere Ausbaustufe: Schichtbausteine
+## Spätere Ausbaustufe: Schicht-Tagesmodell
 
-Als weitere Planungsart können später `Schichtbausteine` ergänzt werden. Dabei besitzt ein Kalendertag kein festes Raster.
-Stattdessen werden beliebig viele vorgefertigte Schichten aus einem Katalog ausgewählt, als Momentaufnahme in den Tagesplan
-übernommen und anschließend mit Mitarbeitern besetzt. Unterschiedliche Tage können dadurch unterschiedliche Schichten
-enthalten.
+Als zweite Planungsart wird das `schichttagesmodell` neben dem bestehenden Schicht-Rastermodell umgesetzt. Es ist kein
+erweitertes Raster, kein Katalog von Schichtbausteinen und kein Sonderfall der Rastermodellschichten. Beide Modelle besitzen
+eigene fachliche Typen, Speicherpfade, Services, Stores und Oberflächen. Gemeinsame Basistypen enthalten ausschließlich
+allgemeine Metadaten.
 
-`Schichtbausteine` benötigen ein eigenes fachliches Modell und werden nicht als Sonderfall des Schichtrasters gespeichert. Der
-gemeinsame Wert `planungsart` bereitet die spätere Auswahl und die eindeutige Zuordnung von Schichtmodellen und Monatsplänen vor;
-die gemeinsame Modellbasis und die eigenständigen Dokumenttypen sind bereits getrennt. Fachliche Bausteinfelder, Services und
-Oberfläche der zweiten Planungsart sind noch nicht umgesetzt.
+Die Planungsartwerte heißen verbindlich `schichtrastermodell` und `schichttagesmodell`. Der bisher gespeicherte Wert
+`schichtraster` wird kontrolliert zu `schichtrastermodell` migriert. Der nur vorbereitete Wert `schichtbausteine` und seine
+leeren Dokumenttypen werden entfernt. Historische Rasterpläne bleiben ohne fachliche Änderung lesbar.
+
+Die filialbezogenen Modellpfade werden ebenfalls getrennt. Schicht-Rastermodelle liegen unter
+`schichtrastermodell/{schichtrastermodellId}` mit eigenen `rastermodellschicht`-Dokumenten. Schicht-Tagesmodelle liegen unter
+`schichttagesmodell/{schichttagesmodellId}` mit eigenen `tagesvorlagenschicht`-Dokumenten. Im Monatsplan werden unveränderliche
+Rastermomentaufnahmen unter `rastermodellschicht` und Tagesmomentaufnahmen unter `tagesschicht` gespeichert. Die neuen Pfade
+und CRUD-Rechte werden vor der Rules-Umsetzung in der Berechtigungsmatrix festgelegt.
+
+Ein Schicht-Tagesmodell enthält eine Wochentagsvorlage für Montag bis Samstag und eine davon unabhängige Sonntagsvorlage. Jede
+Vorlage besitzt eine frei wählbare, fachlich geordnete Anzahl eigener Vorlagenschichten. Wochentags- und Sonntagsvorlage dürfen
+sich in Anzahl, Identität, Bezeichnung, Kernzeiten, Lücken, Überschneidungen, Mehrfachbelegung sowie Vor- und Nachbereitung
+vollständig unterscheiden.
+
+Eine Vorlagenschicht besitzt eine eigene stabile ID und konkrete Lokalzeiten am Start- oder Folgetag. Prozentuale Anteile und
+relative Übergänge gehören nicht zum Schicht-Tagesmodell. Beginn und Ende bilden die Kernzeit. Beide Grenzen müssen innerhalb
+der für die Vorlage maßgeblichen Öffnung liegen. Vor- und Nachbereitungsminuten erweitern die Kernzeit zur tatsächlichen
+Arbeitszeit und dürfen als einzige Werte vor den Öffnungsbeginn beziehungsweise nach das Öffnungsende reichen.
+
+Beim initialen Erstellen eines Monatsdienstplans wird jeder Kalendertag mit seiner wirksamen Öffnung und seinen unabhängigen
+Kalendereigenschaften aufgelöst. Reguläre Wochentage von Montag bis Samstag erhalten eigene Tagesschichten aus der
+Wochentagsvorlage; reguläre Sonntage erhalten sie aus der Sonntagsvorlage. Geschlossene Tage enthalten keine Tagesschichten.
+
+Gesetzliche Feiertage mit der Öffnungsart `Standard` verwenden die allgemeine Standardöffnung. Für die Schichtvorlage bleibt
+der im konkreten Monatsplan ermittelte Wochentag maßgeblich: Montag bis Samstag verwenden die Wochentagsvorlage, Sonntage die
+Sonntagsvorlage. Mit `Wie Sonntag` übernehmen Feiertage ohne zusätzliche Monatskonfiguration sowohl die aktuell wirksame
+Sonntagsöffnung als auch die Sonntagsvorlage. Nur geöffnete Feiertage und sonstige Sondertage mit der Öffnungsart `Abweichend`
+erhalten innerhalb der Monatsplananlage eine freie Tagesstruktur. Anzahl, Identität, Bezeichnung, Reihenfolge, Länge, Lücken
+und Überschneidungen dürfen sich von allen anderen Tagen unterscheiden. Die Kernzeit jeder freien Tagesschicht muss innerhalb
+der wirksamen Sondertagsöffnung liegen; nur ihre Vor- und Nachbereitung darf die Öffnungsgrenzen überschreiten. Geschlossene
+Tage erhalten keine Tagesschichten.
+
+Der Monatsplan wird erst angelegt, wenn alle geöffneten Tagesstrukturen vollständig und fachlich gültig sind. Monatsplan, erste
+Entwurfsversion, Kalender-Momentaufnahme, Modellreferenz und alle Tagesschichten entstehen atomar. Danach ist die vollständige
+Tagesstruktur für alle Versionen dieses Monatsplans unveränderlich. Ein leerer, noch nie veröffentlichter Plan darf wie beim
+Schicht-Rastermodell gelöscht und mit einer neuen Tagesstruktur erneut angelegt werden.
+
+Jede konkrete Tagesschicht erhält eine eigene stabile Tagesinstanz-ID. Sie speichert Datum, Herkunft, Reihenfolge, Kernzeit,
+tatsächliche Arbeitszeit und Mehrfachbelegung. Sie verwendet weder eine Rastermodellschicht-ID noch die Rasterzeiten des
+Schicht-Rastermodells. Konkrete Mitarbeiterschichten referenzieren abhängig von ihrer Planungsart eindeutig entweder eine
+Rastermodellschicht oder eine Tagesschicht; gemischte und unvollständige Referenzen sind ungültig.
+
+Die Monatsdarstellung eines Schicht-Tagesmodellplans besitzt keine globalen Rasterspalten. Jede Tageszeile zeigt ihre eigenen
+Tagesschichten. Nach der initialen Tageskonfiguration werden Mitarbeiter per Drag-and-drop oder über eine gleichwertige
+alternative Aktion zugeordnet. Tatsächliche Arbeitszeiten einschließlich Vor- und Nachbereitung fließen für beide
+Planungsarten in denselben firmenweiten Belegungsindex, dieselbe Konfliktprüfung und dieselbe Pausenberechnung ein.
 
 ## Arbeitszeiten, Pausen und Konflikte
 

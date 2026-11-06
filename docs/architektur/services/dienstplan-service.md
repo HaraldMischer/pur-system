@@ -2,6 +2,10 @@
 
 # Dienstplan-Service
 
+Die fachlichen Abläufe stehen im
+[Fachkonzept Dienst- und Schichtplanung](../../fachkonzepte/dienst-und-schichtplanung.md), die verbindlichen Pfad- und
+CRUD-Rechte in der [Berechtigungsmatrix](../../matrizen/berechtigungen.md).
+
 Der `DienstplanService` kapselt die Firestore-Zugriffe für filialbezogene Monatspläne, Modell-Momentaufnahmen, Versionen und
 Schichten. Jeder öffentliche Aufruf erhält einen vollständigen Filial- beziehungsweise Dokumentpfad. Für die verbindliche
 filialübergreifende Konfliktprüfung liest der Service zusätzlich die deterministisch adressierten Tagesdokumente des
@@ -71,9 +75,9 @@ ihrem Dienstplandatum geführt. Bei Änderungen liest die Transaktion die bisher
 veraltete Referenzen und ergänzt den neuen Zeitraum. Dadurch konkurrieren parallele Einplanungen desselben Mitarbeiters um
 dieselben Indexdokumente und Firestore wiederholt die Prüfung bei einer zwischenzeitlichen Änderung.
 
-Der Service unterstützt derzeit ausschließlich die Planungsart `schichtraster`. Monatspläne oder Schichtmodelle mit fehlender
-oder anderer Planungsart werden abgewiesen, statt irrtümlich mit der Rasterlogik verarbeitet zu werden. Eine spätere Umsetzung
-von `schichtbausteine` kann dadurch eine eigene Anlage-, Momentaufnahme- und Schichtlogik erhalten.
+Der Service unterscheidet `schichtrastermodell` und `schichttagesmodell`. Rasterpläne verwenden Rastermodellschichten und
+Rasterzeiten; Tagesmodellpläne verwenden konkrete, datumsgebundene Tagesschichten. Mitarbeiterschichten verweisen jeweils auf
+genau eine dieser Zielarten. Historische Pläne mit `schichtraster` werden beim Lesen kontrolliert normalisiert.
 
 `calculateArbeitsbloecke()` gruppiert die bereits auf einen Mitarbeiter und Dienstplantag begrenzten Schichten. Lücken unter
 30 Minuten verbinden Schichten, ab 30 Minuten beginnt ein neuer Block; Überschneidungen sind ungültig. Die Arbeitszeit summiert
@@ -96,8 +100,8 @@ beteiligten Dokuments lässt Firestore die Prüfung wiederholen beziehungsweise 
 Beim Anlegen löst der Service im aktuellen technischen Stand alle 28 bis 31 Kalendertage über die zentrale Öffnungsregel- und
 Feiertagslogik aus Todo 20 auf.
 Die Liste `kalendertage` liegt direkt im Monatsdienstplandokument und enthält je Datum Wochentag, wirksame Öffnungsregel, deren
-Quelle, vorhandene Quellangaben, alle aktiven Sondertage und die tatsächlich passenden Rasterzeiten. Feiertage, jährliche
-Sondertage und einmalige Datumsausnahmen beeinflussen das Raster ausschließlich über ihre wirksame Öffnungsregel. Der
+Quelle, vorhandene Quellangaben, alle aktiven Sondertage und die tatsächlich passenden Rasterzeiten. Feiertage und jährliche
+Sondertage beeinflussen das Raster ausschließlich über ihre wirksame Öffnungsregel. Der
 gesetzliche Feiertagsstatus wird unabhängig vom Aktivstatus seiner besonderen Öffnungsregel übernommen. Dienstplan und
 Tagesmomentaufnahmen werden gemeinsam atomar geschrieben und ohne zusätzliche Dokumentlesevorgänge geladen. Tages- und
 Rasterzeitmomentaufnahmen sind verbindliche Bestandteile jedes Monatsdienstplans; unvollständige Dokumente werden nicht durch
@@ -110,6 +114,32 @@ mit positiver Dauer, deren innere Grenzen vollständig zu den Tagesgrenzen passe
 Ein unpassender Rasterplatz bleibt an diesem Tag ohne Rasterzeit, statt die gesamte Dienstplananlage zu verhindern; ein
 geöffneter Tag darf dadurch eine leere Rasterzeitliste enthalten. Eine konkrete Schicht kann ausschließlich für eine vorhandene
 Tagesrasterzeit angelegt werden. Geschlossene Tage enthalten ebenfalls keine Rasterzeiten.
+
+## Geplante Unterstützung des Schicht-Tagesmodells
+
+Der Dienstplan-Service verarbeitet künftig die diskriminierten Planungsarten `schichtrastermodell` und
+`schichttagesmodell` über getrennte interne Anlage- und Validierungswege. Rastermodell-Momentaufnahmen behalten ihre
+Modellschichten und Rasterzeiten. Schicht-Tagesmodellpläne speichern stattdessen konkrete Tagesschichten mit eigenen
+Tagesinstanz-IDs. Beide Strukturen werden nicht über optionale Mischfelder vereinheitlicht.
+
+Nach Auswahl eines Schicht-Tagesmodells löst die Monatsplananlage zunächst alle Kalendertage und wirksamen Öffnungen auf.
+Reguläre Wochentage von Montag bis Samstag erhalten ihre Tagesschichten aus der Wochentagsvorlage, reguläre Sonntage aus der
+Sonntagsvorlage. Für jeden geöffneten Feier- oder Sondertag muss der Planer innerhalb der Anlage eine freie Tagesstruktur
+konfigurieren. Geschlossene Tage enthalten keine Tagesschichten.
+
+Vor dem Schreiben validiert der Service jede Kernzeit gegen die wirksame Öffnung ihres konkreten Kalendertags. Vor- und
+Nachbereitungsminuten erweitern die Kernzeit zur tatsächlichen Arbeitszeit und dürfen als einzige Werte über die
+Öffnungsgrenzen hinausreichen. Eine unvollständige oder ungültige Tagesstruktur verhindert die gesamte Monatsplananlage mit
+einer verständlichen fachlichen Ursache.
+
+Monatsplan, erste Entwurfsversion, Kalender-Momentaufnahme, Modellreferenz und sämtliche Tagesschichten werden atomar
+geschrieben. Danach bleibt die Tagesstruktur für alle Versionen des Monatsplans unveränderlich. Ein leerer, noch nie
+veröffentlichter Plan darf weiterhin vollständig gelöscht und anschließend neu angelegt werden.
+
+Konkrete Mitarbeiterschichten referenzieren abhängig von der Planungsart eindeutig entweder eine Rastermodellschicht oder eine
+Tagesschicht. Die tatsächlichen Arbeitszeiten beider Varianten fließen in denselben firmenweiten Belegungsindex, dieselbe
+Konfliktprüfung und dieselbe Pausenberechnung ein. Entwurf, Veröffentlichung, Archivierung und ein neuer Entwurf aus dem
+veröffentlichten Stand übernehmen Tagesschichten und Belegungen historisch stabil.
 
 Die Firestore Rules sichern gemäß Berechtigungsmatrix ausschließlich aktives Profil, Rolle, Filialpfad und erlaubte
 CRUD-Aktion. Die neue Feldstruktur, Modellschicht-IDs, Reihenfolge und sämtliche Zeitregeln validiert der TypeScript-Code mit

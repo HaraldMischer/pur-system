@@ -2,10 +2,11 @@
 
 # Matrix: Berechtigungen
 
-Diese Übersicht zeigt die zentralen Datenrechte und App-Bereichsfreigaben. Übergreifende fachliche Bedingungen und Sonderfälle
-stehen im [Projektplan](../projekt-plan.md); die Regeln der Dienst- und Schichtplanung beschreibt das zugehörige
-[Fachkonzept](../fachkonzepte/dienst-und-schichtplanung.md). Der aktuelle Implementierungs-, Test- und Deploymentstand steht im
-[Projektstand](../projekt-stand.md).
+Diese Matrix ist die verbindliche Quelle für Pfad-, Rollen- und CRUD-Rechte, App-Bereichsfreigaben sowie ausdrücklich
+dokumentierte Rule-Ausnahmen. Globale Sicherheitsgrundsätze stehen in den [Projektregeln](../projekt-regeln.md), Rollen und
+Identitäten in den [Systemgrundlagen](../system-grundlagen.md). Das
+[Fachkonzept Dienst- und Schichtplanung](../fachkonzepte/dienst-und-schichtplanung.md) beschreibt die fachlichen Abläufe; der
+[Projektstand](../projekt-stand.md) dokumentiert ausschließlich deren aktuellen Umsetzungs-, Prüf- und Deploymentstand.
 
 ## 1. Collection-Matrix
 
@@ -39,11 +40,16 @@ Die Pfadkürzel bauen aufeinander auf:
 | `{filialPfad}`                                                            | R/C/U/D  | R        | R         | R             | –            |
 | `{filialPfad}/einstellung/{dokumentId}`                                   | R/C/U    | R/C/U    | R/C/U     | –             | –            |
 | `{filialPfad}/einstellung/oeffnungszeiten/sondertag/{sondertagId}`        | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
-| `{filialPfad}/einstellung/oeffnungszeiten/ausnahme/{datum}`               | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
 | `{filialPfad}/schichtmodell/{schichtmodellId}`                            | R/C/U    | R/C/U    | R/C/U     | –             | –            |
 | `{filialPfad}/schichtmodell/{schichtmodellId}/modellschicht/{id}`         | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
+| `{filialPfad}/schichtrastermodell/{modellId}`                             | R/C/U    | R/C/U    | R/C/U     | –             | –            |
+| `{filialPfad}/schichtrastermodell/{modellId}/rastermodellschicht/{id}`    | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
+| `{filialPfad}/schichttagesmodell/{modellId}`                              | R/C/U    | R/C/U    | R/C/U     | –             | –            |
+| `{filialPfad}/schichttagesmodell/{modellId}/tagesvorlagenschicht/{id}`    | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
 | `{filialPfad}/dienstplan/{monat}`                                         | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/modellschicht/{modellschichtId}`         | R/C/D    | R/C/D    | R/C/D     | R             | –            |
+| `{filialPfad}/dienstplan/{monat}/rastermodellschicht/{id}`                | R/C/D    | R/C/D    | R/C/D     | R             | –            |
+| `{filialPfad}/dienstplan/{monat}/tagesschicht/{tagesschichtId}`           | R/C/D    | R/C/D    | R/C/D     | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/version/{versionId}`                     | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/version/{versionId}/schicht/{schichtId}` | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
 | `systemMigrationen/{purCustomerId}`                                       | R/C/U    | –        | –         | –             | –            |

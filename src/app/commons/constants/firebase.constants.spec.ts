@@ -4,9 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   IDienstplanModellschichtPfad,
-  IFilialeinstellungAusnahmePfad,
+  IDienstplanRastermodellschichtPfad,
+  IDienstplanTagesschichtPfad,
   IFilialeinstellungSondertagPfad,
   IModellschichtPfad,
+  IRastermodellschichtPfad,
+  ITagesvorlagenschichtPfad,
   ISchichtPfad,
 } from '../models/app/firestore-pfad.types';
 import type { IPurEmployeePfad } from '../models/legacy/pur-firestore-pfad.types';
@@ -115,6 +118,50 @@ describe('Firebase-Konstanten', () => {
     );
   });
 
+  it('trennt Rastermodell-, Tagesmodell- und Monatsmomentaufnahmepfade', () => {
+    const rasterpfad: IRastermodellschichtPfad = {
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialeId: 'filiale-1',
+      schichtrastermodellId: 'raster-1',
+      rastermodellschichtId: 'frueh',
+    };
+    const tagespfad: ITagesvorlagenschichtPfad = {
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialeId: 'filiale-1',
+      schichttagesmodellId: 'tage-1',
+      tagesvorlagenschichtId: 'sonntag-spaet',
+    };
+    const rastermoment: IDienstplanRastermodellschichtPfad = {
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialeId: 'filiale-1',
+      dienstplanId: '2026-12',
+      rastermodellschichtId: 'frueh',
+    };
+    const tagesmoment: IDienstplanTagesschichtPfad = {
+      unternehmerId: 'unternehmer-1',
+      firmaId: 'firma-1',
+      filialeId: 'filiale-1',
+      dienstplanId: '2026-12',
+      tagesschichtId: '2026-12-24-frueh',
+    };
+
+    expect(FIRESTORE_DOCUMENT_PATHS.rastermodellschicht(rasterpfad)).toContain(
+      '/schichtrastermodell/raster-1/rastermodellschicht/frueh',
+    );
+    expect(FIRESTORE_DOCUMENT_PATHS.tagesvorlagenschicht(tagespfad)).toContain(
+      '/schichttagesmodell/tage-1/tagesvorlagenschicht/sonntag-spaet',
+    );
+    expect(FIRESTORE_DOCUMENT_PATHS.dienstplanRastermodellschicht(rastermoment)).toContain(
+      '/dienstplan/2026-12/rastermodellschicht/frueh',
+    );
+    expect(FIRESTORE_DOCUMENT_PATHS.dienstplanTagesschicht(tagesmoment)).toContain(
+      '/dienstplan/2026-12/tagesschicht/2026-12-24-frueh',
+    );
+  });
+
   it('bildet die Pfade der Filialeinstellungen', () => {
     const sondertagPfad: IFilialeinstellungSondertagPfad = {
       unternehmerId: 'unternehmer-1',
@@ -122,13 +169,6 @@ describe('Firebase-Konstanten', () => {
       filialeId: 'filiale-1',
       sondertagId: 'heiligabend',
     };
-    const ausnahmePfad: IFilialeinstellungAusnahmePfad = {
-      unternehmerId: 'unternehmer-1',
-      firmaId: 'firma-1',
-      filialeId: 'filiale-1',
-      datum: '2026-12-24',
-    };
-
     expect(FIRESTORE_COLLECTION_PATHS.filialeinstellungen(sondertagPfad)).toBe(
       'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung',
     );
@@ -143,12 +183,6 @@ describe('Firebase-Konstanten', () => {
     );
     expect(FIRESTORE_DOCUMENT_PATHS.filialeinstellungSondertag(sondertagPfad)).toBe(
       'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung/oeffnungszeiten/sondertag/heiligabend',
-    );
-    expect(FIRESTORE_COLLECTION_PATHS.filialeinstellungAusnahmen(ausnahmePfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung/oeffnungszeiten/ausnahme',
-    );
-    expect(FIRESTORE_DOCUMENT_PATHS.filialeinstellungAusnahme(ausnahmePfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/einstellung/oeffnungszeiten/ausnahme/2026-12-24',
     );
   });
 });

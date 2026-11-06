@@ -1,11 +1,12 @@
 // pur-system/src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.ts
 
 import type {
-  IFilialeinstellungAusnahmeEintrag,
   IFilialeinstellungSondertagEintrag,
+  IGeoeffneteOeffnungsregel,
+  TSondertagsmodus,
   TDatumsregel,
   TOeffnungsregel,
-  TWochenoeffnungszeiten,
+  TWochenregeln,
   TWochentag,
 } from '../../models/domain/filialeinstellung';
 import type {
@@ -13,15 +14,19 @@ import type {
   IDienstplanKalenderSondertag,
   TDienstplanOeffnungsregelQuelle,
 } from '../../models/domain/dienstplan-kalendertag';
-import { getGesetzlicherFeiertagDatum, getGesetzlicherFeiertagKatalogeintrag } from './feiertag';
+import {
+  getBerechneterSondertagDatum,
+  getGesetzlicherFeiertagDatum,
+  getGesetzlicherFeiertagKatalogeintrag,
+} from './feiertag';
 
 // ===== Konstanten & Typen ===================
 
 export interface IOeffnungsregelAufloesungsanfrage {
   datum: string;
-  wochenregeln: TWochenoeffnungszeiten;
+  standardoeffnungsregel: IGeoeffneteOeffnungsregel;
+  wochenregeln: TWochenregeln;
   sondertage: readonly IFilialeinstellungSondertagEintrag[];
-  ausnahmen: readonly IFilialeinstellungAusnahmeEintrag[];
 }
 
 export interface IAufgeloesteOeffnungsregel {
@@ -31,7 +36,6 @@ export interface IAufgeloesteOeffnungsregel {
   oeffnungsregel: TOeffnungsregel;
   bezeichnung?: string;
   sondertagId?: string;
-  ausnahmeId?: string;
   gesetzlicherFeiertag?: IDienstplanGesetzlicherFeiertag;
   aktiveSondertage: readonly IDienstplanKalenderSondertag[];
 }
@@ -51,8 +55,8 @@ const WOCHENTAGE: readonly TWochentag[] = [
 /**
  * Löst die für ein lokales Filialdatum wirksame Öffnungsregel auf.
  *
- * Eine Datumsausnahme besitzt Vorrang vor einem aktiven Sondertag und der Wochenregel. Eine über Mitternacht reichende Regel
- * gehört vollständig zu dem Datum, an dem sie beginnt.
+ * Ein aktiver benutzerdefinierter Sondertag besitzt Vorrang vor einem systemdefinierten Sondertag und der Wochenregel. Eine
+ * über Mitternacht reichende Regel gehört vollständig zu dem Datum, an dem sie beginnt.
  *
  * @param anfrage - Datum und vollständige Filialeinstellungen.
  * @returns Wirksame Öffnungsregel mit nachvollziehbarer Quelle.
@@ -65,57 +69,74 @@ export function resolveOeffnungsregel(
   const wochentag = getWochentag(datumsteile);
   const gesetzlicherFeiertag = resolveGesetzlicherFeiertag(anfrage.sondertage, datumsteile);
   const passendeSondertage = anfrage.sondertage.filter((sondertag) => {
-    return sondertag.aktiv && matchesDatumsregel(sondertag.datumsregel, datumsteile);
+    return (
+      getSondertagsmodus(sondertag) !== 'standard' &&
+      matchesDatumsregel(sondertag.datumsregel, datumsteile)
+    );
   });
   const aktiveSondertage = passendeSondertage.map((sondertag) => {
     return { id: sondertag.id, bezeichnung: sondertag.bezeichnung };
   });
-  const passendeAusnahmen = anfrage.ausnahmen.filter((ausnahme) => {
-    return ausnahme.datum === anfrage.datum;
+  const benutzerdefinierteSondertage = passendeSondertage.filter((sondertag) => {
+    return sondertag.herkunft === 'benutzer';
   });
-  if (passendeAusnahmen.length > 1) {
-    throw new Error(`Für ${anfrage.datum} sind mehrere Datumsausnahmen vorhanden.`);
-  }
-  const ausnahme = passendeAusnahmen[0];
-  if (ausnahme) {
-    return {
-      datum: anfrage.datum,
-      wochentag,
-      quelle: 'ausnahme',
-      ausnahmeId: ausnahme.id,
-      bezeichnung: ausnahme.bezeichnung,
-      oeffnungsregel: ausnahme.oeffnungsregel,
-      aktiveSondertage,
-      ...(gesetzlicherFeiertag ? { gesetzlicherFeiertag } : {}),
-    };
-  }
-
-  if (passendeSondertage.length > 1) {
-    const bezeichnungen = passendeSondertage.map((sondertag) => {
+  if (benutzerdefinierteSondertage.length > 1) {
+    const bezeichnungen = benutzerdefinierteSondertage.map((sondertag) => {
       return sondertag.bezeichnung;
     });
     throw new Error(
-      `Für ${anfrage.datum} sind mehrere aktive Sondertage konfiguriert: ${bezeichnungen.join(', ')}.`,
+      `Für ${anfrage.datum} sind mehrere aktive benutzerdefinierte Sondertage konfiguriert: ${bezeichnungen.join(', ')}.`,
     );
   }
-  const sondertag = passendeSondertage[0];
+  const systemSondertage = passendeSondertage.filter((sondertag) => {
+    return sondertag.herkunft === 'system';
+  });
+  if (benutzerdefinierteSondertage.length === 0 && systemSondertage.length > 1) {
+    const bezeichnungen = systemSondertage.map((sondertag) => {
+      return sondertag.bezeichnung;
+    });
+    throw new Error(
+      `Für ${anfrage.datum} sind mehrere aktive systemdefinierte Sondertage konfiguriert: ${bezeichnungen.join(', ')}.`,
+    );
+  }
+  const sondertag = benutzerdefinierteSondertage[0] ?? systemSondertage[0];
   if (sondertag) {
+    const modus = getSondertagsmodus(sondertag);
+    const verwendetSonntag = modus === 'wieSonntag';
     return {
       datum: anfrage.datum,
       wochentag,
-      quelle: 'sondertag',
+      quelle: verwendetSonntag ? 'sonntag' : 'sondertag',
       sondertagId: sondertag.id,
       bezeichnung: sondertag.bezeichnung,
-      oeffnungsregel: sondertag.oeffnungsregel,
+      oeffnungsregel: verwendetSonntag
+        ? resolveWochenoeffnungsregel(
+            anfrage.standardoeffnungsregel,
+            anfrage.wochenregeln,
+            'sonntag',
+          )
+        : sondertag.oeffnungsregel,
       aktiveSondertage,
       ...(gesetzlicherFeiertag ? { gesetzlicherFeiertag } : {}),
     };
   }
 
-  const wochenregel = anfrage.wochenregeln[wochentag];
-  if (!wochenregel) {
-    throw new Error(`Für ${wochentag} ist keine Öffnungsregel konfiguriert.`);
+  if (gesetzlicherFeiertag) {
+    return {
+      datum: anfrage.datum,
+      wochentag,
+      quelle: 'wochentag',
+      oeffnungsregel: { ...anfrage.standardoeffnungsregel },
+      aktiveSondertage,
+      gesetzlicherFeiertag,
+    };
   }
+
+  const wochenregel = resolveWochenoeffnungsregel(
+    anfrage.standardoeffnungsregel,
+    anfrage.wochenregeln,
+    wochentag,
+  );
   return {
     datum: anfrage.datum,
     wochentag,
@@ -124,6 +145,49 @@ export function resolveOeffnungsregel(
     aktiveSondertage,
     ...(gesetzlicherFeiertag ? { gesetzlicherFeiertag } : {}),
   };
+}
+
+/**
+ * Liefert den gespeicherten oder aus Altdaten abgeleiteten Modus eines Sondertags.
+ *
+ * @param sondertag - Gespeicherter Sondertag mit optionalem neuem Modusfeld.
+ * @returns Expliziter oder aus Aktivstatus und Öffnungsregel abgeleiteter Modus.
+ */
+export function getSondertagsmodus(
+  sondertag: Pick<IFilialeinstellungSondertagEintrag, 'aktiv' | 'modus' | 'oeffnungsregel'>,
+): TSondertagsmodus {
+  if (
+    sondertag.modus === 'standard' ||
+    sondertag.modus === 'wieSonntag' ||
+    sondertag.modus === 'abweichend' ||
+    sondertag.modus === 'geschlossen'
+  ) {
+    return sondertag.modus;
+  }
+  if (!sondertag.aktiv) return 'standard';
+  return sondertag.oeffnungsregel.geoeffnet ? 'abweichend' : 'geschlossen';
+}
+
+/**
+ * Löst die wirksame Öffnungsregel eines Wochentags aus Standard, Abweichung oder Schließung auf.
+ *
+ * @param standardoeffnungsregel - Aktuelle Standardöffnung der Filiale.
+ * @param wochenregeln - Vollständige Konfiguration aller Wochentage.
+ * @param wochentag - Aufzulösender Wochentag.
+ * @returns Wirksame absolute Öffnungsregel des Wochentags.
+ */
+export function resolveWochenoeffnungsregel(
+  standardoeffnungsregel: IGeoeffneteOeffnungsregel,
+  wochenregeln: TWochenregeln,
+  wochentag: TWochentag,
+): TOeffnungsregel {
+  const wochenregel = wochenregeln[wochentag];
+  if (!wochenregel) {
+    throw new Error(`Für ${wochentag} ist keine Öffnungsregel konfiguriert.`);
+  }
+  if (wochenregel.modus === 'standard') return { ...standardoeffnungsregel };
+  if (wochenregel.modus === 'geschlossen') return { geoeffnet: false };
+  return { ...wochenregel.oeffnungsregel };
 }
 
 // ===== Interne Helfer =======================
@@ -161,6 +225,12 @@ function resolveGesetzlicherFeiertag(
 function matchesDatumsregel(datumsregel: TDatumsregel, datum: IDatumsteile): boolean {
   if (datumsregel.typ === 'jaehrlichFestesDatum') {
     return datumsregel.monat === datum.monat && datumsregel.tag === datum.tag;
+  }
+  if (datumsregel.typ === 'berechneterSondertag') {
+    return (
+      getBerechneterSondertagDatum(datum.jahr, datumsregel.sondertagSchluessel) ===
+      createDatum(datum)
+    );
   }
   return (
     getGesetzlicherFeiertagDatum(datum.jahr, datumsregel.feiertagSchluessel) === createDatum(datum)

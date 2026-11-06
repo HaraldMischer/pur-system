@@ -1,4 +1,4 @@
-<!-- pur-system/docs/todo_next.md -->
+<!-- pur-system/docs/todo_naechste.md -->
 
 # Offene Todos
 
@@ -8,7 +8,229 @@
 - `[ ]` offen
 - `[-]` zurückgestellt
 
-## 25. Feiertage, Gedenk- und Trauertage fachlich neu ordnen
+## 26. Schicht-Tagesmodell als eigenständige Planungsart umsetzen
+
+### Ziel
+
+Neben dem bestehenden Schicht-Rastermodell wird ein fachlich, typseitig und bei der Speicherung eigenständiges
+Schicht-Tagesmodell umgesetzt. Beide Modelle teilen ausschließlich allgemeine Metadaten und die Auswahl einer Planungsart. Das
+Schicht-Tagesmodell verwendet weder Rastermodellschichten noch Rasterzeiten und wird nicht als Sonderfall des bestehenden
+Schicht-Rastermodells abgebildet.
+
+Die Planungsarten heißen verbindlich `schichtrastermodell` und `schichttagesmodell`. Der bisher gespeicherte Wert
+`schichtraster` wird kontrolliert auf `schichtrastermodell` migriert. Der nur vorbereitete Wert `schichtbausteine` wird aus
+Modellen, Oberfläche und Dokumentation entfernt.
+
+Ein Schicht-Tagesmodell enthält eine Wochentagsvorlage für Montag bis Samstag und eine davon unabhängige Sonntagsvorlage. Beide
+Vorlagen besitzen beliebig viele eigene Schichten mit konkreten Uhrzeiten, Reihenfolge, Mehrfachbelegung sowie Vor- und
+Nachbereitung. Anzahl, Identität und Zeiten der Schichten dürfen sich zwischen beiden Vorlagen unterscheiden.
+
+Beim initialen Erstellen eines Monatsdienstplans wird für jeden Kalendertag eine eigene Tagesstruktur erzeugt. Reguläre
+Wochentage und Sonntage übernehmen ihre Schichten aus der passenden Vorlage. Gesetzliche Feiertage erhalten die Öffnungsarten
+`Standard`, `Wie Sonntag`, `Abweichend` und `Geschlossen`. `Wie Sonntag` übernimmt dynamisch die wirksame Sonntagsöffnung und
+die Sonntagsvorlage. Nur abweichend geöffnete Feier- und Sondertage werden vor dem Anlegen des Monatsplans frei konfiguriert.
+Erst wenn alle erforderlichen Tagesstrukturen vollständig sind, werden Monatsplan, erste Entwurfsversion und Tagesschichten
+atomar angelegt. Danach ordnet der Planer Mitarbeiter den vorbereiteten Tagesschichten zu.
+
+Beginn und Ende jeder Kernschicht müssen innerhalb der wirksamen Öffnung liegen. Ausschließlich die je Schicht konfigurierte
+Vor- und Nachbereitungszeit darf die Kernzeit über die Öffnungsgrenzen hinaus erweitern. Geschlossene Tage enthalten keine
+Tagesschichten. Die vollständige Tagesstruktur ist eine unveränderliche Monatsmomentaufnahme; ein leerer, noch nie
+veröffentlichter Plan kann wie bisher gelöscht und mit einer anderen Struktur neu angelegt werden.
+
+### Betroffene Dateien
+
+Änderungen beziehungsweise kontrollierte Umbenennungen:
+
+- src/app/commons/models/domain/schichtmodell.ts
+- src/app/commons/models/domain/dienstplan.ts
+- src/app/commons/models/domain/dienstplan-kalendertag.ts
+- src/app/commons/models/domain/schicht.ts
+- src/app/commons/models/domain/filialeinstellung.ts
+- src/app/commons/constants/firebase.constants.ts
+- src/app/commons/constants/schichtmodell.constants.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.spec.ts
+- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.ts
+- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.spec.ts
+- src/app/commons/validators/schichtmodell.validator.ts
+- src/app/commons/validators/schichtmodell.validator.spec.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/
+- src/app/components/schichtplan/dienstplan-planungsbereich/
+- src/app/components/schichtplan/dienstplan-monatstabelle/
+- src/app/components/schichtplan/schicht-bearbeiten-dialog/
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/
+- src/app/components/schichtplan/schichtmodelle-filiale/
+- src/app/components/einstellungen/oeffnungszeiten-filiale/
+- src/app/services/domain/dienstplan.service.ts
+- src/app/services/domain/dienstplan.service.spec.ts
+- src/app/services/domain/schichtmodell.service.ts
+- src/app/services/domain/schichtmodell.service.spec.ts
+- src/app/services/domain/filialeinstellung.service.ts
+- src/app/services/domain/filialeinstellung.service.spec.ts
+- src/app/stores/domain/dienstplan.store.ts
+- src/app/stores/domain/dienstplan.store.spec.ts
+- src/app/stores/domain/schichtmodell.store.ts
+- src/app/stores/domain/schichtmodell.store.spec.ts
+- firestore.rules
+- rules-tests/firestore.rules.test.mjs
+- docs/matrizen/berechtigungen.md
+- docs/matrizen/oeffnungszeiten.md
+- docs/architektur/components/schichtplan.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/services/schichtmodell-service.md
+- docs/architektur/stores/dienstplan-store.md
+- docs/architektur/stores/schichtmodell-store.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_naechste.md
+
+Neu hinzuzufügen:
+
+- src/app/commons/models/domain/schicht-rastermodell.ts
+- src/app/commons/models/domain/schicht-tagesmodell.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.spec.ts
+- src/app/commons/validators/schicht-tagesmodell.validator.ts
+- src/app/commons/validators/schicht-tagesmodell.validator.spec.ts
+- src/app/components/schichtplan/schicht-rastermodell-bearbeiten-dialog/
+- src/app/components/schichtplan/schicht-rastermodelle-filiale/
+- src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/
+- src/app/components/schichtplan/schicht-tagesmodelle-filiale/
+- src/app/components/schichtplan/dienstplan-tagesstruktur-bearbeiten-dialog/
+- src/app/components/schichtplan/tagesschicht-belegen-dialog/
+- src/app/services/domain/schicht-rastermodell.service.ts
+- src/app/services/domain/schicht-rastermodell.service.spec.ts
+- src/app/services/domain/schicht-tagesmodell.service.ts
+- src/app/services/domain/schicht-tagesmodell.service.spec.ts
+- src/app/stores/domain/schicht-rastermodell.store.ts
+- src/app/stores/domain/schicht-rastermodell.store.spec.ts
+- src/app/stores/domain/schicht-tagesmodell.store.ts
+- src/app/stores/domain/schicht-tagesmodell.store.spec.ts
+
+### [ ] Schritt 1: Modellgrenzen und Monatsinitialisierung festlegen
+
+- [x] Schicht-Rastermodell und Schicht-Tagesmodell als zwei eigenständige Planungsarten behandeln.
+- [x] Die Planungsartwerte verbindlich als `schichtrastermodell` und `schichttagesmodell` benennen.
+- [x] Das bestehende Schicht-Rastermodell in seinem fachlichen Verhalten erhalten und nicht um Tagesvorlagen erweitern.
+- [x] Das Schicht-Tagesmodell mit einer Wochentagsvorlage und einer unabhängigen Sonntagsvorlage ausstatten.
+- [x] Beginn und Ende aller Vorlagen- und Tagesschichten ausschließlich als konkrete Uhrzeiten am Start- oder Folgetag
+      konfigurieren. Prozentuale und relative Übergänge gehören nicht zum Schicht-Tagesmodell.
+- [x] Feier- und Sondertage ohne wiederverwendbare Vorlage innerhalb der Monatsplananlage frei konfigurieren.
+- [x] Für gesetzliche Feiertage die vier Öffnungsarten `Standard`, `Wie Sonntag`, `Abweichend` und `Geschlossen` festlegen.
+      `Wie Sonntag` verweist dynamisch auf die wirksame Sonntagsöffnung und die Sonntagsvorlage; nur `Abweichend` benötigt eine
+      freie Tagesstruktur in der Monatsplananlage.
+- [x] Alle Tagesstrukturen vor dem atomaren Anlegen des Monatsplans vollständig festlegen. Eine spätere freie Veränderung
+      belegter Tagesstrukturen ist nicht vorgesehen.
+- [x] Kernzeiten innerhalb der wirksamen Öffnung begrenzen. Nur Vor- und Nachbereitung darf die Öffnungsgrenzen überschreiten.
+- [ ] Festlegen, ob eine geöffnete Tagesstruktur die vollständige Öffnungsdauer lückenlos abdecken muss oder fachliche Lücken
+      nach einem bestätigten Hinweis zulässig bleiben.
+
+### [ ] Schritt 2: Eigenständige Typen, Pfade und Migration definieren
+
+- [ ] `TPlanungsart` auf `'schichtrastermodell' | 'schichttagesmodell'` umstellen und alle Modell-, Dienstplan- und
+      Schichttypen als diskriminierte Unions modellieren.
+- [ ] Gemeinsame Basistypen auf allgemeine Metadaten begrenzen. Rastermodellschichten, Tagesvorlagenschichten und konkrete
+      Tagesschichten erhalten voneinander unabhängige Interfaces und Mapper.
+- [ ] Das bestehende Rastermodell fachlich eindeutig als Schicht-Rastermodell benennen und seine bisherigen Daten ohne
+      Verhaltensänderung in die neue Namensstruktur überführen.
+- [ ] Filialbezogene Schicht-Rastermodelle unter `schichtrastermodell/{schichtrastermodellId}` mit eigenen
+      `rastermodellschicht`-Dokumenten und Schicht-Tagesmodelle unter `schichttagesmodell/{schichttagesmodellId}` mit eigenen
+      `tagesvorlagenschicht`-Dokumenten speichern.
+- [ ] Für Monatspläne des Schicht-Tagesmodells eine eigene Tagesschicht-Momentaufnahme speichern. Sie verwendet keine
+      `modellschichtId` und keine `rasterzeiten` des Schicht-Rastermodells.
+- [ ] Konkrete Mitarbeiterschichten getrennt auf eine Rastermodellschicht oder eine Tagesschicht verweisen lassen. Gemischte
+      oder unvollständige Referenzen werden abgelehnt.
+- [ ] Das Filialeinstellungsmodell für gesetzliche Feiertage um `Wie Sonntag` erweitern, ohne den Feiertagsstatus oder die
+      Regeln benutzerdefinierter jährlicher Sondertage zu verändern.
+- [ ] Vor einer Rules-Änderung alle neuen Pfade und CRUD-Rechte in der Berechtigungsmatrix ergänzen.
+- [ ] Eine kontrollierte Migration für `schichtraster → schichtrastermodell` in bestehenden Schichtmodellen und Monatsplänen
+      festlegen. Bereits veröffentlichte historische Pläne müssen unverändert lesbar bleiben.
+- [ ] Den vorbereiteten Wert `schichtbausteine`, seine leeren Dokumenttypen und die deaktivierten UI-Einstiege kontrolliert
+      entfernen. Eine dauerhafte stillschweigende Ersatzannahme ist nicht vorgesehen.
+
+### [ ] Schritt 3: Schicht-Tagesmodelle verwalten
+
+- [ ] Schicht-Tagesmodelle in einem eigenen Service und Store laden, anlegen, bearbeiten und deaktivieren.
+- [ ] In der Modellverwaltung Schicht-Rastermodell und Schicht-Tagesmodell eindeutig getrennt anbieten.
+- [ ] Im Schicht-Tagesmodell getrennte Bereiche für Wochentags- und Sonntagsvorlage darstellen.
+- [ ] Je Vorlage beliebig viele Schichten mit stabiler ID, Bezeichnung, Reihenfolge, Kernbeginn, Kernende, Vor- und
+      Nachbereitung sowie optionaler Mehrfachbelegung konfigurieren.
+- [ ] Unterschiedliche Schichtanzahlen, Längen, Lücken und Überschneidungen zwischen Wochentags- und Sonntagsvorlage zulassen.
+- [ ] Kernzeiten gegen die für die Vorlage maßgebliche Öffnung validieren und die tatsächliche Arbeitszeit einschließlich
+      Vor- und Nachbereitung nachvollziehbar anzeigen.
+- [ ] Die wirkungslose Auswahl `Übergänge: Fest / Relativ` aus dem Schicht-Rastermodelldialog entfernen.
+- [ ] Während eines Schreibvorgangs das vollständige Formular und alle datenverändernden Aktionen deaktivieren.
+
+### [ ] Schritt 4: Vollständige Tagesstrukturen beim Monatsplan anlegen
+
+- [ ] Nach der Auswahl eines Schicht-Tagesmodells alle Kalendertage und ihre wirksamen Öffnungsregeln auflösen.
+- [ ] Für reguläre Wochentage von Montag bis Samstag eigene Tagesschichten aus der Wochentagsvorlage und für reguläre Sonntage
+      aus der Sonntagsvorlage erzeugen.
+- [ ] Gesetzliche Feiertage mit `Standard` anhand der allgemeinen Standardöffnung und mit `Wie Sonntag` anhand der wirksamen
+      Sonntagsöffnung auflösen, ohne sie im Sondertagsdialog erneut konfigurieren zu lassen. Für `Standard` bestimmt der
+      tatsächliche Wochentag weiterhin die Wochentags- oder Sonntagsvorlage; `Wie Sonntag` verwendet die Sonntagsvorlage.
+- [ ] Geschlossene Tage ohne Tagesschichten übernehmen.
+- [ ] Für jeden abweichend geöffneten Feier- oder Sondertag innerhalb der Monatsplananlage eine freie Tagesstruktur erfassen.
+      Anzahl, Reihenfolge und Zeiten dürfen sich von allen anderen Tagen unterscheiden.
+- [ ] Kernzeiten freier Sondertagsschichten auf die wirksame Öffnung begrenzen und nur Vor- und Nachbereitung außerhalb der
+      Öffnung zulassen.
+- [ ] Jede konkrete Tagesschicht mit stabiler Tagesinstanz-ID, Datum, Herkunft, Reihenfolge, Kernzeit, tatsächlicher Arbeitszeit
+      und Mehrfachbelegung speichern.
+- [ ] Monatsplan, erste Entwurfsversion, Kalender-Momentaufnahme, Modellreferenz und alle Tagesschichten atomar schreiben.
+- [ ] Die Anlage verhindern, solange eine geöffnete Tagesstruktur unvollständig oder fachlich ungültig ist.
+- [ ] Spätere Änderungen an Öffnungszeiten oder Schicht-Tagesmodell dürfen vorhandene Monatspläne nicht neu berechnen.
+- [ ] Das Löschen und Neuanlegen eines leeren, noch nie veröffentlichten Monatsplans als einzigen Wechsel der Tagesstruktur
+      beibehalten.
+
+### [ ] Schritt 5: Planung, Konflikte und Veröffentlichung getrennt anbinden
+
+- [ ] Die Monatsdarstellung des Schicht-Tagesmodells ohne globale Rasterspalten umsetzen. Jede Tageszeile stellt ausschließlich
+      ihre eigenen Tagesschichten dar.
+- [ ] Mitarbeiter per Drag-and-drop sowie über eine gleichwertige alternative Aktion einer konkreten Tagesschicht zuordnen und
+      zwischen zulässigen Tagesschichten verschieben können.
+- [ ] Mehrfachbelegung, nicht verfügbare Mitarbeiter und belegte Einfachschichten anhand der konkreten Tagesschicht prüfen.
+- [ ] Tatsächliche Arbeitszeiten einschließlich Vor- und Nachbereitung in denselben firmenweiten Belegungsindex, dieselbe
+      Konfliktprüfung und dieselbe Pausenberechnung wie Rastermodellschichten aufnehmen.
+- [ ] Entwurf, Veröffentlichung, Archivierung und neuer Entwurf aus einem veröffentlichten Stand müssen Tagesinstanzen und
+      Belegungen atomar sowie historisch stabil übernehmen.
+- [ ] Die veröffentlichte Dienstplanansicht für Schicht-Rastermodell und Schicht-Tagesmodell gemeinsam lesbar halten, ohne ihre
+      unterschiedlichen Tagesstrukturen zu vermischen.
+
+### [ ] Tests und Abschluss
+
+- [ ] Modell-, Mapper- und Validator-Tests für beide getrennten Planungsarten und ihre diskriminierten Unions ergänzen.
+- [ ] Service- und Store-Tests für getrennte Pfade, Anlage, Laden, Bearbeiten, Deaktivieren und Migration ergänzen.
+- [ ] Tageserzeugung für reguläre Wochentage, Sonntage, Feiertage mit `Standard` oder `Wie Sonntag`, geschlossene Tage sowie
+      frei konfigurierte Feier- und Sondertage testen.
+- [ ] Übernachtöffnungen, Kernzeitgrenzen, Vor- und Nachbereitung, unterschiedliche Schichtanzahlen, Lücken und
+      Überschneidungen testen.
+- [ ] Component-Tests für Modellauswahl, beide Vorlagen, freie Sondertagserfassung und variable Tagesdarstellung ergänzen.
+- [ ] Konflikt-, Pausen-, Versions- und Veröffentlichungstests für beide Planungsarten gemeinsam ausführen.
+- [ ] Firestore-Emulator-Tests für alle neuen und migrierten Pfade sowie CRUD-Aktionen ergänzen.
+- [ ] Einen realistischen Monatsplan mit Wochentagen, Sonntagen, Übernachtöffnungen und mehreren Sondertagen auf Desktop und
+      kleinem Touch-Viewport prüfen.
+- [ ] Fachkonzept, Architektur, Projektplan und Projektstand an beide eigenständigen Planungsarten anpassen.
+- [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office` und die manuelle Prüfung erfolgreich
+      ausführen.
+
+### [ ] Erledigt, wenn
+
+- [ ] Schicht-Rastermodell und Schicht-Tagesmodell besitzen getrennte Typen, Pfade, Services, Stores und Oberflächen.
+- [ ] `TPlanungsart` enthält ausschließlich `schichtrastermodell` und `schichttagesmodell`.
+- [ ] Bestehende Rastermodelle und Monatspläne sind kontrolliert von `schichtraster` auf `schichtrastermodell` migriert und
+      bleiben fachlich unverändert nutzbar.
+- [ ] Der vorbereitete Wert `schichtbausteine` und seine deaktivierten Einstiege sind entfernt.
+- [ ] Jeder Monatstag eines Schicht-Tagesmodellplans besitzt eine eigene vollständige und historisch stabile Tagesstruktur.
+- [ ] Wochentage und Sonntage können unterschiedliche Schichtanzahlen, Identitäten, Uhrzeiten und Überschneidungen besitzen.
+- [ ] Feiertage mit `Wie Sonntag` verwenden automatisch Sonntagsöffnung und Sonntagsvorlage; abweichend geöffnete Feier- und
+      Sondertage werden vor der Monatsplananlage innerhalb ihrer wirksamen Öffnung frei konfiguriert.
+- [ ] Kernzeiten bleiben innerhalb der Öffnung; nur Vor- und Nachbereitung darf die Öffnungsgrenzen überschreiten.
+- [ ] Mitarbeiter können anschließend ohne Änderung der Tagesstruktur auf konkrete Tagesschichten verteilt werden.
+- [ ] Konfliktprüfung, Pausenberechnung, Versionierung und Veröffentlichung funktionieren für beide Planungsarten konsistent.
+- [ ] Automatisierte Tests, Rules-Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
+
+## 27. Feiertage, Gedenk- und Trauertage fachlich neu ordnen
 
 ### Ziel
 
@@ -51,7 +273,7 @@ abgeglichen; bereits angelegte Dienstplan-Momentaufnahmen bleiben unverändert.
 - docs/matrizen/oeffnungszeiten.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 ### Schritt 1: Tage und Rechtsgrundlagen fachlich einordnen
 
@@ -64,39 +286,39 @@ abgeglichen; bereits angelegte Dienstplan-Momentaufnahmen bleiben unverändert.
 - [ ] Festlegen, welche Tage für Spielhallen in Nordrhein-Westfalen zusätzlich zu den gesetzlichen Feiertagen relevant sind.
 - [ ] Für Volkstrauertag, Totensonntag, Karfreitag, Allerheiligen und Heiligabend die jeweils geltenden Sperr- und
       Spielverbotszeiten, ihren Geltungsbereich und ihre rechtliche Grundlage prüfen.
-- [ ] Entscheiden, ob rechtliche Sperrzeiten automatisch aktiviert, nur zeitlich vorbelegt oder ausschließlich als Hinweis
+- [x] Entscheiden, ob rechtliche Sperrzeiten automatisch aktiviert, nur zeitlich vorbelegt oder ausschließlich als Hinweis
       angeboten werden. Eigene betriebliche Anpassungen und rechtlich zwingende Grenzen müssen erkennbar getrennt bleiben.
 
 ### Schritt 2: Lokale Datums- und Regelberechnung erweitern
 
-- [ ] Eine allgemeine systemdefinierte Datumsregel für berechnete Gedenk-, Trauer- und stille Tage modellieren, ohne sie
+- [x] Eine allgemeine systemdefinierte Datumsregel für berechnete Gedenk-, Trauer- und stille Tage modellieren, ohne sie
       fälschlich als gesetzliche Feiertage zu kennzeichnen.
-- [ ] Volkstrauertag als zweiten Sonntag vor dem ersten Advent und Totensonntag als letzten Sonntag vor dem ersten Advent lokal
+- [x] Volkstrauertag als zweiten Sonntag vor dem ersten Advent und Totensonntag als letzten Sonntag vor dem ersten Advent lokal
       und deterministisch berechnen.
 - [ ] Bestehende Berechnungen für Ostern und davon abhängige Feiertage sowie den Buß- und Bettag auf fachliche Vollständigkeit
       und einheitliche Benennung prüfen.
 - [ ] Fachregeln mit stabiler ID, Bundesland, Rechtsgrundlage und geeignetem Gültigkeitszeitraum versionierbar beschreiben, damit
       spätere Rechtsänderungen keine historischen Ergebnisse verfälschen.
-- [ ] Externe Kalenderdienste höchstens als Entwicklungs- oder Prüfhilfe verwenden; die produktive Datumsauflösung darf keine
+- [x] Externe Kalenderdienste höchstens als Entwicklungs- oder Prüfhilfe verwenden; die produktive Datumsauflösung darf keine
       unkontrollierte externe Laufzeitabhängigkeit erhalten.
 
 ### Schritt 3: Bestehende Filialeinstellungen kontrolliert abgleichen
 
-- [ ] Neue systemdefinierte Tage bei bestehenden Filialen ergänzen, ohne benutzerdefinierte Sondertage oder angepasste
+- [x] Neue systemdefinierte Tage bei bestehenden Filialen ergänzen, ohne benutzerdefinierte Sondertage oder angepasste
       Öffnungsregeln zu überschreiben.
-- [ ] Beim Abgleich stabile System-IDs verwenden und vorhandene systemdefinierte Einstellungen erhalten, sofern ihre fachliche
+- [x] Beim Abgleich stabile System-IDs verwenden und vorhandene systemdefinierte Einstellungen erhalten, sofern ihre fachliche
       Regel weiterhin gültig ist.
-- [ ] Kollisionen zwischen gesetzlichen Feiertagen, berechneten Gedenk- oder Trauertagen, festen Sondertagen und einmaligen
-      Datumsausnahmen weiterhin eindeutig erkennen und nach der bestehenden Priorität auflösen.
-- [ ] Sicherstellen, dass die neue Berechnung nur zukünftige Auflösungen und neu angelegte Dienstpläne beeinflusst. Bereits
+- [ ] Kollisionen zwischen gesetzlichen Feiertagen, berechneten Gedenk- oder Trauertagen und festen Sondertagen weiterhin
+      eindeutig erkennen und nach der bestehenden Herkunftspriorität auflösen.
+- [x] Sicherstellen, dass die neue Berechnung nur zukünftige Auflösungen und neu angelegte Dienstpläne beeinflusst. Bereits
       gespeicherte Kalendertage und Rasterzeiten bestehender Dienstpläne bleiben als Momentaufnahme unverändert.
-- [ ] Einen nachvollziehbaren Datenübergang für bereits initialisierte Filialen festlegen und dokumentieren.
+- [x] Einen nachvollziehbaren Datenübergang für bereits initialisierte Filialen festlegen und dokumentieren.
 
 ### Schritt 4: Oberfläche verständlich anpassen
 
-- [ ] Eine verständliche Darstellung für Gedenk- und Trauertage beziehungsweise stille Tage festlegen und prüfen, ob dafür ein
+- [x] Eine verständliche Darstellung für Gedenk- und Trauertage beziehungsweise stille Tage festlegen und prüfen, ob dafür ein
       eigener Abschnitt oder eine erkennbare Untergruppe der jährlichen Sondertage sinnvoller ist.
-- [ ] Systemdefinierte Bezeichnung, berechnete Datumsregel und rechtliche Herkunft unveränderlich darstellen; nur die fachlich
+- [x] Systemdefinierte Bezeichnung, berechnete Datumsregel und rechtliche Herkunft unveränderlich darstellen; nur die fachlich
       zulässigen Einstellungen bearbeitbar machen.
 - [ ] Rechtlich vorgegebene Sperrzeit, daraus abgeleitete mögliche Öffnungszeit und eine eigene betriebliche Einstellung
       verständlich unterscheiden.
@@ -109,8 +331,8 @@ abgeglichen; bereits angelegte Dienstplan-Momentaufnahmen bleiben unverändert.
 - [ ] Unit-Tests für Volkstrauertag und Totensonntag über mehrere Jahre und alle möglichen Datumsbereiche ergänzen.
 - [ ] Die bestehenden Oster-, Buß- und Bettags- sowie festen Feiertagsberechnungen mit bekannten Referenzdaten und
       Jahresgrenzen absichern.
-- [ ] Tests für Kategorien, Aktivstatus, Sperrzeitvorbelegung, Kollisionen und die Priorität
-      `Ausnahme → Sondertag → Wochentag` ergänzen.
+- [ ] Tests für Kategorien, Aktivstatus, Sperrzeitvorbelegung, Kollisionen und die Priorität `benutzerdefinierter jährlicher
+    Sondertag → systemdefinierter Sondertag → Wochentag` ergänzen.
 - [ ] Service- und Store-Tests für die kontrollierte Ergänzung neuer Systemtage bei bestehenden Filialeinstellungen ergänzen.
 - [ ] Dienstplantests ergänzen, die den kalendarischen Status, die wirksame Öffnungsregel und die unveränderliche
       Monatsplan-Momentaufnahme prüfen.
@@ -134,142 +356,7 @@ abgeglichen; bereits angelegte Dienstplan-Momentaufnahmen bleiben unverändert.
 - [ ] Die produktive Datumsauflösung funktioniert ohne externen Kalenderdienst.
 - [ ] Automatisierte Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
 
-## 26. Frei verteilbare Schichtbausteine pro Tag umsetzen
-
-### Ziel
-
-Neben dem bestehenden festen Schichtraster wird die bereits vorbereitete Planungsart `schichtbausteine` vollständig umgesetzt.
-Eine Filiale verwaltet dafür einen Katalog wiederverwendbarer Schichtbausteine. Für jeden Kalendertag eines Monatsplans können
-beliebig viele passende Bausteine ausgewählt, angeordnet und als unveränderliche Tagesmomentaufnahme übernommen werden.
-
-Unterschiedliche Tage dürfen dadurch eine unterschiedliche Anzahl, Identität und Reihenfolge von Schichten enthalten. Das
-bestehende Schichtraster bleibt unverändert verfügbar. Ein Schichtmodell und der daraus angelegte Monatsplan gehören weiterhin
-genau einer Planungsart; ein nachträglicher Wechsel innerhalb desselben Monatsplans ist ausgeschlossen.
-
-### Betroffene Dateien
-
-Änderungen:
-
-- src/app/commons/models/domain/schichtmodell.ts
-- src/app/commons/models/domain/dienstplan.ts
-- src/app/commons/models/domain/dienstplan-kalendertag.ts
-- src/app/commons/models/domain/schicht.ts
-- src/app/commons/constants/firebase.constants.ts
-- src/app/components/schichtplan/dienstplan-anlegen-dialog/
-- src/app/components/schichtplan/dienstplan-planungsbereich/
-- src/app/components/schichtplan/dienstplan-monatstabelle/
-- src/app/components/schichtplan/schicht-bearbeiten-dialog/
-- src/app/components/schichtplan/schichtmodelle-filiale/
-- src/app/services/domain/dienstplan.service.ts
-- src/app/services/domain/dienstplan.service.spec.ts
-- src/app/services/domain/schichtmodell.service.ts
-- src/app/services/domain/schichtmodell.service.spec.ts
-- src/app/stores/domain/dienstplan.store.ts
-- src/app/stores/domain/dienstplan.store.spec.ts
-- src/app/stores/domain/schichtmodell.store.ts
-- src/app/stores/domain/schichtmodell.store.spec.ts
-- firestore.rules
-- firestore.rules.spec.ts
-- docs/matrizen/berechtigungen.md
-- docs/architektur/components/schichtplan.md
-- docs/architektur/services/dienstplan-service.md
-- docs/architektur/services/schichtmodell-service.md
-- docs/architektur/stores/dienstplan-store.md
-- docs/architektur/stores/schichtmodell-store.md
-- docs/fachkonzepte/dienst-und-schichtplanung.md
-- docs/projekt-plan.md
-- docs/projekt-stand.md
-- docs/todo_next.md
-
-Neu hinzuzufügen:
-
-- src/app/commons/models/domain/schichtbaustein.ts
-- src/app/commons/validators/schichtbaustein.validator.ts
-- src/app/commons/validators/schichtbaustein.validator.spec.ts
-- src/app/components/schichtplan/schichtbaustein-bearbeiten-dialog/
-- src/app/components/schichtplan/schichtbausteine-filiale/
-
-### Schritt 1: Fachliche Arbeitsweise festlegen
-
-- [x] Festlegen, dass ein Schichtmodell genau einer Planungsart angehört und der Monatsdienstplan diese Planungsart beim Anlegen
-      unveränderlich übernimmt. Die Auswahl erfolgt vor der Auswahl eines dazu passenden Schichtmodells.
-- [ ] Festlegen, ob ein Baustein feste Beginn- und Endzeiten, eine verschiebbare Dauer oder beide Varianten speichern darf.
-- [ ] Festlegen, ob derselbe Baustein an einem Kalendertag mehrfach verwendet und nach der Übernahme zeitlich angepasst werden
-      darf.
-- [ ] Festlegen, ob Bausteine ausschließlich innerhalb der wirksamen Kundenöffnung liegen müssen oder wie beim Schichtraster
-      ausdrücklich Vor- und Nachbereitungszeiten außerhalb der Öffnung abbilden dürfen.
-- [ ] Festlegen, wie geschlossene Tage, Sondertage und einmalige Datumsausnahmen die verfügbaren Bausteine begrenzen.
-- [ ] Festlegen, wie Reihenfolge, zeitliche Überlappungen und mehrere Mitarbeiter auf demselben Tagesbaustein behandelt werden.
-- [ ] Entscheiden, ob ein Bausteinkatalog je Filiale genügt oder zusätzlich bezeichnete Bausteinmodelle als auswählbare
-      Kataloggruppen benötigt werden.
-
-### Schritt 2: Datenmodell und Momentaufnahme definieren
-
-- [ ] Schichtbausteine mit stabiler ID, Bezeichnung, Aktivstatus, Zeitdefinition und optionaler Mehrfachbelegung modellieren.
-- [ ] Die konkrete Verwendung eines Bausteins am Kalendertag mit eigener stabiler Tagesinstanz-ID abbilden, damit Verschieben,
-      Belegung und spätere Veröffentlichungen eindeutig auf dieselbe Schichtinstanz verweisen.
-- [ ] Alle für die Darstellung und Berechnung erforderlichen Bausteindaten beim Einfügen als Tagesmomentaufnahme speichern.
-      Spätere Änderungen am Katalog dürfen vorhandene Monatspläne nicht verändern.
-- [ ] Modellreferenz, Planungsart und Tagesinstanzen in Entwurfs-, veröffentlichten und archivierten Versionen eindeutig
-      abgrenzen.
-- [ ] Festlegen, ob das Entfernen eines bereits belegten Tagesbausteins verhindert oder zusammen mit seinen konkreten Schichten
-      nach ausdrücklicher Bestätigung ausgeführt wird.
-- [ ] Fachliche Feld-, Zeit- und Zustandsvalidierung ausschließlich im TypeScript-Code und dessen Tests vorsehen.
-
-### Schritt 3: Bausteinkatalog verwalten
-
-- [ ] In der Schichtmodellverwaltung den bisher deaktivierten Einstieg `Schichtbausteine` freischalten.
-- [ ] Bausteine filialbezogen anlegen, bearbeiten, deaktivieren und verständlich nach Zeit oder fachlicher Reihenfolge anzeigen.
-- [ ] Während eines Schreibvorgangs das vollständige Formular und alle datenverändernden Aktionen deaktivieren.
-- [ ] Verwendete Bausteine nicht physisch aus historischen Plänen entfernen; Deaktivierung wirkt nur auf zukünftige Auswahl.
-- [ ] Leere, unvollständige oder zeitlich ungültige Bausteine zuverlässig verhindern und verständliche Fehler anzeigen.
-
-### Schritt 4: Tagesplanung mit Bausteinen umsetzen
-
-- [ ] Bei der Dienstplananlage zuerst die Planungsart und danach ausschließlich ein dazu passendes Modell auswählen.
-- [ ] Für jeden Kalendertag Bausteine aus dem aktiven Katalog hinzufügen, entfernen und in eine fachlich verständliche
-      Reihenfolge bringen können.
-- [ ] Eine für Desktop und kleine Touch-Viewports geeignete Darstellung für Tage mit unterschiedlicher Schichtanzahl umsetzen.
-- [ ] Mitarbeiter per Drag-and-drop sowie über eine gleichwertige alternative Aktion einem Tagesbaustein zuordnen und zwischen
-      zulässigen Bausteinen verschieben können.
-- [ ] Nicht verfügbare, geschlossene oder mit einer verbindlichen Zeitgrenze kollidierende Ziele sperren, ohne den bestehenden
-      Plan zu verändern.
-- [ ] Leere Tage und Tage mit vielen Bausteinen verständlich darstellen, ohne ein künstlich gleichförmiges Raster zu erzeugen.
-
-### Schritt 5: Konflikte, Pausen und Veröffentlichung übernehmen
-
-- [ ] Schichten aus Tagesbausteinen in denselben firmenweiten Belegungsindex wie Rasterplanschichten aufnehmen.
-- [ ] Filialübergreifende Überschneidungen, konkurrierende Schreibzugriffe und unvollständige Konfliktprüfungen weiterhin
-      zuverlässig blockieren.
-- [ ] Arbeitsblöcke und bezahlte Pausen unabhängig von der Planungsart aus den konkreten Schichtzeiten berechnen.
-- [ ] Entwurfsversionen, Veröffentlichungen und neue Entwürfe aus einem veröffentlichten Stand für Schichtbausteinpläne
-      atomar und historisch stabil umsetzen.
-- [ ] Die veröffentlichte Dienstplanansicht so erweitern, dass Raster- und Bausteinpläne ohne Verlust ihrer fachlichen Struktur
-      lesbar dargestellt werden.
-- [ ] Firestore Rules erst nach Ergänzung der Pfade und CRUD-Rechte in der Berechtigungsmatrix anpassen.
-
-### Tests und Abschluss
-
-- [ ] Modell-, Validator-, Service- und Store-Tests für Katalog, Tagesmomentaufnahme und beide Planungsarten ergänzen.
-- [ ] Anlage, Änderung, Deaktivierung und Wiederverwendung von Bausteinen sowie unveränderte historische Pläne testen.
-- [ ] Component-Tests für unterschiedliche Tagesanzahlen, leere Tage, Drag-and-drop und die alternative Verschiebeaktion
-      ergänzen.
-- [ ] Konflikt-, Pausen-, Versions- und Veröffentlichungstests für Raster- und Bausteinpläne gemeinsam ausführen.
-- [ ] Firestore-Emulator-Tests für alle laut Berechtigungsmatrix erforderlichen neuen Pfade und CRUD-Aktionen ergänzen.
-- [ ] Einen realistischen Monatsplan mit stark unterschiedlichen Wochentagen auf Desktop und kleinem Touch-Viewport prüfen.
-- [ ] Fachkonzept, Architektur, Projektplan und Projektstand an die umgesetzte zweite Planungsart anpassen.
-- [ ] `npm test`, `npm run test:rules`, die betroffenen Produktionsbuilds und die manuelle Prüfung erfolgreich ausführen.
-
-### Erledigt, wenn
-
-- [ ] Ein Kalendertag kann unabhängig von anderen Tagen beliebig viele vorgefertigte Schichtbausteine verwenden.
-- [ ] Tagesinstanzen behalten über Belegung, Verschieben, Versionierung und Veröffentlichung ihre stabile Identität.
-- [ ] Bestehende Monatspläne bleiben von späteren Änderungen des Bausteinkatalogs unberührt.
-- [ ] Konfliktprüfung, Pausenberechnung und atomare Speicherung funktionieren für beide Planungsarten konsistent.
-- [ ] Schichtraster und Schichtbausteine sind in Modellverwaltung und Monatsanlage eindeutig getrennt auswählbar.
-- [ ] Automatisierte Tests, Rules-Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
-
-## 27. Veröffentlichte Dienstplanansicht fachlich fertigstellen
+## 29. Veröffentlichte Dienstplanansicht fachlich fertigstellen
 
 ### Ziel
 
@@ -301,9 +388,9 @@ sondern durch konkrete Anforderungen ergänzt.
 - docs/fachkonzepte/dienst-und-schichtplanung.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
-### Schritt 1: Rollen und sichtbaren Umfang festlegen
+### [ ] Schritt 1: Rollen und sichtbaren Umfang festlegen
 
 - [ ] Festlegen, ob Master, Office und Filiale den vollständigen veröffentlichten Filialplan oder eine gefilterte Ansicht
       erhalten.
@@ -315,18 +402,19 @@ sondern durch konkrete Anforderungen ergänzt.
       veröffentlichender Benutzer.
 - [ ] Den endgültigen Sichtumfang vor einer Rules-Änderung in der Berechtigungsmatrix festhalten.
 
-### Schritt 2: Zeitraum und Darstellung festlegen
+### [ ] Schritt 2: Zeitraum und Darstellung festlegen
 
 - [ ] Entscheiden, ob die vorhandene Monatsansicht genügt oder zusätzlich Wochen- und Tagesansichten benötigt werden.
 - [ ] Festlegen, ob nach Filiale, Mitarbeiter, Schichtart oder Zeitraum gefiltert werden kann und welche Filter je Rolle
       angeboten werden.
-- [ ] Raster- und Schichtbausteinpläne in einer gemeinsamen lesenden Darstellung abbilden, ohne die jeweilige Planungsart zu
-      verschleiern.
+- [ ] Veröffentlichte Pläne aus Schicht-Rastermodell und Schicht-Tagesmodell in einer gemeinsamen lesenden Ansicht abbilden,
+      ohne ihre unterschiedlichen Tagesstrukturen zu vermischen. Die fachliche Kennzeichnung eines Sondertags bleibt
+      erkennbar.
 - [ ] Zeitspanne, Folgetag, bezahlte Pause, Filiale und Mitarbeiter eindeutig und auf kleinen Viewports verständlich anzeigen.
-- [ ] Festlegen, wie Urlaub, Krankheit und andere Abwesenheiten nach Umsetzung von Todo 28 in der Ansicht erscheinen.
+- [ ] Festlegen, wie Urlaub, Krankheit und andere Abwesenheiten nach Umsetzung von Todo 30 in der Ansicht erscheinen.
 - [ ] Leere, noch nicht veröffentlichte und später ersetzte Monatsstände weiterhin eindeutig unterscheiden.
 
-### Schritt 3: Aktualisierung und Datenzugriff festlegen
+### [ ] Schritt 3: Aktualisierung und Datenzugriff festlegen
 
 - [ ] Entscheiden, ob die Ansicht nur beim Öffnen beziehungsweise Monatswechsel neu lädt oder eine neue Veröffentlichung
       zeitnah über einen Live-Listener übernimmt.
@@ -336,7 +424,7 @@ sondern durch konkrete Anforderungen ergänzt.
 - [ ] Nur tatsächlich benötigte Mitarbeiterdaten laden und den beschlossenen Sichtumfang auch im Datenzugriff einhalten.
 - [ ] Verhalten bei Netzwerkfehler, fehlender Veröffentlichungsreferenz und während eines Versionswechsels festlegen.
 
-### Schritt 4: Ausgabe und Nutzung klären
+### [ ] Schritt 4: Ausgabe und Nutzung klären
 
 - [ ] Entscheiden, ob eine druckoptimierte Ansicht benötigt wird.
 - [ ] Entscheiden, ob PDF-, Kalender- oder Tabellenausgabe erforderlich ist; nicht benötigte Exportwege ausdrücklich
@@ -345,28 +433,29 @@ sondern durch konkrete Anforderungen ergänzt.
       enthalten sein dürfen.
 - [ ] Die Bedienung für Desktop und kleine Touch-Viewports einschließlich langer Monate und mehrerer Filialen prüfen.
 
-### Tests und Abschluss
+### [ ] Tests und Abschluss
 
 - [ ] Rollenabhängige Sichtbarkeit, Filialumfang und gegebenenfalls persönliche Filterung automatisiert testen.
 - [ ] Tests für veröffentlichte, nicht veröffentlichte, ersetzte und fehlerhaft geladene Monatsstände ergänzen.
-- [ ] Raster- und Schichtbausteinpläne sowie später vorhandene Abwesenheiten in der Ansicht testen.
+- [ ] Rastermodellschichten, Tagesschichten aus beiden Vorlagen, frei konfigurierte Sondertage sowie später vorhandene
+      Abwesenheiten in der Ansicht testen.
 - [ ] Falls ein Live-Listener beschlossen wird, Initialladung, Versionswechsel, Abmeldung und Listenerfehler testen.
 - [ ] Firestore-Emulator-Tests an den endgültig beschlossenen Leserechten ausrichten.
 - [ ] Die Ansicht mit realen Testkonten für Master, Office, Filiale und Mitarbeiter manuell prüfen.
 - [ ] Fachkonzept, Architektur, Projektplan und Projektstand auf das endgültige Verhalten aktualisieren.
 - [ ] `npm test`, `npm run test:rules`, die betroffenen Produktionsbuilds und die manuelle Prüfung erfolgreich ausführen.
 
-### Erledigt, wenn
+### [ ] Erledigt, wenn
 
 - [ ] Jede Rolle sieht ausschließlich den fachlich und laut Berechtigungsmatrix erlaubten veröffentlichten Dienstplanumfang.
 - [ ] Entwürfe und archivierte Versionen gelangen weder über die Oberfläche noch den vorgesehenen Datenzugriff in die Ansicht.
 - [ ] Monats-, Wochen- oder Tagesdarstellung sowie Filter und Ausgaben sind ausdrücklich festgelegt und umgesetzt oder bewusst
       ausgeschlossen.
 - [ ] Neue Veröffentlichungen erscheinen gemäß dem beschlossenen Aktualisierungsverhalten nachvollziehbar.
-- [ ] Raster- und Schichtbausteinpläne werden mobil und auf Desktop verständlich dargestellt.
+- [ ] Schicht-Rastermodellpläne und Schicht-Tagesmodellpläne werden mobil und auf Desktop verständlich dargestellt.
 - [ ] Automatisierte Tests, Rules-Tests, Produktionsbuilds, Dokumentation und manuelle Rollenprüfung sind erfolgreich.
 
-## 28. Stundenzettel und Abwesenheiten planen und umsetzen
+## 30. Stundenzettel und Abwesenheiten planen und umsetzen
 
 ### Ziel
 
@@ -398,7 +487,7 @@ Abwesenheitsnachweis bleiben getrennte, aufeinander verweisende Bereiche.
 - docs/fachkonzepte/dienst-und-schichtplanung.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzuzufügen:
 
@@ -425,7 +514,7 @@ Neu hinzuzufügen:
 - docs/architektur/stores/stundenzettel-store.md
 - docs/architektur/stores/abwesenheit-store.md
 
-### Schritt 1: Stundenzettel und Planbezug festlegen
+### [ ] Schritt 1: Stundenzettel und Planbezug festlegen
 
 - [ ] Festlegen, wann aus einer veröffentlichten Schicht ein Stundenzetteleintrag entsteht: bei Veröffentlichung, am Arbeitstag
       oder beim ersten Öffnen der Zeiterfassung.
@@ -438,7 +527,7 @@ Neu hinzuzufügen:
       Modells.
 - [ ] Planwerte, tatsächliche Werte, Abweichungsgrund und Korrekturen nachvollziehbar voneinander trennen.
 
-### Schritt 2: Rollen, Status und Abschluss festlegen
+### [ ] Schritt 2: Rollen, Status und Abschluss festlegen
 
 - [ ] Festlegen, ob Mitarbeiter ihre Zeiten selbst erfassen beziehungsweise bestätigen oder ob Filiale, Office oder Master
       dies übernimmt.
@@ -448,7 +537,7 @@ Neu hinzuzufügen:
 - [ ] Festlegen, ob eine zweite Freigabe durch einen Vorgesetzten erforderlich ist.
 - [ ] Aufbewahrungsdauer, Monatsabschluss und Verhalten bei noch offenen Einträgen festlegen.
 
-### Schritt 3: Urlaub und Krankheit fachlich modellieren
+### [ ] Schritt 3: Urlaub und Krankheit fachlich modellieren
 
 - [ ] Urlaub, Krankheit und gegebenenfalls weitere Abwesenheitsarten als gemeinsame Abwesenheit mit eindeutigem Typ
       modellieren.
@@ -461,7 +550,7 @@ Neu hinzuzufügen:
       betrieblichem Bedarf geplant.
 - [ ] Überschneidungen, Teilzeiträume, rückwirkende Erfassung sowie Korrektur oder Stornierung einer Abwesenheit definieren.
 
-### Schritt 4: Auswirkungen auf Dienstplan und Ansicht festlegen
+### [ ] Schritt 4: Auswirkungen auf Dienstplan und Ansicht festlegen
 
 - [ ] Festlegen, ob bekannte genehmigte Abwesenheiten bereits beim Einplanen blockieren oder zunächst nur einen verständlichen
       Konflikt anzeigen.
@@ -473,7 +562,7 @@ Neu hinzuzufügen:
 - [ ] Filialübergreifende Abwesenheiten eines Mitarbeiters berücksichtigen, ohne vollständige Dienstpläne aller Filialen laden
       zu müssen.
 
-### Schritt 5: Datenmodell, Pfade und Sicherheit umsetzen
+### [ ] Schritt 5: Datenmodell, Pfade und Sicherheit umsetzen
 
 - [ ] Stundenzettel und Abwesenheiten mit stabilen Referenzen auf Mitarbeiter, Firma, Filiale, Dienstplandatum, Version und
       gegebenenfalls Schicht modellieren.
@@ -486,7 +575,7 @@ Neu hinzuzufügen:
       Konflikt behandeln.
 - [ ] Sensible Abwesenheitsdaten auf den fachlich notwendigen Leserkreis begrenzen.
 
-### Schritt 6: Oberfläche und Monatsabschluss umsetzen
+### [ ] Schritt 6: Oberfläche und Monatsabschluss umsetzen
 
 - [ ] Stundenzettel aus dem veröffentlichten Plan verständlich vorbelegen und Planwert, Istwert sowie Abweichung getrennt
       anzeigen.
@@ -500,7 +589,7 @@ Neu hinzuzufügen:
       Ausgaben als eigenes späteres Todo abgrenzen.
 - [ ] Erfassung und Prüfung auf Desktop sowie einem kleinen Touch-Viewport ermöglichen.
 
-### Tests und Abschluss
+### [ ] Tests und Abschluss
 
 - [ ] Tests für die Ableitung aus einer veröffentlichten Schicht, ersetzte Veröffentlichungen und unveränderte bestätigte
       Istwerte ergänzen.
@@ -512,7 +601,7 @@ Neu hinzuzufügen:
 - [ ] Fachkonzept, Architektur, Projektplan und Projektstand auf das endgültige Verhalten aktualisieren.
 - [ ] `npm test`, `npm run test:rules`, die betroffenen Produktionsbuilds und die manuelle Prüfung erfolgreich ausführen.
 
-### Erledigt, wenn
+### [ ] Erledigt, wenn
 
 - [ ] Jeder Stundenzettel ist nachvollziehbar aus einem veröffentlichten Plan abgeleitet, ohne dessen Momentaufnahme zu
       verändern.

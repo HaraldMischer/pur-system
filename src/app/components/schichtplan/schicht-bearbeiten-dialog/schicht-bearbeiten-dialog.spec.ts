@@ -349,7 +349,9 @@ describe('SchichtBearbeitenDialog', () => {
     };
   }
 
-  function createSchichtEintrag(overrides: Partial<ISchichtEintrag> = {}): ISchichtEintrag {
+  function createSchichtEintrag(
+    overrides: Partial<Omit<ISchichtEintrag, 'modellschichtId' | 'tagesschichtId'>> = {},
+  ): ISchichtEintrag {
     return {
       id: 's-1',
       dienstplanId: '2026-10',

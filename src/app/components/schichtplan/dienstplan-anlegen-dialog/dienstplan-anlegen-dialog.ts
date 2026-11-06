@@ -10,21 +10,32 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import {
   ISchichtrastermodellBestand,
+  ISchichttagesmodellBestand,
   TPlanungsart,
 } from '../../../commons/models/domain/schichtmodell';
+import { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
+import { firstValueFrom } from 'rxjs';
+import { DienstplanTagesstrukturBearbeitenDialog } from '../dienstplan-tagesstruktur-bearbeiten-dialog/dienstplan-tagesstruktur-bearbeiten-dialog';
 
 export type TDienstplanAnlegenDialogDaten = {
   readonly pfad: IFilialPfad;
   readonly monat: string;
   readonly schichtmodelle: readonly ISchichtrastermodellBestand[];
+  readonly schichttagesmodelle?: readonly ISchichttagesmodellBestand[];
+  readonly kalendertage?: readonly IDienstplanKalendertag[];
 };
 
 @Component({
@@ -44,13 +55,14 @@ export class DienstplanAnlegenDialog {
   // ===== Interne Dependency Injection =========
 
   private readonly dialogRef = inject(MatDialogRef<DienstplanAnlegenDialog>);
+  private readonly dialog = inject(MatDialog);
   readonly daten = inject<TDienstplanAnlegenDialogDaten>(MAT_DIALOG_DATA);
   readonly dienstplanStore = inject(DienstplanStore);
 
   // ===== Öffentliche Werte ====================
 
   readonly dienstplanForm = new FormGroup({
-    planungsart: new FormControl<TPlanungsart>('schichtraster', {
+    planungsart: new FormControl<TPlanungsart>('schichtrastermodell', {
       nonNullable: true,
       validators: [Validators.required],
     }),
@@ -75,25 +87,45 @@ export class DienstplanAnlegenDialog {
    */
   async saveDienstplan(): Promise<void> {
     if (this.dienstplanStore.inProgress() || this.dienstplanForm.invalid) return;
-    if (this.dienstplanForm.controls.planungsart.value !== 'schichtraster') {
-      this.error.set('Die gewählte Planungsart ist noch nicht verfügbar.');
-      return;
-    }
     const schichtmodellId = this.dienstplanForm.controls.schichtmodellId.value;
-    const schichtmodell = this.daten.schichtmodelle.find((bestand) => {
-      return bestand.schichtmodell.id === schichtmodellId;
-    });
-    if (!schichtmodell) {
-      this.error.set('Schichtmodell ungültig.');
-      return;
-    }
     this.error.set(null);
     try {
-      await this.dienstplanStore.createDienstplan(this.daten.pfad, this.daten.monat, schichtmodell);
+      if (this.dienstplanForm.controls.planungsart.value === 'schichtrastermodell') {
+        const schichtmodell = this.daten.schichtmodelle.find((bestand) => {
+          return bestand.schichtmodell.id === schichtmodellId;
+        });
+        if (!schichtmodell) throw new Error('Schicht-Rastermodell ungültig.');
+        await this.dienstplanStore.createDienstplan(
+          this.daten.pfad,
+          this.daten.monat,
+          schichtmodell,
+        );
+      } else {
+        const schichtmodell = this.daten.schichttagesmodelle?.find((bestand) => {
+          return bestand.schichtmodell.id === schichtmodellId;
+        });
+        if (!schichtmodell) throw new Error('Schicht-Tagesmodell ungültig.');
+        const freieSondertagsschichten = await firstValueFrom(
+          this.dialog
+            .open(DienstplanTagesstrukturBearbeitenDialog, {
+              data: { kalendertage: this.daten.kalendertage ?? [] },
+              panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+            })
+            .afterClosed(),
+        );
+        if (!freieSondertagsschichten) return;
+        await this.dienstplanStore.createDienstplanAusTagesmodell(
+          this.daten.pfad,
+          this.daten.monat,
+          schichtmodell,
+          freieSondertagsschichten,
+        );
+      }
       this.dialogRef.close(true);
-    } catch {
+    } catch (error: unknown) {
       this.error.set(
-        this.dienstplanStore.error() ?? 'Der Dienstplan konnte nicht angelegt werden.',
+        this.dienstplanStore.error() ??
+          (error instanceof Error ? error.message : 'Der Dienstplan konnte nicht angelegt werden.'),
       );
     }
   }

@@ -5,16 +5,27 @@ import { Timestamp } from 'firebase/firestore';
 import type { IDienstplanKalendertag } from './dienstplan-kalendertag';
 import type { ISchichtEintrag } from './schicht';
 import type { IModellschichtMomentaufnahmeEintrag, TPlanungsart } from './schichtmodell';
+import type { ITagesschichtEintrag } from './schicht-tagesmodell';
 
 export type TDienstplanVersionStatus = 'entwurf' | 'veroeffentlicht' | 'archiviert';
 
 // ===== Anwendungs-Typen ====================
 
-export interface IDienstplanSchichtmodellReferenz {
+interface IDienstplanSchichtmodellReferenzBasis {
   schichtmodellId: string;
   schichtmodellBezeichnung: string;
-  planungsart: TPlanungsart;
 }
+
+export interface IDienstplanRastermodellReferenz extends IDienstplanSchichtmodellReferenzBasis {
+  planungsart: Extract<TPlanungsart, 'schichtrastermodell'>;
+}
+
+export interface IDienstplanTagesmodellReferenz extends IDienstplanSchichtmodellReferenzBasis {
+  planungsart: Extract<TPlanungsart, 'schichttagesmodell'>;
+}
+
+export type IDienstplanSchichtmodellReferenz =
+  IDienstplanRastermodellReferenz | IDienstplanTagesmodellReferenz;
 
 export interface IDienstplanAnlage {
   zeitraumStart: string;
@@ -22,13 +33,13 @@ export interface IDienstplanAnlage {
   zeitzone: string;
 }
 
-export interface IDienstplanEintrag extends IDienstplanDokument {
+export type IDienstplanEintrag = IDienstplanDokument & {
   kalendertage: readonly IDienstplanKalendertag[];
   id: string;
   unternehmerId: string;
   firmaId: string;
   filialeId: string;
-}
+};
 
 export interface IDienstplanVersionEintrag extends IDienstplanVersionDokument {
   id: string;
@@ -43,12 +54,14 @@ export interface IDienstplanBestand {
   versionen: readonly IDienstplanVersionEintrag[];
   schichten: readonly ISchichtEintrag[];
   modellschichten: readonly IModellschichtMomentaufnahmeEintrag[];
+  tagesschichten?: readonly ITagesschichtEintrag[];
 }
 
 export interface IDienstplanAnlageErgebnis {
   dienstplan: IDienstplanEintrag;
   version: IDienstplanVersionEintrag;
   modellschichten: readonly IModellschichtMomentaufnahmeEintrag[];
+  tagesschichten: readonly ITagesschichtEintrag[];
 }
 
 export interface IDienstplanVeroeffentlichungErgebnis {
@@ -65,16 +78,17 @@ export interface IDienstplanEntwurfAnlageErgebnis {
 
 // ===== Firestore-Dokumente ==================
 
-export interface IDienstplanDokument extends IDienstplanAnlage, IDienstplanSchichtmodellReferenz {
-  kalendertage: readonly IDienstplanKalendertag[];
-  entwurfVersionId?: string;
-  veroeffentlichteVersionId?: string;
-  naechsteVersionsnummer: number;
-  erstelltAm?: Timestamp;
-  erstelltVonUid: string;
-  aktualisiertAm?: Timestamp;
-  aktualisiertVonUid: string;
-}
+export type IDienstplanDokument = IDienstplanAnlage &
+  IDienstplanSchichtmodellReferenz & {
+    kalendertage: readonly IDienstplanKalendertag[];
+    entwurfVersionId?: string;
+    veroeffentlichteVersionId?: string;
+    naechsteVersionsnummer: number;
+    erstelltAm?: Timestamp;
+    erstelltVonUid: string;
+    aktualisiertAm?: Timestamp;
+    aktualisiertVonUid: string;
+  };
 
 export interface IDienstplanVersionDokument {
   nummer: number;

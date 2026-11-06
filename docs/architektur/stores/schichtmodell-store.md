@@ -2,6 +2,10 @@
 
 # Schichtmodell-Store
 
+Die fachlichen Modell- und Rasterregeln stehen im
+[Fachkonzept Dienst- und Schichtplanung](../../fachkonzepte/dienst-und-schichtplanung.md). Dieses Dokument beschreibt
+ausschließlich die technische Store-Verantwortung.
+
 Der `SchichtmodellStore` hält die Modellbestände mehrerer ausgewählter Filialen gleichzeitig in voneinander getrennten
 Kontexten. Ein Modellbestand besteht aus dem Schichtmodell und seinen vollständig geladenen, geordneten Modellschichten.
 

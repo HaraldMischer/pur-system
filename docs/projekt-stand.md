@@ -2,982 +2,215 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 23.10.2026. Dieses Dokument beschreibt den aktuellen Umsetzungsstand im Code. Das fachliche Zielbild steht separat im
-[Projekt-Plan](./projekt-plan.md).
+Stand: 03.11.2026. Dieses Dokument fasst den aktuell umgesetzten, geprüften und veröffentlichten Stand zusammen. Das
+langfristige Zielbild steht im [Projektplan](./projekt-plan.md), fachliche und technische Details in den dort verlinkten
+Hauptquellen.
 
-## Projektbasis
+## Projektbasis und Auslieferungsvarianten
 
-- Angular-Projekt `pur-office` wurde angelegt.
-- Angular Standalone Components werden verwendet.
-- SCSS ist als Styling-Format eingerichtet.
-- Vitest ist als Testumgebung eingerichtet.
-- Prettier ist als Projekt-Dependency installiert.
-- GitHub-Repository `HaraldMischer/pur-system` wurde angelegt.
-- Projektvorgaben wurden in `AGENTS.md` dokumentiert.
+- Pur-System ist eine Angular-Anwendung mit Standalone Components, Angular Material, SCSS, Vitest und Prettier.
+- Die vier Produktionsvarianten Pur Master, Pur Office, Pur Filiale und Pur Mitarbeiter besitzen getrennte Builds,
+  Hosting-Ziele, Manifeste, Produktkennungen und Icon-Sätze.
+- Alle Varianten sind als installierbare PWAs mit Angular Service Worker konfiguriert. Master, Office, Filiale und Mitarbeiter
+  wurden erstmals am 26.09.2026 auf ihre jeweiligen Firebase-Hosting-Sites veröffentlicht.
+- Die Anwendungsversion wird zentral gepflegt und in der Sidebar angezeigt. Der dokumentierte Stand ist `1.0.0`.
+- Build-, Hosting- und Service-Worker-Konfigurationen stehen in der
+  [PWA-Konfigurationsmatrix](./matrizen/pwa-konfigurationen.md).
 
-## App-Shell und Navigation
+## App-Shell, Navigation und Arbeitskontext
 
-- Material-Sidenav-Layout ist in der App-Shell eingebaut.
-- `app-sidenav` liegt unter `src/app/components/app-shell/app-sidenav`.
-- `app-toolbar` liegt unter `src/app/components/app-shell/app-toolbar`.
-- Für jede `userRole` ist eine eigene Navigationsstruktur einschließlich der ausdrücklich festgelegten Darstellung `flat` oder
-  `nested` zentral konfiguriert. Die Darstellungsart wird nicht automatisch aus den enthaltenen Navigationseinträgen abgeleitet.
-  Master, Office und Filiale verwenden aktuell `nested`; Mitarbeiter verwendet `flat`.
-- Die Rolle aus dem geladenen Benutzerprofil wählt die Navigationskonfiguration. `erlaubteBereiche` filtert anschließend nur die
-  sichtbaren Einträge und verändert die konfigurierte Darstellungsart nicht.
-- Flache und verschachtelte Navigationen verwenden getrennte Darstellungskomponenten. Die verschachtelte Component unterstützt
-  direkte Links, nicht navigierbare ausklappbare Gruppen, eingerückte Unterpunkte und das automatische Öffnen der Gruppe einer
-  aktiven Unterroute. Die Master-Navigation stellt `Verwaltung` als solche Gruppe mit den Unterpunkten `Benutzer anlegen`,
-  `Benutzer verwalten`, `Struktur anlegen`, `Struktur verwalten` und `Datenmigration` dar. Office und Filiale erhalten bei
-  gültigem Datenzugriff die Gruppe `Mitarbeiter` mit dem Unterpunkt `Mitarbeiterliste`; Master erhält sie bei optionaler
-  Zuweisung des App-Bereichs.
-- Die Toolbar zeigt den Titel der aktiven Route und den Menübutton.
-- Die Toolbar bietet einen Dark-/Light-Mode-Umschalter und eine davon unabhängige Auswahl der Material-Farbschemata
-  `Cyan & Orange`, `Azure & Blue`, `Rose & Red` und `Magenta & Violet`. Beide Darstellungsentscheidungen werden lokal
-  gespeichert. Im Entwicklungsmodus steht zusätzlich ein Button für die Snapshots der aktiven Stores bereit.
-- Die Toolbar zeigt während zentral registrierter Lese- und Schreibvorgänge eine globale unbestimmte Progress-Bar.
-- Die Loginseite verwendet eine reduzierte App-Shell ohne Sidebar und Navigationstaste. Die Toolbar zeigt abhängig von der
-  Auslieferungsvariante `Pur Master`, `Pur Office`, `Pur Filiale` oder `Pur Mitarbeiter`; die Entwicklungsumgebung verwendet
-  `Pur-System`.
-- Das Layout reagiert auf kleinere Bildschirmbreiten.
-- Die globale Klasse `pur-scrollbar` stellt schmale Scrollbalken bereit, hält mit `scrollbar-gutter: stable` deren Platz frei
-  und wahrt mit `4px` rechtem Innenabstand den Abstand zum Inhalt. Die Sidebar und die Dienstplan-Arbeitsfläche verwenden diese
-  gemeinsame Darstellung.
-- Die Sidebar enthält den Bereich `System` für berechtigte Master-Benutzer.
-- Die Sidebar zeigt die zentral in `app.constants.ts` gepflegte Anwendungsversion. Der aktuelle Stand ist `1.0.0`.
-- Der `AppKontextStore` hält den seitenübergreifenden Arbeitskontext aus Unternehmer, Firma und Filialumfang. Nach dem Laden der
-  Stammdaten wählt er den ersten verfügbaren Unternehmer, dessen erste Firma und die erste verfügbare Filiale. Der Benutzer kann
-  anschließend eine oder mehrere konkrete Filialen auswählen. Ein Wechsel des Unternehmers oder der Firma stellt den davon
-  abhängigen Kontext mit der jeweils ersten verfügbaren Filiale erneut her.
-- Die wiederverwendbaren Kontextselektoren bleiben während des Stammdatenladens verborgen und erscheinen danach unmittelbar,
-  wenn ihre Rollenkonfiguration die Auswahl erlaubt und mehr als ein fachlich wählbarer Eintrag vorhanden ist. Beim Wechsel des
-  App-Bereichs bleiben sie sichtbar; die Bereichskonfiguration steuert nur, ob sie bearbeitbar oder deaktiviert sind. Eindeutige
-  Unternehmer, Firmen und Filialen werden automatisch verwendet und nicht als deaktivierte Auswahl dargestellt.
-- Die Filialauswahl ist als Mehrfachauswahl konkreter Filialen umgesetzt. Einen künstlichen Eintrag `Alle Filialen` gibt es
-  nicht. Bestehende Einzelfilial-Verbraucher erhalten nur dann eine `selectedFiliale`, wenn genau eine Filiale ausgewählt ist.
-- Die Mitarbeiterliste bleibt ohne Filialauswahl leer. Bei einer oder mehreren ausgewählten Filialen filtert sie die bereits
-  geladene Firmenliste auf Mitarbeiter, die mindestens einer dieser Filialen zugeordnet sind.
+- Die App-Shell besteht aus Toolbar, Sidebar und einem globalen Bannerbereich. Login und Initialisierungsfehler verwenden
+  reduzierte beziehungsweise fachlich begrenzte Varianten.
+- Navigationen sind je Auth-Rolle zentral als `flat` oder `nested` konfiguriert. `erlaubteBereiche` filtert die sichtbaren und
+  erreichbaren Bereiche, verändert aber keine Datenrechte.
+- Die Hauptbereiche Dashboard, Schichtplan, Mitarbeiter, Einstellungen und System sind als direkt routbare Pages oder
+  komponentenlose Elternrouten umgesetzt. Der Systembereich bleibt aktiven Mastern vorbehalten.
+- Auth-, Bereichs- und Rollenguards steuern die clientseitige Navigation. Firestore Rules und geschützte Functions setzen die
+  verbindlichen Datenrechte unabhängig davon durch.
+- Der globale Arbeitskontext aus Unternehmer, Firma und konkreten Filialen wird zentral gehalten. Abhängige Auswahlen werden
+  zurückgesetzt, eindeutige Werte automatisch übernommen und mehrere erlaubte Filialen als echte Mehrfachauswahl dargestellt.
+- Sichtbarkeit und Bedienbarkeit der Kontextselektoren richten sich nach Rolle und App-Bereich. Die verbindliche Konfiguration
+  steht in der [Kontextselektor-Matrix](./matrizen/kontextselektor.md).
+- Toolbar und App-Shell stellen Theme, Farbschema, Routentitel, globale Hinweise, Netzwerkstatus, Updatehinweise und zentral
+  registrierte Aktivität dar.
 
-## Seiten und Routen
+## Anmeldung, Profile und Berechtigungen
 
-- `dashboard-page` wurde unter `src/app/pages/dashboard-page` angelegt.
-- `schichtplan` ist ein komponentenloser Seitenbereich unter `src/app/pages/schichtplan` mit getrennten Pages für Ansicht,
-  Planung und Schichtmodelle.
-- `mitarbeiter` ist ein komponentenloser Routenbereich. Unter `src/app/pages/mitarbeiter` liegen ausschließlich seine routbaren
-  Pages; Cards und Dialoge liegen unter `src/app/components/mitarbeiter`.
-- Die Route `/dashboard` und die drei untergeordneten Schichtplan-Pages werden per `loadComponent` geladen.
-- `/mitarbeiter` ist ein komponentenloser, nach Bereichsfreigabe geschützter Elternpfad und leitet auf
-  `/mitarbeiter/liste` weiter. Die Listenroute ist für aktive Office- und Filialkonten mit vollständigem Datenzugriff sowie für
-  aktive Master mit optional zugewiesenem App-Bereich erreichbar. Die Master-Freigabe erweitert nicht die Collection-Rechte.
-- `/` leitet auf `/dashboard` weiter.
-- Die komponentenlose Route `/system` ist der geschützte Elternpfad für Strukturanlage, Strukturverwaltung,
-  Benutzeranlage, Benutzerverwaltung und Datenmigration und leitet ohne Unterpfad auf `/system/struktur/anlegen`
-  weiter. Der komponentenlose Unterpfad `/system/struktur` bündelt `StrukturAnlegenPage` und
-  `StrukturVerwaltenPage`.
-- `BenutzerAnlegenPage` und `BenutzerVerwaltenPage` sind unter `/system/benutzer/anlegen` beziehungsweise
-  `/system/benutzer/verwalten` eigenständig erreichbar. Der komponentenlose Pfad `/system/benutzer` leitet
-  auf die Verwaltung vorhandener Benutzer weiter.
-- Die `DatenmigrationPage` lädt Legacy-Kunden zur Einzelauswahl und bietet für den ausgewählten Kunden die Migration von
-  Unternehmer, Firmen, Filialen und Mitarbeitern mit jeweils eigenem Status, Ergebniszahlen und Problemdetails an. Der feste
-  Bereichsselektor zeigt die fachliche Reihenfolge; die zugehörige Karte zeigt `Status | Quelle | Migriert` sowie
-  `Fehler | Offen | Ziel`. Jeder Folgebereich setzt den erfolgreichen Abschluss seines Vorgängers voraus. Abgeschlossene und
-  fehlgeschlagene Migrationen können erneut ausgeführt werden. Eine kundenübergreifende Sammelaktion gibt es nicht.
-- Die `StrukturVerwaltenPage` unter `/system/struktur/bearbeiten` enthält die Auswahl der Stammdaten und die
-  Bearbeitung bestehender Firmen- und Filialdaten. Die beiden Bearbeitungsdialoge vergleichen ihre normalisierten
-  Aktualisierungsdaten per `JSON.stringify()` mit dem Ausgangszustand. Ohne fachliche Änderung bleiben Speicherbutton und
-  Firestore-Aktualisierung gesperrt.
-- Die geschützte Route `/passwort` ermöglicht angemeldeten Benutzern eine Passwortänderung.
+- Firebase Authentication stellt die Identität bereit; das Profil unter `benutzerprofil/{uid}` enthält Rolle, Aktivstatus,
+  App-Bereiche und Datenzuordnung.
+- Das Login verwendet je Produktionsvariante das passende Rollensuffix. Der technische Anmeldename folgt dem vereinbarten
+  Format und wird intern mit `@pur-system.invalid` als Firebase-Adresse verwendet.
+- Eine öffentliche Selbstregistrierung gibt es nicht. Ein aktiver Master legt Benutzer über eine geschützte Callable Function
+  mit Anfangspasswort an. Auth-Konten werden erst nach erfolgreicher Profilspeicherung aktiviert.
+- Benutzerprofile können durch Master bearbeitet, neu zugeordnet und – mit Ausnahme von Masterkonten – über geschützte
+  Functions gelöscht werden. Sicherheitskritische Zuordnungen werden nicht über allgemeine Clientupdates verändert.
+- Angemeldete Benutzer können ihr Passwort nach erneuter Authentifizierung über die eigenständige Passwortseite ändern.
+- Das eigene Profil wird während der Sitzung beobachtet. Deaktivierung setzt fachliche Sitzungsdaten zurück und zeigt einen
+  nicht ausblendbaren Hinweis; sie meldet das Konto nicht automatisch ab.
+- Die Rollen `master`, `office`, `filiale` und `mitarbeiter` sowie die Benutzer-Mitarbeiter-Verknüpfung sind vollständig im
+  Profilmodell, in Functions, Stores, UI und Rules abgebildet.
+- Die stabile Struktur steht in den [Systemgrundlagen](./system-grundlagen.md). Verbindliche Pfad- und CRUD-Rechte stehen in der
+  [Berechtigungsmatrix](./matrizen/berechtigungen.md).
+
+## Sitzungsinitialisierung, Datenladen und Cache
+
+- `AppSitzungsInitService` koordiniert Authentifizierung, Profilbeobachtung, zwingende Stammdatenladung, Wiederholung und
+  Fehlerzustand.
+- `AppDatenInitService` bildet aus Rolle, Zugriffszuordnung und persönlicher Mitarbeiterverknüpfung den Ladeplan. Fachliche
+  Stores und Services laden und halten die Daten.
+- Master lädt die vollständige Unternehmenshierarchie, Profile und Mitarbeiter. Office und Filiale laden nur ihren erlaubten
+  Bereich. Mitarbeiter lädt die eigene Firma, den verknüpften Mitarbeiter und die aus dessen `filialIds` abgeleiteten Filialen.
+- Abmeldung, Benutzerwechsel und relevante Profiländerungen verwerfen den bisherigen Sitzungskontext. Verspätete Ergebnisse
+  werden nicht in einen neuen Kontext übernommen.
+- Pur Filiale verwendet persistenten Firestore-Cache, Profilstrategie `networkFirst` und Stammdatenstrategie `cacheFirst`.
+  Master, Office, Mitarbeiter und Entwicklungsumgebung arbeiten mit flüchtigem Cache und `networkOnly`.
+- Offline-Schreibvorgänge und spätere Synchronisation sind nicht umgesetzt. Verbindliche Strategien und Ladeumfänge stehen in
+  der [Cache-Matrix](./matrizen/cache-strategien.md) und [Datenladematrix](./matrizen/datenladen.md).
+
+## Struktur- und Benutzerverwaltung
+
+- Der Systembereich enthält getrennte Pages für Strukturanlage, Strukturverwaltung, Benutzeranlage, Benutzerverwaltung und
+  Datenmigration.
+- Master können Unternehmer, Firmen und Filialen anlegen sowie Firmen- und Filialstammdaten bearbeiten. Office, Filiale und
+  Mitarbeiter lesen diese Stammdaten nur im erlaubten Bereich.
+- Die rekursive Löschung eines Strukturzweigs ist über Service, Store und eine geschützte Function umgesetzt. Vorhandene
+  Benutzer- oder Mitarbeiterreferenzen verhindern das Löschen. Eine sichtbare Löschaktion ist noch nicht angebunden.
+- Benutzeranlage und -bearbeitung validieren Rolle, Bereiche und vollständige Datenzuordnung. Filialkonten bleiben auf genau
+  einen Unternehmer, eine Firma und eine Filiale begrenzt; Master benötigen keine Zuordnung.
+- Profildaten, Datenzuordnung und Kontolöschung verwenden getrennte Aktionen und Dialoge. Schreibvorgänge sperren den gesamten
+  betroffenen Formular- und Aktionskontext.
+
+## Datenmigration
+
+- Die einmalige Migration übernimmt einen ausgewählten Legacy-Kunden in der Reihenfolge Unternehmer, Firmen, Filialen und
+  Mitarbeiter.
+- Dauerhafte Quell-Ziel-Zuordnungen unter `systemMigrationen` machen die Migration wiederholbar. Bereits vorhandene Ziel-IDs
+  werden erneut verwendet; manuell ergänzte Zieldaten bleiben erhalten.
+- Mitarbeiter aus mehreren Legacy-Filialen bleiben zunächst getrennt und können anschließend kontrolliert zusammengeführt
+  werden. Wiederholungen überschreiben einen manuell zusammengeführten Zielmitarbeiter nicht.
+- Validierungs- und technische Fehler, Quellen-, Ziel- und Restzahlen sowie der Bereichsstatus werden nachvollziehbar
+  gespeichert und in der Migrationsseite angezeigt.
+- Am 04.10.2026 wurde eine vollständige Kundenmigration mit realen Daten einschließlich 15 Legacy-Mitarbeitern erfolgreich
+  ausgeführt, verglichen und wiederholt.
+- Die vollständigen Transformations- und Wiederholungsregeln stehen in der
+  [Datenmigrationsmatrix](./matrizen/datenmigration.md).
+
+## Fachliche Mitarbeiter und persönliche Zugänge
+
+- Mitarbeiter werden firmenbezogen mit Stammdaten, Aktivstatus, mindestens einer betrieblichen Rolle und mindestens einer
+  Filialzuordnung verwaltet.
+- Master, Office und Filiale besitzen die laut Berechtigungsmatrix erlaubten Lese-, Anlage- und Aktualisierungsrechte.
+  Filialkonten begrenzen ihre tatsächliche Abfrage und Bearbeitung auf die eigene Filiale.
+- Mitarbeiter können angelegt, bearbeitet, deaktiviert, reaktiviert und durch Master kontrolliert zusammengeführt werden. Eine
+  eigenständige Löschaktion wird nicht angeboten.
+- Verknüpfte Mitarbeiter sind vor Zusammenführung und Löschung geschützt. `benutzerUid` und `firmaMitarbeiterId` bilden die
+  serverseitig atomar gepflegte Gegenreferenz zu einem persönlichen Mitarbeiterzugang.
+- Mitarbeiterzugänge erhalten ihre App-Bereiche durch Master und lesen die zugeordnete Firmenstruktur sowie veröffentlichte
+  Dienstpläne ihrer fachlichen `filialIds`. Sie besitzen keine fachlichen Mitarbeiter-Schreibrechte.
+- Die betriebliche Rolle `dienstplaner` ist im Mitarbeiterdatenmodell und in der Verwaltung enthalten. Der dafür benötigte
+  betriebliche Sitzungszustand der Filial-App ist noch nicht umgesetzt; Filialkonten bleiben in der Planungsoberfläche lesend.
+- Mitarbeiterlisten, Cards, Anlage-, Bearbeitungs- und Zusammenführungsdialoge sowie filialbezogene Filterung sind umgesetzt.
+
+## Filialeinstellungen und Öffnungszeiten
+
+- Einstellungen werden je Filiale unter `einstellung` gespeichert. Das Dokument `allgemein` enthält das Bundesland; das
+  Dokument `oeffnungszeiten` enthält Standardöffnung und Wochentagsmodi.
+- Neue Einstellungen verwenden `06:00–01:00 Uhr` als Standardöffnungszeit und setzen alle sieben Wochentage auf `standard`.
+  Wochentage können `standard`, `abweichend` oder `geschlossen` sein.
+- Eine abweichende Wochenöffnungszeit wird über eine Stiftaktion in einem eigenen Dialog bearbeitet und erst mit dem
+  Hauptformular gespeichert. Die Wochentagszeile bricht ihren Öffnungszeitbereich bei höchstens `500px` gemeinsam um.
+- Gesetzliche Feiertage, Heiligabend, Silvester, Volkstrauertag, Totensonntag und benutzerdefinierte jährliche Sondertage sind
+  modelliert. Volkstrauertag und Totensonntag werden für Nordrhein-Westfalen jährlich relativ zum ersten Advent berechnet und
+  mit `13:00–01:00 Uhr` beziehungsweise `18:00–01:00 Uhr` vorbelegt. Feiertagskatalog und Datumsauflösung arbeiten ohne externe
+  Laufzeitabhängigkeit.
+- Neue NRW-Einstellungen initialisieren gesetzliche Feiertage grundsätzlich mit `Wie Sonntag`, Karfreitag geschlossen und
+  Allerheiligen mit `18:00–01:00 Uhr`. Heiligabend und Silvester verwenden den Standardbeginn bis `16:00 Uhr`; vorhandene
+  individuelle Einstellungen bleiben beim Abgleich erhalten.
+- Die Auflösung verwendet
+  `benutzerdefinierter jährlicher Sondertag → systemdefinierter Sondertag → wirksame Wochenöffnung`. Kollisionen derselben
+  Herkunft und ungültige Zeitfolgen werden vor dem Speichern beziehungsweise der
+  Monatsplananlage fachlich validiert.
+- Ein zusätzlicher Schließzeitraum und die Kompatibilitätsbehandlung alter Öffnungszeitendokumente sind vollständig entfernt.
+- Service und Store laden, validieren und speichern vollständige Filialbestände. Rohdaten, validierter Bestand sowie Lade-,
+  Schreib- und Fehlerzustände bleiben je Filiale getrennt.
+- Oberfläche und technische Verantwortlichkeiten stehen in
+  [Einstellungen](./architektur/components/einstellungen.md) und den zugehörigen Service- und Store-Dokumenten. Das fachliche
+  Zielbild steht in der [Öffnungszeiten-Matrix](./matrizen/oeffnungszeiten.md).
 
 ## Dienst- und Schichtplanung
 
-Das vollständige fachliche und architektonische Zielbild steht im
-[Fachkonzept Dienst- und Schichtplanung](./fachkonzepte/dienst-und-schichtplanung.md).
+- Die versionierte, filialbezogene Monatsplanung mit Entwurf, Veröffentlichung und Archivierung ist umgesetzt.
+- Schicht-Rastermodell und Schicht-Tagesmodell sind als getrennte Planungsarten mit den Werten `schichtrastermodell` und
+  `schichttagesmodell` modelliert. Der alte Rasterwert `schichtraster` wird ausschließlich beim Lesen historischer Daten
+  normalisiert; `schichtbausteine` ist aus dem Anwendungscode entfernt.
+- Beide Planungsarten besitzen getrennte Modell-, Vorlagen- und Momentaufnahmepfade. Der vorhandene Rasterablauf bleibt
+  fachlich erhalten; das Tagesmodell besitzt unabhängige Wochentags- und Sonntagsvorlagen.
+- Das Schicht-Tagesmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Geöffnete Feier- und
+  Sondertage werden vor dem atomaren Schreiben frei konfiguriert, geschlossene Tage bleiben ohne Tagesschichten.
+- Die Umsetzung von Todo 26 ist noch nicht durch die vollständigen Unit-, Rules-, Build- und manuellen Prüfungen bestätigt.
+- Beim Anlegen eines Monatsplans werden Schichtmodell, Planungsart, Kalendertage, wirksame Öffnungen und tagesabhängige
+  Rasterzeiten als unveränderliche Momentaufnahme gespeichert.
+- Die erste und letzte Rastergrenze folgen der Tagesöffnung einschließlich Vor- und Nachbereitung. Innere Übergänge bleiben
+  Modellbestandteil; bestätigte Lücken und Überlappungen sind möglich. Geschlossene oder zu kurze Tage bleiben unbelegbar.
+- Mitarbeiter können per Drag-and-drop eingeplant, verschoben und entfernt werden. Mehrfachbelegung, Pausen und
+  filialübergreifende Zeitkonflikte werden fachlich geprüft.
+- Der firmenweite Belegungsindex wird live angezeigt und vor jedem Schreibzugriff innerhalb einer Firestore-Transaktion erneut
+  geprüft. Veraltete Revisionen und parallele Konflikte brechen den Vorgang nachvollziehbar ab.
+- Ein leerer Erstentwurf kann gelöscht und neu angelegt werden. Veröffentlichungen archivieren einen vorherigen Stand und
+  halten Belegungsindex und Versionen konsistent.
+- Die veröffentlichte Mitarbeiteransicht ist als lesende Grundlage vorhanden. Ihre abschließende fachliche Ausgestaltung bleibt
+  im offenen Todo 29 geplant.
+- Filialkonten bleiben bis zur Umsetzung des betrieblichen `dienstplaner`-Sitzungszustands in der Oberfläche rein lesend.
+  Mitarbeiterzugänge lesen ausschließlich veröffentlichte Stände ihrer zugeordneten Filialen.
+- Das vollständige Zielbild steht im
+  [Fachkonzept Dienst- und Schichtplanung](./fachkonzepte/dienst-und-schichtplanung.md). Technische Details stehen in den
+  [Schichtplan-Components](./architektur/components/schichtplan.md) sowie den zugehörigen Service- und Store-Dokumenten.
 
-- Die fachliche erste Ausbaustufe ist als filialbezogene Monatsplanung mit versionierten Bearbeitungsständen geplant.
-  Domainmodelle, Dienstplan- und Schichtmodell-Services, die zugehörigen Stores sowie die benötigten Firestore-Datenzugriffe
-  sind umgesetzt. Die Dienstplan-Grundfunktion einschließlich Grundoberfläche, manueller Schichtverwaltung und Verwaltung
-  filialbezogener Schichtmodelle ist umgesetzt.
-- Das Domainmodell und die zentralen Firestore-Pfade für allgemeine Filialeinstellungen, Wochenöffnungszeiten, Sondertage und
-  Datumsausnahmen sind festgelegt. Eine Öffnungsregel beschreibt genau einen durchgehenden Zeitraum und kann mit
-  `endetAmFolgetag` über Mitternacht reichen; Pausen beziehungsweise mehrere Öffnungszeiträume je Tag sind nicht vorgesehen.
-  Neue Filialeinstellungen leiten die Vorbelegung aller sieben Wochentage aus dem filialbezogenen Schließzeitraum ab. Der
-  lokale Feiertagskatalog berechnet feste und bewegliche gesetzliche Feiertage nach Jahr und Bundesland und erzeugt die initial
-  inaktiven Einträge einschließlich Heiligabend und Silvester, sodass zunächst die Wochentagsregel gilt. Die Oberfläche trennt
-  die Bereiche `Schließzeiten`, `Wochentage`, `Gesetzliche Feiertage`, `Jährliche Sondertage` und `Einmalige Sondertage`.
-  Initial angelegte Feiertage sowie Heiligabend und Silvester speichern den maximalen Öffnungsrahmen als zeitliche
-  Vorbelegung, bleiben aber zunächst inaktiv und geschlossen.
-  Heiligabend, Silvester und eigene jährliche Sondertage besitzen einen Aktivstatus; einmalige Sondertage gelten für genau ein
-  vollständiges Datum, besitzen keinen Aktivstatus und werden technisch als Datumsausnahmen gespeichert. Der Aktivstatus einer
-  Feiertagsregel verändert nicht die kalendarische Eigenschaft als gesetzlicher Feiertag. Die Auflösung verwendet intern
-  verbindlich `Ausnahme → Sondertag → Wochentag`, meldet kollidierende Sondertage und ordnet über Mitternacht reichende Regeln
-  vollständig ihrem Startdatum zu. Der Abgleich nach einem Bundeslandwechsel erhält gemeinsame und benutzerdefinierte
-  Sondertage. Der `FilialeinstellungService` lädt und schreibt vollständige Filialbestände, initialisiert bestehende Filialen
-  nur mit ausdrücklich übergebenen Grundlagen und verwaltet Sondertage sowie Datumsausnahmen als einzelne Dokumente. Der
-  `FilialeinstellungStore` hält Firestore-Rohdaten, validierte Bestände sowie Lade-, Schreib- und Fehlerzustände je Filiale
-  getrennt und stellt die Datumsauflösung öffentlich bereit. Die Rohdaten werden vor der fachlichen Validierung im Store
-  bereitgestellt und protokolliert. Firestore Rules begrenzen den Zugriff gemäß Berechtigungsmatrix auf Master beziehungsweise
-  zugeordnete Office- und Filialkonten mit dem Bereich `einstellungen`; die fachliche Datenvalidierung erfolgt im
-  TypeScript-Code. Die
-  geschützte Einstellungsroute und Sidebar-Gruppe führen auf die Öffnungszeiten. Dort werden ausgewählte Filialen unabhängig
-  geladen und alle sieben Wochenregeln, gesetzlichen Feiertage, jährlichen Sondertage und einmaligen Sondertage gepflegt.
-  Nordrhein-Westfalen wird
-  zunächst intern als Bundesland verwendet; die technische Zeitzone `Europe/Berlin` ist keine gespeicherte Filialeinstellung.
-  Die Oberfläche erläutert die Auflösungsreihenfolge mit den sichtbaren Begriffen einmaliger Sondertag, gesetzlicher Feiertag,
-  jährlicher Sondertag und Wochentag. Ein noch nicht initialisierter gültiger Bestand kann ohne vorherige Formularänderung
-  gespeichert werden; bestehende Einstellungen erfordern weiterhin eine fachliche Änderung.
-- Das Öffnungszeitendokument enthält einen täglich geltenden, filialbezogenen Schließzeitraum. Er wird mit `01:00` bis
-  `06:00` Uhr initialisiert, kann durch berechtigte Benutzer geändert werden und begrenzt die Kundenöffnungszeiten. Die
-  Vorbelegung der Öffnungsregeln wird aus seinem Komplement abgeleitet. Dieser Öffnungsrahmen wird intern verwendet und nicht
-  zusätzlich angezeigt. Formulare und Service verhindern widersprechende Wochen-, Sondertags- und Ausnahmeregeln.
-  Vorbereitungs- und Nachbereitungszeiten von Schichten dürfen in den Schließzeitraum hineinreichen. Vorhandene
-  Firestore-Einstellungsdokumente werden nicht übernommen, sondern neu angelegt.
-- Das Mitarbeiter-Domainmodell führt optional `farbkennung` in den Anlage-, Firestore- und Anwendungsdaten. Die Dialoge zum
-  Anlegen und Bearbeiten verwenden eine gemeinsame Formular-Component mit einem Farbkachel-Menü einschließlich der Auswahl
-  „Keine Farbe“. Die zentrale Farbzuordnung löst die gespeicherte Kennung im Schichtraster und in der Mitarbeiterübersicht in
-  eine konkrete Farbe auf; bestehende ältere CSS-Farbwerte bleiben darstellbar.
-- Eine Version besitzt den Status `entwurf`, `veroeffentlicht` oder `archiviert`. Veröffentlichte und archivierte Versionen
-  bleiben unveränderlich. Änderungen werden als neue Entwurfsversion auf Basis des veröffentlichten Stands vorbereitet.
-- Aktive Master dürfen in allen Filialen planen. Aktive Office-Konten bleiben auf ausdrücklich freigegebene Filialen und
-  Filialkonten auf ihre eigene Filiale begrenzt. In der Filial-App sollen Planungsaktionen im Frontend zusätzlich nur für einen
-  aktiven Firma-Mitarbeiter der eigenen Filiale mit `dienstplaner` angeboten werden. Die Mitarbeiter-App bleibt unabhängig von
-  dieser betrieblichen Rolle rein lesend und zeigt nur veröffentlichte Pläne aus den fachlichen `filialIds`.
-- `dienstplaner` ist lokal im Firma-Mitarbeiter-Modell, in Anlage und Bearbeitung sowie in der Card-Darstellung ergänzt.
-  Konkrete Rules für Dienstplan, Version und Schicht prüfen Rolle, Filialpfad und CRUD-Recht gemäß Berechtigungsmatrix.
-  Mitarbeiterzugänge lesen alle Dienstplanpfade ihrer über den verknüpften Mitarbeiter zugeordneten Filialen; das Frontend lädt
-  und zeigt weiterhin nur veröffentlichte Stände. Die frühere rekursive Filialregel ist entfernt. Die
-  zusätzliche Prüfung des im Filial-Frontend geführten Firma-Mitarbeiters und seiner Rolle ist clientseitig, bei einem
-  manipulierten Client umgehbar und noch nicht umgesetzt. Die aktuellen Rules sind durch Emulator-Tests abgesichert und wurden
-  am 13.10.2026 produktiv deployed.
-- Der App-Bereich `schichtplan` steuert Navigation und Routenzugriff, gewährt aber keine Datenrechte. Master, Office und
-  Mitarbeiter können mehrere erlaubte Filialen auswählen. Eine gemeinsame Monatsauswahl lädt deren filialbezogene Monatspläne
-  über getrennte direkte Firestore-Pfade und stellt jede Filiale in einem eigenen Monatsplanabschnitt dar.
-- Die wiederverwendbare Component `MonatSelector` erhält und meldet den ausgewählten Monat im Format `YYYY-MM`. Der
-  `DienstplanPlanungPage` bindet ihr Monatssignal darüber in beide Richtungen und setzt es über eine eigene Aktion auf den mit
-  `getAktuellerMonat()` für `Europe/Berlin` ermittelten aktuellen Monat zurück.
-- Jeder Monatsplanabschnitt besitzt einen eigenen Lade-, Fehler-, Leer- oder Planzustand. Fehlt ein Plan, bleiben die übrigen
-  Filialpläne sichtbar; berechtigte Benutzer können den fehlenden Plan ausschließlich in dessen Abschnitt anlegen. Speicherung
-  und Versionierung bleiben je Filiale getrennt. Entwürfe werden nach Bestätigung filialbezogen veröffentlicht; ein ersetzter
-  veröffentlichter Stand wird dabei archiviert.
-- Für die Filial-App ist die vollständige Startladung umgesetzt: Bei jedem Programmstart werden alle Mitarbeiter sowie alle
-  Dienstpläne, Versionen und Schichten der eigenen Filiale ohne Jahresbegrenzung geladen. Mitarbeiter verwenden weiterhin die
-  bestehende Stammdatenstrategie `cacheFirst`; der vollständige Dienstplanbestand verwendet `networkFirst`. Online werden die
-  Dienstplandaten in den persistenten IndexedDB-Cache übernommen, bei einem technischen Serverfehler wird auf den vorhandenen
-  Cache zurückgefallen. Schreibvorgänge bleiben online.
-- Master und Office laden mit `networkOnly` den ausgewählten Monat für jede ausgewählte Filiale; historische Versionen werden
-  erst bei Bedarf geöffnet. Die Mitarbeiter-App lädt mit `networkOnly` für jede ausgewählte und fachlich erlaubte Filiale nur
-  die veröffentlichte Version dieses Monats. Zusätzliche zusammengesetzte Firestore-Indizes sind für diese getrennten direkten
-  Abfragewege zunächst nicht vorgesehen.
-- Die `DienstplanAnsichtPage` stellt diese veröffentlichten Monatsstände in getrennten Filialabschnitten gemeinsam dar. Die
-  mobile Listenansicht gruppiert Schichten nach Kalendertag und zeigt Zeitspanne, Mitarbeiternamen, Farbkennung, bezahlte Pause,
-  Zeitraum und Veröffentlichungsstand. Fehlt eine veröffentlichte Version, erscheint ein eindeutiger Leerzustand; Entwürfe und
-  archivierte Stände werden nicht angezeigt. Eine ersetzte Veröffentlichung wird bei der nächsten Netzwerkladung durch den neu
-  referenzierten Stand abgelöst.
-- Für alle Rollen werden Anzeigename und `farbkennung` einer Schicht über deren `mitarbeiterId` aus dem aktuellen
-  Mitarbeiterdokument aufgelöst. Der Mitarbeiter-Store verwendet bereits geladene Einträge und lädt nur eindeutige, im
-  geöffneten Dienstplan referenzierte und noch fehlende Mitarbeiter mit `networkOnly` gezielt nach. Das Schichtmodell und neue
-  Schreibzugriffe speichern ausschließlich `mitarbeiterId`; ein vorhandenes Legacy-Feld `mitarbeiterAnzeigename` wird beim Lesen
-  ignoriert. Neue Schichtdokumente mit diesem Legacy-Feld werden durch den TypeScript-Code abgelehnt.
-- Dienstplan, unveränderliche Modellschichten, Version und konkrete Schichten bleiben einzelne kleine Dokumente. Es werden keine
-  über Jahre wachsenden Arrays gespeichert; mit der Historie steigen nur Dokumentanzahl und Lesezugriffe der vollständigen
-  Filialladung.
-- Veröffentlichung und Archivierung werden mit UID und Zeitpunkt protokolliert. Eine Änderung nach Veröffentlichung erzeugt
-  eine neue Entwurfsversion, während der vorherige Stand für Mitarbeiter sichtbar bleibt.
-- Dienstplanaktionen erfolgen im Angular-Frontend über den Firestore Client; Cloud Functions und andere serverseitige
-  Fachaktionen sind für diesen Bereich ausgeschlossen. Das Anlegen eines Monatsplans mit Modellreferenz, vollständiger
-  Modell-Momentaufnahme und erster Entwurfsversion erfolgt atomar. Anlegen, Bearbeiten und Löschen einer Schicht erhöhen die
-  Versionsrevision in einer Firestore-Transaktion. Eine abweichende Revision verhindert veraltete Schreibzugriffe. Die
-  Veröffentlichung aktualisiert Plan, Versionsstatus, Metadaten und firmenweiten Belegungsindex atomar. Eine neue
-  Entwurfsversion kopiert die Schichten des veröffentlichten Stands und verwendet dieselbe Modell-Momentaufnahme.
-- Beim Anlegen eines Monatsdienstplans lädt der Dienstplan-Service die vollständigen Filialeinstellungen verbindlich vom Server.
-  Fehlende, unvollständige oder für den Zielmonat widersprüchliche Einstellungen verhindern die Anlage. Die bestehende
-  Öffnungsregel- und Feiertagsauflösung aus Todo 20 erzeugt für alle 28 bis 31 Tage die begrenzte Liste `kalendertage` direkt im
-  Monatsdienstplandokument. Jede Tagesmomentaufnahme enthält Datum, Wochentag, wirksame Öffnungsregel, deren Quelle und
-  vorhandene Quellangaben, alle aktiven Sondertage sowie die tatsächlich passenden Rasterzeiten. Feiertage, jährliche
-  Sondertage und Datumsausnahmen wirken ausschließlich über ihre wirksame Öffnungsregel auf die tagesabhängigen Außengrenzen;
-  eigene besondere Rasterzeiten entfallen. Gesetzliche Feiertage bleiben unabhängig vom Aktivstatus ihrer besonderen
-  Öffnungsregel erkennbar. Dienstplan und Tagesmomentaufnahmen werden atomar geschrieben; spätere Änderungen der
-  Filialeinstellungen oder Schichtmodelle verändern den gespeicherten Monatsstand nicht. Tages- und
-  Rasterzeitmomentaufnahmen sind verbindlicher Bestandteil jedes Monatsdienstplans. Unvollständige Dokumente werden nicht mit
-  Ersatzwerten ergänzt, weil Schichtmodelle und Monatspläne in dieser Ausbaustufe neu angelegt werden.
-- Die wirksame Öffnungsregel bestimmt die äußeren Rastergrenzen automatisch: Der erste Rasterplatz beginnt am Öffnungsbeginn,
-  der letzte endet am Öffnungsende. Ganze Vorbereitungsminuten von 0 bis 999 der ersten und Nachbereitungsminuten von 0 bis 999
-  der letzten Modellschicht erweitern diese Grenzen. Feste innere Grenzen speichern Uhrzeit und Zuordnung zum Start- oder
-  Folgetag. Nur Rasterplätze mit positiver Dauer, die vollständig zu den Tagesgrenzen passen, werden in die Tagesmomentaufnahme
-  übernommen.
-  Unpassende Zellen werden an geöffneten Tagen als `Nicht verfügbar` dargestellt und für Anlage sowie Drag-and-drop gesperrt;
-  geschlossene Tage bleiben vollständig unbelegbar.
-- Die zeitliche Konfliktprüfung, Entwurfsstatus, Benutzer-UID und Revisionsfortschritt bleiben Frontend-Fachprüfungen. Firestore
-  Rules sichern ausschließlich Rolle, Filialgrenzen und CRUD-Rechte gemäß Berechtigungsmatrix.
-- Die technische Planung aus Todo 21.3 ist abgeschlossen. Domainmodell, deutsche Firestore-Pfade, Abfrage- und Cache-Strategien,
-  Transaktionsablauf und Sicherheitsgrenzen sind festgelegt. Modelltestfälle für Monatsgrenzen, Zeitberechnung, Normalisierung
-  und Zustandswechsel sowie ein Monatsplan mit mehreren Tagen, Mitarbeitern und Schichten sind als Grundlage für 21.4 und 21.5
-  dokumentiert.
-- Der komponentenlose Schichtplan-Bereich trennt die Routen für Ansicht, Planung und Schichtmodelle. Die
-  `DienstplanPlanungPage` enthält für Master- und berechtigte Office-Konten die Planungslogik und eine Monatsnavigation für alle
-  ausgewählten Filialen. Für jede Filiale wird ein eigener Abschnitt mit Schichtraster sowie Lade-, Leer- und Fehlerzuständen
-  gerendert. Die separate responsive `DienstplanAnsichtPage` zeigt Filial- und Mitarbeiterkonten ausschließlich die für sie
-  freigegebenen veröffentlichten Dienstpläne und verwendet das Bearbeitungsraster nicht. Filialkonten verwenden unmittelbar ihre
-  einzige Profilzuordnung. In bearbeitbaren Entwürfen öffnet eine Anlageaktion je Rasterzelle den Schichtdialog mit bereits
-  gewähltem Datum und bereits gewählter Modellschicht. Die filialübergreifende Konfliktprüfung und die atomare Veröffentlichung
-  sind umgesetzt. Die Veröffentlichungsaktion wird bei unvollständigem Belegungsstand, blockierenden Konflikten oder ungültigen
-  Mitarbeiterzuordnungen gesperrt.
-- Die `DienstplanPlanungPage` stellt Dienstpläne und die Mitarbeiterübersicht auf breiten Ansichten in zwei unabhängig
-  scrollbaren Spalten dar. Die Mitarbeiterübersicht führt die aktiven Mitarbeiter aller ausgewählten Filialen ohne Duplikate
-  zusammen und zeigt ihre optionale Farbkennung sowie die filialübergreifend summierte Lohnzeit und Schichtanzahl des
-  ausgewählten Monats. Pausen sind vollständig bezahlt und werden deshalb nicht von der angezeigten Einzel- oder
-  Monatslohnzeit abgezogen. Die Monatswerte berücksichtigen je Filiale den Entwurf oder ersatzweise die veröffentlichte Version.
-  Fehlt eine Farbkennung, verwendet der Farbpunkt die normale Textfarbe mit 38 Prozent Deckkraft. Bei höchstens `900px`
-  Containerbreite werden beide Bereiche untereinander angeordnet und innerhalb der gemeinsamen Arbeitsfläche gescrollt.
-- In der Planungsseite sind die Mitarbeiterkarten mit Angular CDK Drag-and-drop als kopierbare Planungselemente umgesetzt.
-  Bearbeitbare Rasterzellen nehmen nur aktive, der jeweiligen Filiale zugeordnete Mitarbeiter an und legen beim Ablegen
-  unmittelbar eine Schicht für Datum, Modellschicht und Mitarbeiter an. Der Service leitet die absoluten Zeitwerte verbindlich
-  aus der gespeicherten Tagesrasterzeit ab. Laufende Schreibvorgänge sperren weitere Ablagen; Fehler werden im betroffenen
-  Filialabschnitt angezeigt. Die bisherige Anlageaktion bleibt als Tastatur- und Mobilalternative erhalten.
-- Die direkte Ablage und der Bearbeitungsdialog prüfen den live geladenen firmenweiten Belegungsindex frühzeitig auf zeitliche
-  Überschneidungen. Zusätzlich pflegen Anlage, Änderung und Löschung einer Schicht den firmenweiten Belegungsindex
-  pro Mitarbeiter und Kalendertag gemeinsam mit Schicht und Versionsrevision in einer Firestore-Transaktion. Dadurch werden
-  auch Konflikte mit nicht geladenen Filialplänen und parallelen Schreibzugriffen verbindlich verhindert. Die geöffnete
-  Planung beobachtet die für Monat und sichtbare aktive Mitarbeiter konkreten Indexdokumente in begrenzten Gruppen von
-  höchstens 30 IDs. Kontextwechsel ersetzen alle Listener; beim Verlassen werden sie beendet. Bis zur vollständigen
-  Initialladung und nach einem Listenerfehler bleiben Planerstellung, Schichtaktionen und Mitarbeiter-Drag-and-drop gesperrt.
-- Bestehende Schichten eines bearbeitbaren Entwurfs können als eigene Drag-and-drop-Elemente in eine andere verfügbare
-  Rasterzelle verschoben werden. Alternativ bietet der Bearbeitungsdialog die Auswahl von Zieltag und Zielmodellschicht an.
-  Mitarbeiterzuordnung und Schicht-ID bleiben erhalten; Datum sowie absolute Zeitwerte werden aus der Zielrasterzeit neu
-  abgeleitet. Belegte Einfachschichten und firmenweite Zeitkonflikte verhindern die Verschiebung. Die bestehende
-  Service-Transaktion aktualisiert Schicht, Versionsrevision, bisherige und neue Belegungstage sowie betroffene Pausen gemeinsam.
-- Master und berechtigte Office-Konten können Monatspläne anlegen sowie Schichten über einen Reactive-Forms-Dialog anlegen,
-  bearbeiten und löschen. Die Mitarbeiterwahl ist auf aktive Mitarbeiter der konkreten Filiale begrenzt. Datum, Modellschicht
-  und die für den Tag wirksamen lokalen Rasterzeiten werden schreibgeschützt angezeigt. Der Service validiert Datum,
-  Modellschicht und Zeitfolge und wandelt die Rasterzeit in `Europe/Berlin` in Firestore-Zeitstempel um. Während eines
-  Schreibvorgangs ist das vollständige Formular deaktiviert.
-  Filialkonten bleiben bis zur Umsetzung des betrieblichen Mitarbeiter-Logins aus Todo 14 rein lesend, weil erst dieser
-  Sitzungszustand einen aktiven Firma-Mitarbeiter mit `dienstplaner` verlässlich für die Bedienoberfläche bestimmen kann.
-- Die Route und Navigation für die Schichtplaneinstellungen führen auf die neue filialbezogene Schichtmodellverwaltung. Ein
-  Modell besteht aus Bezeichnung, Aktivstatus und mindestens einer eigenen Modellschicht. Modellschichten besitzen eine
-  ausdrücklich gespeicherte, lückenlose Reihenfolge und können ergänzt oder entfernt werden. Der erste Beginn und das letzte
-  Ende sind tagesabhängig und werden nicht als feste Modellzeiten gespeichert. Innere Beginn- und Endgrenzen bleiben
-  unabhängig und speichern ihre Zuordnung zum Start- oder Folgetag. Bei inneren Beginn- und Endzeiten zeigt der Dialog nur die
-  Uhrzeit und leitet diese Zuordnung automatisch aus dem Schließzeitraum der Filiale ab. Bestätigte Lücken und beliebige
-  Rasterplatzüberlappungen bleiben möglich. Pro Modellschicht kann eine standardmäßig deaktivierte Mehrfachbelegung freigegeben
-  werden. Modell und Modellschichten werden atomar gespeichert. Besondere Rasterzeiten für Sondertage sind entfernt. Eine
-  Migration oder
-  Kompatibilitätsbehandlung für alte Schichtmodelle ist nicht vorhanden; die alten Modelle wurden gelöscht und benötigte
-  Modelle werden in der neuen Struktur angelegt. Beim Anlegen eines Monatsplans stehen ausschließlich aktive, nicht leere
-  Modelle der konkreten Filiale zur Auswahl. Modell-ID, Modellbezeichnung und alle geordneten Modellschichten werden gemeinsam
-  mit der ersten Entwurfsversion als Momentaufnahme gespeichert und bei Monats- sowie Bestandsladungen mitgeführt. Ein leerer,
-  noch nie veröffentlichter
-  Dienstplan kann nach Bestätigung vollständig gelöscht und anschließend mit einem anderen aktiven Modell neu angelegt werden.
-  Sobald eine Schicht vorhanden ist, bleibt die Löschaktion bis zum Löschen aller Schichten deaktiviert; nach der ersten
-  Veröffentlichung wird sie dauerhaft ausgeblendet. Spätere Änderungen oder die Deaktivierung des Quellmodells verändern
-  bestehende Pläne nicht. Fehlen bei der Monatsplananlage die initialisierten Filialeinstellungen, fordert die Oberfläche
-  konkret dazu auf, zuerst die Öffnungszeiten der Filiale zu initialisieren. Unvollständige Filialeinstellungen,
-  widersprüchliche Kalenderregeln und zwischenzeitlich ungültige Schichtmodelle werden mit der konkreten Ursache statt mit einer
-  allgemeinen Fehlermeldung angezeigt. Die Anlage liest den Monatsplanpfad innerhalb einer Firestore-Transaktion und verhindert
-  dadurch auch bei parallelen Aufrufen eine zweite Anlage desselben Filialmonats.
-- Die Monatsplanung wird als horizontal bedienbares Schichtraster dargestellt: Kalendertage bilden die Zeilen, die geordneten
-  Modellschichten der Momentaufnahme bilden die Spalten. Ohne freigegebene Mehrfachbelegung kann jede Zelle höchstens eine
-  Mitarbeiterschicht enthalten; bei freigegebener Mehrfachbelegung sind mehrere erlaubt. Die Oberfläche sperrt weitere Anlagen
-  und Ablagen einer belegten Einfachschicht, der Service prüft dies zusätzlich vor dem Schreiben. Beim Anlegen stehen Datum,
-  Modellschicht und die tagesabhängigen lokalen Rasterzeiten bereits fest; nur der Mitarbeiter wird ausgewählt. Beim Bearbeiten
-  bleibt die Rasterzelle unverändert und nur die Mitarbeiterzuordnung kann geändert werden. Die Tagesspalte zeigt neben Datum
-  und Öffnungszeiten auch gespeicherte Eigenschaften und Bezeichnungen für Sonntage, Feiertage und Sondertage. Das für Desktop
-  und Tablet ausgelegte Raster scrollt horizontal und behält dabei die Tagesspalte im sichtbaren Bereich. Das vertikale
-  Scrollen bleibt beim umgebenden Dienstplanbereich.
-- Schichtmodelle und Monatsdienstpläne speichern die verpflichtende Planungsart. Neue Modelle werden automatisch als
-  `schichtraster` angelegt; der Monatsplan übernimmt diesen Wert aus dem gewählten Modell. Die Services weisen fehlende oder noch
-  nicht unterstützte Planungsarten zurück. Eine diskriminierte Union trennt gemeinsame Metadaten, Schichtrastermodell und das
-  vorbereitete Schichtbausteinmodell. Modellanlage und Monatsplananlage zeigen bereits eine Variantenauswahl; das Schichtraster
-  ist verfügbar, während `Schichtbausteine` bis zur Umsetzung der fachlichen Bausteinfelder deaktiviert bleibt.
-- Der TypeScript-Code verlangt bei einer neuen Schicht eine vorhandene Modellschicht aus der Momentaufnahme desselben
-  Monatsplans. Beginn und Ende werden ausschließlich aus der Tagesrasterzeit abgeleitet. Eine Pause wird nicht mehr in einer
-  Modellschicht vorgegeben; die zentrale Arbeitsblockberechnung ermittelt 0, 30 oder 45 bezahlte Pausenminuten aus der
-  summierten Arbeitszeit. Anlage, Änderung und Löschung berechnen die filialübergreifenden Arbeitsblöcke aus dem
-  Belegungsindex neu und speichern die Pause atomar ausschließlich auf der chronologisch letzten Blockschicht. Der Monatsplan
-  zeigt diesen Wert an.
-- Der live beobachtete Belegungsindex leitet blockierende Zeitkonflikte aus relevanten Entwurfs- und Veröffentlichungsständen
-  ab. Anlage, Mitarbeiterwechsel und Drag-and-drop werden bei einer Überschneidung frühzeitig gesperrt; die betroffenen
-  Schichtkarten und Rasterzellen werden im Monatsplan verständlich hervorgehoben. Die Firestore-Transaktion prüft denselben
-  firmenweiten Index vor dem Schreiben weiterhin verbindlich.
-- Das Löschen eines Monatsplans entfernt Dienstplan, leere Entwurfsversion und Modellschicht-Momentaufnahme gemeinsam. Der
-  Service lädt Dienstplan und Entwurfsschichten zuvor mit `networkOnly` und prüft einen noch nie veröffentlichten Entwurf sowie
-  dessen gemeinsame Löschung.
-- Die bisherige Schichtvorlagenstruktur mit Page, Components, Dialog, Service, Store, Domainmodell, Pfaden und Firestore Rules ist
-  vollständig entfernt. Neue und bearbeitete Schichten verwenden ausschließlich `modellschichtId` aus der Momentaufnahme des
-  Monatsplans.
-- Die Modellverwaltung, die Monatsanlage und die Rasterbedienung wurden mit mehreren Modellen und unterschiedlichen
-  Schichtanzahlen manuell geprüft. Änderungen oder die Deaktivierung des Quellmodells verändern die gespeicherte
-  Modell-Momentaufnahme eines bestehenden Monatsplans nicht.
-- Die Dienstplan- und Schichtmodell-Services, ihre Stores sowie der Aufbau der Schichtplan-Komponenten sind unter
-  `docs/architektur` dokumentiert. Angular- und Rules-Tests sowie alle vier Varianten-Builds sind erfolgreich.
-  Die Varianten-Builds synchronisieren vor dem jeweiligen Angular-Build automatisch die zentrale PWA-Rahmenfarbe.
-- Erfolgreiche Monats- und Gesamtladungen protokollieren im lokalen Entwicklungslog unter `3. FILIALDATEN` die Anzahl geladener
-  Dienstpläne, Versionen und Schichten mit dem Anzeigenamen der betreffenden Filiale.
+## Netzwerk, Updates und PWA-Betrieb
 
-## Firebase-Grundlage
+- Ein zentraler Netzwerkstatus prüft Erreichbarkeit und stellt Offline- sowie Wieder-online-Zustände in der App-Shell dar.
+- Onlinepflichtige Aktionen werden vor dem technischen Zugriff verständlich abgewiesen, wenn keine Verbindung besteht.
+- Der Angular Service Worker erkennt neue Anwendungsversionen und bietet eine kontrollierte Aktualisierung an.
+- HTML und SPA-Routen werden ohne langfristigen Browsercache ausgeliefert; gehashte Ressourcen dürfen dauerhaft gecacht werden.
+- Pur Filiale wurde mit persistentem Cache und Offline-Neustart geprüft. Die App-Shell aller vier Varianten ist offlinefähig;
+  fachliche Offline-Schreibvorgänge bleiben ausgeschlossen.
 
-- Firebase und AngularFire sind installiert.
-- Firebase-Konfiguration liegt unter `src/environments`.
-- Firebase App, Auth, Firestore und Functions werden in `app.config.ts` bereitgestellt.
-- Die Cache-Art wird beim App-Start aus der Auslieferungsvariante gewählt. Pur Filiale verwendet
-  `persistentLocalCache`; Pur Master, Pur Office, Pur Mitarbeiter und die Entwicklungsumgebung verwenden `memoryLocalCache`.
-- Firebase Tokens für Auth sowie lesende, beobachtende und schreibende Firestore-Zugriffe sind vorbereitet.
-- Fachliche Ladeprotokolle sind über einen zentralen Schalter ausschließlich für `localhost`, `127.0.0.1` und `::1` freigegeben.
-  Dadurch zeigen auch lokal gestartete Produktionsbuilds ihren Datenfluss; auf den veröffentlichten Hosting-Adressen bleiben die
-  Protokolle deaktiviert.
-- Technische Firebase-Anbindungen liegen unter `src/app/services/firebase`; fachliche Services liegen getrennt unter
-  `src/app/services/domain`.
-- Der technische `FirestoreDbService` kapselt Collection-, Query- und Dokument-Lesen mit den expliziten Strategien
-  `cacheFirst`, `networkOnly`, `networkFirst` und `cacheOnly`, außerdem Dokumentbeobachtung, Anlegen, Merge-Aktualisieren,
-  Server-Zeitstempel und den Angular-Injection-Kontext. Ein `networkFirst`-Rückfall auf den Cache erfolgt nur bei technischen
-  Serverfehlern; Berechtigungsfehler werden unverändert weitergegeben.
-- Firestore-Collection- und Dokumentpfade für Benutzerprofile, Unternehmer, Firmen und Filialen werden zentral in
-  `firebase.constants.ts` erzeugt.
-- Legacy-Firmen werden ausschließlich aus dem ausgewählten `purCustomer` gelesen. Jede Firma erhält einmalig eine
-  Firestore-Auto-ID, die unter `systemMigrationen/{purCustomerId}.firmenIds.{purCompanyId}` gespeichert und bei Wiederholungen
-  wiederverwendet wird. Firmenadressen sind sowohl bei Anlage und Bearbeitung als auch bei der Migration optional und dürfen
-  unvollständig sein.
-- Legacy-Filialen werden aus allen Legacy-Firmen des ausgewählten `purCustomer` gelesen. Jede Filiale erhält einmalig eine
-  Firestore-Auto-ID, die unter `systemMigrationen/{purCustomerId}.filialenIds.{purCompanyId}.{purBranchId}` gespeichert und bei
-  Wiederholungen wiederverwendet wird. Eingebettete Legacy-IDs und veraltete Felder werden ignoriert; Filial-Untercollections
-  bleiben späteren Migrationsschritten vorbehalten. Filialadressen sind bei Anlage, Bearbeitung und Migration optional und
-  dürfen unvollständig sein.
-- Legacy-Mitarbeiter werden aus allen Filialen des ausgewählten `purCustomer` gelesen und als einzelne Firmenmitarbeiter
-  übernommen. Jeder Quellmitarbeiter erhält eine Firestore-Auto-ID, die verschachtelt nach Legacy-Firma, -Filiale und
-  -Mitarbeiter unter `systemMigrationen/{purCustomerId}.mitarbeiterIds` gespeichert wird. `filialIds` enthält die zugeordnete
-  neue Filial-ID. Gleiche Namen oder Legacy-IDs in unterschiedlichen Filialen bleiben zunächst getrennte, nachvollziehbare
-  Mitarbeiter. Die Legacy-Felder `role` und `authorisation` werden gemeinsam auf die betrieblichen Rollen `filialkasse`,
-  `servicekraft`, `administrator`, `kassierer` und `techniker` abgebildet und als eindeutiges Array `rollen` gespeichert.
-  Dubletten können durch Master gezielt zusammengeführt werden. Der von seiner Card aus gewählte Mitarbeiter bleibt als Ziel
-  bestehen; mehrere ähnliche Mitarbeiter können in einem Vorgang als Duplikate ausgewählt werden. Dabei werden `filialIds` und
-  `rollen` vereinigt, alle Legacy-IDs atomar auf den Zielmitarbeiter umgeleitet und die ausgewählten Duplikate physisch gelöscht.
-  Eine eigenständige Löschaktion wird in der Mitarbeiteroberfläche nicht angeboten; die technische Löschfunktion wird für das
-  Zusammenführen verwendet. Wiederholte Mitarbeitermigrationen überschreiben die Stammdaten eines manuell zusammengeführten
-  Zielmitarbeiters nicht. Mitarbeiter mit verknüpftem Benutzerkonto bleiben vor dem Zusammenführen und dem dabei ausgeführten
-  Löschen geschützt. Der fachliche Status wird ausschließlich mit `aktiv` geführt; ein zusätzliches Löschfeld gibt es nicht.
-- `BenutzerService`, `UnternehmerService`, `FirmaService` und `FilialeService` verwenden keine direkten AngularFire-Aufrufe mehr,
-  sondern greifen über den `FirestoreDbService` zu.
-- Der `AppSitzungsInitService` ist der zentrale Einstiegspunkt für den Sitzungsstart. Er startet die Auth- und
-  Profilbeobachtung des `BenutzerStore`, stellt die Zustände `idle`, `loading`, `ready` und `error` bereit und bietet bei Fehlern
-  eine Wiederholung an. Änderungen an Rolle, Zugriffen oder persönlicher Mitarbeiterzuordnung grenzen einen neuen
-  Initialisierungskontext ab; veraltete Ladeergebnisse werden nicht übernommen.
-- Der `BenutzerStore` beobachtet ausschließlich Firebase Auth und das eigene Benutzerprofil. Der `AppDatenInitService` bildet
-  zentral aus `userRole`, `zugriffe` und der persönlichen Mitarbeiterzuordnung den zwingenden Ladeplan. Er beauftragt den
-  rollenunabhängigen `StammdatenStore` sowie den `MitarbeiterStore`; erst nach Abschluss aller Aufträge meldet der
-  `AppSitzungsInitService` die Sitzung als `ready`.
-- Master laden die vollständige Unternehmenshierarchie, alle Benutzerprofile und die Mitarbeiter aller Firmen. Office lädt die
-  zugeordneten Hierarchiedaten und alle Mitarbeiter der zugeordneten Firmen. Filiale lädt ihre eindeutige Hierarchie und nur die
-  Mitarbeiter mit ihrer Filial-ID. Mitarbeiter lädt zunächst den zugeordneten Unternehmer und die Firma, danach den eigenen
-  aktiven Mitarbeiter über `firmaMitarbeiterId` und anschließend die in dessen `filialIds` referenzierten Filialen. Die
-  Mitarbeiter dieser Filialen werden mit einer gemeinsamen `array-contains-any`-Abfrage eindeutig geladen. Fehlende oder
-  widersprüchliche Pflichtzuordnungen brechen die Initialisierung ab.
-- Das fachliche Ladeprotokoll führt alle zwingenden Daten in einem gemeinsamen Stammdaten-Abschnitt. Unabhängige Aufträge
-  bleiben parallel und werden auch im Fehlerfall vollständig abgewartet. Beim Master wird zunächst die vollständige
-  Unternehmensstruktur geladen, weil daraus erst die Mitarbeiteraufträge für alle Firmen entstehen. Nach erfolgreichem
-  Abschluss gibt der `AppDatenInitService` ausschließlich die Anzahl der Einträge fest als Benutzerprofile, Unternehmer,
-  Firmen, Filialen und Mitarbeiter aus. Nicht benötigte Datenarten werden ausgelassen. Mitarbeiterkontexte werden nach
-  Unternehmer und Firma sortiert. Die Abschlussmeldung folgt erst nach dem vollständigen Ladeplan. Dateninhalte können im
-  Entwicklungsmodus getrennt über den Store-Snapshot-Button der Toolbar ausgegeben werden.
-- Systembereich und Datenzugriffsauswahl verwenden den gemeinsamen Sitzungsbestand. Er wird bei Neuanlagen direkt
-  aktualisiert und bei Logout oder Benutzerwechsel zurückgesetzt.
-- Der `GlobalBannerService` verwaltet einen zentralen Bannerzustand mit Darstellungsart, Text und Quelle. Die
-  `GlobalBanner`-Component ist unterhalb der Toolbar in die App-Shell eingebunden. Ein neuer Banner ersetzt den bisherigen;
-  `clearIfSource()` verhindert, dass eine fachliche Quelle den Hinweis einer anderen Quelle entfernt.
-- Pur Filiale lädt das Benutzerprofil mit `networkFirst` und Stammdaten mit `cacheFirst`. Alle anderen Varianten verwenden für
-  beide Datenarten `networkOnly`; erzwungene Wiederholungen verwenden ebenfalls `networkOnly`. `cacheOnly` ist technisch
-  vorhanden, aber keinem fachlichen Ablauf zugewiesen. Ein leerer Collection- oder Query-Cache beziehungsweise ein nicht
-  vorhandenes Dokument gilt bei `cacheFirst` als Cache-Miss und löst eine Serveranfrage aus.
-- Abmeldung und Benutzerwechsel setzen die sitzungsbezogenen Stores zurück und machen den bisherigen Initialisierungskontext
-  ungültig. Bereits laufende Firestore-Anfragen werden nicht technisch abgebrochen; verspätete Ergebnisse eines veralteten
-  Store-Kontexts werden nicht übernommen. Der persistente Firestore-Cache von Pur Filiale bleibt gerätebezogen erhalten und
-  wird anschließend nur über den Ladeplan des neu bestätigten Profils gelesen.
-- Ein aus dem Cache gemeldetes Benutzerprofil startet noch keine Stammdateninitialisierung, solange dessen initialer
-  `networkFirst`-Ladevorgang nicht abgeschlossen ist. Dadurch kann ein gecachter Profilstand die Sitzung nicht vorzeitig als
-  `ready` freigeben.
-- Die Datenmigration besitzt gemeinsame Modelle und zentrale Firestore-Pfade für `purCustomers`,
-  `systemMigrationen/{purCustomerId}` und die versionierten Statusdokumente unter `datenbereiche`. Der Datenmigration-Service
-  lädt Legacy-Kunden und ihren Status und kann genau einen ausgewählten Kunden zu einem Unternehmer mit Firestore-Auto-ID
-  migrieren. Das Hauptdokument speichert die dauerhafte Zuordnung als `unternehmerId`; ein Status-Reset entfernt diese Zuordnung
-  nicht. Auch jede Firma, Filiale und jeder Filialmitarbeiter erhält eine dauerhaft unter `firmenIds`, `filialenIds`
-  beziehungsweise `mitarbeiterIds` gespeicherte Firestore-Auto-ID. Die gemappten Quelldaten werden bei jedem Lauf unter derselben
-  Ziel-ID geschrieben; ausschließlich im Ziel vorhandene Dokumente und nicht gemappte Zusatzfelder bleiben erhalten. Manuell
-  zusammengeführte Mitarbeiter bilden die Ausnahme: Mehrere Legacy-IDs dürfen auf dieselbe Ziel-ID zeigen, deren bestehende
-  Stammdaten bei Wiederholungen erhalten bleiben.
-  Validierungs- und technische Fehler werden in den Statusdokumenten nachvollziehbar gespeichert. Der
-  Datenmigration-Store hält Auswahl, Quellen- und Zielzahlen, Status sowie Lese- und Schreibzustände und verwirft verspätete
-  Ergebnisse einer überholten Kundenauswahl. Neben der Kundenauswahl wählt ein fester Migrationsbereich-Selektor zwischen
-  Unternehmern, Firmen, Filialen und Mitarbeitern und zeigt genau die zugehörige Karte. Beim Öffnen eines Bereichs werden
-  aktueller Quellen- und Zielbestand aus Firestore gelesen. Nach der
-  Migration lädt der Store den Status und den tatsächlichen Zielbestand erneut. Nach einer Mitarbeitermigration verwirft er
-  zusätzlich die bereits geladenen Mitarbeiterkontexte, damit die Mitarbeiterseite beim nächsten Aufruf unmittelbar den neuen
-  Firestore-Bestand lädt. `Offen` ergibt sich aus der aktuellen Quelle abzüglich der zuletzt erfolgreich migrierten Dokumente;
-  nur im Ziel vorhandene Dokumente bleiben erhalten und werden in `Ziel` mitgezählt.
-- Aktive Master dürfen die Legacy-Kundendaten lesen sowie Migrationsstatus lesen, anlegen und aktualisieren; andere
-  Pur-System-Rollen, Legacy-Konten und nicht angemeldete Zugriffe bleiben ausgeschlossen.
-- Offline-Schreibvorgänge, Pending-Sync und Batch-Schreibvorgänge aus der Altanwendung wurden bewusst noch nicht übernommen.
-  Die Offline-App-Shell aller vier PWA-Builds bleibt davon getrennt.
-- Es gibt keine öffentliche Selbstregistrierung.
-- Die Datenmigration ist ein einmaliger Übergangsprozess und kein Bestandteil des regulären fachlichen Systembetriebs.
-  Migrierte Unternehmer, Firmen, Filialen und Mitarbeiter stehen anschließend als reguläre neue Strukturdaten zur Verfügung.
-  In der Benutzerverwaltung können vorhandene Profile bearbeitet oder neue Benutzer angelegt und diesen Daten rollenabhängig
-  zugeordnet werden. Dabei werden ausschließlich die neuen Ziel-IDs verwendet. Die Zuordnungen unter `systemMigrationen` sind
-  nur für Wiederholung und Nachvollziehbarkeit der Migration relevant und gewähren keine Datenrechte.
-- Legacy-Benutzer und Firebase-Auth-Konten werden in diesem Übergangsprozess nicht automatisch migriert. Benutzerzugänge werden
-  bewusst neu angelegt oder als vorhandene Pur-System-Profile mit den übernommenen Strukturdaten verknüpft.
+## Rules, Functions und Deployment
 
-## Login und Benutzerberechtigungen
+- Firestore Rules verwenden die Berechtigungsmatrix als verbindliche Quelle. Sie prüfen aktives Profil, Rolle, hierarchischen
+  Zugriff, Pfad und CRUD-Recht sowie ausschließlich die ausdrücklich dokumentierten sicherheitskritischen Ausnahmen.
+- Benutzerprofile sind clientseitig nur lesbar. Kontoanlage, Profiländerungen, Datenneuzuordnung, Kontolöschung und rekursive
+  Strukturlöschung laufen über geschützte Functions.
+- Aktive Master besitzen die in der Matrix aufgeführten Rechte. Office und Filiale bleiben auf ihre zugeordneten Datenbereiche
+  begrenzt; Mitarbeiterzugänge besitzen ausschließlich die vorgesehenen Leserechte.
+- Legacy-Konten ohne Pur-System-Profil behalten ausschließlich den dokumentierten Zugriff auf `purCustomers` und `purUser`.
+- Die Rules für Rollen, Zugriffs-Map, Mitarbeiterzugänge, Filialeinstellungen und die aktuelle Unternehmensstruktur sind laut
+  Benutzer produktiv veröffentlicht. Die zugehörigen Functions einschließlich sicherer Kontoaktivierung sind deployed.
+- Das Hosting der vier PWA-Grundstände ist veröffentlicht. Ein Hosting-Deployment der zuletzt lokal angepassten
+  Einstellungsoberfläche wurde für diesen Stand nicht bestätigt.
+- Ein Git-Push führt kein Firebase-Deployment aus. Hosting, Rules und Functions werden getrennt und kontrolliert veröffentlicht.
 
-- Die Loginseite verwendet ein Formular mit Anmeldename und Passwort ohne Rollenauswahl. Master-, Office-, Filial- und
-  Mitarbeiter-Build ergänzen den eingegebenen Namensbestandteil automatisch um ihr jeweiliges Rollensuffix und für Firebase Auth
-  intern um `@pur-system.invalid`. Die allgemeine Entwicklungsumgebung erwartet weiterhin den vollständigen Anmeldenamen.
-- Der neue Loginablauf ist technisch umgesetzt und mit den neu angelegten Rollen- und Hostingvarianten erfolgreich geprüft. Die
-  bisherigen Testkonten werden bewusst nicht migriert; ein neuer Master und alle weiteren Zugänge werden nach dem neuen Modell
-  angelegt.
-- Benutzerprofile werden aus `benutzerprofil/{uid}` geladen. Das eigene Profil wird zusätzlich während der gesamten
-  Auth-Sitzung in Echtzeit beobachtet. Der Listener wird bei Abmeldung oder Benutzerwechsel entfernt und nach einem Offline-Start
-  bei der nächsten Serververbindung aktualisiert. Aktive Master dürfen die ausdrücklich bearbeitbaren Felder vorhandener Profile
-  direkt aktualisieren.
-- Die Anlage von Auth-Konto und Profil bleibt im Backend umgesetzt. E-Mail-Adresse, Passwort und Firebase-Auth-Status werden durch
-  die clientseitige Profilbearbeitung nicht verändert.
-- Benutzerprofile unterstützen `userRole` mit `filiale`, `office`, `master` oder `mitarbeiter`. Die vierte Rolle ist damit
-  sprachlich vom fachlichen Mitarbeiterdatensatz abgegrenzt.
-- Die zentralen Utilities für technische Anmeldedaten normalisieren Leerzeichen als Punkte, erhalten vorhandene Punkte und
-  Bindestriche, bilden Anmeldenamen im Format `<normalisierter-name>-<rolle>` und ergänzen die gemeinsame Domain
-  `@pur-system.invalid`. Das Profilmodell speichert den `anmeldename`; Benutzeranlage, Anmeldung, Benutzerverwaltung und
-  Profilkarte verwenden den neuen Ablauf.
-- Allgemeine Bereichsfreigaben richten sich nach `erlaubteBereiche`; der Systembereich erfordert zusätzlich `userRole: master`.
-- App-Routen sind mit `authGuard` geschützt.
-- Bereichsrouten werden über `bereichGuard` und `data: { bereich: ... }` abgesichert.
-- Sidebar-Navigation sowie Start- und Ausweichrouten verwenden dieselbe zentrale Rollen- und Bereichsauswertung. Die vorhandenen
-  Routenguards bleiben die verbindliche Zugriffssicherung.
-- Firmen-/Filial-Zugriffe werden im Benutzerprofil als verschachtelte Map `Unternehmer-ID -> Firma-ID -> Filial-IDs` abgebildet.
-- Firebase-Fehler werden benutzerfreundlich angezeigt.
+## Bestätigter Prüfstand
 
-## System und Zugangsdaten
+Am 03.11.2026 wurden folgende aktuelle Prüfungen vom Benutzer bestätigt:
 
-- Der Systembereich ist im Client durch `erlaubteBereiche` und `userRole: master` geschützt.
-- Verweigert ein Bereichs- oder Rollenguard eine Route, wird bevorzugt zum erlaubten Dashboard und andernfalls zum ersten für die
-  Rolle tatsächlich erreichbaren Bereich umgeleitet. Ist kein Bereich erreichbar, führt die Ausweichnavigation zum Login.
-- Geschützte Fachrouten prüfen nacheinander Firebase-Authentifizierung, Sitzungsinitialisierung, Bereichsfreigabe und
-  gegebenenfalls die fachliche Rolle. Die Guards verwenden das zentral geladene Benutzerprofil und starten keine eigenen Profil-
-  oder Stammdatenabfragen. Während der Initialisierung wartet die Navigation auf deren Abschluss.
-- Schlägt ein zwingender Ladevorgang fehl, führt die Navigation innerhalb der App-Shell zur Route `/initialisierungsfehler` und
-  erhält die ursprünglich angeforderte URL. Dort kann der Benutzer die Initialisierung wiederholen oder sich abmelden. Nach
-  einer erfolgreichen Wiederholung wird die ursprüngliche Route geöffnet; die Fehlerroute selbst setzt nur eine
-  Firebase-Anmeldung voraus und erzeugt deshalb keine Initialisierungsschleife.
-- Strukturanlage, Strukturverwaltung, Benutzeranlage und Benutzerverwaltung besitzen getrennte Unterrouten mit eigenen
-  Toolbar-Titeln. Die Strukturseiten verwenden `StrukturAnlegenPage` und `StrukturVerwaltenPage`; die Benutzeranlage verwendet
-  `BenutzerAnlegenPage`, Profilauswahl und Benutzeraktionen liegen auf `BenutzerVerwaltenPage`. Der frühere gemeinsame
-  Seitencontainer mit Divider wurde entfernt.
-- Das Formular gliedert sich in Zugangsdaten, erlaubte Bereiche und Datenzugriff. Alle Gruppen verwenden `div`-Elemente mit
-  sichtbaren Überschriften, ohne `role="group"`, `aria-label` oder `aria-labelledby`, statt `fieldset`/`legend`. Die
-  `h2`-Überschriften von Formularen und Formulargruppen werden zentral über `pur-form__titel` beziehungsweise
-  `pur-form__group-titel` in `_form.scss` gestaltet. Zugangsdaten enthalten Anzeigename, Benutzerrolle, den automatisch
-  gebildeten und nicht bearbeitbaren Anmeldenamen sowie das Passwort. Die technische Firebase-Adresse wird bei der Anlage nicht
-  angezeigt.
-- Der Master vergibt das Anfangspasswort ausschließlich selbst: ein Feld mit Ein-/Ausblendfunktion und dem Label „Passwort min. 8
-  Zeichen“. Es gibt weder Passwortbestätigung bei der Anlage noch eine Variante zur erstmaligen Passwortvergabe durch den
-  Benutzer.
-- Pflichtfelder, ein technisch nutzbarer Anzeigename, Passwortlänge und mindestens ein erlaubter Bereich werden clientseitig
-  validiert.
-- `zugangsdaten` ist ein lokaler CSS-Container. Das bestehende `pur-form--grid` zeigt zwei Spalten, bei maximal 600 Pixel
-  Containerbreite eine Spalte. `pur-form__row` verwendet standardmäßig Flex mit Umbruch; die Bereiche-Checkboxen umbrechen nach
-  verfügbarem Platz. Der Aktionsbutton ist rechts ausgerichtet.
-- Gültige Formulare mit gültiger Datenzugriffsauswahl können abgesendet werden. Während der Anlage ist das gesamte Reactive Form
-  deaktiviert; `inert` sperrt zusätzlich die eigenständig verwaltete Datenzugriffsauswahl und weitere Formularaktionen. Der
-  Submit-Handler verhindert weiterhin doppelte Aufrufe. Nach Erfolg werden Formular, Auswahl und der Absendezustand der
-  FormGroupDirective zurückgesetzt; leere Pflichtfelder zeigen dadurch keine Fehler. Nach Erfolg oder Fehler wird das Formular
-  wieder aktiviert. Erfolgs- und Fehlermeldungen werden beim Start einer neuen Aktion sowie beim Verlassen der Seite
-  zurückgesetzt; bei Fehlern bleiben die Eingaben erhalten.
-- Die Benutzerauswahl zeigt Anzeigename und Rollenbezeichnung. Unveränderliche Kontoangaben wie Anmeldename und technische
-  Firebase-Adresse werden im Bearbeitungsdialog nicht erneut angezeigt; die Profilkarte der App-Shell zeigt unter dem
-  Anzeigenamen den Anmeldenamen. Der
-  Bearbeitungsdialog vergleicht das normalisierte Profil einschließlich der außerhalb des Reactive Forms verwalteten
-  Datenzugriffszuordnungen mit dem Ausgangszustand. Ohne fachliche Änderung bleibt die Speicheraktion deaktiviert und es wird
-  keine Firestore-Anfrage ausgelöst.
-- Die Rolle `mitarbeiter` kann in der Benutzeranlage mit der Anzeige „Mitarbeiter“ ausgewählt werden. Der Master weist ihre
-  `erlaubteBereiche` über dieselben Checkboxen wie bei den bestehenden Rollen zu. Zusätzlich wählt er genau einen Unternehmer,
-  eine Firma und einen aktiven, noch nicht verknüpften Firma-Mitarbeiter aus. Eine Filialauswahl wird dabei nicht angezeigt. Das
-  Profil erhält genau eine Firma mit leerer Filialliste in `zugriffe` sowie deren `firmaMitarbeiterId`. Beim Rollenwechsel werden
-  zuvor ausgewählte fachliche Datenzugriffe und der Firma-Mitarbeiter entfernt; die gewählten Bereiche bleiben erhalten.
-- Vorhandene Profile von Mitarbeiterzugängen zeigen ihre Rolle in der Benutzerverwaltung korrekt an. Ihre Bereichsfreigaben können
-  durch einen Master bearbeitet werden, ihre bestehende Mitarbeiterzuordnung bleibt unverändert und ihr Aktivstatus kann
-  weiterhin geändert werden.
+- `npm run build:office` erfolgreich
+- `npm run test:rules` mit 63 von 63 Firestore-Emulator-Tests erfolgreich
 
-## Mitarbeiterrolle und Mitarbeiter-App
+Der umfassende, ausdrücklich auf den 23.10.2026 datierte Prüfstand umfasst:
 
-- Die eigenständige vierte Auth-Rolle `mitarbeiter` ist im Benutzerprofil, in der Benutzeranlage, in der Profilbearbeitung, in der
-  Callable Function und in den Firestore Rules umgesetzt.
-- Ein aktiver Master kann einen Mitarbeiterzugang mit Anfangspasswort anlegen. Die bestehende sichere Kontoanlage aktiviert den
-  Auth-Benutzer erst nach erfolgreichem Schreiben des Profils. Die Rolle wurde von `personal` zu `mitarbeiter` geändert und in
-  Functions, Rules sowie allen Hosting-Builds deployed.
-- Mitarbeiterzugänge erhalten die durch den Master ausgewählten `erlaubteBereiche` sowie genau einen Unternehmer und eine Firma
-  mit leerer Filialliste in `zugriffe`. `firmaMitarbeiterId` verweist auf den fachlichen Mitarbeiterdatensatz; dieser speichert
-  `benutzerUid` als Gegenreferenz. Beide Referenzen werden durch die Callable Function in einer Firestore-Transaktion gesetzt.
-  Der Auth-Benutzer wird erst danach aktiviert. Fehler bereinigen eine möglicherweise angelegte Verknüpfung und das Auth-Konto.
-- Anmeldung, Abmeldung und die vorhandene Passwortänderung werden wiederverwendet. Die Vergabe eines neuen vorläufigen Passworts
-  durch einen Master ist noch nicht umgesetzt.
-- Pur Mitarbeiter ist als installierbare, für Handys optimierte PWA mit eigener App-Shell und der Produktkennung „Pur Mitarbeiter“
-  veröffentlicht. Installation und eigenständiger Start wurden auf Desktop und iPhone bestätigt.
-- Die Hosting-Variante erzeugt keine zusätzliche Rollenbeschränkung. Navigation und Routenzugriff richten sich nach
-  `erlaubteBereiche`; administrative Routen bleiben zusätzlich durch ihre vorhandenen Rollenguards geschützt.
-- Der Begriff Mitarbeiter bezeichnet zwei technisch getrennte Konzepte, auch wenn beide dieselbe Person betreffen können: Der
-  fachliche Mitarbeiterdatensatz beschreibt die beschäftigte Person mit Stammdaten, Filialzuordnungen und betrieblichem
-  Filialzugang. Der persönliche Mitarbeiterzugang ist ein Firebase-Auth-Benutzer mit `userRole: mitarbeiter` für Pur
-  Mitarbeiter.
-  Er wird bei seiner Anlage eindeutig mit einem vorhandenen fachlichen Mitarbeiterdatensatz verknüpft, ist aber weder dessen
-  Voraussetzung noch mit dem betrieblichen Filialzugang gleichzusetzen. Dienstplandaten, persönliche Aktionen und
-  Push-Benachrichtigungen werden bei fachlichem Bedarf separat geplant. `erlaubteBereiche` steuert nur verfügbare App-Funktionen.
-- Das fachliche Mitarbeiter-Domänenmodell und sein Datenzugriff sind lokal umgesetzt. Mitarbeiter liegen unter
-  `unternehmer/{unternehmerId}/firma/{firmaId}/mitarbeiter/{mitarbeiterId}`. Der Service lädt, erstellt und aktualisiert
-  Mitarbeiter und führt Migrationsduplikate zusammen. Geladene Einträge behalten ihre Unternehmer- und Firmen-ID als fachlichen
-  Kontext.
-- Der `MitarbeiterStore` hält mehrere Firmen-, Einzelfilial- und Mehrfilialkontexte gleichzeitig. Jeder Kontext besitzt eigene
-  Lade-, Abschluss- und Fehlerzustände; dadurch bleibt auch ein vollständig geladenes leeres Ergebnis eindeutig. Identische
-  laufende oder bereits geladene Kontexte werden nicht erneut geladen. Ein zentraler Reset verwirft sämtliche
-  Mitarbeiterkontexte und schützt bei einem Sitzungswechsel sowie nach einer Mitarbeitermigration vor veralteten Ladeergebnissen.
-- Die lokalen Firestore Rules erlauben Office- und Filialkonten gemäß Berechtigungsmatrix Lese-, Anlage- und
-  Aktualisierungszugriffe innerhalb zugewiesener Firmen. Filialkonten laden und bearbeiten mit ihrer
-  Clientabfrage aber direkt nur Mitarbeiter der eigenen Filiale. Master erhalten vollständigen Zugriff auf Mitarbeiter aller
-  Firmen; Mitarbeiterzugänge lesen alle Mitarbeiter ihrer zugewiesenen Firma. Diese Datenrechte gelten unabhängig von
-  `erlaubteBereiche`. Master können mehrere nicht verknüpfte Mitarbeiter atomar in einen Zielmitarbeiter zusammenführen; dabei
-  werden die Duplikate innerhalb der atomaren Zusammenführung physisch entfernt. Eine eigenständige Löschfunktion stellen
-  Service, Store und Oberfläche nicht bereit. Verknüpfte Mitarbeiter sind durch Rules vor dem Zusammenführen und Löschen
-  geschützt. Der Aktivstatus beschreibt allein den Beschäftigungsstatus und begrenzt die Lese- und Bearbeitungsrechte nicht.
-  Office sowie Filiale können Mitarbeiter in ihrem erlaubten Bereich deaktivieren und wieder aktivieren. Rollen-Arrays,
-  Feldinhalte und Filialzuordnungen werden im TypeScript-Code validiert. Die vereinfachten lokalen Rules sind noch nicht
-  produktiv deployed.
-- Die Mitarbeiterliste ist unter `/mitarbeiter/liste` umgesetzt. Sie verwendet Unternehmer und Firma aus dem zentralen
-  `AppKontextStore` und besitzt keine eigene, davon unabhängige Auswahl. Ein Firmenwechsel in der Sidebar lädt automatisch den
-  passenden Mitarbeiterkontext. Filialkonten bleiben unabhängig vom sichtbaren Arbeitskontext auf die eigene Filiale begrenzt.
-  Der Wechsel zwischen Firmen entfernt andere geladene Sitzungskontexte nicht. Mitarbeiter werden als kompakte Cards mit allen
-  betrieblichen Rollen, Aktivstatus und Anzahl der Filialzuordnungen dargestellt; Lade-, Fehler- und Leerzustände bleiben je
-  Kontext unterscheidbar. Für Master öffnet die Aktion `Zusammenführen` den gewählten Card-Mitarbeiter als bestehen bleibendes
-  Ziel. Die Mehrfachauswahl enthält nur andere Mitarbeiter derselben Firma, deren normalisierte Namen anhand der
-  Levenshtein-Distanz ausreichend ähnlich sind. Sind Vor- und Nachname auf beiden Seiten vorhanden, müssen der Vorname mindestens
-  50 Prozent, der Nachname mindestens 60 Prozent und beide gemeinsam durchschnittlich 70 Prozent erreichen. Fehlt jeweils ein
-  vergleichbarer Namensbestandteil, gilt für den einzelnen Bestandteil ein strenger Grenzwert von 90 Prozent.
-- Eine Hinzufügen-Card öffnet den Anlagedialog; die Bearbeitungsaktion einer Mitarbeiter-Card öffnet den getrennten
-  Bearbeitungsdialog. Beide Reactive Forms erfassen Vorname, Nachname, optionale Adress- und Kontaktdaten, mindestens eine der
-  betrieblichen Rollen `filialkasse`, `servicekraft`, `administrator`, `kassierer`, `techniker` oder `dienstplaner` und mindestens
-  eine verpflichtende Filialzuordnung. Ein Mitarbeiter kann mehrere Rollen besitzen. Der Anzeigename des Firestore-Dokuments wird
-  automatisch aus Vor- und Nachname gebildet und bei Namensänderungen aktualisiert. Geburtstag, Telefon und Webseite sind
-  derzeit in der Oberfläche ausgeblendet; bereits gespeicherte Werte bleiben beim Bearbeiten erhalten. Der
-  Bearbeitungsdialog ergänzt den Aktivstatus und zeigt Unternehmer, Firma sowie Mitarbeiter-ID unveränderlich an. Bereits
-  vorhandene, für den Bearbeiter nicht sichtbare Filialzuordnungen erfüllen diese Pflicht weiterhin. Vorname und Nachname,
-  E-Mail-Adresse und Mobilnummer sowie Rollen und Filialauswahl werden auf breiten Dialogen jeweils als 50/50-Zeile dargestellt
-  und auf kleinen Viewports untereinander angeordnet.
-- Vor dem Öffnen und erneut vor dem Speichern wird der aktuelle Verwaltungszugriff auf die Firma geprüft. Während eines
-  Schreibvorgangs sind Formular und Aktionen deaktiviert. Anlage und Aktualisierung erscheinen durch die Store-Aktualisierung
-  ohne erneutes Laden in der Liste; bei Fehlern bleiben die Eingaben erhalten. Der Mitarbeiter-Bearbeitungsdialog vergleicht den
-  aktuellen Formularzustand per `JSON.stringify()` mit seinem Ausgangszustand und verhindert ohne Änderung sowohl die
-  Aktivierung des Speicherbuttons als auch den Firestore-Aufruf.
-- In den Mitarbeiterdialogen bleibt die Filial-Mehrfachauswahl für Master und Office sichtbar. Bei Filialkonten wird sie
-  ausgeblendet, weil deren eigene Filiale bereits eindeutig vorgegeben ist. Bereits vorhandene, für das aktuelle Konto nicht
-  zugängliche Filialzuordnungen bleiben beim Speichern unverändert; die lokalen Firestore Rules erzwingen dieselbe Begrenzung.
-- Filialprofile müssen bei Anlage und Bearbeitung genau einen Unternehmer, eine Firma und eine Filiale enthalten. Filialkonten
-  legen Mitarbeiter nur mit der eigenen Filial-ID an und behalten diese beim Bearbeiten verpflichtend bei.
+- 1046 von 1046 Frontend-Tests
+- 88 Functions-Tests
+- 63 Firestore-Emulator-Tests
+- erfolgreiche Produktionsbuilds für Master, Office, Filiale und Mitarbeiter
+- manuelle Rollen-, Navigations-, Formular-, Cache-, PWA- und reale Kontoprüfungen
 
-## Datenstruktur-Löschung
+Dieser umfassende Prüfstand ist ein datierter Nachweis und keine Behauptung, dass nachfolgende Änderungen erneut mit der
+vollständigen Suite geprüft wurden. Aktuelle Einzelprüfungen werden deshalb getrennt darüber dokumentiert.
 
-- Ein aktiver Master kann Unternehmer, Firmen und Filialen über Service- und Store-Methoden löschen. Eine sichtbare UI-Aktion ist
-  noch nicht angebunden.
-- Der Client besitzt kein direktes Firestore-Löschrecht. Die geschützte Callable Function `deleteStruktureintrag` prüft Rolle,
-  Dokumentpfad und Referenzen und löscht den vollständigen Strukturzweig anschließend rekursiv.
-- Referenzen aus Benutzerprofilen verhindern jede betroffene Löschung. Eine Filiale wird außerdem nicht gelöscht, solange sie in
-  `filialIds` eines fachlichen Mitarbeiters verwendet wird.
+## Offene Arbeit und Historie
 
-## Struktur anlegen
-
-- Die `StrukturAnlegenPage` enthält einen linearen Angular-Material-Stepper für die hierarchische Anlage von Unternehmer, Firma
-  und Filiale unter `/system/struktur/anlegen`.
-- Schritt 1 lädt alle Unternehmer aus `unternehmer`, erlaubt die Auswahl eines vorhandenen Eintrags und öffnet für die Neuanlage
-  einen Material-Dialog.
-- Der Unternehmerdialog erfasst einen Anzeigenamen sowie die eingebettete Person mit Vorname und Nachname. Adresse und
-  Kontaktdaten sind optional; vollständig leere Adressen werden nicht gespeichert, teilweise ausgefüllte Adressen nur mit den
-  vorhandenen Feldern. Die fortlaufende Unternehmernummer wird aus der vollständig geladenen Store-Liste mit
-  `max(nummer) + 1` bestimmt.
-- Neue Unternehmer werden durch einen aktiven Master direkt unter `unternehmer/{unternehmerId}` in Firestore gespeichert, in die
-  sortierte Store-Liste übernommen und anschließend im Stepper ausgewählt.
-- Schritt 2 lädt die Firmen des ausgewählten Unternehmers, erlaubt die Auswahl eines vorhandenen Eintrags und öffnet für die
-  Neuanlage einen Material-Dialog.
-- Der Firmendialog erfasst getrennt den kurzen `anzeigename` für Auswahlen und den vollständigen `firmenname` sowie die Adresse
-  und optionale Kontaktdaten. Die fortlaufende Firmennummer wird innerhalb des Unternehmers aus der vollständig geladenen
-  Store-Liste mit `max(nummer) + 1` bestimmt.
-- Neue Firmen werden direkt unter `unternehmer/{unternehmerId}/firma/{firmaId}` gespeichert, in die sortierte Firmenliste
-  übernommen und anschließend im Stepper ausgewählt. Ein Unternehmerwechsel setzt Firma und Filiale zurück und lädt den passenden
-  Firmenbestand.
-- Schritt 3 lädt die Filialen der ausgewählten Firma und öffnet für die Neuanlage einen Material-Dialog. Eine Auswahl bereits
-  vorhandener Filialen ist in diesem reinen Anlageschritt bewusst nicht vorgesehen.
-- Der Filialdialog erfasst getrennt den kurzen `anzeigename` für Auswahlen und den vollständigen `filialname` sowie eine optionale,
-  teilweise Adresse und optionale Kontaktdaten. Die fortlaufende Filialnummer wird innerhalb der Firma aus der vollständig
-  geladenen Store-Liste mit
-  `max(nummer) + 1` bestimmt.
-- Neue Filialen werden direkt unter `unternehmer/{unternehmerId}/firma/{firmaId}/filiale/{filialeId}` gespeichert, in die
-  sortierte Filialliste übernommen und in der Hierarchie-Zusammenfassung angezeigt. Ein Unternehmer- oder Firmenwechsel setzt die
-  abhängige Filiale zurück und lädt den passenden Filialbestand.
-- Pflichtfelder und vollständig geladene Listen steuern die Zurück-/Weiter-Navigation sowie die Freigabe der jeweiligen
-  Anlagedialoge.
-- Bis 720 Pixel wechselt der Stepper in die vertikale Ausrichtung.
-- Unternehmer, Firma und Filiale werden schrittweise direkt gespeichert; ein zusätzlicher abschließender Sammel-Speicherbutton ist
-  deshalb nicht erforderlich.
-- Der vollständige Anlageablauf wurde vom Benutzer am 22.09.2026 gegen echtes Firestore bestätigt: Unternehmer, Firma und Filiale
-  wurden unter dem vorgesehenen verschachtelten Pfad gespeichert, im UI korrekt zusammengefasst und nach einem Anwendungsneustart
-  erneut geladen.
-
-## Bestehende Benutzer verwalten
-
-- Die routbaren Systemseiten liegen unter `src/app/pages/system`. Die eingebettete Benutzerverwaltung und
-  ihre Dialoge liegen unter `src/app/components/system/benutzer`.
-- Das Benutzer-Select verwendet die UID als Wert und gruppiert die Anzeigenamen nach Rolle in der Reihenfolge Filiale, Office,
-  Mitarbeiter und Master. Die kompakte Optgroup-Darstellung wird über die wiederverwendbaren Klassen `pur-select__panel` und
-  `pur-select__panel--grouped` gestaltet. Der Bearbeiten-Button wird erst nach einer gültigen Auswahl aktiviert.
-- Es werden keine produktiven Mockprofile verwendet. Die für Master zentral geladenen Benutzerprofile werden direkt aus dem
-  Sitzungsbestand verwendet; Leer-, Lade- und Fehlerzustände bleiben unterscheidbar.
-- `IBenutzerProfilEintrag` bildet ein geladenes Profil mit seiner Dokument-ID als `uid` ab. `IBenutzerProfilAktualisierung`
-  begrenzt allgemeine Profiländerungen auf Anzeigename, Aktivstatus und erlaubte Bereiche;
-  `IBenutzerDatenzuordnung` bildet die davon getrennte Datenzuordnung für Office- und Filialkonten ab. Benutzerrolle,
-  E-Mail-Adresse und Passwort sind ausgeschlossen.
-- Für Office-, Filial- und Mitarbeiterkonten bündelt das Menü `Benutzer bearbeiten` die Aktionen `Benutzerdaten bearbeiten`,
-  `Datenzuordnung ändern` und `Benutzerkonto löschen`. Jede Aktion öffnet direkt einen eigenständigen Dialog; es werden keine
-  Dialoge übereinander geöffnet. Bei Masterprofilen öffnet der Bearbeiten-Button den Profildialog ohne vorgeschaltetes Menü.
-- Der Profildialog bearbeitet ausschließlich Anzeigename, Aktivstatus und erlaubte Bereiche. Der Datenzuordnungsdialog zeigt die
-  rollenabhängigen Select-Felder unmittelbar mit der aktuellen Zuordnung vorausgewählt an. Der Löschdialog kapselt die eindeutige
-  Sicherheitsabfrage. Masterprofile besitzen keine Datenzuordnung und können nicht gelöscht werden.
-- Allgemeine Profiländerungen werden über `updateBenutzerProfil`, Office-/Filialzuordnungen über
-  `updateBenutzerDatenzuordnung` und Mitarbeiterzuordnungen über `updateMitarbeiterZuordnung` serverseitig validiert. Direkte
-  Client-Schreibzugriffe auf `benutzerprofil` sind durch die Firestore Rules gesperrt. Erfolgreiche Aktualisierungen setzen
-  `aktualisiertAm` serverseitig und werden ohne erneutes Laden in den Stammdaten- und Verwaltungsbestand übernommen.
-- In Benutzeranlage und Bearbeitungsdialog werden die optionalen Bereiche gemäß App-Bereich-Matrix rollenabhängig als Checkboxen
-  angezeigt. `dashboard` wird für jede Rolle verbindlich ergänzt; `system` wird ausschließlich für Master ergänzt und
-  bei allen anderen Rollen entfernt. Die Callable Function ergänzt bei der Anlage nur diese Pflichtbereiche und übernimmt die
-  optionalen Bereiche aus der Clientauswahl. Ein gemeinsamer Frontend-Helfer normalisiert die Bereiche beim Laden sowie vor einer
-  Profilaktualisierung. Mit Ausnahme der Filialeinstellungen leiten die Firestore Rules aus `erlaubteBereiche` keine
-  Datenrechte oder rollenabhängigen Bereichskombinationen ab. Office- und Filialkonten benötigen für Filialeinstellungen
-  zusätzlich den Bereich `einstellungen`; Masterkonten bleiben rollenbedingt datenberechtigt. Die vorhandenen Rollen-Guards
-  sichern die Navigation und den Routenzugriff.
-- Das eigene Masterprofil kann nicht deaktiviert werden. Die Benutzerrolle ist für sämtliche Profile unveränderlich. Dieser
-  Selbstschutz und die zulässigen Aktualisierungsfelder werden in den Callable Functions geprüft.
-- Änderungen am aktuell angemeldeten Profil werden über den Echtzeit-Listener unmittelbar in den lokalen Benutzer-Store
-  übernommen. Bei einer Deaktivierung setzt der `AppSitzungsInitService` die sitzungsbezogenen Stammdaten zurück und der
-  `GlobalBannerService` zeigt unter der Toolbar den nicht ausblendbaren Hinweis „Dieses Profil ist inaktiv. Bitte wende dich an
-  einen Administrator.“. Ein
-  Listenerfehler verändert den zuletzt bestätigten Aktivstatus nicht. Es erfolgt keine automatische Abmeldung; die vorhandenen
-  Guards sichern neue fachliche Navigationen weiterhin ab, während die authentifizierte Passwortseite erreichbar bleibt.
-
-## Struktur verwalten
-
-- Die `StrukturVerwaltenPage` ist unter `/system/struktur/bearbeiten` für die Auswahl und Bearbeitung vorhandener
-  Firmen- und Filialstammdaten angelegt. Sie ist über den Bereich `system` ausschließlich für Master erreichbar.
-- Master wählen Unternehmer, Firma und Filiale über abhängige Material-Selects. Ein Unternehmerwechsel setzt Firma und Filiale
-  zurück; ein Firmenwechsel setzt die Filiale zurück.
-- Der intern nach seiner Bearbeitungsaufgabe benannte `StrukturBearbeitenStore` verwaltet die Listen, Auswahlen sowie getrennte
-  Lade-, Leer- und Fehlerzustände und ist an die Store-Snapshot-Ausgabe angebunden.
-- Masterkonten besitzen keine erforderliche Zugriffszuordnung und laden bei der Sitzungsinitialisierung die vollständige
-  Hierarchie sowie alle Benutzerprofile.
-- Office-Konten besitzen keinen Schreibzugriff auf Firmen- und Filialstammdaten. Die Firestore Rules erlauben diese Änderungen
-  ausschließlich aktiven Masterkonten.
-- Die Auswahl verwendet anschließend den zentralen Sitzungsbestand. Ausgewählte Firmen und Filialen können über getrennte
-  Material-Dialoge bearbeitet werden; sie umfassen Anzeigename, Firmen- beziehungsweise Filialname, optionale Adressfelder und
-  optionale Kontaktdaten.
-- Dokument-ID, Nummer, Aktivstatus und Hierarchiepfad bleiben unverändert. `FirmaService` und `FilialeService` speichern
-  ausschließlich die bearbeitbaren Felder und setzen `aktualisiertAm` mit einem Server-Zeitstempel.
-- Nach erfolgreichem Speichern werden Verwaltungs- und Stammdatenbestand unmittelbar aktualisiert. Eine weitere Firestore-Abfrage
-  ist nicht erforderlich.
-
-## Globaler Aktivitätsindikator
-
-- Der globale `LoadingService` zählt parallele Lese- und Schreibvorgänge getrennt und blendet den Aktivitätsindikator erst nach
-  Abschluss des letzten registrierten Vorgangs aus.
-- Die App-Toolbar zeigt während aktiver Lese- oder Schreibvorgänge eine schmale unbestimmte Material-Progress-Bar an ihrem unteren
-  Rand. Ihre zugängliche Beschriftung unterscheidet Laden, Speichern und gleichzeitig laufende Vorgänge.
-- Die aktuellen Firestore-Lesevorgänge für Benutzerprofile, Unternehmer, Firmen und Filialen werden im `FirestoreDbService`
-  zentral an die Ladeanzeige angebunden. Damit werden auch die davon abhängigen Datenzugriffslisten und Verwaltungslisten erfasst.
-- Das Anlegen und Aktualisieren von Firestore-Dokumenten sowie die Benutzeranlage über die Callable Function werden zentral als
-  Schreibvorgänge registriert.
-- Seiten zeigen keine zusätzlichen allgemeinen Ladetexte mehr. Fachliche Fehler- und Leerzustände bleiben direkt im jeweiligen
-  Seitenbereich sichtbar.
-
-## Netzwerkstatus
-
-- Der `NetzwerkStatusService` berücksichtigt zunächst `navigator.onLine` und prüft zusätzlich die Erreichbarkeit der aktuellen
-  Hosting-Seite über einen ungecachten Aufruf von `/health.json`.
-- Die Health-Prüfung läuft beim Start, nach den Browser-Ereignissen `online` und `offline` sowie alle 30 Sekunden. Ein Aufruf wird
-  nach drei Sekunden abgebrochen und dann als offline gewertet.
-- Die Datei `health.json` wird in allen vier Auslieferungsvarianten bereitgestellt und von Firebase Hosting ausdrücklich mit
-  `Cache-Control: no-store` ausgeliefert. Der Angular Service Worker nimmt sie nicht in seinen Ressourcen-Cache auf.
-- Die Prüfung bestätigt die Erreichbarkeit der Hosting-Seite, nicht die Verfügbarkeit einzelner Firebase-Dienste. Fehler von
-  Auth, Firestore, Functions oder Storage werden weiterhin durch den jeweiligen Dienstaufruf behandelt.
-- `assertOnline()` bricht verbindungsabhängige Aktionen anhand des zuletzt bestätigten Netzwerkstatus mit einem einheitlichen
-  Offline-Fehler ab. Die Toolbar zeigt einen Offline-Status und eine zeitlich begrenzte Wieder-online-Meldung an.
-
-## Datenzugriff-Auswahl mit Firebase
-
-- Die ausschließlich von Benutzeranlage und Benutzerbearbeitung verwendete Component liegt unter
-  `src/app/components/system/benutzer/datenzugriff-selector`; ihre Auswahlmodelle liegen in
-  `src/app/commons/models/domain/datenzugriff.ts`.
-- Der `AppKontextSelector` liegt unter `src/app/components/data-selectors/app-kontext-selector`, verbindet den globalen
-  `AppKontextStore` mit der Sidebar und setzt sich aus internen Unternehmer-, Firmen- und Filial-Selektoren zusammen. Die drei
-  Unterkomponenten liegen in eigenen Unterordnern und werden außerhalb des `AppKontextSelector` nicht direkt verwendet. Über
-  eine typisierte Konfiguration unterstützt der Wrapper je Selektor die Modi `hidden`, `readonly` und `editable`. Die Sidebar
-  ermittelt die Konfiguration zentral aus Benutzerrolle und aktivem `data.bereich` der Route. Ein konfigurierter Selektor wird
-  nur bei mehr als einer fachlich wählbaren Option dargestellt. Master können Unternehmer und Firma in allen Fachbereichen
-  verändern; die Filialauswahl ist im Schichtplan und Mitarbeiterbereich bearbeitbar und in den übrigen Bereichen deaktiviert.
-  Office verwendet denselben bereichsabhängigen Filialmodus ohne Unternehmerauswahl. Filialkonten verwenden ihren eindeutigen
-  Kontext ohne Selektoren; Mitarbeiter erhalten im Schichtplan nur bei mehreren erlaubten Filialen die Filialmehrfachauswahl.
-  Die vollständige Zuordnung steht in der [Kontextselektor-Matrix](./matrizen/kontextselektor.md).
-- Der `MitarbeiterFilter` liegt unter `src/app/components/data-filters/mitarbeiter-filter`. Er zeigt Vor- und Nachname an, gibt
-  den ausgewählten vollständigen Mitarbeiter zurück, ist vollständig getestet und noch nicht in eine Fachseite eingebunden.
-- Die Systemseite lädt Unternehmer aus `unternehmer`, Firmen aus `firma` und Filialen aus `filiale`. Die produktiven
-  Mock-Daten wurden entfernt. `UnternehmerService`, `FirmaService` und `FilialeService` kapseln Laden und Anlegen ihrer
-  vollständigen Domäneneinträge. Das gemeinsame Datenzugriff-Auswahlmodell und die Firestore-Dokumente verwenden auf allen Ebenen
-  einheitlich `anzeigename`; `DatenzugriffService` bildet alle drei Domäneneinträge auf kompakte Auswahleinträge ab. Fehlende
-  Anzeigenamen werden durch die Dokument-ID ersetzt.
-- Die Gruppe Datenzugriff verwendet einen `div` mit sichtbarer Überschrift statt eines `fieldset`: In der Browser-Nachstellung
-  kollabierte ein darin verschachtelter Größencontainer beim Einblenden von Meldungen. Die Container-Abfrage der
-  wiederverwendbaren Component bleibt erhalten; die Korrektur wurde ein- und dreispaltig geprüft.
-- Drei Material-Selects bilden Unternehmer -> Firmen -> Filialen ab. Ohne passende übergeordnete Auswahl beziehungsweise
-  verfügbare Optionen sind nachgelagerte Selects deaktiviert.
-- Die Inputs `unternehmerMehrfach`, `firmenMehrfach` und `filialenMehrfach` sind standardmäßig alle `false`. Die
-  Systemseite erzeugt je Rolle eigene Komponenteninstanzen mit festen Modi: Filiale `false`, `false`, `false`; Office
-  `false`, `true`, `true`; Master ohne Auswahlkomponente. Rollenwechsel setzt die Zuordnungen zurück, ohne den Auswahlmodus einer
-  bestehenden Instanz zu ändern.
-- Firmen erhalten nur dann Unternehmergruppen, wenn `unternehmerMehrfach` aktiv ist und mehr als ein Unternehmer ausgewählt wurde.
-  Filialen erhalten nur dann Firmengruppen, wenn `firmenMehrfach` aktiv ist und mehr als eine Firma ausgewählt wurde.
-- Bei mehreren ausgewählten Einträgen erscheint die Anzahl direkt im jeweiligen Select. Hints und die separate Auswahlstatus-Zeile
-  wurden entfernt.
-- Interne zusammengesetzte Auswahlschlüssel erhalten die Unternehmer-/Firmenzuordnung auch bei gleichen untergeordneten IDs. Diese
-  Schlüssel sind kein gespeichertes Berechtigungsmodell.
-- Abgewählte Unternehmer oder Firmen verlieren ihre abhängige Auswahl; andere Auswahlen bleiben bestehen. Die Auswahlmodi werden
-  beim Einbinden festgelegt und während der Lebensdauer der Component nicht umgeschaltet; je Ebene gibt es ein Select mit
-  gebundenem `multiple`.
-- Die Component erhält Daten und Auswahl vom `BenutzerVerwaltungStore` über die Systemseite. Model-Inputs melden
-  Auswahlereignisse zurück. Der Store lädt abhängige Listen, speichert sie nach vollständigem Pfad zwischen und bereinigt
-  abhängige Auswahlen.
-- Listen haben eigene Lade-, Leer- und Fehlerzustände mit Wiederholungsmöglichkeit. Laufende Abfragen werden je Pfad
-  zusammengefasst; verspätete Antworten stellen keine abgewählte Auswahl wieder her.
-- Der Anlage-Payload wird aus der Store-Auswahl als verschachtelte Zugriffs-Map erzeugt; das bisherige `zugriffe`-FormArray wurde
-  entfernt.
-- Jeder ausgewählte Unternehmer benötigt mindestens eine Firma, jede ausgewählte Firma mindestens eine Filiale. Laufende Abfragen
-  und Ladefehler verhindern die Freigabe der Anlagedaten. Office-/Filialkonten benötigen mindestens eine vollständige Zuordnung.
-  Eine komplett leere Auswahl ist bei der Anlage nur für Master erlaubt; Formular und Backend prüfen diese Bedingung.
-- Die Datenberechtigungshelfer gewähren aktiven Mastern uneingeschränkten Firmen-/Filial-Lesezugriff; für Office/Filiale prüfen
-  sie Unternehmer, Firma und gegebenenfalls Filiale direkt in der verschachtelten Map. Alte Array-Zugriffe werden beim Laden auf
-  `{}` normalisiert und gewähren keine Datenrechte. Das aktuelle Masterprofil liegt unter `benutzerprofil/{uid}` und verwendet die
-  vereinfachte Zugriffsstruktur.
-
-## Backend und Passwortänderung
-
-- Store und Service übergeben Namensbestandteil, Anzeigename, Rolle, Anfangspasswort, Bereiche und Datenzugriffe an die Callable
-  Function `createBenutzer`. Die Function normalisiert den Namensbestandteil erneut und erzeugt daraus Anmeldename und technische
-  Firebase-Adresse verbindlich. Eine gültige Benutzeranlage kann direkt über das Formular gestartet werden; während eines
-  laufenden Aufrufs werden weitere Aufrufe verhindert.
-- Der `BenutzerVerwaltungService` erzeugt und startet die Callable Function innerhalb von `runInInjectionContext`, damit
-  AngularFire-Aufrufe korrekt im Angular-Injection-Kontext ausgeführt werden.
-- Die Function prüft Anmeldung, aktives Profil und `userRole: master` serverseitig und legt per Admin SDK Auth-Benutzer und
-  `benutzerprofil/{uid}` an. Die Sitzung des Masters bleibt erhalten.
-- Die Function normalisiert `erlaubteBereiche` unabhängig vom Client: `dashboard` wird immer gespeichert,
-  `system` ausschließlich für Master. Bei Änderungen bestehender Profile stellt der Client die Pflichtbereiche
-  wieder her. Nur bei Filialeinstellungen verwenden die Rules `einstellungen` für Office- und Filialkonten zusätzlich als
-  Datenzugriffsvoraussetzung; Masterkonten sind rollenbedingt berechtigt.
-- Der neue optionale Bereich `einstellungen` wird nicht automatisch in vorhandene Benutzerprofile migriert. Die bestehenden
-  Profile wurden manuell geprüft und bei Bedarf um die Freigabe ergänzt. Office- und Filialkonten können den Bereich verwenden;
-  für Mitarbeiterkonten ist er rollenbedingt nicht verfügbar und ein direkter Aufruf der Einstellungsroute führt zum Dashboard.
-- Das Backend verlangt für jeden Zugriff eine Unternehmer-ID und prüft vor der Auth-Anlage die Existenz von Unternehmer, Firma und
-  Filialen unter ihren vollständigen Pfaden. Fehlende Dokumente, ungültige IDs oder fehlgeschlagene Prüfabfragen brechen die
-  Anlage ab. Doppelte Firmenzugriffe werden nur innerhalb desselben Unternehmers zusammengeführt.
-- Das Anfangspasswort wird an Firebase Authentication übermittelt und nicht in Firestore gespeichert.
-- Auth-Konten werden mit `disabled: true` angelegt. Erst nach bestätigtem Speichern des Profils wird das Konto aktiviert. Ein
-  fehlgeschlagener Profil-Schreibvorgang führt nie zur Aktivierung; das deaktivierte Konto wird nach Möglichkeit gelöscht.
-- Bei einem Aktivierungsfehler (auch unklarem Timeout-Ergebnis) versucht das Backend unabhängig voneinander Auth-Deaktivierung,
-  Profil-Deaktivierung und Auth-Löschung. Das Profil wird nicht gelöscht: Bereits ausgestellte Tokens dürfen nicht auf die
-  Legacy-Regel für Konten ohne Profil zurückfallen. Scheitert eine Bereinigung, wird keine erfolgreiche Rückabwicklung behauptet;
-  UID und fehlgeschlagener Schritt werden serverseitig protokolliert.
-- Manuelle Nachbearbeitung: UID aus dem Fehlerlog prüfen, eventuell vorhandenes Auth-Konto deaktivieren/entfernen und vorhandenes
-  Profil auf `aktiv: false` setzen. Das Profil als Sperrdokument erhalten. Wenn mehrere externe Aufrufe scheitern, ist eine
-  vollständige automatische Bereinigung nicht garantiert; die Fehlermeldung fordert die Administratorprüfung an.
-- Der Bearbeitungsdialog zeigt bei Mitarbeiterkonten die gespeicherte Zuordnung zu Unternehmer, Firma und fachlichem Mitarbeiter.
-  Nicht mehr auflösbare Referenzen bleiben mit ihrer gespeicherten ID erkennbar.
-- Aktive Master können jedes Mitarbeiterkonto einem anderen Unternehmer, einer anderen Firma und einem dort vorhandenen aktiven,
-  noch nicht verknüpften Mitarbeiter zuordnen. Die Callable Function `updateMitarbeiterZuordnung` löst eine noch vorhandene alte
-  Verknüpfung und aktualisiert den neuen Mitarbeiter sowie das Benutzerprofil gemeinsam in einer Firestore-Transaktion.
-- Aktive Master können Office- und Filialkonten über dieselbe Dialogaktion neu zuordnen. Die Callable Function
-  `updateBenutzerDatenzuordnung` prüft die Zielrolle, die vollständige Unternehmer-/Firmen-/Filialstruktur und die Existenz aller
-  ausgewählten Dokumente. Filialkonten bleiben dabei auf genau einen Unternehmer, eine Firma und eine Filiale begrenzt.
-- Office-, Filial- und Mitarbeiterkonten können nach einer Sicherheitsabfrage über die Callable Function `deleteBenutzer`
-  endgültig gelöscht werden; Masterkonten sind von dieser Aktion ausgeschlossen. Die Function entfernt zuerst das
-  Firebase-Auth-Konto und danach das Profil sowie bei Mitarbeiterkonten eine noch vorhandene Mitarbeiterverknüpfung, damit kein
-  Auth-Konto ohne schützendes Pur-System-Profil und damit keine vorübergehenden Legacy-Rechte entsteht.
-- Angemeldete Benutzer können ihr Passwort nach erneuter Authentifizierung über die Toolbar und `/passwort` ändern. Auf dieser
-  separaten Seite werden neues Passwort und Bestätigung validiert; es gelten mindestens 8 Zeichen.
-- Die Functions-Codebase `pur-system` nutzt Node.js 22 und die Region `europe-west1`.
-
-## Rules und Deployment
-
-- Das Firebase-Projekt `pur-system` verwendet getrennte Hosting-Sites für Master, Office, Filiale und Mitarbeiter. Die vier
-  Produktionsbuilds sind als installierbare PWAs mit Angular Service Worker konfiguriert.
-- Die Firebase-Hosting-Site `pur-master.web.app` wurde am 25.09.2026 angelegt. Hosting-Target, eigener Master-Build, Manifest und
-  Deployment-Skript sind eingerichtet; die Site wurde am 26.09.2026 erstmals erfolgreich veröffentlicht.
-- Die zusätzliche Firebase-Hosting-Site `pur-mitarbeiter.web.app` wurde am 25.09.2026 für die persönliche Mitarbeiter-PWA
-  reserviert und erstmals erfolgreich veröffentlicht. Hosting-Target, eigener Build und Deployment-Skript sind eingerichtet.
-- Die Hosting-Targets `master`, `office`, `filiale` und `mitarbeiter` verwenden getrennte Build-Verzeichnisse. Die fünf npm-Befehle
-  für einzelne oder gemeinsame Hosting-Deployments verwenden zentral `scripts/deploy-hostings.sh`, bauen vor dem Deployment die
-  ausgewählten Varianten und verlangen eine Bestätigung. `npm run deploy:pur-all` veröffentlicht ausschließlich die vier
-  Hosting-Ziele; Firestore Rules und Functions bleiben davon unberührt.
-- Master, Office, Filiale und Mitarbeiter wurden am 26.09.2026 mit ihren getrennten PWA-Builds erfolgreich auf die jeweils
-  zugehörige Firebase-Hosting-Site veröffentlicht.
-- Master-, Office-, Filial- und Mitarbeiter-Build verwenden jeweils eine eigene Produktkennung im Web-App-Manifest und einen
-  eigenen Icon-Satz. Das gemeinsame weiße Pur-`P` wird für Master durch Violett/Magenta, für Office durch Blau/Türkis, für Filiale
-  durch Grün/Türkis und für Mitarbeiter durch Orange/Rot ergänzt. Jeder Produktionsbuild liefert ausschließlich seinen
-  zugehörigen Icon-Satz aus. Indexdatei und Manifest verwenden für alle Varianten einheitlich die anthrazitfarbene
-  PWA-Rahmenfarbe `#252829`. Die Farbe wird zentral in `config/pwa-theme-colors.mjs` gepflegt und
-  vor Development-Server und Varianten-Builds automatisch synchronisiert. Browseraktionen in der Titelleiste einer installierten
-  Desktop-PWA, beispielsweise „Deinstallieren“, Erweiterungen und das Drei-Punkte-Menü, werden vom Browser bereitgestellt und sind
-  durch die Anwendung nicht ausblendbar.
-- Die neue Angular-Konfiguration `mitarbeiter` ergänzt die Office-Basiskonfiguration zur Kombination `office,mitarbeiter`. Sie erzeugt
-  `dist/pur-mitarbeiter/browser` mit aktiviertem Angular Service Worker, eigenem Produktions-Environment und dem Manifest „Pur
-  Mitarbeiter“. `npm run pwa:pur-mitarbeiter` stellt den Build lokal auf Port `8083` bereit.
-- Das Hosting-Target `mitarbeiter` ist mit der Firebase-Site `pur-mitarbeiter` verbunden. Der Hosting-Block verwendet
-  ausschließlich `dist/pur-mitarbeiter/browser`, eigene PWA-Cache-Header und das SPA-Rewrite. `build:mitarbeiter`,
-  `pwa:pur-mitarbeiter` und `deploy:pur-mitarbeiter` sind eingerichtet; das Deploy-Skript nennt Projekt, Zieladresse und Service
-  Worker vor der erforderlichen Bestätigung. Lokale Vorschau, Bestätigungsabbruch und echtes Deployment wurden erfolgreich
-  geprüft.
-- HTML und direkte SPA-Routen werden ohne Browser-Cache ausgeliefert. Manifest und Service-Worker-Steuerdateien bleiben ebenfalls
-  kurzfristig aktualisierbar. Gehashte JavaScript- und CSS-Ressourcen erhalten einen langfristigen unveränderlichen Cache. Die
-  produktiven Header wurden nach dem Mitarbeiter-Deployment für `/`, `/login`, Manifest, `ngsw.json`, `ngsw-worker.js` und eine
-  gehashte Hauptdatei geprüft.
-- Eine Übersicht der tatsächlich eingerichteten lokalen und produktiven Varianten steht in den
-  [PWA-Konfigurationen](./matrizen/pwa-konfigurationen.md). Die vorgesehene Verwendung und das fachliche
-  Online-/Offline-Verhalten stehen in der [Cache- und Betriebsartenmatrix](./matrizen/cache-strategien.md).
-- Bei einer fehlerhaften PWA-Version wird ausschließlich die betroffene Hosting-Site in der Firebase Console auf die letzte
-  funktionierende Veröffentlichung zurückgesetzt. Hilft dieses Rollback wegen eines fehlerhaften Service Workers nicht, wird als
-  letzte Notfallmaßnahme für die betroffene Site der von Angular erzeugte `safety-worker.js` unter der bisherigen URL
-  `ngsw-worker.js` ausgeliefert, bis die betroffenen Installationen den Service Worker deregistriert und ihre Angular-Caches
-  entfernt haben. Anschließend werden Start, Updateverhalten und Service-Worker-Status der betroffenen PWA geprüft.
-
-- Functions-Deployment für die rollenabhängige Validierung (Office mindestens eine, Filiale genau eine vollständige Zuordnung)
-  wurde vom Benutzer bestätigt. Benutzeranlage, Anmeldung, Bereichsfreigabe, Systembereichssperre, Passwortwechsel und erneute
-  Anmeldung wurden anschließend bestätigt. Am 22.09.2026 wurden zusätzlich reale Office- und Filialkonten mit der neuen
-  Unternehmer-/Firma-/Filiale-Hierarchie angelegt, ihre gespeicherten Profile geprüft und Anmeldung, erlaubte Bereiche sowie die
-  Umleitung von `/system` erfolgreich bestätigt.
-
-- Die vereinfachte Function ohne Zugriffsindex ist deployed (Benutzerbestätigung). Die sichere Kontoaktivierung bleibt erhalten.
-- Lokal umgesetzt: Aktive Master lesen alle vorgesehenen Collections und legen fachliche Daten an oder aktualisieren sie. Direkte
-  Löschungen neuer Strukturdatensätze sind gesperrt und erfolgen ausschließlich über die geschützte Callable Function.
-- Aktive Office-/Filialprofile lesen nur zugeordnete Unternehmer-/Firmendokumente sowie freigegebene Filialen und deren
-  Untercollections. Das eigene Profil bleibt auch für inaktive Konten lesbar. Office- und Filialkonten bleiben bei Firmen- und
-  Filialstammdaten rein lesend; ausschließlich aktive Master dürfen diese Dokumente anlegen oder aktualisieren.
-- Benutzeranlage speichert ausschließlich die validierte Zugriffs-Map. Die Rules prüfen Unternehmer-ID, Firma-ID und Filial-ID
-  direkt in dieser Struktur; ein separater `zugriffsIndex` ist nicht mehr erforderlich.
-- Altanwendung nutzt laut Benutzer ausschließlich Konten ohne `benutzerprofil`-Dokument. Diese behalten den bisherigen
-  Lese-/Schreibzugriff außerhalb von `benutzerprofil` und `unternehmer`; Emulator-Tests sichern das ab. Fehlgeschlagene
-  Kontoanlage darf kein nutzbares Auth-Konto ohne Profil hinterlassen (lokal durch deaktivierte Anlage abgesichert).
-- Office-Queries müssen ihren erlaubten Datenraum eingrenzen. Filialkonten besitzen für die Mitarbeiter-Collection ihrer Firma
-  Leserechte und laden die fachliche Mitarbeiterliste clientseitig direkt mit einem `array-contains`-Filter auf die eigene
-  Filial-ID. Anlage und Bearbeitung bleiben auf Mitarbeiter dieser Filiale begrenzt.
-- Neue Rules sind laut Benutzer produktiv; Lesen und Schreiben in der Altanwendung funktionieren weiterhin. Die sichere
-  Kontoaktivierung ist ebenfalls deployed und die Formularsperre wurde entfernt. Die aktuelle lokale Regeländerung entzieht
-  Office-Konten den bisherigen Schreibzugriff auf Firmen und Filialen; Emulator-Tests sichern den rein lesenden Zugriff ab.
-- Die Rules für eingeschränkte Profilaktualisierungen und den Selbstschutz des eigenen Masterprofils wurden am 23.09.2026
-  erfolgreich deployed. Die Profilbearbeitung und die bestehenden Office-Zugriffe wurden anschließend mit realen Testkonten
-  erfolgreich geprüft.
-- Die ursprüngliche Rolle `mitarbeiter` und ihre freie Bereichszuweisung sind in Function und Rules deployed. Die neue eindeutige
-  Verknüpfung mit einem Firma-Mitarbeiter ist lokal umgesetzt. Die aktualisierten Rules erlauben die Bearbeitung von Anzeigename,
-  Aktivstatus und Bereichen eines verknüpften Mitarbeiterprofils, verhindern aber Änderungen an `zugriffe` und
-  `firmaMitarbeiterId` und gewähren Lesezugriff auf die zugeordnete Unternehmensstruktur sowie die Mitarbeiter der zugewiesenen
-  Firma. Diese Rules-Änderung wurde am 28.09.2026 produktiv deployed und mit einem realen Mitarbeiterkonto geprüft.
-- Die ergänzte Leseberechtigung des Mitarbeiterzugangs für direkte Filialdokumente seiner Firma ist durch Emulator-Tests
-  abgesichert und wurde am 13.10.2026 produktiv deployed. Filial-Untercollections und Schreibzugriffe bleiben gesperrt.
-- Die Firestore Rules für Filialeinstellungen und die Functions mit dem neuen optionalen Bereich `einstellungen` wurden am
-  15.10.2026 produktiv deployed. Die Profilbearbeitung des Masterkontos wurde anschließend erfolgreich geprüft. Ein Hosting-
-  Deployment der neuen Einstellungsoberfläche ist damit nicht verbunden und wurde für diesen Stand noch nicht bestätigt.
-- Die Vereinfachung ohne gespeichertes Feld `zeitzone` verwendet in der Oberfläche fest Nordrhein-Westfalen. Die angepassten
-  Firestore Rules sind produktiv deployed. Vorhandene Dokumente mit dem bisherigen Feld bleiben lesbar; der Service entfernt das
-  Feld beim nächsten Speichern.
-- Der Git-Push der aktuellen Änderungen ist kein Firebase-Deployment.
-
-## Tests und Build
-
-Am 23.10.2026 für den aktuellen Stand geprüft:
-
-- 1046 von 1046 Frontend-Tests bestehen, einschließlich rollenbezogener flacher und verschachtelter Navigation,
-  Bereichsfreigaben,
-  konsistenter Guard-Ausweichnavigation, vereinfachter Anmeldung, Benutzeranlage und -darstellung, der Rolle `mitarbeiter`,
-  PWA-Updatebehandlung, Netzwerkstatus, Store-Snapshots, Strukturanlage, zentraler Stammdateninitialisierung sowie Firmen-,
-  Filial- und Benutzerprofil-Bearbeitung, fachlichem Mitarbeiter-Service und -Store, Mitarbeiterlistenroute, Rollenprüfung und
-  Mitarbeiter-Cards, Anlage- und Bearbeitungsdialogen, mehreren gleichzeitig gehaltenen Mitarbeiterkontexten,
-  benutzerabhängigen Stammdatenladeplänen für alle vier Rollen, Echtzeitbeobachtung des eigenen Profils, zentralem
-  Sitzungsstart mit Initialisierungszustand, wartender Navigation, Fehlerseite, Wiederholung und Rücknavigation sowie globalem
-  Banner-Service, Inaktivhinweis, allen vier Firestore-Lesestrategien, buildabhängiger Cache-Art,
-  erzwungenem Server-Neuladen, Benutzertrennung, Unternehmer-, Firmen-, Filial- und Mitarbeitermigration sowie
-  Namensähnlichkeitsfilter, atomarer Mehrfach-Zusammenführung von Mitarbeiterduplikaten sowie Filialeinstellungen.
-- Die rollenbezogene Navigation wurde zusätzlich manuell mit Tastatur, sichtbarem Fokus und zugänglichen Bezeichnungen geprüft.
-- „Struktur anlegen“ und die Benutzerfunktionen wurden unter den Systemrouten auf Desktop und einem kleinen
-  Viewport erfolgreich manuell geprüft.
-- Die getrennten Dialoge für Profildaten, Datenzuordnung und Kontolöschung sowie der direkte Master-Aufruf wurden auf Desktop und
-  einem kleinen Viewport geprüft. Die zugehörigen Menü- und Dialogaktionen sind per Tastatur erreichbar.
-- Die Echtzeitbeobachtung des eigenen Profils wurde manuell mit Deaktivierung, Neustart, Wiederverbindung und erneuter Aktivierung
-  geprüft. Ein inaktives, weiterhin authentifiziertes Profil wird auf der Loginseite durch den globalen Banner kenntlich gemacht;
-  nach erneuter Aktivierung wechselt die Anwendung selbstständig zum Dashboard.
-- 88 Functions-Tests einschließlich technischer Anmeldedaten, doppelter Anmeldenamen, rekursiver Strukturlöschung, eindeutiger
-  Mitarbeiterverknüpfung, Rückabwicklung, Rollenprüfung, Hierarchievalidierung und sicherer Kontoaktivierung.
-- 63 Firestore-Emulator-Tests für aktive Profile, Rollen, hierarchische Zugriffe und die CRUD-Rechte der Berechtigungsmatrix.
-  Abgedeckt sind außerdem die ausdrücklich dokumentierten Ausnahmen für das eigene Profil, Masterzugriffe, den Bereich
-  `einstellungen`, Mitarbeiterzugriffe auf Dienstpläne, Legacy-Konten, strukturelle Cloud-Function-Operationen und den
-  Löschschutz verknüpfter Mitarbeiter. Nicht aufgeführte Collections und unzulässige Pfade werden abgewiesen.
-- Master-, Office-, Filial- und Mitarbeiter-Produktionsbuild sind als vollständige PWA-Ausgaben konfiguriert. Sie enthalten das
-  jeweils passende Manifest, zehn erreichbare App-Icons, lokale Roboto- und Material-Icon-Schriften, `ngsw.json`,
-  `ngsw-worker.js` und die Ressourcengruppen `app`, `fonts` und `assets`. Der native Buildprozess kann in der lokalen
-  Codex-Umgebung vereinzelt mit Exit-Code 134 abbrechen; ein unmittelbar wiederholter Build war jeweils erfolgreich.
-  Master-, Office-, Filial- und Mitarbeiter-Build sind für den aktuellen Stand erfolgreich. Das initiale Bundle der geprüften
-  Varianten liegt bei rund 1,31 MB.
-- Rollenladepläne, Zustandswechsel, Benutzertrennung, Cache-Auswahl und Lesestrategien sind automatisiert geprüft. Die manuelle
-  Abnahme mit realen Master-, Office-, Filial- und Mitarbeiterkonten war erfolgreich. Pur Filiale wurde zusätzlich mit
-  persistentem Cache, Offline-Neustart, fehlendem Cache, verständlicher Fehleranzeige und erzwungenem Server-Neuladen geprüft.
-  Auch der Wechsel zwischen zwei Benutzern übernahm keine Daten des vorherigen Sitzungskontexts. Umsetzungstodo 16 ist damit
-  abgeschlossen.
-- Die Mitarbeiter-App-Shell wurde lokal nach vollständigem Beenden des Webservers in Desktop- und mobiler Viewport-Größe
-  erfolgreich aus dem Service-Worker-Cache neu geladen. Die veröffentlichte Login-Seite wurde ohne Browserfehler geladen. Pur
-  Mitarbeiter wurde anschließend erfolgreich auf dem Desktop und auf einem physischen iPhone installiert und jeweils als
-  eigenständige App geöffnet.
-
-Der durchgängige Benutzeranlageablauf mit realen Daten wurde am 22.09.2026 für je ein Office- und Filialkonto bestätigt. Die
-vollständige Hierarchie wurde gespeichert, beide Konten konnten sich anmelden und nur ihre erlaubten Bereiche verwenden; die
-Die Systemroute blieb durch die Masterprüfung gesperrt. Am 23.09.2026 wurde mit dem damaligen Berechtigungsstand die
-Aktualisierung einer zugeordneten Firma und Filiale durch ein reales Office-Testkonto bestätigt; dieses inzwischen aufgehobene
-Office-Schreibrecht ist durch die aktuelle lokale Regeländerung ersetzt. Außerdem wurde die Bearbeitung eines vorhandenen
-Benutzerprofils mit einem realen Testkonto bestätigt. Am 25.09.2026 wurde ein realer Mitarbeiterzugang zunächst mit dem
-zwischenzeitlichen
-`userRole: personal`, den Bereichen Dashboard und Schichtplan sowie leerer Zugriffs-Map angelegt. Anmeldung, Bereichsnavigation,
-Deaktivierung und der Schutz vor unzulässigen Rollenänderungen wurden laut Benutzer erfolgreich geprüft. Anschließend wurde das
-Profil zu `userRole: mitarbeiter` migriert, Functions, Rules und alle Hosting-Varianten wurden neu deployed und die Anmeldung
-sowie Bereichsnavigation erneut erfolgreich geprüft.
-
-Ebenfalls am 25.09.2026 wurden ein neuer Master und die weiteren Rollenkonten nach dem neuen Anmeldemodell angelegt.
-Benutzeranlage, Anmeldung, Passwortänderung, Rollen- und Bereichsgrenzen sowie die vorgesehenen Office-, Filial- und
-Mitarbeiter-Auslieferungsvarianten wurden laut Benutzer erfolgreich geprüft. Die bisherigen Testkonten werden nicht migriert. Die
-übrigen Schreibgrenzen sind durch die erfolgreichen Firestore-Emulator-Tests abgesichert.
-
-Am 04.10.2026 wurde eine vollständige Kundenmigration mit realen Legacy-Daten fachlich abgenommen. Unternehmer, Firmen,
-Filialen und Mitarbeiter wurden in ihrer Abhängigkeitsreihenfolge migriert, mit den Quelldaten verglichen und erneut ausgeführt.
-Die gespeicherten Ziel-ID-Zuordnungen wurden wiederverwendet, ausschließlich im Ziel vorhandene Dokumente blieben erhalten und
-alle 15 geprüften Legacy-Mitarbeiter wurden erfolgreich übernommen. Das Umsetzungstodo zur Kundenmigration ist damit
-abgeschlossen.
-
-## Rollenpräzisierung: Umsetzung und offene Punkte
-
-- Filialkonten werden genau einer Filiale zugeordnet. Einfachauswahl im UI sowie Seiten- und Backendvalidierung sind umgesetzt;
-  mehrere Firmen oder Filialen werden für diese Rolle abgelehnt. Die neue serverseitige Begrenzung wurde laut Benutzer erfolgreich
-  deployed.
-- Office-Konten bleiben auf ausgewählte Firmen und ausdrücklich zugeordnete Filialen beschränkt; sie erhalten keinen globalen
-  Lesezugriff. Eine Firmenfreigabe umfasst weder automatisch alle aktuellen noch zukünftige Filialen.
-- Master benötigen keine Datenzuordnung und besitzen die in der Collection-Matrix ausdrücklich aufgeführten Rechte. Nicht
-  aufgeführte Collections bleiben gesperrt. Die Datenzuordnung ist im Formular für Master ausgeblendet; das Formular sendet für
-  Master eine leere Zugriffs-Map.
-- Office- und Filialkonten dürfen Firmen- und Filialdokumente lesen, aber weder anlegen, aktualisieren noch löschen. Schreibrechte
-  für diese Stammdaten liegen ausschließlich beim Master.
-
-## Nächste sinnvolle Schritte
-
-Die konkrete Arbeitsplanung steht in den [offenen Todos](./todo_next.md). Bereits abgeschlossene Aufgaben sind in den
-[erledigten Todos](./todo_done.md) dokumentiert. Bewusst zurückgestellte Aufgaben stehen in den
-[späteren Todos](./todo_spaeter.md).
+- Konkrete nächste Arbeit steht in den [offenen Todos](./todo_naechste.md).
+- Bewusst zurückgestellte Arbeit steht in den [späteren Todos](./todo_spaeter.md).
+- Abgeschlossene Umsetzungsschritte und abgelöste Zwischenstände bleiben in den
+  [erledigten Todos](./todo_erledigt.md) erhalten.

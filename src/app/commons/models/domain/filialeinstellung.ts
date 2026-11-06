@@ -24,12 +24,6 @@ export type TBundeslandCode =
 
 export const STANDARD_BUNDESLAND: TBundeslandCode = 'DE-NW';
 
-export interface ISchliesszeitraum {
-  beginnLokalzeit: string;
-  endeLokalzeit: string;
-  endetAmFolgetag: boolean;
-}
-
 export type TWochentag =
   'montag' | 'dienstag' | 'mittwoch' | 'donnerstag' | 'freitag' | 'samstag' | 'sonntag';
 
@@ -56,6 +50,8 @@ export type TGesetzlicherFeiertagSchluessel =
   | 'zweiterWeihnachtstag'
   | 'aufstand17Juni2028';
 
+export type TBerechneterSondertagSchluessel = 'volkstrauertag' | 'totensonntag';
+
 // ===== Anwendungs-Typen =====================
 
 export interface IGeschlosseneOeffnungsregel {
@@ -74,7 +70,25 @@ export interface IGeoeffneteOeffnungsregel {
 
 export type TOeffnungsregel = IGeschlosseneOeffnungsregel | IGeoeffneteOeffnungsregel;
 
-export type TWochenoeffnungszeiten = Readonly<Record<TWochentag, TOeffnungsregel>>;
+export type TWochentagsmodus = 'standard' | 'abweichend' | 'geschlossen';
+export type TSondertagsmodus = TWochentagsmodus | 'wieSonntag';
+
+export interface IStandardWochentagsregel {
+  modus: 'standard';
+}
+
+export interface IAbweichendeWochentagsregel {
+  modus: 'abweichend';
+  oeffnungsregel: IGeoeffneteOeffnungsregel;
+}
+
+export interface IGeschlosseneWochentagsregel {
+  modus: 'geschlossen';
+}
+
+export type TWochentagsregel =
+  IStandardWochentagsregel | IAbweichendeWochentagsregel | IGeschlosseneWochentagsregel;
+export type TWochenregeln = Readonly<Record<TWochentag, TWochentagsregel>>;
 
 export interface IJaehrlichFestesDatum {
   typ: 'jaehrlichFestesDatum';
@@ -87,7 +101,12 @@ export interface IGesetzlicherFeiertag {
   feiertagSchluessel: TGesetzlicherFeiertagSchluessel;
 }
 
-export type TDatumsregel = IJaehrlichFestesDatum | IGesetzlicherFeiertag;
+export interface IBerechneterSondertag {
+  typ: 'berechneterSondertag';
+  sondertagSchluessel: TBerechneterSondertagSchluessel;
+}
+
+export type TDatumsregel = IJaehrlichFestesDatum | IGesetzlicherFeiertag | IBerechneterSondertag;
 export type TSondertagHerkunft = 'system' | 'benutzer';
 
 export interface IFilialeinstellungDokumentMetadaten {
@@ -101,19 +120,13 @@ export interface IFilialeinstellungSondertagVorlage {
   id: string;
   bezeichnung: string;
   aktiv: boolean;
+  modus?: TSondertagsmodus;
   herkunft: TSondertagHerkunft;
   datumsregel: TDatumsregel;
   oeffnungsregel: TOeffnungsregel;
 }
 
 export interface IFilialeinstellungSondertagEintrag extends IFilialeinstellungSondertagDokument {
-  id: string;
-  unternehmerId: string;
-  firmaId: string;
-  filialeId: string;
-}
-
-export interface IFilialeinstellungAusnahmeEintrag extends IFilialeinstellungAusnahmeDokument {
   id: string;
   unternehmerId: string;
   firmaId: string;
@@ -127,20 +140,15 @@ export interface IFilialeinstellungAllgemeinDokument extends IFilialeinstellungD
 }
 
 export interface IFilialeinstellungOeffnungszeitenDokument extends IFilialeinstellungDokumentMetadaten {
-  schliesszeitraum: ISchliesszeitraum;
-  wochenregeln: TWochenoeffnungszeiten;
+  standardoeffnungsregel: IGeoeffneteOeffnungsregel;
+  wochenregeln: TWochenregeln;
 }
 
 export interface IFilialeinstellungSondertagDokument extends IFilialeinstellungDokumentMetadaten {
   bezeichnung: string;
   aktiv: boolean;
+  modus?: TSondertagsmodus;
   herkunft: TSondertagHerkunft;
   datumsregel: TDatumsregel;
-  oeffnungsregel: TOeffnungsregel;
-}
-
-export interface IFilialeinstellungAusnahmeDokument extends IFilialeinstellungDokumentMetadaten {
-  datum: string;
-  bezeichnung: string;
   oeffnungsregel: TOeffnungsregel;
 }

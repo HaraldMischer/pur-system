@@ -6,9 +6,10 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatMenuTrigger } from '@angular/material/menu';
 
-import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../../commons/constants/filialeinstellung.constants';
+import { STANDARD_OEFFNUNGSREGEL } from '../../../commons/constants/filialeinstellung.constants';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
+import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import {
   SchichtmodellStore,
   TSchichtmodellKontext,
@@ -35,6 +36,7 @@ describe('SchichtmodelleFiliale', () => {
     error: null,
   });
   const loadSchichtmodelle = vi.fn().mockResolvedValue(undefined);
+  const loadSchichtTagesmodelle = vi.fn().mockResolvedValue(undefined);
   const loadFilialeinstellung = vi.fn().mockResolvedValue(undefined);
   const open = vi.fn();
 
@@ -59,13 +61,27 @@ describe('SchichtmodelleFiliale', () => {
           },
         },
         {
+          provide: SchichtTagesmodellStore,
+          useValue: {
+            getSchichtTagesmodellKontext: vi.fn(() => ({
+              ...PFAD,
+              schichttagesmodelle: [],
+              download: false,
+              isLoaded: true,
+              error: null,
+            })),
+            loadSchichtTagesmodelle,
+            inProgress: signal(false),
+          },
+        },
+        {
           provide: FilialeinstellungStore,
           useValue: {
             loadFilialeinstellung,
             getFilialeinstellungKontext: vi.fn().mockReturnValue({
               isLoaded: true,
               bestand: {
-                oeffnungszeiten: { schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
+                oeffnungszeiten: { standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL },
               },
             }),
           },
@@ -105,12 +121,12 @@ describe('SchichtmodelleFiliale', () => {
 
     expect(menueintraege).toHaveLength(2);
     expect(menueintraege[0].disabled).toBe(false);
-    expect(menueintraege[1].disabled).toBe(true);
+    expect(menueintraege[1].disabled).toBe(false);
     menueintraege[0].click();
     expect(open).toHaveBeenCalledWith(
       SchichtmodellBearbeitenDialog,
       expect.objectContaining({
-        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
+        data: { pfad: PFAD, standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL },
       }),
     );
   });
@@ -127,7 +143,7 @@ describe('SchichtmodelleFiliale', () => {
             filialeId: PFAD.filialeId,
             bezeichnung: 'Standard',
             aktiv: true,
-            planungsart: 'schichtraster',
+            planungsart: 'schichtrastermodell',
             erstelltVonUid: 'admin-1',
             aktualisiertVonUid: 'admin-1',
           },

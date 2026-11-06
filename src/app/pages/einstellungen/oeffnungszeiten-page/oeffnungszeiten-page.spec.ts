@@ -65,7 +65,7 @@ describe('OeffnungszeitenPage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain(
-      'Einmalige Sondertage überschreiben Feiertage und jährlich wiederkehrende Sondertage; diese überschreiben die Wochentage.',
+      'Priorität der Öffnungsregeln: selbst angelegter jährlicher Sondertag → gesetzlicher Feiertag oder automatisch angelegter jährlicher Sondertag → Wochentagsregel.',
     );
     expect(fixture.nativeElement.querySelectorAll('app-oeffnungszeiten-filiale')).toHaveLength(0);
   });

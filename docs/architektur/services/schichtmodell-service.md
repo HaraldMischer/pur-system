@@ -2,6 +2,10 @@
 
 # Schichtmodell-Service
 
+Die fachlichen Modell- und Rasterregeln stehen im
+[Fachkonzept Dienst- und Schichtplanung](../../fachkonzepte/dienst-und-schichtplanung.md), die verbindlichen Pfad- und
+CRUD-Rechte in der [Berechtigungsmatrix](../../matrizen/berechtigungen.md).
+
 Der `SchichtmodellService` verwaltet die Schichtmodelle einer konkreten Filiale. Jedes Modelldokument liegt in der Collection
 `schichtmodell` unter dem vollständigen Filialpfad. Seine geordneten Modellschichten liegen in der untergeordneten Collection
 `modellschicht`.
@@ -26,28 +30,56 @@ Der gemeinsame TypeScript-Validator prüft diese Struktur, die Modellschicht-IDs
 ohne Kalendertag bestimmbaren Dauern. Innere Beginn- und Endgrenzen bleiben unabhängig: Überlappungen zwischen Rasterplätzen
 sind erlaubt, Lücken werden als nicht blockierender Hinweis behandelt. Eine zeitliche Sortierung findet nicht statt.
 
-Jedes Schichtmodell besitzt die verpflichtende `planungsart`. Der Service setzt sie bei neuen Modellen automatisch auf
-`schichtraster` und akzeptiert beim Laden oder Aktualisieren derzeit ausschließlich diesen Wert. Ein fehlender oder noch nicht
-unterstützter Wert wird als fachlich ungültiger Datenbestand abgewiesen. Die spätere Planungsart `schichtbausteine` erhält eine
-eigene Modellstruktur und wird erst mit ihrer fachlichen Umsetzung freigegeben.
+Jedes Schichtmodell besitzt die verpflichtende `planungsart`. Neue Rastermodelle speichern `schichtrastermodell`, neue
+Tagesmodelle `schichttagesmodell`. Historische Rastermodelle mit `schichtraster` werden beim Lesen kontrolliert als
+Rastermodelle normalisiert. Andere Werte werden als fachlich ungültiger Datenbestand abgewiesen.
 
 Das Domainmodell bildet die Varianten als diskriminierte Union ab. `ISchichtmodellDokumentBasis` enthält die gemeinsamen
-Metadaten. `ISchichtrastermodellDokument` kennzeichnet die umgesetzte Planungsart, während
-`ISchichtbausteinmodellDokument` als eigenständige Variante vorbereitet ist. Die Rasterstruktur liegt nicht im Modelldokument,
-sondern in den Dokumenten der Untercollection `modellschicht`. `TSchichtmodellDokument` fasst beide Typen zusammen; die aktuelle
-Service- und UI-API arbeitet bewusst ausschließlich mit `ISchichtrastermodellBestand`.
+Metadaten. `ISchichtrastermodellDokument` und `ISchichttagesmodellDokument` kennzeichnen die beiden Varianten.
+Rastermodellschichten und Tagesvorlagenschichten verwenden getrennte Dokumenttypen und Untercollections.
+`TSchichtmodellDokument` fasst ausschließlich diese beiden aktuellen Typen zusammen.
 
-Besondere Rasterzeiten für Sondertage sind nicht Bestandteil des Schichtmodells. Feiertage, jährliche Sondertage und einmalige
-Datumsausnahmen wirken ausschließlich über ihre Öffnungsregel auf die tagesabhängigen Außengrenzen des Rasters.
+Besondere Rasterzeiten für Sondertage sind nicht Bestandteil des Schichtmodells. Feiertage und jährliche Sondertage wirken
+ausschließlich über ihre Öffnungsregel auf die tagesabhängigen Außengrenzen des Rasters.
 
-Für die Umstellung ist keine Migration oder Kompatibilitätslogik vorhanden. Die bisherigen Schichtmodelle wurden gelöscht und
-die benötigten Modelle werden ausschließlich in der neuen Struktur angelegt. Die Firestore Rules prüfen gemäß
-Berechtigungsmatrix nur aktives Profil, Rolle, Filialpfad und erlaubte CRUD-Aktion. Feldstruktur, IDs, Reihenfolge und Zeitregeln
-validiert ausschließlich der TypeScript-Code mit seinen Tests.
+## Trennung in Schicht-Rastermodell und Schicht-Tagesmodell
+
+Todo 26 trennt den bisherigen `SchichtmodellService` in einen eindeutig benannten `SchichtRastermodellService` und einen neuen
+`SchichtTagesmodellService`. Beide verwenden eigene Dokumenttypen, Mapper, Validatoren und Firestore-Pfade.
+Rastermodellschichten werden nicht als Basis für Tagesvorlagenschichten wiederverwendet.
+
+Die diskriminierte Union verwendet ausschließlich die Planungsartwerte `schichtrastermodell` und `schichttagesmodell`.
+Gemeinsame Interfaces enthalten nur Bezeichnung, Aktivstatus und Auditmetadaten. Der Rasterbestand und der Tagesmodellbestand
+besitzen getrennte Eintrags-, Schreib- und Dokumenttypen. Der bisherige Wert `schichtraster` wird kontrolliert migriert; der
+vorbereitete Typ `ISchichtbausteinmodellDokument` entfällt.
+
+Der Schicht-Tagesmodell-Service verwaltet genau eine Wochentagsvorlage und eine Sonntagsvorlage je Modell. Ihre
+Vorlagenschichten besitzen eigene stabile IDs, konkrete Kernzeiten am Start- oder Folgetag, Reihenfolge, Mehrfachbelegung sowie
+Vor- und Nachbereitung. Unterschiedliche Schichtanzahlen, Lücken und Überschneidungen zwischen beiden Vorlagen sind zulässig.
+Relative Übergänge und Prozentwerte werden nicht gespeichert.
+
+Der TypeScript-Code validiert jede Kernzeit gegen die für die Vorlage maßgebliche Öffnung. Vor- und
+Nachbereitungsminuten erweitern die Kernzeit zur tatsächlichen Arbeitszeit. Nur diese Erweiterung darf vor den Öffnungsbeginn
+oder nach das Öffnungsende reichen. Firestore Rules erhalten keine fachliche Feldvalidierung.
+
+Feier- und Sondertage sind nicht Bestandteil des Schicht-Tagesmodells. Ihre konkrete Tagesstruktur entsteht frei innerhalb der
+Monatsplananlage. Der Schicht-Tagesmodell-Service stellt dafür weder Sondertagsvorlagen noch einen Schichtbausteinkatalog bereit.
+
+Für die bereits abgeschlossene frühere Umstellung auf die heutige Rasterstruktur war keine Migration oder
+Kompatibilitätslogik erforderlich; die damaligen Schichtmodelle wurden gelöscht und neu angelegt. Die mit Todo 26 geplante
+Umbenennung zu `schichtrastermodell` benötigt dagegen eine kontrollierte Migration bestehender Modelle und Monatspläne. Die
+Firestore Rules prüfen gemäß Berechtigungsmatrix nur aktives Profil, Rolle, Filialpfad und erlaubte CRUD-Aktion. Feldstruktur,
+IDs, Reihenfolge und Zeitregeln validiert ausschließlich der TypeScript-Code mit seinen Tests.
 
 ## Beteiligte Dateien
 
 - `src/app/services/domain/schichtmodell.service.ts`
+- `src/app/services/domain/schicht-rastermodell.service.ts` (geplant)
+- `src/app/services/domain/schicht-tagesmodell.service.ts` (geplant)
 - `src/app/stores/domain/schichtmodell.store.ts`
+- `src/app/stores/domain/schicht-rastermodell.store.ts` (geplant)
+- `src/app/stores/domain/schicht-tagesmodell.store.ts` (geplant)
 - `src/app/commons/models/domain/schichtmodell.ts`
+- `src/app/commons/models/domain/schicht-rastermodell.ts` (geplant)
+- `src/app/commons/models/domain/schicht-tagesmodell.ts` (geplant)
 - `src/app/commons/constants/firebase.constants.ts`

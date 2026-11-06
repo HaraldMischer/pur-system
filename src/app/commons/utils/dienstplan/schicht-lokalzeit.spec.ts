@@ -24,21 +24,23 @@ describe('Schicht-Lokalzeit', () => {
     expect(getLokalzeitMinuten('24:00')).toBeNull();
   });
 
-  it('should derive the model-shift day from the branch closing period', () => {
-    const schliesszeitraum = {
-      beginnLokalzeit: '01:00',
-      endeLokalzeit: '06:00',
-      endetAmFolgetag: false,
+  it('should derive the model-shift day from the standard opening rule', () => {
+    const standardoeffnungsregel = {
+      geoeffnet: true as const,
+      beginnLokalzeit: '06:00',
+      endeLokalzeit: '01:00',
+      endetAmFolgetag: true,
     } as const;
 
-    expect(getModellschichtTagFuerLokalzeit('16:00', schliesszeitraum)).toBe('starttag');
-    expect(getModellschichtTagFuerLokalzeit('00:30', schliesszeitraum)).toBe('folgetag');
-    expect(getModellschichtTagFuerLokalzeit('ungültig', schliesszeitraum)).toBeNull();
+    expect(getModellschichtTagFuerLokalzeit('16:00', standardoeffnungsregel)).toBe('starttag');
+    expect(getModellschichtTagFuerLokalzeit('00:30', standardoeffnungsregel)).toBe('folgetag');
+    expect(getModellschichtTagFuerLokalzeit('ungültig', standardoeffnungsregel)).toBeNull();
     expect(
       getModellschichtTagFuerLokalzeit('20:00', {
-        beginnLokalzeit: '22:00',
-        endeLokalzeit: '06:00',
-        endetAmFolgetag: true,
+        geoeffnet: true,
+        beginnLokalzeit: '06:00',
+        endeLokalzeit: '22:00',
+        endetAmFolgetag: false,
       }),
     ).toBe('starttag');
   });

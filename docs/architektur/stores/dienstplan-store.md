@@ -2,6 +2,10 @@
 
 # Dienstplan-Store
 
+Die fachlichen Zustände und Abläufe stehen im
+[Fachkonzept Dienst- und Schichtplanung](../../fachkonzepte/dienst-und-schichtplanung.md). Dieses Dokument beschreibt
+ausschließlich die technische Store-Verantwortung.
+
 Der `DienstplanStore` hält Dienstpläne, Modell-Momentaufnahmen, Versionen und Schichten getrennt nach vollständigem Filialpfad.
 Zusätzlich speichert er den aktuell ausgewählten Filial- und Monatskontext.
 

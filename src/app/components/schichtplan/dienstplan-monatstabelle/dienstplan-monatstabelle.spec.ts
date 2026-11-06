@@ -40,7 +40,6 @@ describe('DienstplanMonatstabelle', () => {
     expect(component.getMitarbeiterAnzeigename('m-2')).toBe('Muster, Max');
     expect(component.getMitarbeiterFarbe('m-1')).toBe('#1976d2');
     expect(component.formatLohnzeit(tage[2].zellen[1].schichten[0])).toBe('8 Std. 30 Min.');
-    expect(component.statusBezeichnung()).toBe('Entwurf');
     expect(fixture.nativeElement.textContent).toContain('18:00–23:00 Uhr');
     expect(fixture.nativeElement.textContent).toContain('07:00–12:00 Uhr');
     expect(fixture.nativeElement.textContent).not.toContain('(+1 Tag)');
@@ -50,7 +49,6 @@ describe('DienstplanMonatstabelle', () => {
     const fixture = createFixture(true);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.statusBezeichnung()).toBe('Veröffentlicht');
     expect(fixture.componentInstance.kannSchichtenAblegen()).toBe(false);
   });
 
@@ -64,56 +62,6 @@ describe('DienstplanMonatstabelle', () => {
     compiled.querySelector<HTMLButtonElement>('td button')?.click();
 
     expect(anlegen).toHaveBeenCalledWith({ datum: '2026-02-01', modellschichtId: 'frueh' });
-  });
-
-  it('should render and emit deleting in the plan status row', () => {
-    const fixture = createFixture();
-    fixture.componentRef.setInput('dienstplanLoeschenAnzeigen', true);
-    fixture.componentRef.setInput('dienstplanLoeschenHinweis', 'Leeren Dienstplan löschen.');
-    const loeschen = vi.fn();
-    fixture.componentInstance.dienstplanLoeschen.subscribe(loeschen);
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    const button = [...compiled.querySelectorAll<HTMLButtonElement>('button')].find((element) => {
-      return element.textContent?.includes('Dienstplan löschen');
-    });
-    expect(button?.disabled).toBe(false);
-    expect(button?.title).toBe('Leeren Dienstplan löschen.');
-    button?.click();
-    expect(loeschen).toHaveBeenCalledOnce();
-  });
-
-  it('should disable deleting in the plan status row when requested', () => {
-    const fixture = createFixture();
-    fixture.componentRef.setInput('dienstplanLoeschenAnzeigen', true);
-    fixture.componentRef.setInput('dienstplanLoeschenDeaktiviert', true);
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    const button = [...compiled.querySelectorAll<HTMLButtonElement>('button')].find((element) => {
-      return element.textContent?.includes('Dienstplan löschen');
-    });
-    expect(button?.disabled).toBe(true);
-  });
-
-  it('should emit publishing and creating a new draft from the plan status row', () => {
-    const fixture = createFixture();
-    fixture.componentRef.setInput('dienstplanVeroeffentlichenAnzeigen', true);
-    fixture.componentRef.setInput('entwurfAnlegenAnzeigen', true);
-    const veroeffentlichen = vi.fn();
-    const entwurfAnlegen = vi.fn();
-    fixture.componentInstance.dienstplanVeroeffentlichen.subscribe(veroeffentlichen);
-    fixture.componentInstance.entwurfAnlegen.subscribe(entwurfAnlegen);
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    const buttons = [...compiled.querySelectorAll<HTMLButtonElement>('button')];
-    buttons.find((button) => button.textContent?.includes('Veröffentlichen'))?.click();
-    buttons.find((button) => button.textContent?.includes('Neue Entwurfsversion'))?.click();
-
-    expect(veroeffentlichen).toHaveBeenCalledOnce();
-    expect(entwurfAnlegen).toHaveBeenCalledOnce();
   });
 
   it('should emit only valid employee drops into writable cells', () => {
@@ -353,20 +301,18 @@ describe('DienstplanMonatstabelle', () => {
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     });
-    fixture.componentRef.setInput('versionen', [
-      {
-        id: 'v-1',
-        dienstplanId: '2026-02',
-        unternehmerId: 'u-1',
-        firmaId: 'f-1',
-        filialeId: 'b-1',
-        nummer: 1,
-        revision: 2,
-        status: veroeffentlicht ? 'veroeffentlicht' : 'entwurf',
-        erstelltVonUid: 'uid-1',
-        aktualisiertVonUid: 'uid-1',
-      },
-    ]);
+    fixture.componentRef.setInput('aktiveVersion', {
+      id: 'v-1',
+      dienstplanId: '2026-02',
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      filialeId: 'b-1',
+      nummer: 1,
+      revision: 2,
+      status: veroeffentlicht ? 'veroeffentlicht' : 'entwurf',
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    });
     fixture.componentRef.setInput('modellschichten', [
       {
         id: 'spaet',

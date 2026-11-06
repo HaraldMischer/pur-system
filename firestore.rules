@@ -143,10 +143,6 @@ service cloud.firestore {
                 && darfFilialeinstellungenVerwalten(unternehmerId, firmaId, filialId);
             }
 
-            match /ausnahme/{ausnahmeId} {
-              allow read, write: if einstellungId == 'oeffnungszeiten'
-                && darfFilialeinstellungenVerwalten(unternehmerId, firmaId, filialId);
-            }
           }
 
           match /schichtmodell/{schichtmodellId} {
@@ -159,12 +155,44 @@ service cloud.firestore {
             }
           }
 
+          match /schichtrastermodell/{schichtrastermodellId} {
+            allow read, create, update:
+              if darfDienstplanVerwalten(unternehmerId, firmaId, filialId);
+
+            match /rastermodellschicht/{rastermodellschichtId} {
+              allow read, write:
+                if darfDienstplanVerwalten(unternehmerId, firmaId, filialId);
+            }
+          }
+
+          match /schichttagesmodell/{schichttagesmodellId} {
+            allow read, create, update:
+              if darfDienstplanVerwalten(unternehmerId, firmaId, filialId);
+
+            match /tagesvorlagenschicht/{tagesvorlagenschichtId} {
+              allow read, write:
+                if darfDienstplanVerwalten(unternehmerId, firmaId, filialId);
+            }
+          }
+
           match /dienstplan/{monat} {
             allow read: if darfDienstplanLesen(unternehmerId, firmaId, filialId);
             allow create, update, delete:
               if darfDienstplanVerwalten(unternehmerId, firmaId, filialId);
 
             match /modellschicht/{modellschichtId} {
+              allow read: if darfDienstplanLesen(unternehmerId, firmaId, filialId);
+              allow create, delete:
+                if darfDienstplanVerwalten(unternehmerId, firmaId, filialId);
+            }
+
+            match /rastermodellschicht/{rastermodellschichtId} {
+              allow read: if darfDienstplanLesen(unternehmerId, firmaId, filialId);
+              allow create, delete:
+                if darfDienstplanVerwalten(unternehmerId, firmaId, filialId);
+            }
+
+            match /tagesschicht/{tagesschichtId} {
               allow read: if darfDienstplanLesen(unternehmerId, firmaId, filialId);
               allow create, delete:
                 if darfDienstplanVerwalten(unternehmerId, firmaId, filialId);

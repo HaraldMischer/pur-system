@@ -24,20 +24,41 @@ export interface IFilialeinstellungSondertagPfad extends IFilialPfad {
   sondertagId: string;
 }
 
-export interface IFilialeinstellungAusnahmePfad extends IFilialPfad {
-  datum: string;
+export interface ISchichtrastermodellPfad extends IFilialPfad {
+  schichtrastermodellId: string;
 }
 
+export interface IRastermodellschichtPfad extends ISchichtrastermodellPfad {
+  rastermodellschichtId: string;
+}
+
+export interface ISchichttagesmodellPfad extends IFilialPfad {
+  schichttagesmodellId: string;
+}
+
+export interface ITagesvorlagenschichtPfad extends ISchichttagesmodellPfad {
+  tagesvorlagenschichtId: string;
+}
+
+export interface IDienstplanPfad extends IFilialPfad {
+  dienstplanId: string;
+}
+
+export interface IDienstplanRastermodellschichtPfad extends IDienstplanPfad {
+  rastermodellschichtId: string;
+}
+
+export interface IDienstplanTagesschichtPfad extends IDienstplanPfad {
+  tagesschichtId: string;
+}
+
+// Altdatenpfade für die kontrollierte Rastermodell-Migration.
 export interface ISchichtmodellPfad extends IFilialPfad {
   schichtmodellId: string;
 }
 
 export interface IModellschichtPfad extends ISchichtmodellPfad {
   modellschichtId: string;
-}
-
-export interface IDienstplanPfad extends IFilialPfad {
-  dienstplanId: string;
 }
 
 export interface IDienstplanModellschichtPfad extends IDienstplanPfad {

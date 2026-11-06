@@ -1,0 +1,51 @@
+<!-- pur-system/src/app/components/schichtplan/tagesschicht-belegen-dialog/tagesschicht-belegen-dialog.html -->
+
+<h2 mat-dialog-title>{{ daten.tagesschicht.bezeichnung }} belegen</h2>
+<mat-dialog-content>
+  <form
+    id="tagesschicht-belegen-form"
+    class="pur-form pur-form--flex"
+    [formGroup]="form"
+    (ngSubmit)="save()"
+  >
+    <p>
+      {{ daten.tagesschicht.datum }} · {{ daten.tagesschicht.kernbeginnLokalzeit }}–{{
+        daten.tagesschicht.kernendeLokalzeit
+      }}
+      Uhr
+    </p>
+    <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+      <mat-label>Mitarbeiter</mat-label>
+      <mat-select formControlName="mitarbeiterId">
+        @for (mitarbeiter of daten.mitarbeiter; track mitarbeiter.id) {
+          <mat-option [value]="mitarbeiter.id"
+            >{{ mitarbeiter.person.nachname }}, {{ mitarbeiter.person.vorname }}</mat-option
+          >
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (error(); as fehlermeldung) {
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
+        {{ fehlermeldung }}
+      </p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  @if (daten.schicht) {
+    <button matButton type="button" [disabled]="store.inProgress()" (click)="deleteSchicht()">
+      Löschen
+    </button>
+  }
+  <button matButton type="button" [disabled]="store.inProgress()" mat-dialog-close>
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="tagesschicht-belegen-form"
+    [disabled]="form.invalid || store.inProgress()"
+  >
+    Speichern
+  </button>
+</mat-dialog-actions>

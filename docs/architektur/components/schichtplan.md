@@ -2,6 +2,10 @@
 
 # Schichtplan-Komponenten
 
+Dieses Dokument beschreibt die technische Seiten- und Component-Struktur. Das fachliche Zielbild steht im
+[Fachkonzept Dienst- und Schichtplanung](../../fachkonzepte/dienst-und-schichtplanung.md), die verbindlichen Datenrechte in der
+[Berechtigungsmatrix](../../matrizen/berechtigungen.md).
+
 Der routbare Schichtplan-Bereich besteht aus getrennten Pages für Ansicht, Planung und Schichtmodelle. Wiederverwendbare
 Darstellung und Dialoge liegen unter `src/app/components/schichtplan`.
 
@@ -66,10 +70,11 @@ veröffentlichten Schichten als bearbeitbare Kopien, während der veröffentlich
 
 ## Monatsdarstellung
 
-`DienstplanMonatstabelle` stellt den Monat als Tabelle dar. Die erste Spalte enthält die Kalendertage; jede weitere Spalte
-entspricht einer nach ihrer ausdrücklich gespeicherten `reihenfolge` sortierten Modellschicht aus der unveränderlichen
-Momentaufnahme des Monatsplans. Jede Rasterzelle enthält alle konkreten Mitarbeiterschichten ihres Tages und ihrer
-Modellschicht. Mehrere
+Der `DienstplanPlanungsbereich` stellt den gemeinsamen Versionskopf mit den Planaktionen dar und wählt anschließend anhand der
+Planungsart genau eine Monatsdarstellung aus. `DienstplanMonatstabelle` ist ausschließlich für das Schicht-Rastermodell
+zuständig. Die erste Spalte enthält die Kalendertage; jede weitere Spalte entspricht einer nach ihrer ausdrücklich
+gespeicherten `reihenfolge` sortierten Modellschicht aus der unveränderlichen Momentaufnahme des Monatsplans. Jede Rasterzelle
+enthält alle konkreten Mitarbeiterschichten ihres Tages und ihrer Modellschicht. Mehrere
 Mitarbeiterschichten sind nur möglich, wenn die Modellschicht in der Momentaufnahme `mehrfachbelegungErlaubt` enthält.
 Identische Kapazitäten können deshalb entweder als getrennte Modellschichten mit jeweils einer Belegung oder als eine
 mehrfach belegbare Modellschicht dargestellt werden. Auch bei einer Mehrfachbelegung bleibt jede Mitarbeiterzuordnung eine
@@ -117,9 +122,11 @@ Modellbezeichnung am Monatsplan und übernimmt alle geordneten Modellschichten a
 und Momentaufnahme entstehen gemeinsam in einem atomaren Schreibvorgang. Soll das Modell eines leeren, noch nie
 veröffentlichten Plans geändert werden, wird der Plan gelöscht und anschließend mit dem gewünschten Modell neu angelegt.
 Vor der Modellwahl zeigt ein verpflichtendes Auswahlfeld die Planungsart. `Schichtraster` ist vorausgewählt und filtert die
-angebotenen Modelle; `Schichtbausteine` ist bis zur Umsetzung sichtbar, aber deaktiviert.
-Einmalige Sondertage werden nicht zusätzlich im Dialog konfiguriert. Ihre Öffnungsregel bestimmt bei der Dienstplananlage
-automatisch die äußeren Rastergrenzen; die inneren Grenzen des gewählten Schichtmodells bleiben unverändert.
+angebotenen Modelle; `Schichtbausteine` ist derzeit als technisch vorbereiteter, aber fachlich überholter Einstieg sichtbar und
+deaktiviert. Todo 26 benennt die bestehende Planungsart als `Schicht-Rastermodell` und ersetzt den Platzhalter durch
+`Schicht-Tagesmodell`.
+Sondertage werden nicht zusätzlich im Dialog konfiguriert. Ihre Öffnungsregel bestimmt bei der Dienstplananlage automatisch
+die äußeren Rastergrenzen; die inneren Grenzen des gewählten Schichtmodells bleiben unverändert.
 
 `SchichtBearbeitenDialog` ordnet der bereits gewählten Rasterzelle einen aktiven Mitarbeiter zu. Datum, Modellschicht sowie der
 für diesen Kalendertag wirksame Beginn und das Ende werden schreibgeschützt angezeigt. Der Dialog übergibt keine freien
@@ -133,7 +140,7 @@ seiner Modellschichten. Jede Modellschicht besitzt eine Bezeichnung, die standar
 `Mehrfachbelegung` und ihre gespeicherte fachliche Reihenfolge. Der Beginn der ersten Modellschicht und das Ende der letzten
 werden als tagesabhängig angezeigt und nicht bearbeitet; bei einer einzelnen Modellschicht gilt dies für beide Grenzen. Feste
 innere Beginn- und Endzeiten werden ausschließlich als Uhrzeit erfasst; ihre Zuordnung zum Start- oder Folgetag leitet der
-Dialog automatisch aus dem Schließzeitraum der Filiale ab. Berechnete Schichtdauern werden im Modelldialog nicht angezeigt;
+Dialog automatisch aus der Standardöffnungszeit der Filiale ab. Berechnete Schichtdauern werden im Modelldialog nicht angezeigt;
 ein leerer Platzhalter hält bei mittleren Modellschichten die gemeinsame Spaltenaufteilung ein.
 
 Mindestens eine Modellschicht bleibt erhalten; weitere werden am Ende der fachlichen Reihenfolge ergänzt und können entfernt
@@ -151,7 +158,40 @@ Die routbare `SchichtmodellePage` ersetzt in der Navigation die bisherige Vorlag
 Filiale eine `SchichtmodelleFiliale`, die ausschließlich Modelle dieses Filialpfads lädt und bearbeitet. Die
 Monatsanlage, die Rasterdarstellung und das Anlegen einzelner Schichten verwenden ausschließlich die Modell-Momentaufnahme.
 Die Anlageaktion öffnet zunächst ein Planungsart-Menü. Das Schichtraster führt in den vorhandenen Modelldialog;
-`Schichtbausteine` bleibt als angekündigter, deaktivierter Einstieg sichtbar.
+`Schichtbausteine` bleibt im aktuellen technischen Stand als deaktivierter Einstieg sichtbar und wird mit Todo 26 durch
+`Schicht-Tagesmodell` ersetzt.
+
+## Geplante Oberflächen für das Schicht-Tagesmodell
+
+Die Modellverwaltung bietet Schicht-Rastermodelle und Schicht-Tagesmodelle als getrennte fachliche Varianten an. Beide verwenden
+eigene Bearbeitungsdialoge, Stores und Services. Der bisherige Schichtmodelldialog bleibt für das Rastermodell zuständig und
+wird fachlich als Schicht-Rastermodelldialog benannt. Die wirkungslose Auswahl `Übergänge: Fest / Relativ` wird daraus entfernt.
+
+Der Schicht-Tagesmodelldialog enthält getrennte Bereiche für eine Wochentagsvorlage von Montag bis Samstag und eine
+Sonntagsvorlage. In jedem Bereich können beliebig viele eigene Vorlagenschichten mit Kernbeginn, Kernende, Vor- und
+Nachbereitung, Reihenfolge und Mehrfachbelegung angelegt, entfernt und geordnet werden. Beide Vorlagen dürfen eine
+unterschiedliche Anzahl und Identität von Schichten besitzen.
+
+Kernzeiten müssen innerhalb der für die Vorlage maßgeblichen Öffnung liegen. Lücken und Überschneidungen bleiben zulässig;
+jede Kernschicht benötigt eine positive Dauer. Die Oberfläche zeigt neben der Kernzeit auch die tatsächliche Arbeitszeit
+einschließlich Vor- und Nachbereitung. Prozentwerte und automatisch aus der Öffnungsdauer berechnete Übergänge werden im
+Schicht-Tagesmodell nicht angeboten.
+
+Der Dienstplan-Anlegen-Dialog wird für Schicht-Tagesmodelle zu einer vollständigen Monatsinitialisierung erweitert. Nach der
+Modellwahl zeigt er alle erkannten geöffneten Feier- und Sondertage mit ihrer wirksamen Öffnung. Für jeden dieser Tage wird vor
+dem Speichern eine freie Tagesstruktur mit beliebig vielen Tagesschichten konfiguriert. Geschlossene Tage benötigen keine
+Konfiguration. Erst wenn alle Tagesstrukturen gültig sind, kann der Plan atomar angelegt werden.
+
+`DienstplanMonatsliste` stellt ausschließlich Schicht-Tagesmodellpläne dar und verwendet keine für den ganzen Monat identischen
+Rasterspalten. Jeder Listentag zeigt links Wochentag und Datum, rechts seine wirksame Öffnung und darunter ausschließlich seine
+eigenen Tagesschichten. Reguläre Wochentage und Sonntage zeigen die aus ihren Vorlagen erzeugten Instanzen; Feier- und
+Sondertage zeigen ihre während der Anlage frei konfigurierten Instanzen. Danach dienen alle Tagesschichten als
+Drag-and-drop-Ziele und über dieselbe alternative Aktion zur Mitarbeiterzuordnung.
+
+Die Planungsoberfläche wählt anhand der diskriminierten Planungsart ausschließlich die passende Darstellung und Aktionen aus.
+Rasterzellen referenzieren weiterhin Rastermodellschichten; Tageszellen referenzieren ausschließlich konkrete Tagesschichten.
+Die veröffentlichte Ansicht kann beide Varianten gemeinsam lesen, stellt ihre unterschiedlichen Tagesstrukturen aber nicht als
+ein gemeinsames Raster dar.
 
 ## Beteiligte Dateien
 
@@ -160,9 +200,15 @@ Die Anlageaktion öffnet zunächst ein Planungsart-Menü. Das Schichtraster füh
 - `src/app/components/schichtplan/dienstplan-ansichtsbereich`
 - `src/app/components/schichtplan/dienstplan-planungsbereich`
 - `src/app/components/schichtplan/dienstplan-anlegen-dialog`
+- `src/app/components/schichtplan/dienstplan-monatsliste`
 - `src/app/components/schichtplan/dienstplan-monatstabelle`
 - `src/app/components/schichtplan/schicht-bearbeiten-dialog`
 - `src/app/components/schichtplan/schichtmodell-bearbeiten-dialog`
 - `src/app/components/schichtplan/schichtmodelle-filiale`
+- `src/app/components/schichtplan/schicht-rastermodell-bearbeiten-dialog` (geplant)
+- `src/app/components/schichtplan/schicht-rastermodelle-filiale` (geplant)
+- `src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog` (geplant)
+- `src/app/components/schichtplan/schicht-tagesmodelle-filiale` (geplant)
+- `src/app/components/schichtplan/dienstplan-tagesstruktur-bearbeiten-dialog` (geplant)
 - `src/app/pages/schichtplan/dienstplan-ansicht-page`
 - `src/app/pages/schichtplan/dienstplan-planung-page`

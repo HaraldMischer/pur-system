@@ -11,6 +11,7 @@ describe('assertKeineAktiveSondertagDatumskollision', () => {
         {
           bezeichnung: 'Betriebsruhe',
           aktiv: true,
+          herkunft: 'benutzer',
           datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
         },
       );
@@ -25,11 +26,13 @@ describe('assertKeineAktiveSondertagDatumskollision', () => {
       assertKeineAktiveSondertagDatumskollision(bestand, {
         bezeichnung: 'Inaktiv',
         aktiv: false,
+        herkunft: 'benutzer',
         datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
       });
       assertKeineAktiveSondertagDatumskollision(bestand, {
         bezeichnung: 'Silvester',
         aktiv: true,
+        herkunft: 'benutzer',
         datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 31 },
       });
       assertKeineAktiveSondertagDatumskollision(
@@ -37,10 +40,27 @@ describe('assertKeineAktiveSondertagDatumskollision', () => {
         {
           bezeichnung: 'Heiligabend neu',
           aktiv: true,
+          herkunft: 'benutzer',
           datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
         },
         'heiligabend',
       );
+    }).not.toThrow();
+  });
+
+  it('should allow a user-defined annual special day on a system special day', () => {
+    const systemSondertag = {
+      ...createSondertag('heiligabend', 'Heiligabend', true, 12, 24),
+      herkunft: 'system' as const,
+    };
+
+    expect(() => {
+      assertKeineAktiveSondertagDatumskollision([systemSondertag], {
+        bezeichnung: 'Betriebsruhe',
+        aktiv: true,
+        herkunft: 'benutzer',
+        datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
+      });
     }).not.toThrow();
   });
 });

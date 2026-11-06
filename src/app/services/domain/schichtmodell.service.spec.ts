@@ -66,12 +66,13 @@ describe('SchichtmodellService', () => {
 
   it('should load branch models with their stored model shift order', async () => {
     loadCollection.mockImplementation((collectionPath: string) => {
-      if (collectionPath.endsWith('/schichtmodell')) {
+      if (collectionPath.endsWith('/schichtrastermodell')) {
         return Promise.resolve([
           { id: 'winter', daten: createSchichtmodellDokument('Winter') },
           { id: 'sommer', daten: createSchichtmodellDokument('Sommer') },
         ]);
       }
+      if (collectionPath.endsWith('/schichtmodell')) return Promise.resolve([]);
       const daten: IModellschichtDokument[] = [
         createModellschichtDokument('Spät', 1),
         createModellschichtDokument('Früh', 0),
@@ -89,7 +90,7 @@ describe('SchichtmodellService', () => {
     ]);
     expect(ergebnis[0].modellschichten[0].reihenfolge).toBe(0);
     expect(loadCollection).toHaveBeenCalledWith(
-      'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/sommer/modellschicht',
+      'unternehmer/u-1/firma/f-1/filiale/b-1/schichtrastermodell/sommer/rastermodellschicht',
       'networkOnly',
     );
   });
@@ -100,7 +101,7 @@ describe('SchichtmodellService', () => {
         id: 'flexibel',
         daten: {
           ...createSchichtmodellDokument('Flexibel'),
-          planungsart: 'schichtbausteine',
+          planungsart: 'schichttagesmodell',
         },
       },
     ]);
@@ -121,7 +122,7 @@ describe('SchichtmodellService', () => {
         id: 'modell-1',
         bezeichnung: 'Sommer',
         aktiv: true,
-        planungsart: 'schichtraster',
+        planungsart: 'schichtrastermodell',
       }),
     );
     expect(ergebnis.modellschichten.map((schicht) => schicht.bezeichnung)).toEqual([
@@ -137,12 +138,12 @@ describe('SchichtmodellService', () => {
     expect(updateDocumentsAtomically).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1',
-          daten: expect.objectContaining({ planungsart: 'schichtraster' }),
+          documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/schichtrastermodell/modell-1',
+          daten: expect.objectContaining({ planungsart: 'schichtrastermodell' }),
         }),
         expect.objectContaining({
           documentPath:
-            'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1/modellschicht/schicht-1',
+            'unternehmer/u-1/firma/f-1/filiale/b-1/schichtrastermodell/modell-1/rastermodellschicht/schicht-1',
           daten: expect.objectContaining({ bezeichnung: 'Früh' }),
         }),
       ]),
@@ -199,7 +200,7 @@ describe('SchichtmodellService', () => {
     expect(updateDocumentsAtomically).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1',
+          documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/schichtrastermodell/modell-1',
           daten: expect.objectContaining({ bezeichnung: 'Sommer neu', aktiv: false }),
         }),
         expect.objectContaining({
@@ -208,7 +209,7 @@ describe('SchichtmodellService', () => {
         }),
         {
           documentPath:
-            'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1/modellschicht/alt-2',
+            'unternehmer/u-1/firma/f-1/filiale/b-1/schichtrastermodell/modell-1/rastermodellschicht/alt-2',
           delete: true,
         },
       ]),
@@ -224,7 +225,7 @@ describe('SchichtmodellService', () => {
     await service.deactivateSchichtmodell(pfad, 'modell-1', 'uid-2');
 
     expect(updateDocument).toHaveBeenCalledWith(
-      'unternehmer/u-1/firma/f-1/filiale/b-1/schichtmodell/modell-1',
+      'unternehmer/u-1/firma/f-1/filiale/b-1/schichtrastermodell/modell-1',
       expect.objectContaining({ aktiv: false, aktualisiertVonUid: 'uid-2' }),
     );
   });
@@ -281,7 +282,7 @@ function createSchichtmodellDokument(bezeichnung: string): ISchichtrastermodellD
   return {
     bezeichnung,
     aktiv: true,
-    planungsart: 'schichtraster',
+    planungsart: 'schichtrastermodell',
     erstelltVonUid: 'uid-1',
     aktualisiertVonUid: 'uid-1',
   };

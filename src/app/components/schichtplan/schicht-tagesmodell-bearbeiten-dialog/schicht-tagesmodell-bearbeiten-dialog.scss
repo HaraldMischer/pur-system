@@ -1,0 +1,13 @@
+// pur-system/src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog.scss
+
+.vorlagenkopf,
+.zeitzeile {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.vorlagenkopf {
+  justify-content: space-between;
+}

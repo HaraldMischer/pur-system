@@ -6,7 +6,7 @@ import type {
   TWochentag,
 } from './filialeinstellung';
 
-export type TDienstplanOeffnungsregelQuelle = 'ausnahme' | 'sondertag' | 'wochentag';
+export type TDienstplanOeffnungsregelQuelle = 'sondertag' | 'sonntag' | 'wochentag';
 
 export interface IDienstplanGesetzlicherFeiertag {
   schluessel: TGesetzlicherFeiertagSchluessel;
@@ -35,7 +35,6 @@ export interface IDienstplanKalendertag {
   oeffnungsregel: TOeffnungsregel;
   bezeichnung?: string;
   sondertagId?: string;
-  ausnahmeId?: string;
   gesetzlicherFeiertag?: IDienstplanGesetzlicherFeiertag;
   rasterzeiten: readonly IDienstplanRasterzeit[];
 }

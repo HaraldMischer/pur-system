@@ -25,7 +25,7 @@
       min-height: 56px;
     }
 
-    // Größenmodifier steuern feste oder anteilige Item-Größen innerhalb eines Flex-Layouts.
+    // Anteilige Größenmodifier verteilen den verfügbaren Platz relativ zueinander.
     &--20 {
       flex: 20 1 0;
     }
@@ -50,6 +50,18 @@
       flex: 80 1 0;
     }
 
+    // Feste Größenmodifier verwenden die jeweils benannte Pixelbreite.
+    &--fixed-150 {
+      width: 150px;
+      flex: 0 0 150px;
+    }
+
+    &--fixed-180 {
+      width: 180px;
+      flex: 0 0 180px;
+    }
+
+    // Adaptive Größenmodifier verwenden die Inhaltsbreite oder die vollständige Layoutbreite.
     &--auto {
       width: auto;
       flex: 0 0 auto;

@@ -2,31 +2,12 @@
 
 @use '../../../../assets/scss/variables/breakpoints' as breakpoints;
 
-.schliesszeiten {
+.standardoeffnung {
   container-type: inline-size;
   margin-block-end: 12px;
 }
-
-.schliesszeitfelder {
+.standardzeitfelder {
   row-gap: 16px;
-}
-
-.besonderer-tag-details {
-  display: flex;
-  column-gap: 8px;
-}
-
-.besonderer-tag-datum {
-  flex: 0 0 60px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-@container (max-width: #{breakpoints.$breakpoint-extra-small-device}) {
-  .schliesszeitfelder > .pur-flex__item--time {
-    width: 100%;
-    flex-basis: 100%;
-  }
 }
 
 .wochentage {
@@ -34,21 +15,57 @@
   container-type: inline-size;
 
   .wochentag {
-    width: 80px;
-    flex: 0 0 80px;
+    width: 120px;
+    flex: 0 0 120px;
     margin: 0;
   }
 
-  @container (max-width: #{breakpoints.$breakpoint-medium-device}) {
-    .uhrzeitfelder {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      flex-basis: 100%;
+  @container (max-width: #{breakpoints.$breakpoint-small-device}) {
+    .oeffnungszeit {
+      width: 100%;
+      flex: 1 0 100%;
       margin-inline-start: 0;
-
-      > .pur-flex__item--time {
-        width: 100%;
-      }
     }
+  }
+}
+
+.feiertage,
+.sondertage {
+  container-type: inline-size;
+
+  .feiertag,
+  .sondertag {
+    width: 120px;
+    flex: 0 0 120px;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .feiertag-datum,
+  .sondertag-datum {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  @container (max-width: #{breakpoints.$breakpoint-small-device}) {
+    .oeffnungszeit {
+      width: 100%;
+      flex: 1 0 100%;
+      margin-inline-start: 0;
+    }
+  }
+}
+
+.oeffnungszeit {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@container (max-width: #{breakpoints.$breakpoint-extra-small-device}) {
+  .standardzeitfelder > .pur-flex__item--time {
+    width: 100%;
+    flex-basis: 100%;
   }
 }

@@ -2,8 +2,10 @@
 
 # Matrix: Cache-Strategien und Betriebsarten
 
-Diese Übersicht trennt die technische Auslieferungsvariante von Benutzerrolle und Datenrechten. Eine Auslieferungsvariante
-gewährt keine zusätzlichen Berechtigungen.
+Diese Matrix ist die verbindliche Quelle für Cache-Arten, Lesestrategien und Online-/Offline-Betriebsarten. Sie trennt die
+technische Auslieferungsvariante von Benutzerrolle und Datenrechten; eine Variante gewährt keine zusätzlichen Berechtigungen.
+Build- und Hostingdetails stehen in der [PWA-Konfigurationsmatrix](./pwa-konfigurationen.md), der aktuelle Prüfstand im
+[Projektstand](../projekt-stand.md).
 
 ## 1. Cache- und Datenquellenmatrix
 

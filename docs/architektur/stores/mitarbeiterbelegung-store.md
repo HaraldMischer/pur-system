@@ -2,6 +2,10 @@
 
 # Mitarbeiterbelegung-Store
 
+Die fachlichen Konflikt- und Schreibregeln stehen im
+[Fachkonzept Dienst- und Schichtplanung](../../fachkonzepte/dienst-und-schichtplanung.md). Dieses Dokument beschreibt
+ausschließlich die technische Store-Verantwortung.
+
 Der `MitarbeiterbelegungStore` hält den live beobachteten firmenweiten Belegungsstand für die aktuelle Monatsplanung. Er ersetzt
 nicht die filialbezogenen Dienstpläne und ist keine verbindliche Schreibgrundlage. Vor jedem Schicht-Schreibzugriff prüft der
 `DienstplanService` die betroffenen Indexdokumente weiterhin innerhalb der Firestore-Transaktion.

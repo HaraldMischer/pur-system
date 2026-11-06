@@ -4,6 +4,7 @@ import type {
   IGeschlosseneOeffnungsregel,
   IGeoeffneteOeffnungsregel,
   IFilialeinstellungSondertagVorlage,
+  TBerechneterSondertagSchluessel,
   TBundeslandCode,
   TGesetzlicherFeiertagSchluessel,
 } from '../../models/domain/filialeinstellung';
@@ -206,11 +207,32 @@ export function getGesetzlicherFeiertagDatum(
 }
 
 /**
- * Erstellt die initial inaktiven Sondertage einer Filiale.
+ * Berechnet das Datum eines systemdefinierten beweglichen Sondertags.
+ *
+ * @param jahr - Vollständiges gregorianisches Kalenderjahr.
+ * @param schluessel - Schlüssel des berechneten Sondertags.
+ * @returns Lokales Datum im Format `YYYY-MM-DD`.
+ */
+export function getBerechneterSondertagDatum(
+  jahr: number,
+  schluessel: TBerechneterSondertagSchluessel,
+): string {
+  validateJahr(jahr);
+  const ersterAdvent = getErsterAdvent(jahr);
+  switch (schluessel) {
+    case 'volkstrauertag':
+      return addTage(ersterAdvent, -14);
+    case 'totensonntag':
+      return addTage(ersterAdvent, -7);
+  }
+}
+
+/**
+ * Erstellt die initialen systemdefinierten Sondertage einer Filiale.
  *
  * @param bundesland - Bundesland der Filiale.
- * @param oeffnungsrahmen - Aus dem Schließzeitraum abgeleitete zeitliche Vorbelegung.
- * @returns Gesetzliche Feiertage des Bundeslands sowie Heiligabend und Silvester.
+ * @param oeffnungsrahmen - Zeitliche Vorbelegung für initiale besondere Tage.
+ * @returns Gesetzliche Feiertage und die für das Bundesland vorgesehenen besonderen Tage.
  */
 export function createInitialeSondertage(
   bundesland: TBundeslandCode,
@@ -219,22 +241,60 @@ export function createInitialeSondertage(
   const gesetzlicheFeiertage = GESETZLICHE_FEIERTAGE_KATALOG.filter((eintrag) => {
     return eintrag.automatischeBundeslaender.includes(bundesland);
   }).map((eintrag) => {
-    return {
+    const vorlage: IFilialeinstellungSondertagVorlage = {
       id: eintrag.schluessel,
       bezeichnung: eintrag.bezeichnung,
       aktiv: false,
-      herkunft: 'system' as const,
+      herkunft: 'system',
       datumsregel: {
-        typ: 'gesetzlicherFeiertag' as const,
+        typ: 'gesetzlicherFeiertag',
         feiertagSchluessel: eintrag.schluessel,
       },
       oeffnungsregel: createGeschlosseneOeffnungsregel(oeffnungsrahmen),
     };
+    if (bundesland !== 'DE-NW') return vorlage;
+    if (eintrag.schluessel === 'karfreitag') {
+      return { ...vorlage, aktiv: true, modus: 'geschlossen' as const };
+    }
+    if (eintrag.schluessel === 'allerheiligen') {
+      return {
+        ...vorlage,
+        aktiv: true,
+        modus: 'abweichend' as const,
+        oeffnungsregel: createGeoeffneteOeffnungsregel('18:00', '01:00'),
+      };
+    }
+    return { ...vorlage, aktiv: true, modus: 'wieSonntag' as const };
   });
   return [
     ...gesetzlicheFeiertage,
-    createFesterSondertag('heiligabend', 'Heiligabend', 12, 24, oeffnungsrahmen),
-    createFesterSondertag('silvester', 'Silvester', 12, 31, oeffnungsrahmen),
+    ...(bundesland === 'DE-NW'
+      ? [
+          createBerechneterSondertag('volkstrauertag', 'Volkstrauertag', '13:00', '01:00'),
+          createBerechneterSondertag('totensonntag', 'Totensonntag', '18:00', '01:00'),
+        ]
+      : []),
+    ...(bundesland === 'DE-NW'
+      ? [
+          createBegrenzterFesterSondertag(
+            'heiligabend',
+            'Heiligabend',
+            12,
+            24,
+            oeffnungsrahmen.beginnLokalzeit,
+          ),
+          createBegrenzterFesterSondertag(
+            'silvester',
+            'Silvester',
+            12,
+            31,
+            oeffnungsrahmen.beginnLokalzeit,
+          ),
+        ]
+      : [
+          createFesterSondertag('heiligabend', 'Heiligabend', 12, 24, oeffnungsrahmen),
+          createFesterSondertag('silvester', 'Silvester', 12, 31, oeffnungsrahmen),
+        ]),
   ];
 }
 
@@ -242,7 +302,8 @@ export function createInitialeSondertage(
  * Gleicht systemdefinierte Sondertage nach einem Bundeslandwechsel ab.
  *
  * Gemeinsame gesetzliche Feiertage behalten ihre angepassten Öffnungsregeln. Nicht mehr landesweit geltende gesetzliche
- * Feiertage werden entfernt, neu geltende inaktiv ergänzt. Benutzerdefinierte Sondertage bleiben unverändert.
+ * Feiertage werden entfernt, neu geltende mit ihrer bundeslandspezifischen Vorbelegung ergänzt. Benutzerdefinierte Sondertage
+ * bleiben unverändert.
  *
  * @param vorhandeneSondertage - Bisherige Sondertagsvorlagen der Filiale.
  * @param bundesland - Neu ausgewähltes Bundesland.
@@ -324,6 +385,66 @@ function createFesterSondertag(
   };
 }
 
+function createBerechneterSondertag(
+  schluessel: TBerechneterSondertagSchluessel,
+  bezeichnung: string,
+  beginnLokalzeit: string,
+  endeLokalzeit: string,
+): IFilialeinstellungSondertagVorlage {
+  return {
+    id: schluessel,
+    bezeichnung,
+    aktiv: true,
+    modus: 'abweichend',
+    herkunft: 'system',
+    datumsregel: {
+      typ: 'berechneterSondertag',
+      sondertagSchluessel: schluessel,
+    },
+    oeffnungsregel: createGeoeffneteOeffnungsregel(beginnLokalzeit, endeLokalzeit),
+  };
+}
+
+function createBegrenzterFesterSondertag(
+  id: string,
+  bezeichnung: string,
+  monat: number,
+  tag: number,
+  beginnLokalzeit: string,
+): IFilialeinstellungSondertagVorlage {
+  const vorlage: IFilialeinstellungSondertagVorlage = {
+    id,
+    bezeichnung,
+    aktiv: true,
+    modus: 'geschlossen',
+    herkunft: 'system',
+    datumsregel: {
+      typ: 'jaehrlichFestesDatum',
+      monat,
+      tag,
+    },
+    oeffnungsregel: { geoeffnet: false },
+  };
+  if (beginnLokalzeit >= '16:00') return vorlage;
+  return {
+    ...vorlage,
+    modus: 'abweichend',
+    oeffnungsregel: createGeoeffneteOeffnungsregel(beginnLokalzeit, '16:00'),
+  };
+}
+
+function createGeoeffneteOeffnungsregel(
+  beginnLokalzeit: string,
+  endeLokalzeit: string,
+): IGeoeffneteOeffnungsregel {
+  return {
+    geoeffnet: true,
+    beginnLokalzeit,
+    endeLokalzeit,
+    endetAmFolgetag: endeLokalzeit < beginnLokalzeit,
+  };
+}
+
 function createGeschlosseneOeffnungsregel(
   oeffnungsrahmen: IGeoeffneteOeffnungsregel,
 ): IGeschlosseneOeffnungsregel {
@@ -351,6 +472,11 @@ function getOstersonntag(jahr: number): string {
   const monat = Math.floor((h + l - 7 * m + 114) / 31);
   const tag = ((h + l - 7 * m + 114) % 31) + 1;
   return createDatum(jahr, monat, tag);
+}
+
+function getErsterAdvent(jahr: number): string {
+  const dritterDezember = new Date(Date.UTC(jahr, 11, 3));
+  return addTage(createDatum(jahr, 12, 3), -dritterDezember.getUTCDay());
 }
 
 function getBussUndBettag(jahr: number): string {

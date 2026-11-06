@@ -2,6 +2,7 @@
 
 import {
   createInitialeSondertage,
+  getBerechneterSondertagDatum,
   getGesetzlicheFeiertage,
   getGesetzlicherFeiertagDatum,
   getGesetzlicherFeiertagKatalogeintrag,
@@ -24,6 +25,19 @@ describe('Feiertagsauflösung', () => {
   ])('should calculate Easter Sunday for %s', (jahr, erwartetesDatum) => {
     expect(getGesetzlicherFeiertagDatum(jahr, 'ostersonntag')).toBe(erwartetesDatum);
   });
+
+  it.each([
+    [2022, '2022-11-13', '2022-11-20'],
+    [2024, '2024-11-17', '2024-11-24'],
+    [2026, '2026-11-15', '2026-11-22'],
+    [2023, '2023-11-19', '2023-11-26'],
+  ])(
+    'should calculate memorial Sundays for %s',
+    (jahr, erwarteterVolkstrauertag, erwarteterTotensonntag) => {
+      expect(getBerechneterSondertagDatum(jahr, 'volkstrauertag')).toBe(erwarteterVolkstrauertag);
+      expect(getBerechneterSondertagDatum(jahr, 'totensonntag')).toBe(erwarteterTotensonntag);
+    },
+  );
 
   it.each([
     ['karfreitag', '2026-04-03'],
@@ -135,7 +149,7 @@ describe('Feiertagsauflösung', () => {
     expect(getGesetzlicherFeiertagKatalogeintrag('karfreitag').datumsart).toBe('berechnet');
   });
 
-  it('should create inactive initial holidays including Christmas Eve and New Years Eve', () => {
+  it('should create statutory holidays and system-defined annual special days', () => {
     const sondertage = createInitialeSondertage('DE-NW', OEFFNUNGSRAHMEN);
     const heiligabend = sondertage.find((sondertag) => {
       return sondertag.id === 'heiligabend';
@@ -143,29 +157,134 @@ describe('Feiertagsauflösung', () => {
     const silvester = sondertage.find((sondertag) => {
       return sondertag.id === 'silvester';
     });
+    const volkstrauertag = sondertage.find((sondertag) => {
+      return sondertag.id === 'volkstrauertag';
+    });
+    const totensonntag = sondertage.find((sondertag) => {
+      return sondertag.id === 'totensonntag';
+    });
+    const karfreitag = sondertage.find((sondertag) => {
+      return sondertag.id === 'karfreitag';
+    });
+    const allerheiligen = sondertage.find((sondertag) => {
+      return sondertag.id === 'allerheiligen';
+    });
 
-    expect(sondertage.every((sondertag) => !sondertag.aktiv)).toBe(true);
     expect(sondertage.every((sondertag) => sondertag.herkunft === 'system')).toBe(true);
-    expect(sondertage.every((sondertag) => !sondertag.oeffnungsregel.geoeffnet)).toBe(true);
     expect(
-      sondertage.every((sondertag) => {
-        return (
-          sondertag.oeffnungsregel.beginnLokalzeit === '06:00' &&
-          sondertag.oeffnungsregel.endeLokalzeit === '01:00' &&
-          sondertag.oeffnungsregel.endetAmFolgetag === true
-        );
+      sondertage
+        .filter((sondertag) => {
+          return (
+            sondertag.datumsregel.typ === 'gesetzlicherFeiertag' &&
+            sondertag.id !== 'karfreitag' &&
+            sondertag.id !== 'allerheiligen'
+          );
+        })
+        .every((sondertag) => {
+          return sondertag.aktiv && sondertag.modus === 'wieSonntag';
+        }),
+    ).toBe(true);
+    expect(karfreitag).toMatchObject({
+      aktiv: true,
+      modus: 'geschlossen',
+      oeffnungsregel: { geoeffnet: false },
+    });
+    expect(allerheiligen).toMatchObject({
+      aktiv: true,
+      modus: 'abweichend',
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '18:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+    });
+    expect(heiligabend).toMatchObject({
+      aktiv: true,
+      modus: 'abweichend',
+      datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '06:00',
+        endeLokalzeit: '16:00',
+        endetAmFolgetag: false,
+      },
+    });
+    expect(silvester).toMatchObject({
+      aktiv: true,
+      modus: 'abweichend',
+      datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 31 },
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '06:00',
+        endeLokalzeit: '16:00',
+        endetAmFolgetag: false,
+      },
+    });
+    expect(volkstrauertag).toMatchObject({
+      aktiv: true,
+      modus: 'abweichend',
+      datumsregel: {
+        typ: 'berechneterSondertag',
+        sondertagSchluessel: 'volkstrauertag',
+      },
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '13:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+    });
+    expect(totensonntag).toMatchObject({
+      aktiv: true,
+      modus: 'abweichend',
+      datumsregel: {
+        typ: 'berechneterSondertag',
+        sondertagSchluessel: 'totensonntag',
+      },
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '18:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+    });
+    const hessen = createInitialeSondertage('DE-HE', OEFFNUNGSRAHMEN);
+    expect(hessen).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'volkstrauertag' }),
+        expect.objectContaining({ id: 'totensonntag' }),
+      ]),
+    );
+    expect(
+      hessen.every((sondertag) => {
+        return !sondertag.aktiv && sondertag.modus === undefined;
       }),
     ).toBe(true);
-    expect(heiligabend?.datumsregel).toEqual({
-      typ: 'jaehrlichFestesDatum',
-      monat: 12,
-      tag: 24,
+  });
+
+  it('should close Christmas Eve and New Years Eve when the standard opens at 16:00 or later', () => {
+    const sondertage = createInitialeSondertage('DE-NW', {
+      ...OEFFNUNGSRAHMEN,
+      beginnLokalzeit: '16:00',
     });
-    expect(silvester?.datumsregel).toEqual({
-      typ: 'jaehrlichFestesDatum',
-      monat: 12,
-      tag: 31,
-    });
+
+    expect(
+      sondertage.filter((sondertag) => {
+        return sondertag.id === 'heiligabend' || sondertag.id === 'silvester';
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        aktiv: true,
+        modus: 'geschlossen',
+        oeffnungsregel: { geoeffnet: false },
+      }),
+      expect.objectContaining({
+        aktiv: true,
+        modus: 'geschlossen',
+        oeffnungsregel: { geoeffnet: false },
+      }),
+    ]);
   });
 
   it('should reconcile state holidays while preserving existing and user-defined special days', () => {
@@ -218,6 +337,11 @@ describe('Feiertagsauflösung', () => {
     expect(
       abgeglichen.some((sondertag) => {
         return sondertag.id === 'allerheiligen';
+      }),
+    ).toBe(false);
+    expect(
+      abgeglichen.some((sondertag) => {
+        return sondertag.id === 'volkstrauertag' || sondertag.id === 'totensonntag';
       }),
     ).toBe(false);
     expect(abgeglichen).toContain(eigenerSondertag);

@@ -15,6 +15,7 @@ import {
   IModellschichtDokument,
   IModellschichtEintrag,
   IModellschichtSchreibdaten,
+  IAltesSchichtrastermodellDokument,
   ISchichtrastermodellAktualisierung,
   ISchichtrastermodellAnlage,
   ISchichtrastermodellBestand,
@@ -39,12 +40,13 @@ function sortModellschichten(a: IModellschichtEintrag, b: IModellschichtEintrag)
   return compareModellschichtenNachReihenfolge(a, b);
 }
 
-function assertSchichtrastermodellDokument(
-  dokument: TSchichtmodellDokument,
-): asserts dokument is ISchichtrastermodellDokument {
-  if (dokument.planungsart !== 'schichtraster') {
+function normalizeSchichtrastermodellDokument(
+  dokument: TSchichtmodellDokument | IAltesSchichtrastermodellDokument,
+): ISchichtrastermodellDokument {
+  if (dokument.planungsart !== 'schichtrastermodell' && dokument.planungsart !== 'schichtraster') {
     throw new Error('Die Planungsart des Schichtmodells wird noch nicht unterstützt.');
   }
+  return { ...dokument, planungsart: 'schichtrastermodell' };
 }
 
 function normalizeModellschicht(
@@ -112,24 +114,42 @@ export class SchichtmodellService {
     pfad: IFilialPfad,
     strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.dienstplaene,
   ): Promise<ISchichtrastermodellBestand[]> {
-    const dokumente = await this.firestoreDbService.loadCollection<TSchichtmodellDokument>(
-      FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
-      strategie,
-    );
+    const [aktuelleDokumente, alteDokumente] = await Promise.all([
+      this.firestoreDbService.loadCollection<TSchichtmodellDokument>(
+        FIRESTORE_COLLECTION_PATHS.schichtrastermodelle(pfad),
+        strategie,
+      ),
+      this.firestoreDbService.loadCollection<IAltesSchichtrastermodellDokument>(
+        FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
+        strategie,
+      ),
+    ]);
+    const aktuelleIds = new Set(aktuelleDokumente.map((dokument) => dokument.id));
+    const dokumente = [
+      ...aktuelleDokumente.map((dokument) => ({ ...dokument, alt: false })),
+      ...alteDokumente
+        .filter((dokument) => !aktuelleIds.has(dokument.id))
+        .map((dokument) => ({ ...dokument, alt: true })),
+    ];
     const bestaende = await Promise.all(
       dokumente.map(async (dokument) => {
-        assertSchichtrastermodellDokument(dokument.daten);
+        const daten = normalizeSchichtrastermodellDokument(dokument.daten);
         const schichtmodell: ISchichtrastermodellEintrag = {
-          ...dokument.daten,
+          ...daten,
           ...pfad,
           id: dokument.id,
         };
         const modellschichtDokumente =
           await this.firestoreDbService.loadCollection<IModellschichtDokument>(
-            FIRESTORE_COLLECTION_PATHS.modellschichten({
-              ...pfad,
-              schichtmodellId: dokument.id,
-            }),
+            dokument.alt
+              ? FIRESTORE_COLLECTION_PATHS.modellschichten({
+                  ...pfad,
+                  schichtmodellId: dokument.id,
+                })
+              : FIRESTORE_COLLECTION_PATHS.rastermodellschichten({
+                  ...pfad,
+                  schichtrastermodellId: dokument.id,
+                }),
             strategie,
           );
         const modellschichten = modellschichtDokumente
@@ -163,7 +183,7 @@ export class SchichtmodellService {
   ): Promise<ISchichtrastermodellBestand> {
     this.assertSchichtmodell(anlage);
     const schichtmodellId = this.firestoreDbService.createDocumentId(
-      FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
+      FIRESTORE_COLLECTION_PATHS.schichtrastermodelle(pfad),
     );
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
     const schichtmodell: ISchichtrastermodellEintrag = {
@@ -171,14 +191,17 @@ export class SchichtmodellService {
       id: schichtmodellId,
       bezeichnung: anlage.bezeichnung.trim(),
       aktiv: true,
-      planungsart: 'schichtraster',
+      planungsart: 'schichtrastermodell',
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
     const modellschichten = normalizeModellschichten(anlage.modellschichten).map(
       (modellschicht) => {
         const id = this.firestoreDbService.createDocumentId(
-          FIRESTORE_COLLECTION_PATHS.modellschichten({ ...pfad, schichtmodellId }),
+          FIRESTORE_COLLECTION_PATHS.rastermodellschichten({
+            ...pfad,
+            schichtrastermodellId: schichtmodellId,
+          }),
         );
         return {
           ...modellschicht,
@@ -190,11 +213,14 @@ export class SchichtmodellService {
     );
     const operationen: TFirestoreBatchOperation[] = [
       {
-        documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
+        documentPath: FIRESTORE_DOCUMENT_PATHS.schichtrastermodell({
+          ...pfad,
+          schichtrastermodellId: schichtmodellId,
+        }),
         daten: {
           bezeichnung: schichtmodell.bezeichnung,
           aktiv: true,
-          planungsart: 'schichtraster',
+          planungsart: 'schichtrastermodell',
           erstelltAm: zeitstempel,
           erstelltVonUid: benutzerUid,
           aktualisiertAm: zeitstempel,
@@ -203,10 +229,10 @@ export class SchichtmodellService {
       },
       ...modellschichten.map((modellschicht) => {
         return {
-          documentPath: FIRESTORE_DOCUMENT_PATHS.modellschicht({
+          documentPath: FIRESTORE_DOCUMENT_PATHS.rastermodellschicht({
             ...pfad,
-            schichtmodellId,
-            modellschichtId: modellschicht.id,
+            schichtrastermodellId: schichtmodellId,
+            rastermodellschichtId: modellschicht.id,
           }),
           daten: mapModellschichtDokument(modellschicht),
         };
@@ -243,7 +269,10 @@ export class SchichtmodellService {
           !verwendeteIds.has(modellschicht.id)
             ? modellschicht.id
             : this.firestoreDbService.createDocumentId(
-                FIRESTORE_COLLECTION_PATHS.modellschichten({ ...pfad, schichtmodellId }),
+                FIRESTORE_COLLECTION_PATHS.rastermodellschichten({
+                  ...pfad,
+                  schichtrastermodellId: schichtmodellId,
+                }),
               );
         verwendeteIds.add(id);
         return {
@@ -256,21 +285,24 @@ export class SchichtmodellService {
     );
     const operationen: TFirestoreBatchOperation[] = [
       {
-        documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
+        documentPath: FIRESTORE_DOCUMENT_PATHS.schichtrastermodell({
+          ...pfad,
+          schichtrastermodellId: schichtmodellId,
+        }),
         daten: {
           bezeichnung: aktualisierung.bezeichnung.trim(),
           aktiv: aktualisierung.aktiv,
-          planungsart: 'schichtraster',
+          planungsart: 'schichtrastermodell',
           aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
           aktualisiertVonUid: benutzerUid,
         },
       },
       ...modellschichten.map((modellschicht) => {
         return {
-          documentPath: FIRESTORE_DOCUMENT_PATHS.modellschicht({
+          documentPath: FIRESTORE_DOCUMENT_PATHS.rastermodellschicht({
             ...pfad,
-            schichtmodellId,
-            modellschichtId: modellschicht.id,
+            schichtrastermodellId: schichtmodellId,
+            rastermodellschichtId: modellschicht.id,
           }),
           daten: mapModellschichtDokument(modellschicht),
         };
@@ -279,10 +311,10 @@ export class SchichtmodellService {
         .filter((modellschicht) => !verwendeteIds.has(modellschicht.id))
         .map((modellschicht) => {
           return {
-            documentPath: FIRESTORE_DOCUMENT_PATHS.modellschicht({
+            documentPath: FIRESTORE_DOCUMENT_PATHS.rastermodellschicht({
               ...pfad,
-              schichtmodellId,
-              modellschichtId: modellschicht.id,
+              schichtrastermodellId: schichtmodellId,
+              rastermodellschichtId: modellschicht.id,
             }),
             delete: true as const,
           };
@@ -313,7 +345,10 @@ export class SchichtmodellService {
     benutzerUid: string,
   ): Promise<void> {
     await this.firestoreDbService.updateDocument(
-      FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
+      FIRESTORE_DOCUMENT_PATHS.schichtrastermodell({
+        ...pfad,
+        schichtrastermodellId: schichtmodellId,
+      }),
       {
         aktiv: false,
         aktualisiertAm: this.firestoreDbService.createServerTimestamp(),

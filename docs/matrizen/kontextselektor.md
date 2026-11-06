@@ -2,10 +2,10 @@
 
 # Matrix: Kontextselektor
 
-Diese Übersicht zeigt die grundsätzliche Verfügbarkeit und Bedienbarkeit der Selektoren für den globalen Arbeitskontext. Ob
+Diese Matrix ist die verbindliche Quelle für Verfügbarkeit und Bedienbarkeit der Selektoren des globalen Arbeitskontexts. Ob
 ein grundsätzlich verfügbarer Selektor tatsächlich dargestellt wird, richtet sich zusätzlich nach der Anzahl der im aktuellen
-Kontext wählbaren Einträge. Architektur und Verantwortlichkeiten stehen im [Projektplan](../projekt-plan.md). Der aktuelle
-Implementierungsstand steht im [Projektstand](../projekt-stand.md).
+Kontext wählbaren Einträge. Das übergreifende Zielbild steht im [Projektplan](../projekt-plan.md), der aktuelle
+Implementierungsstand im [Projektstand](../projekt-stand.md).
 
 ## 1. Selektormodus-Legende
 

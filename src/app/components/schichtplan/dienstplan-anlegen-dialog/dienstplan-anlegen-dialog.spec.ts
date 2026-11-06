@@ -50,7 +50,7 @@ describe('DienstplanAnlegenDialog', () => {
 
   it('should require a model before creating the monthly plan', async () => {
     expect(fixture.componentInstance.dienstplanForm.controls.planungsart.value).toBe(
-      'schichtraster',
+      'schichtrastermodell',
     );
 
     await fixture.componentInstance.saveDienstplan();
@@ -61,7 +61,7 @@ describe('DienstplanAnlegenDialog', () => {
 
   it('should reject an unavailable planning type', async () => {
     fixture.componentInstance.dienstplanForm.setValue({
-      planungsart: 'schichtbausteine',
+      planungsart: 'schichttagesmodell',
       schichtmodellId: 'modell-1',
     });
 
@@ -106,7 +106,7 @@ describe('DienstplanAnlegenDialog', () => {
         id: 'modell-1',
         bezeichnung: 'Sommer',
         aktiv: true,
-        planungsart: 'schichtraster',
+        planungsart: 'schichtrastermodell',
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },

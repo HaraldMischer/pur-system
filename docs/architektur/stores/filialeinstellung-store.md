@@ -2,6 +2,9 @@
 
 # FilialeinstellungStore
 
+Die fachlichen Öffnungs- und Kalenderregeln stehen in der [Öffnungszeiten-Matrix](../../matrizen/oeffnungszeiten.md). Dieses
+Dokument beschreibt ausschließlich die technische Store-Verantwortung.
+
 Der `FilialeinstellungStore` hält Filialeinstellungen getrennt nach vollständigem Filialpfad. Der interne Kontextschlüssel setzt
 sich aus Unternehmer-, Firmen- und Filial-ID zusammen. Dadurch können mehrere ausgewählte Filialen gleichzeitig geladen und
 bearbeitet werden, ohne Lade-, Fehler- oder Schreibzustände miteinander zu vermischen.
@@ -23,24 +26,23 @@ Ladeausgang als auch die konkrete Ursache an.
 Der Store stellt Aktionen für folgende Abläufe bereit:
 
 - vollständigen Filialbestand laden und einen leeren Bestand initialisieren,
-- allgemeine Einstellungen, Schließzeitraum und Wochenregeln speichern,
+- allgemeine Einstellungen, Standardöffnungsregel und Wochentagsmodi speichern,
 - eigene Sondertage anlegen, bearbeiten und löschen,
 - Aktivstatus und Öffnungsregel systemdefinierter Sondertage bearbeiten,
-- Datumsausnahmen anlegen, bearbeiten und löschen,
 - Fehler eines Filialkontexts zurücksetzen und sitzungsbezogene Bestände vollständig verwerfen.
 
 Während eines Schreibvorgangs ist ausschließlich der betroffene Filialkontext mit `inProgress` gesperrt. Erfolgreiche Ergebnisse
 werden sortiert in den lokalen Bestand übernommen; Fehler bleiben im Kontext für die Oberfläche verfügbar.
 
-Der Store übergibt bei Sondertagen und Datumsausnahmen den aktuell gespeicherten Schließzeitraum an den Service. Dadurch gilt
-dieselbe fachliche Begrenzung beim gemeinsamen Speichern der Grundlagen und bei späteren einzelnen Änderungen.
+Der Store lässt die Zeitfolgen von Sondertagen bei jeder einzelnen Änderung erneut durch den Service validieren.
 
 ## Datumsauflösung
 
-`resolveOeffnungsregelFuerDatum` verwendet den geladenen Bestand und die zentrale Auflösungsfunktion. Die Priorität lautet
-`Ausnahme → Sondertag → Wochentag`. Mehrere passende aktive Sondertage ohne überschreibende Ausnahme werden nicht willkürlich
-sortiert, sondern als Konfigurationsfehler gemeldet. Über Mitternacht reichende Öffnungszeiten bleiben vollständig ihrem
-Startdatum zugeordnet.
+`resolveOeffnungsregelFuerDatum` verwendet den geladenen Bestand und die zentrale Auflösungsfunktion. Ein Wochentag erhält je
+nach Modus die aktuelle Standardöffnungsregel, seine abweichende Regel oder eine geschlossene Regel. Die Priorität lautet
+`benutzerdefinierter jährlicher Sondertag → systemdefinierter Sondertag → wirksame Wochenöffnung`. Mehrere passende aktive
+Sondertage derselben Herkunft werden nicht willkürlich sortiert, sondern als Konfigurationsfehler gemeldet. Über Mitternacht
+reichende Öffnungszeiten bleiben vollständig ihrem Startdatum zugeordnet.
 
 Der Store registriert eine nicht reaktiv verfolgte Momentaufnahme beim `StoreSnapshotService`, damit Kontexte einschließlich
 Rohdaten, validiertem Bestand und Fehlerzustand in der vorhandenen Diagnoseausgabe sichtbar bleiben.

@@ -2,6 +2,9 @@
 
 # App-Sitzungsinitialisierung
 
+Die verbindlichen Zustände und Ladeverantwortlichkeiten stehen in der [Datenladematrix](../../matrizen/datenladen.md), Cache- und
+Netzwerkstrategien in der [Cache-Matrix](../../matrizen/cache-strategien.md).
+
 Der `AppSitzungsInitService` koordiniert den Übergang von einer Firebase-Anmeldung zu einer vollständig nutzbaren
 Benutzersitzung. Er startet die Authentifizierungsüberwachung, reagiert auf das geladene Benutzerprofil und stößt das
 rollen- und zugriffsabhängige Laden der Stammdaten an.

@@ -2,9 +2,8 @@
 
 import { Timestamp } from 'firebase/firestore';
 
-import { ISchliesszeitraum } from '../../models/domain/filialeinstellung';
+import { IGeoeffneteOeffnungsregel } from '../../models/domain/filialeinstellung';
 import { IModellschichtZeitgrenze, TModellschichtTag } from '../../models/domain/schichtmodell';
-import { getMaximalerOeffnungsrahmen } from '../filialeinstellung/schliesszeitraum';
 
 type TSchichtLokalzeiten = {
   readonly beginnLokalzeit: string;
@@ -33,21 +32,20 @@ export function getLokalzeitMinuten(lokalzeit: string): number | null {
 }
 
 /**
- * Ordnet eine innere Modellschichtgrenze anhand des Öffnungsrahmens dem Start- oder Folgetag zu.
+ * Ordnet eine innere Modellschichtgrenze anhand der Standardöffnung dem Start- oder Folgetag zu.
  *
  * @param lokalzeit - Lokale Uhrzeit im Format `HH:mm`.
- * @param schliesszeitraum - Täglich geltender Schließzeitraum der Filiale.
+ * @param standardoeffnungsregel - Standardöffnung der Filiale.
  * @returns Tageszuordnung oder `null` bei einer ungültigen Uhrzeit.
  */
 export function getModellschichtTagFuerLokalzeit(
   lokalzeit: string,
-  schliesszeitraum: ISchliesszeitraum,
+  standardoeffnungsregel: IGeoeffneteOeffnungsregel,
 ): TModellschichtTag | null {
   const minuten = getLokalzeitMinuten(lokalzeit);
   if (minuten === null) return null;
-  const oeffnungsrahmen = getMaximalerOeffnungsrahmen(schliesszeitraum);
-  if (!oeffnungsrahmen.endetAmFolgetag) return 'starttag';
-  const oeffnungsbeginn = getLokalzeitMinuten(oeffnungsrahmen.beginnLokalzeit);
+  if (!standardoeffnungsregel.endetAmFolgetag) return 'starttag';
+  const oeffnungsbeginn = getLokalzeitMinuten(standardoeffnungsregel.beginnLokalzeit);
   return oeffnungsbeginn !== null && minuten < oeffnungsbeginn ? 'folgetag' : 'starttag';
 }
 

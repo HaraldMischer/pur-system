@@ -3,9 +3,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../commons/constants/filialeinstellung.constants';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
-import { TWochenoeffnungszeiten } from '../../commons/models/domain/filialeinstellung';
+import { TWochenregeln } from '../../commons/models/domain/filialeinstellung';
 import { SondertagDatumskollisionFehler } from '../../commons/utils/filialeinstellung/sondertag-kollision';
 import { DebugLogService } from '../../services/core/debug-log.service';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
@@ -37,9 +36,6 @@ describe('FilialeinstellungStore', () => {
   const updateSondertag = vi.fn();
   const updateSystemSondertag = vi.fn();
   const deleteSondertag = vi.fn();
-  const createAusnahme = vi.fn();
-  const updateAusnahme = vi.fn();
-  const deleteAusnahme = vi.fn();
   const debugLogServiceMock = {
     log: vi.fn(),
     logDatenflussTitel: vi.fn(),
@@ -75,19 +71,6 @@ describe('FilialeinstellungStore', () => {
       return Promise.resolve({ ...sondertag, ...aktualisierung });
     });
     deleteSondertag.mockResolvedValue(undefined);
-    createAusnahme.mockResolvedValue({
-      ...pfad,
-      id: '2026-12-23',
-      datum: '2026-12-23',
-      bezeichnung: 'Sonderöffnung',
-      oeffnungsregel: { geoeffnet: false },
-      erstelltVonUid: 'uid-1',
-      aktualisiertVonUid: 'uid-1',
-    });
-    updateAusnahme.mockImplementation((_pfad, ausnahme, aktualisierung) => {
-      return Promise.resolve({ ...ausnahme, ...aktualisierung });
-    });
-    deleteAusnahme.mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
         FilialeinstellungStore,
@@ -102,9 +85,6 @@ describe('FilialeinstellungStore', () => {
             updateSondertag,
             updateSystemSondertag,
             deleteSondertag,
-            createAusnahme,
-            updateAusnahme,
-            deleteAusnahme,
           },
         },
         { provide: BenutzerStore, useValue: { benutzerId } },
@@ -222,7 +202,7 @@ describe('FilialeinstellungStore', () => {
     expect(store.getFilialeinstellungKontext(pfad)?.bestand).toEqual(bestand);
   });
 
-  it('should manage special days and exceptions only in their branch context', async () => {
+  it('should manage special days only in their branch context', async () => {
     const store = TestBed.inject(FilialeinstellungStore);
     await Promise.all([
       store.loadFilialeinstellung(pfad),
@@ -235,27 +215,13 @@ describe('FilialeinstellungStore', () => {
       datumsregel: { typ: 'jaehrlichFestesDatum', monat: 2, tag: 15 },
       oeffnungsregel: { geoeffnet: false },
     });
-    await store.createAusnahme(pfad, {
-      datum: '2026-12-23',
-      bezeichnung: 'Sonderöffnung',
-      oeffnungsregel: { geoeffnet: false },
-    });
-
     expect(createSondertag).toHaveBeenCalledWith(
       pfad,
       expect.objectContaining({ bezeichnung: 'Inventur' }),
       bestand.sondertage,
-      bestand.oeffnungszeiten.schliesszeitraum,
-      'uid-1',
-    );
-    expect(createAusnahme).toHaveBeenCalledWith(
-      pfad,
-      expect.objectContaining({ datum: '2026-12-23' }),
-      bestand.oeffnungszeiten.schliesszeitraum,
       'uid-1',
     );
     expect(store.getFilialeinstellungKontext(pfad)?.bestand?.sondertage).toHaveLength(2);
-    expect(store.getFilialeinstellungKontext(pfad)?.bestand?.ausnahmen).toHaveLength(1);
     expect(store.getFilialeinstellungKontext(andererPfad)?.bestand).toEqual(andererBestand);
   });
 
@@ -282,15 +248,18 @@ describe('FilialeinstellungStore', () => {
     });
   });
 
-  it('should resolve an exception before a system special day and the weekly rule', async () => {
-    const bestandMitAusnahme = {
+  it('should resolve a user-defined annual special day before a system special day', async () => {
+    const bestandMitBenutzerSondertag = {
       ...bestand,
-      ausnahmen: [
+      sondertage: [
+        ...bestand.sondertage,
         {
           ...pfad,
-          id: '2026-12-24',
-          datum: '2026-12-24',
-          bezeichnung: 'Sonderöffnung',
+          id: 'betriebsruhe',
+          bezeichnung: 'Betriebsruhe',
+          aktiv: true,
+          herkunft: 'benutzer' as const,
+          datumsregel: { typ: 'jaehrlichFestesDatum' as const, monat: 12, tag: 24 },
           oeffnungsregel: {
             geoeffnet: true,
             beginnLokalzeit: '08:00',
@@ -302,15 +271,15 @@ describe('FilialeinstellungStore', () => {
         },
       ],
     } satisfies IFilialeinstellungBestand;
-    const rohdatenMitAusnahme = createRohdaten(bestandMitAusnahme);
-    loadFilialeinstellungRohdaten.mockResolvedValueOnce(rohdatenMitAusnahme);
-    validateFilialeinstellungRohdaten.mockReturnValueOnce(bestandMitAusnahme);
+    const rohdatenMitBenutzerSondertag = createRohdaten(bestandMitBenutzerSondertag);
+    loadFilialeinstellungRohdaten.mockResolvedValueOnce(rohdatenMitBenutzerSondertag);
+    validateFilialeinstellungRohdaten.mockReturnValueOnce(bestandMitBenutzerSondertag);
     const store = TestBed.inject(FilialeinstellungStore);
     await store.loadFilialeinstellung(pfad);
 
     const ergebnis = store.resolveOeffnungsregelFuerDatum(pfad, '2026-12-24');
 
-    expect(ergebnis).toMatchObject({ quelle: 'ausnahme', ausnahmeId: '2026-12-24' });
+    expect(ergebnis).toMatchObject({ quelle: 'sondertag', sondertagId: 'betriebsruhe' });
   });
 
   it('should keep writing state and errors isolated by branch', async () => {
@@ -359,21 +328,26 @@ describe('FilialeinstellungStore', () => {
 });
 
 function createGrundlagen(): IFilialeinstellungGrundlagen {
-  const wochenregeln: TWochenoeffnungszeiten = {
-    montag: {
-      geoeffnet: true,
-      beginnLokalzeit: '07:00',
-      endeLokalzeit: '01:00',
-      endetAmFolgetag: true,
-    },
-    dienstag: { geoeffnet: false },
-    mittwoch: { geoeffnet: false },
-    donnerstag: { geoeffnet: false },
-    freitag: { geoeffnet: false },
-    samstag: { geoeffnet: false },
-    sonntag: { geoeffnet: false },
+  const standardoeffnungsregel = {
+    geoeffnet: true as const,
+    beginnLokalzeit: '07:00',
+    endeLokalzeit: '01:00',
+    endetAmFolgetag: true,
   };
-  return { bundesland: 'DE-NW', schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW, wochenregeln };
+  const wochenregeln: TWochenregeln = {
+    montag: { modus: 'standard' },
+    dienstag: { modus: 'geschlossen' },
+    mittwoch: { modus: 'geschlossen' },
+    donnerstag: { modus: 'geschlossen' },
+    freitag: { modus: 'geschlossen' },
+    samstag: { modus: 'geschlossen' },
+    sonntag: { modus: 'geschlossen' },
+  };
+  return {
+    bundesland: 'DE-NW',
+    standardoeffnungsregel,
+    wochenregeln,
+  };
 }
 
 function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {
@@ -385,7 +359,7 @@ function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {
       aktualisiertVonUid: 'uid-1',
     },
     oeffnungszeiten: {
-      schliesszeitraum: grundlagen.schliesszeitraum,
+      standardoeffnungsregel: grundlagen.standardoeffnungsregel,
       wochenregeln: grundlagen.wochenregeln,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
@@ -403,7 +377,6 @@ function createBestand(pfad: IFilialPfad): IFilialeinstellungBestand {
         aktualisiertVonUid: 'uid-1',
       },
     ],
-    ausnahmen: [],
   };
 }
 
@@ -415,13 +388,9 @@ function createRohdaten(bestand: IFilialeinstellungBestand): IFilialeinstellungR
       const { id, ...daten } = sondertag;
       return { id, daten };
     }),
-    ausnahmen: bestand.ausnahmen.map((ausnahme) => {
-      const { id, ...daten } = ausnahme;
-      return { id, daten };
-    }),
   };
 }
 
 function createLeereRohdaten(): IFilialeinstellungRohdaten {
-  return { allgemein: null, oeffnungszeiten: null, sondertage: [], ausnahmen: [] };
+  return { allgemein: null, oeffnungszeiten: null, sondertage: [] };
 }

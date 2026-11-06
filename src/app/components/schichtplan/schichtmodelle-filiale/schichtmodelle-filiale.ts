@@ -20,9 +20,15 @@ import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import {
   IModellschichtZeitgrenze,
   ISchichtrastermodellBestand,
+  ISchichttagesmodellBestand,
 } from '../../../commons/models/domain/schichtmodell';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
+import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
+import {
+  SchichtTagesmodellBearbeitenDialog,
+  TSchichtTagesmodellBearbeitenDialogDaten,
+} from '../schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog';
 import {
   SchichtmodellBearbeitenDialog,
   TSchichtmodellBearbeitenDialogDaten,
@@ -39,6 +45,7 @@ export class SchichtmodelleFiliale {
   // ===== Interne Dependency Injection =========
 
   readonly schichtmodellStore = inject(SchichtmodellStore);
+  readonly schichtTagesmodellStore = inject(SchichtTagesmodellStore);
   readonly filialeinstellungStore = inject(FilialeinstellungStore);
   private readonly dialog = inject(MatDialog);
 
@@ -61,12 +68,16 @@ export class SchichtmodelleFiliale {
   readonly kontext = computed(() => {
     return this.schichtmodellStore.getSchichtmodellKontext(this.pfad());
   });
+  readonly tagesmodellKontext = computed(() => {
+    return this.schichtTagesmodellStore.getSchichtTagesmodellKontext(this.pfad());
+  });
   readonly filialeinstellungKontext = computed(() => {
     return this.filialeinstellungStore.getFilialeinstellungKontext(this.pfad());
   });
   readonly istBereit = computed(() => {
     return (
       this.kontext()?.isLoaded === true &&
+      this.tagesmodellKontext()?.isLoaded === true &&
       this.filialeinstellungKontext()?.isLoaded === true &&
       this.filialeinstellungKontext()?.bestand !== null
     );
@@ -97,15 +108,43 @@ export class SchichtmodelleFiliale {
    * @param bestand - Optional ausgewählter Modellbestand.
    */
   openSchichtrastermodellDialog(bestand?: ISchichtrastermodellBestand): void {
-    const schliesszeitraum =
-      this.filialeinstellungKontext()?.bestand?.oeffnungszeiten.schliesszeitraum;
-    if (!schliesszeitraum) return;
+    const standardoeffnungsregel =
+      this.filialeinstellungKontext()?.bestand?.oeffnungszeiten.standardoeffnungsregel;
+    if (!standardoeffnungsregel) return;
     const daten: TSchichtmodellBearbeitenDialogDaten = {
       pfad: this.pfad(),
-      schliesszeitraum,
+      standardoeffnungsregel,
       ...(bestand ? { bestand } : {}),
     };
     this.dialog.open(SchichtmodellBearbeitenDialog, {
+      data: daten,
+      panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+    });
+  }
+
+  /**
+   * Öffnet den Dialog zum Anlegen oder Bearbeiten eines Schicht-Tagesmodells.
+   *
+   * @param bestand - Optional ausgewählter Tagesmodellbestand.
+   */
+  openSchichtTagesmodellDialog(bestand?: ISchichttagesmodellBestand): void {
+    const oeffnungszeiten = this.filialeinstellungKontext()?.bestand?.oeffnungszeiten;
+    if (!oeffnungszeiten) return;
+    const sonntagsregel = oeffnungszeiten.wochenregeln.sonntag;
+    if (sonntagsregel.modus === 'geschlossen') return;
+    const sonntag =
+      sonntagsregel.modus === 'abweichend'
+        ? sonntagsregel.oeffnungsregel
+        : oeffnungszeiten.standardoeffnungsregel;
+    const daten: TSchichtTagesmodellBearbeitenDialogDaten = {
+      pfad: this.pfad(),
+      oeffnungen: {
+        wochentag: oeffnungszeiten.standardoeffnungsregel,
+        sonntag,
+      },
+      ...(bestand ? { bestand } : {}),
+    };
+    this.dialog.open(SchichtTagesmodellBearbeitenDialog, {
       data: daten,
       panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
     });
@@ -117,6 +156,7 @@ export class SchichtmodelleFiliale {
     try {
       await Promise.all([
         this.schichtmodellStore.loadSchichtmodelle(pfad),
+        this.schichtTagesmodellStore.loadSchichtTagesmodelle(pfad),
         this.filialeinstellungStore.loadFilialeinstellung(pfad),
       ]);
     } catch {

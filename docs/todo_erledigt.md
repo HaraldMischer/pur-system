@@ -1,4 +1,4 @@
-<!-- pur-system/docs/todo_done.md -->
+<!-- pur-system/docs/todo_erledigt.md -->
 
 # Erledigte Todos
 
@@ -48,7 +48,7 @@ Schritte 3: App-Layout
 Schritte 4: Abschluss
 
 1. [x] `projekt-stand.md` nach Umsetzung aktualisieren.
-2. [x] `todo_next.md` nach Umsetzung abhaken oder in erledigte Todos verschieben.
+2. [x] `todo_naechste.md` nach Umsetzung abhaken oder in erledigte Todos verschieben.
 3. [x] `npm test` erfolgreich ausführen.
 4. [x] `npm run build` erfolgreich ausführen.
 
@@ -1699,7 +1699,14 @@ koordiniert das Laden der zwingenden Stammdaten und stellt einen eindeutigen Ini
 Änderungen:
 
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
+
+Neu hinzuzufügen:
+
+- src/app/components/einstellungen/wochenoeffnungszeit-bearbeiten-dialog/wochenoeffnungszeit-bearbeiten-dialog.ts
+- src/app/components/einstellungen/wochenoeffnungszeit-bearbeiten-dialog/wochenoeffnungszeit-bearbeiten-dialog.html
+- src/app/components/einstellungen/wochenoeffnungszeit-bearbeiten-dialog/wochenoeffnungszeit-bearbeiten-dialog.scss
+- src/app/components/einstellungen/wochenoeffnungszeit-bearbeiten-dialog/wochenoeffnungszeit-bearbeiten-dialog.spec.ts
 - src/app/app.ts
 - src/app/app.spec.ts
 - src/app/stores/app/benutzer.store.ts
@@ -1750,7 +1757,7 @@ Lade- und Schreibabläufe für einen ausgewählten Firmenkontext bleiben weiterh
 Änderungen:
 
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 - src/app/commons/models/domain/mitarbeiter.ts
 - src/app/services/core/app-sitzungs-init.service.ts
 - src/app/services/core/app-sitzungs-init.service.spec.ts
@@ -1805,7 +1812,7 @@ Stores mit den für diese Sitzung zwingend benötigten Stammdaten.
 
 - docs/matrizen/datenladen.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 - src/app/commons/utils/errors/firebase-error-message.ts
 - src/app/commons/utils/errors/firebase-error-message.spec.ts
 - src/app/stores/app/stammdaten.store.ts
@@ -1865,7 +1872,7 @@ Fehlerseite, von der aus die Initialisierung wiederholt oder die Firebase-Sitzun
 Änderungen:
 
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 - src/app/app.routes.ts
 - src/app/app.routes.spec.ts
 - src/app/guards/bereich.guard.ts
@@ -1959,7 +1966,7 @@ einer expliziten Datenquellenstrategie aus, ohne Benutzerrollen oder fachliche B
 - src/environments/environment.mitarbeiter-prod.ts
 - docs/projekt-stand.md
 - docs/matrizen/cache-strategien.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzuzufügen:
 
@@ -2019,8 +2026,8 @@ werden erst nach erfolgreicher technischer und manueller Prüfung auf den tatsä
 - docs/projekt-plan.md
 - docs/projekt-stand.md
 - docs/matrizen/cache-strategien.md
-- docs/todo_next.md
-- docs/todo_done.md
+- docs/todo_naechste.md
+- docs/todo_erledigt.md
 - src/app/services/core/debug-log.service.ts
 - src/app/services/core/debug-log.service.spec.ts
 - src/environments/environment.ts
@@ -2061,7 +2068,7 @@ Neu hinzuzufügen:
   - [x] Abmelden und anschließend einen anderen Benutzer anmelden; es dürfen keine Daten der vorherigen Sitzung sichtbar sein.
 - [x] `projekt-stand.md` auf den tatsächlich umgesetzten Stand aktualisieren.
 - [x] Abweichungen zwischen Umsetzung und den fachlich zugehörigen Matrixdateien bereinigen.
-- [x] Das vollständig abgeschlossene Haupttodo unter Erhalt aller Erledigt-Markierungen nach `todo_done.md` verschieben.
+- [x] Das vollständig abgeschlossene Haupttodo unter Erhalt aller Erledigt-Markierungen nach `todo_erledigt.md` verschieben.
 
 #### Erledigt, wenn
 
@@ -2445,7 +2452,7 @@ Sammelaktion einzuführen.
 - [x] Integrationstests für Reihenfolge, Kundenwechsel, Wiederaufnahme und vollständigen Bereichsstatus ergänzen.
 - [x] Responsive Darstellung und Bedienung der Migrationskarte manuell prüfen.
 - [x] `docs/projekt-stand.md` nach der fachlichen Abnahme aktualisieren.
-- [x] Das abgeschlossene Haupttodo unter Erhalt aller Markierungen nach `docs/todo_done.md` verschieben.
+- [x] Das abgeschlossene Haupttodo unter Erhalt aller Markierungen nach `docs/todo_erledigt.md` verschieben.
 - [x] `npm test` ohne Watch-Modus erfolgreich ausführen.
 - [x] `npm run build:master` erfolgreich ausführen.
 
@@ -2653,7 +2660,7 @@ Neu hinzugefügt:
 - [x] Den Office-Build mit `npm run build:office` ausführen.
 - [x] Beide Seiten einschließlich Tastaturbedienung manuell prüfen.
 - [x] `docs/projekt-stand.md` nach erfolgreichem Abschluss aktualisieren.
-- [x] Das vollständig abgeschlossene Todo unter Erhalt aller Markierungen nach `docs/todo_done.md` verschieben.
+- [x] Das vollständig abgeschlossene Todo unter Erhalt aller Markierungen nach `docs/todo_erledigt.md` verschieben.
 
 ### Erledigt, wenn
 
@@ -2720,7 +2727,7 @@ Nachbereitung werden über ausdrückliche Minutenwerte der äußeren Modellschic
 - docs/matrizen/kontextselektor.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzuzufügen:
 
@@ -2893,7 +2900,7 @@ Veröffentlichung abbilden.
 
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 #### Schritt 1: Planungsgegenstand und Zeitraum festlegen
 
@@ -2946,7 +2953,7 @@ Der Ablauf vom Entwurf bis zur veröffentlichten Ansicht erhält klare Verantwor
 
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 #### Schritt 1: Rollen und Filialgrenzen festlegen
 
@@ -3007,7 +3014,7 @@ gleichzeitige Änderungen und veröffentlichte Stände werden vor der UI-Umsetzu
 - docs/matrizen/cache-strategien.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 #### Schritt 1: Domainmodell und Firestore-Struktur entwerfen
 
@@ -3100,7 +3107,7 @@ Entwurf anlegen, filialbezogene Schichtvorlagen verwalten und Mitarbeiter mithil
 - src/environments/environment.spec.ts
 - docs/projekt-stand.md
 - docs/matrizen/berechtigungen.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzuzufügen:
 
@@ -3271,7 +3278,7 @@ gemeinsamen Planungsoberfläche bearbeitet werden. Jeder Filialdienstplan bleibt
 - src/assets/scss/modules/_form.scss
 - docs/architektur/components/schichtplan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzugefügt:
 
@@ -3407,7 +3414,7 @@ Modell für den Monatsplan unveränderlich.
 - docs/architektur/services/schichtvorlage-service.md
 - docs/architektur/stores/dienstplan-store.md
 - docs/architektur/stores/schichtvorlage-store.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzuzufügen:
 
@@ -3544,7 +3551,7 @@ gleichwertige Tastatur- und Mobilalternative erhalten.
 - src/app/components/schichtplan/dienstplan-monatstabelle/dienstplan-monatstabelle.spec.ts
 - docs/architektur/components/schichtplan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 #### Schritt 1: Mitarbeiterübersicht vervollständigen
 
@@ -3621,7 +3628,7 @@ bei fachlichem Bedarf ausdrücklich für Mehrfachbelegungen freigegeben werden.
 - docs/architektur/stores/dienstplan-store.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 #### Schritt 1: Leeren Erstentwurf löschen und neu anlegen
 
@@ -3745,7 +3752,7 @@ Todo 21.6 bleiben als Umsetzungshistorie erhalten und beschreiben nicht mehr das
 - docs/fachkonzepte/dienst-und-schichtplanung.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzuzufügen:
 
@@ -3967,7 +3974,7 @@ nicht zu den wirksamen Tagesgrenzen, wird er an diesem Tag nicht zur Belegung an
 - docs/fachkonzepte/dienst-und-schichtplanung.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzuzufügen:
 
@@ -4029,7 +4036,7 @@ Neu hinzuzufügen:
       Modellschicht vorbelegen. Beide Grenzen anschließend unabhängig bearbeitbar lassen; spätere Änderungen werden nicht
       automatisch gekoppelt.
 - [x] Für innere Beginn- und Endzeiten nur die Uhrzeit anzeigen und ihre interne Zuordnung zum Start- oder Folgetag automatisch
-      aus dem Schließzeitraum der Filiale ableiten.
+      aus der Standardöffnungszeit der Filiale ableiten.
 - [x] Vorbereitungsminuten sichtbar bei der ersten und Nachbereitungsminuten sichtbar bei der letzten Modellschicht halten und
       diese Rollen beim Hinzufügen, Entfernen oder Umordnen eindeutig übertragen. Beide Werte über die gemeinsame maskierte
       Minuteneingabe als ganze Zahlen von 0 bis 999 erfassen.
@@ -4146,7 +4153,7 @@ Filialkonten bleiben bis zur Umsetzung des betrieblichen `dienstplaner`-Sitzungs
 - docs/architektur/stores/dienstplan-store.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
+- docs/todo_naechste.md
 
 Neu hinzuzufügen:
 
@@ -4313,6 +4320,9 @@ Neu hinzuzufügen:
 
 ## 24. Filialbezogenen Schließzeitraum für Öffnungszeiten umsetzen
 
+> Historischer Umsetzungsstand: Der hier beschriebene Schließzeitraum wurde mit Todo 25 wieder vollständig entfernt, nachdem
+> die bisherigen Öffnungszeitendaten vor der Umstellung in Firestore gelöscht worden waren.
+
 Der täglich geltende Schließzeitraum wird als bearbeitbare Filialeinstellung eingeführt. Er begrenzt ausschließlich die
 Kundenöffnungszeiten und bildet die Grundlage für deren Vorbelegung. Vorbereitungs- und Nachbereitungszeiten von Schichten
 dürfen weiterhin in diesen Zeitraum hineinreichen.
@@ -4353,8 +4363,8 @@ Ausnahmeregel muss vollständig außerhalb des Schließzeitraums liegen. Schicht
 - docs/fachkonzepte/dienst-und-schichtplanung.md
 - docs/projekt-plan.md
 - docs/projekt-stand.md
-- docs/todo_next.md
-- docs/todo_done.md
+- docs/todo_naechste.md
+- docs/todo_erledigt.md
 
 Neu hinzuzufügen:
 
@@ -4410,3 +4420,106 @@ Neu hinzuzufügen:
 - [x] Vorbereitungs- und Nachbereitungszeiten bleiben außerhalb der Kundenöffnung zulässig.
 - [x] Neu angelegte Filialeinstellungen enthalten den Schließzeitraum als Pflichtfeld.
 - [x] Tests, Builds und Dokumentation sind abgeschlossen.
+
+## 25. Standardöffnungszeit mit Wochentagsvererbung umsetzen
+
+### Ziel
+
+Jede Filiale erhält eine verpflichtende Standardöffnungszeit für den regulären Wochenbetrieb. Jeder Wochentag verwendet
+entweder diese Standardöffnungszeit, eine eigene abweichende Öffnungszeit oder ist geschlossen. Eine spätere Änderung der
+Standardöffnungszeit wirkt automatisch auf alle Wochentage im Modus `standard`; abweichende und geschlossene Tage bleiben
+unverändert.
+
+Feiertage, jährliche Sondertage und einmalige Datumsausnahmen behalten ihre bestehende Priorität und ihre eigenen
+Öffnungsregeln. Bereits angelegte Dienstpläne bleiben durch ihre gespeicherten Tagesmomentaufnahmen unverändert.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/models/domain/filialeinstellung.ts
+- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.ts
+- src/app/commons/utils/filialeinstellung/oeffnungsregel-aufloesung.spec.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.spec.ts
+- src/app/services/domain/filialeinstellung.service.ts
+- src/app/services/domain/filialeinstellung.service.spec.ts
+- src/app/stores/domain/filialeinstellung.store.ts
+- src/app/stores/domain/filialeinstellung.store.spec.ts
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.ts
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.html
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.scss
+- src/app/components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale.spec.ts
+- docs/architektur/components/einstellungen.md
+- docs/architektur/services/filialeinstellung-service.md
+- docs/architektur/stores/filialeinstellung-store.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_naechste.md
+
+### [x] Schritt 1: Standard und Wochentagsmodi modellieren
+
+- [x] Eine verpflichtende geöffnete `standardoeffnungsregel` mit Beginn, Ende und eindeutiger Folgetagszuordnung im
+      filialbezogenen Öffnungszeitendokument speichern.
+- [x] Jeden Wochentag eindeutig als `standard`, `abweichend` oder `geschlossen` modellieren. Nur der Modus `abweichend`
+      speichert eine eigene geöffnete Öffnungsregel.
+- [x] Die Standardöffnungszeit initial mit `06:00–01:00 Uhr` vorbelegen und alle sieben Wochentage auf `standard` setzen.
+- [x] Den bisherigen Schließzeitraum aus Dokumentmodell, Speicherung und Validierung entfernen.
+- [x] Auf eine Überführung alter Öffnungszeitendokumente verzichten, da die vorhandenen Daten vor der Umstellung in Firestore
+      gelöscht wurden.
+
+### [x] Schritt 2: Wirksame Wochenöffnung auflösen und validieren
+
+- [x] Für einen Wochentag im Modus `standard` die aktuelle Standardöffnungszeit, im Modus `abweichend` seine eigene Regel und
+      im Modus `geschlossen` eine geschlossene Regel als wirksame Wochenöffnung auflösen.
+- [x] Sicherstellen, dass eine Änderung der Standardöffnungszeit nur vererbende Wochentage beeinflusst und individuelle Regeln
+      weder überschreibt noch automatisch anpasst.
+- [x] Die bestehende Priorität `Ausnahme → Sondertag → wirksame Wochenöffnung` unverändert beibehalten.
+- [x] Standardöffnungszeit, sieben vollständige Wochentagsmodi und abweichende Zeitfolgen vor jedem Schreibzugriff im
+      TypeScript-Code validieren.
+- [x] Für jede geöffnete Regel eine positive Öffnungsdauer sicherstellen und Öffnungszeiten über Mitternacht unterstützen.
+- [x] Die wirksame Wochenöffnung wie bisher als absolute Öffnungsregel in die unveränderliche Tagesmomentaufnahme eines neu
+      angelegten Monatsdienstplans übernehmen.
+
+### [x] Schritt 3: Öffnungszeitenverwaltung anpassen
+
+- [x] Die Standardöffnungszeit als eigenen Formularbereich vor den Wochentagen anzeigen.
+- [x] Jeden Wochentag über ein kompaktes Auswahlmenü zwischen `Standard`, `Abweichend` und `Geschlossen` umschalten lassen.
+- [x] Bei `Standard` die aktuell geerbte Zeit sichtbar, aber nicht individuell bearbeitbar anzeigen; bei `Abweichend` eigene
+      Zeiten mit einer Stiftaktion anzeigen und über einen eigenen Dialog bearbeiten; bei `Geschlossen` keine wirksame
+      Kundenöffnung anzeigen.
+- [x] Den Öffnungszeitbereich einschließlich Stiftaktion bei höchstens `500px` Breite des Wochentagsbereichs geschlossen in die
+      nächste Zeile umbrechen.
+- [x] Beim erstmaligen Initialisieren die Standardöffnungszeit mit `06:00–01:00 Uhr` vorbelegen und alle sieben Wochentage auf
+      `Standard` setzen.
+- [x] Während eines Schreibvorgangs das vollständige Formular einschließlich Standard- und Modusauswahl deaktivieren und
+      wiederholte Schreibzugriffe zusätzlich im Submit-Handler verhindern.
+- [x] Fehler für ungültige Zeitfolgen auf Standard und individuelle Wochenregeln anwenden, ohne gültige Formulareingaben nach
+      einem Fehler zu verlieren.
+
+### [x] Tests und Abschluss
+
+- [x] Modell- und Auflösungstests für Standard, Abweichung, geschlossene Tage, Folgetagszeiten und alle sieben Wochentage
+      ergänzen.
+- [x] Testen, dass eine Standardänderung alle und ausschließlich die vererbenden Wochentage beeinflusst.
+- [x] Service- und Store-Tests für Initialisierung, Laden, Speichern und Validierungsfehler ergänzen.
+- [x] Component-Tests für die Moduswechsel und ihre fachlich beobachtbaren Formularfolgen ergänzen, ohne Styling oder exakte
+      Beschriftungen zum Testgegenstand zu machen.
+- [x] Den Dialog für abweichende Wochenöffnungszeiten mit positiver Zeitspanne, Änderungsvergleich und Ergebnisübergabe
+      testen.
+- [x] Dienstplantests ergänzen, die Standard- und abweichende Wochenöffnungen als unveränderliche Tagesmomentaufnahme prüfen.
+- [x] Standardöffnung und Wochentagsmodi auf Desktop sowie kleinem Touch-Viewport manuell prüfen.
+- [x] Architektur, Projektstand und erledigte Todo-Dokumentation nach der Umsetzung aktualisieren.
+- [x] `npm test`, `npm run build:master` und `npm run build:office` erfolgreich ausführen.
+
+### [x] Erledigt, wenn
+
+- [x] Jede Filiale besitzt eine gültige Standardöffnungszeit, die initial mit `06:00–01:00 Uhr` vorbelegt ist.
+- [x] Jeder Wochentag verwendet eindeutig die Standardöffnung, eine eigene abweichende Regel oder ist geschlossen.
+- [x] Eine Standardänderung wirkt automatisch und ausschließlich auf die vererbenden Wochentage.
+- [x] Feiertage, Sondertage und Datumsausnahmen überschreiben die wirksame Wochenöffnung weiterhin nach der bestehenden
+      Priorität.
+- [x] Der nicht mehr benötigte Schließzeitraum und die zugehörige Altkompatibilität sind vollständig entfernt.
+- [x] Bestehende Dienstplan-Momentaufnahmen bleiben unverändert; neue Monatspläne speichern die korrekt aufgelösten Zeiten.
+- [x] Automatisierte Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.

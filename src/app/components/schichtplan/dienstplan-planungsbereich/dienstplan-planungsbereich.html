@@ -29,33 +29,88 @@
     }
 
     @if (dienstplan(); as geladenerDienstplan) {
-      <app-dienstplan-monatstabelle
-        [dienstplan]="geladenerDienstplan"
-        [versionen]="versionen()"
-        [schichten]="schichten()"
-        [modellschichten]="modellschichten()"
-        [konfliktSchichtIds]="konfliktSchichtIds()"
-        [mitarbeiter]="schichtMitarbeiter()"
-        [erlaubteMitarbeiterIds]="mitarbeiterIds()"
-        [schichtVerschiebungErlaubt]="darfSchichtVerschieben"
-        [darfSchreiben]="darfSchreiben()"
-        [schreibvorgang]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
-        [dienstplanLoeschenAnzeigen]="darfDienstplanLoeschenAnzeigen()"
-        [dienstplanLoeschenDeaktiviert]="dienstplanLoeschenDeaktiviert()"
-        [dienstplanLoeschenHinweis]="dienstplanLoeschenHinweis()"
-        [dienstplanVeroeffentlichenAnzeigen]="dienstplanVeroeffentlichenAnzeigen()"
-        [dienstplanVeroeffentlichenDeaktiviert]="dienstplanVeroeffentlichenDeaktiviert()"
-        [dienstplanVeroeffentlichenHinweis]="dienstplanVeroeffentlichenHinweis()"
-        [entwurfAnlegenAnzeigen]="entwurfAnlegenAnzeigen()"
-        [entwurfAnlegenDeaktiviert]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
-        (schichtAnlegen)="openSchichtDialog($event)"
-        (schichtAblegen)="createSchichtAusAblage($event)"
-        (schichtVerschieben)="moveSchichtAusAblage($event)"
-        (schichtBearbeiten)="openSchichtBearbeitenDialog($event)"
-        (dienstplanLoeschen)="deleteDienstplan()"
-        (dienstplanVeroeffentlichen)="publishDienstplan()"
-        (entwurfAnlegen)="createEntwurfAusVeroeffentlichung()"
-      />
+      <section class="monatsplan">
+        <header class="monatskopf">
+          <span>Version {{ aktiveVersion()?.nummer }}</span>
+          <span class="status">{{ statusBezeichnung() }}</span>
+          <span>{{ aktiveVersion()?.revision ?? 0 }}. Revision</span>
+          @if (
+            darfDienstplanLoeschenAnzeigen() ||
+            dienstplanVeroeffentlichenAnzeigen() ||
+            entwurfAnlegenAnzeigen()
+          ) {
+            <div class="kopf-aktionen">
+              @if (darfDienstplanLoeschenAnzeigen()) {
+                <button
+                  matButton="tonal"
+                  type="button"
+                  [disabled]="dienstplanLoeschenDeaktiviert()"
+                  [attr.title]="dienstplanLoeschenHinweis()"
+                  (click)="deleteDienstplan()"
+                >
+                  Dienstplan löschen
+                </button>
+              }
+              @if (entwurfAnlegenAnzeigen()) {
+                <button
+                  matButton="tonal"
+                  type="button"
+                  [disabled]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
+                  (click)="createEntwurfAusVeroeffentlichung()"
+                >
+                  Neue Entwurfsversion
+                </button>
+              }
+              @if (dienstplanVeroeffentlichenAnzeigen()) {
+                <button
+                  matButton="filled"
+                  type="button"
+                  [disabled]="dienstplanVeroeffentlichenDeaktiviert()"
+                  [attr.title]="dienstplanVeroeffentlichenHinweis()"
+                  (click)="publishDienstplan()"
+                >
+                  Veröffentlichen
+                </button>
+              }
+            </div>
+          }
+        </header>
+
+        @if (geladenerDienstplan.planungsart === 'schichttagesmodell') {
+          <app-dienstplan-monatsliste
+            [dienstplan]="geladenerDienstplan"
+            [aktiveVersion]="aktiveVersion()"
+            [schichten]="schichten()"
+            [tagesschichten]="tagesschichten()"
+            [konfliktSchichtIds]="konfliktSchichtIds()"
+            [mitarbeiter]="schichtMitarbeiter()"
+            [erlaubteMitarbeiterIds]="mitarbeiterIds()"
+            [darfSchreiben]="darfSchreiben()"
+            [schreibvorgang]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
+            (tagesschichtAblegen)="createTagesschichtAusAblage($event)"
+            (tagesschichtAnlegen)="openTagesschichtDialog($event)"
+            (tagesschichtVerschieben)="moveTagesschichtAusAblage($event)"
+            (tagesschichtBearbeiten)="openTagesschichtBearbeitenDialog($event)"
+          />
+        } @else {
+          <app-dienstplan-monatstabelle
+            [dienstplan]="geladenerDienstplan"
+            [aktiveVersion]="aktiveVersion()"
+            [schichten]="schichten()"
+            [modellschichten]="modellschichten()"
+            [konfliktSchichtIds]="konfliktSchichtIds()"
+            [mitarbeiter]="schichtMitarbeiter()"
+            [erlaubteMitarbeiterIds]="mitarbeiterIds()"
+            [schichtVerschiebungErlaubt]="darfSchichtVerschieben"
+            [darfSchreiben]="darfSchreiben()"
+            [schreibvorgang]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
+            (schichtAnlegen)="openSchichtDialog($event)"
+            (schichtAblegen)="createSchichtAusAblage($event)"
+            (schichtVerschieben)="moveSchichtAusAblage($event)"
+            (schichtBearbeiten)="openSchichtBearbeitenDialog($event)"
+          />
+        }
+      </section>
     } @else {
       <div
         class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"

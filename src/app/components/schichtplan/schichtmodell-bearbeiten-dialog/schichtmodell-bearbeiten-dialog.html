@@ -29,12 +29,14 @@
     </div>
 
     <div class="pur-form__group pur-form__group-list">
-      <header class="pur-form__group-header">
+      <header class="pur-form__group-header tagesschichten-kopf">
         <h2 class="pur-form__group-titel">Tagesschichten</h2>
-        <button matButton type="button" (click)="addModellschicht()">
-          <mat-icon>add</mat-icon>
-          Schicht hinzufügen
-        </button>
+        <div class="tagesschichten-aktionen">
+          <button matButton type="button" (click)="addModellschicht()">
+            <mat-icon>add</mat-icon>
+            Schicht hinzufügen
+          </button>
+        </div>
       </header>
 
       @for (

@@ -25,6 +25,8 @@ import {
 } from '../../../stores/domain/dienstplan.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
+import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
+import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
 import { SchichtBearbeitenDialog } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
@@ -49,7 +51,7 @@ const DIENSTPLAN: IDienstplanEintrag = {
   zeitzone: 'Europe/Berlin',
   schichtmodellId: 'modell-1',
   schichtmodellBezeichnung: 'Sommer',
-  planungsart: 'schichtraster',
+  planungsart: 'schichtrastermodell',
   entwurfVersionId: 'v-1',
   naechsteVersionsnummer: 2,
   erstelltVonUid: 'uid-1',
@@ -135,6 +137,7 @@ function createKontext(
     versionen: [],
     schichten: [],
     modellschichten: [],
+    tagesschichten: [],
     monatsmodi: { '2026-10': 'vollstaendig' },
     vollstaendigGeladen: false,
     download: false,
@@ -237,6 +240,48 @@ describe('DienstplanPlanungsbereich', () => {
           },
         },
         {
+          provide: SchichtTagesmodellStore,
+          useValue: {
+            loadSchichtTagesmodelle: vi.fn().mockResolvedValue(undefined),
+            getSchichtTagesmodellKontext: vi.fn(() => ({
+              ...PFAD,
+              schichttagesmodelle: [],
+              download: false,
+              isLoaded: true,
+              error: null,
+            })),
+          },
+        },
+        {
+          provide: FilialeinstellungStore,
+          useValue: {
+            loadFilialeinstellung: vi.fn().mockResolvedValue(undefined),
+            getFilialeinstellungKontext: vi.fn(() => ({
+              isLoaded: true,
+              bestand: {
+                oeffnungszeiten: {
+                  standardoeffnungsregel: {
+                    geoeffnet: true,
+                    beginnLokalzeit: '07:00',
+                    endeLokalzeit: '01:00',
+                    endetAmFolgetag: true,
+                  },
+                  wochenregeln: {
+                    montag: { modus: 'standard' },
+                    dienstag: { modus: 'standard' },
+                    mittwoch: { modus: 'standard' },
+                    donnerstag: { modus: 'standard' },
+                    freitag: { modus: 'standard' },
+                    samstag: { modus: 'standard' },
+                    sonntag: { modus: 'standard' },
+                  },
+                },
+                sondertage: [],
+              },
+            })),
+          },
+        },
+        {
           provide: MitarbeiterStore,
           useValue: {
             getMitarbeiter,
@@ -284,6 +329,41 @@ describe('DienstplanPlanungsbereich', () => {
     await fixture.componentInstance.openDienstplanDialog();
     expect(loadSchichtmodelle).not.toHaveBeenCalled();
     expect(dialogOpen).not.toHaveBeenCalled();
+  });
+
+  it('should select the monthly presentation from the planning type', async () => {
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-dienstplan-monatstabelle'),
+    ).not.toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-dienstplan-monatsliste'),
+    ).toBeNull();
+
+    kontext.set(
+      createKontext({
+        dienstplaene: [{ ...DIENSTPLAN, planungsart: 'schichttagesmodell' }],
+        versionen: [VERSION],
+      }),
+    );
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-dienstplan-monatstabelle'),
+    ).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-dienstplan-monatsliste'),
+    ).not.toBeNull();
   });
 
   it('should lock write actions while the live allocation state is unavailable', async () => {
@@ -872,7 +952,7 @@ describe('DienstplanPlanungsbereich', () => {
         id,
         bezeichnung,
         aktiv: true,
-        planungsart: 'schichtraster',
+        planungsart: 'schichtrastermodell',
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },

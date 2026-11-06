@@ -7,7 +7,9 @@
       <button
         matButton="filled"
         type="button"
-        [disabled]="schichtmodellStore.inProgress() || !istBereit()"
+        [disabled]="
+          schichtmodellStore.inProgress() || schichtTagesmodellStore.inProgress() || !istBereit()
+        "
         [matMenuTriggerFor]="planungsartMenu"
       >
         <mat-icon>add</mat-icon>
@@ -17,11 +19,11 @@
       <mat-menu #planungsartMenu="matMenu">
         <button mat-menu-item type="button" (click)="openSchichtrastermodellDialog()">
           <mat-icon>grid_view</mat-icon>
-          <span>Schichtraster</span>
+          <span>Schicht-Rastermodell</span>
         </button>
-        <button mat-menu-item type="button" disabled>
+        <button mat-menu-item type="button" (click)="openSchichtTagesmodellDialog()">
           <mat-icon>view_agenda</mat-icon>
-          <span>Schichtbausteine · noch nicht verfügbar</span>
+          <span>Schicht-Tagesmodell</span>
         </button>
       </mat-menu>
     </div>
@@ -85,5 +87,39 @@
     <p class="pur-message pur-message--surface pur-message--full" role="status">
       Schichtmodelle werden geladen …
     </p>
+  }
+
+  @if (tagesmodellKontext(); as tageskontext) {
+    @if (tageskontext.isLoaded && tageskontext.schichttagesmodelle.length > 0) {
+      <div class="pur-page__card-grid">
+        @for (bestand of tageskontext.schichttagesmodelle; track bestand.schichtmodell.id) {
+          <mat-card class="pur-card" [class.pur-card--inaktiv]="!bestand.schichtmodell.aktiv">
+            <mat-card-header>
+              <mat-card-title>{{ bestand.schichtmodell.bezeichnung }}</mat-card-title>
+              <mat-card-subtitle
+                >Schicht-Tagesmodell ·
+                {{ bestand.schichtmodell.aktiv ? 'Aktiv' : 'Inaktiv' }}</mat-card-subtitle
+              >
+            </mat-card-header>
+            <mat-card-content>
+              <p>
+                {{ bestand.tagesvorlagenschichten.length }} Vorlagenschichten in Wochentags- und
+                Sonntagsvorlage
+              </p>
+            </mat-card-content>
+            <mat-card-actions align="end">
+              <button
+                matButton
+                type="button"
+                [disabled]="schichtTagesmodellStore.inProgress() || !istBereit()"
+                (click)="openSchichtTagesmodellDialog(bestand)"
+              >
+                Bearbeiten
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        }
+      </div>
+    }
   }
 </section>

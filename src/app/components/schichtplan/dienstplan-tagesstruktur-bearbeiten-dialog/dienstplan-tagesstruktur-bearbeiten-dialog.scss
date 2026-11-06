@@ -1,0 +1,13 @@
+// pur-system/src/app/components/schichtplan/dienstplan-tagesstruktur-bearbeiten-dialog/dienstplan-tagesstruktur-bearbeiten-dialog.scss
+
+.zeilenkopf,
+.zeitzeile {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.zeilenkopf {
+  justify-content: space-between;
+}

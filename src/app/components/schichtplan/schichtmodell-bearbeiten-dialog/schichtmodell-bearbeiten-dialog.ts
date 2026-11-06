@@ -26,7 +26,7 @@ import { filter, firstValueFrom, take } from 'rxjs';
 
 import { MAX_RANDMINUTEN } from '../../../commons/constants/schichtmodell.constants';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
-import { ISchliesszeitraum } from '../../../commons/models/domain/filialeinstellung';
+import { IGeoeffneteOeffnungsregel } from '../../../commons/models/domain/filialeinstellung';
 import {
   IModellschichtSchreibdaten,
   ISchichtrastermodellAktualisierung,
@@ -50,7 +50,7 @@ import { EingabeZeit } from '../../shared/eingabe-zeit/eingabe-zeit';
 
 export type TSchichtmodellBearbeitenDialogDaten = {
   readonly pfad: IFilialPfad;
-  readonly schliesszeitraum: ISchliesszeitraum;
+  readonly standardoeffnungsregel: IGeoeffneteOeffnungsregel;
   readonly bestand?: ISchichtrastermodellBestand;
 };
 
@@ -240,13 +240,13 @@ export class SchichtmodellBearbeitenDialog {
     const beginnTag = modellschicht?.beginn
       ? (getModellschichtTagFuerLokalzeit(
           modellschicht.beginn.lokalzeit,
-          this.daten.schliesszeitraum,
+          this.daten.standardoeffnungsregel,
         ) ?? modellschicht.beginn.tag)
       : 'starttag';
     const endeTag = modellschicht?.ende
       ? (getModellschichtTagFuerLokalzeit(
           modellschicht.ende.lokalzeit,
-          this.daten.schliesszeitraum,
+          this.daten.standardoeffnungsregel,
         ) ?? modellschicht.ende.tag)
       : 'starttag';
     const form = new FormGroup({
@@ -292,13 +292,13 @@ export class SchichtmodellBearbeitenDialog {
     form.controls.beginnLokalzeit.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((lokalzeit) => {
-        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, this.daten.schliesszeitraum);
+        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, this.daten.standardoeffnungsregel);
         if (tag) form.controls.beginnTag.setValue(tag);
       });
     form.controls.endeLokalzeit.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((lokalzeit) => {
-        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, this.daten.schliesszeitraum);
+        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, this.daten.standardoeffnungsregel);
         if (tag) form.controls.endeTag.setValue(tag);
       });
     return form;

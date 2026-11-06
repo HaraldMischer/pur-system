@@ -1,10 +1,11 @@
 // pur-system/src/app/commons/utils/dienstplan/dienstplan-kalendertage.spec.ts
 
 import type {
-  IFilialeinstellungAusnahmeEintrag,
   IFilialeinstellungSondertagEintrag,
+  IGeoeffneteOeffnungsregel,
   TOeffnungsregel,
-  TWochenoeffnungszeiten,
+  TWochentag,
+  TWochenregeln,
 } from '../../models/domain/filialeinstellung';
 import {
   createDienstplanKalendertage,
@@ -12,7 +13,10 @@ import {
   type IDienstplanRasterModellschicht,
 } from './dienstplan-kalendertage';
 
-const WOCHENREGELN: TWochenoeffnungszeiten = {
+type TAbsoluteWochenregeln = Readonly<Record<TWochentag, TOeffnungsregel>>;
+
+const STANDARDOEFFNUNGSREGEL = createGeoeffnet('08:00', '18:00');
+const ABSOLUTE_WOCHENREGELN: TAbsoluteWochenregeln = {
   montag: createGeoeffnet('08:00', '18:00'),
   dienstag: createGeoeffnet('08:00', '18:00'),
   mittwoch: createGeoeffnet('08:00', '18:00'),
@@ -21,6 +25,7 @@ const WOCHENREGELN: TWochenoeffnungszeiten = {
   samstag: createGeoeffnet('08:00', '14:00'),
   sonntag: { geoeffnet: false },
 };
+const WOCHENREGELN = createWochenregeln(ABSOLUTE_WOCHENREGELN);
 
 describe('createDienstplanKalendertage', () => {
   it.each([
@@ -30,9 +35,9 @@ describe('createDienstplanKalendertage', () => {
   ])('should resolve the complete month %s', (monat, anzahl, letztesDatum) => {
     const kalendertage = createDienstplanKalendertage({
       monat,
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
       wochenregeln: WOCHENREGELN,
       sondertage: [],
-      ausnahmen: [],
     });
 
     expect(kalendertage).toHaveLength(anzahl);
@@ -40,30 +45,42 @@ describe('createDienstplanKalendertage', () => {
     expect(kalendertage.at(-1)?.datum).toBe(letztesDatum);
   });
 
-  it('should snapshot an active holiday and a date exception with independent calendar data', () => {
+  it('should snapshot a user-defined annual special day and independent holiday data', () => {
     const neujahr = createSondertag('neujahr', 'Neujahr', true, {
       typ: 'gesetzlicherFeiertag',
       feiertagSchluessel: 'neujahr',
     });
-    const ausnahme = createAusnahme('2026-01-01', 'Sonderöffnung');
+    const sonderoeffnung = {
+      ...createSondertag(
+        'sonderoeffnung',
+        'Sonderöffnung',
+        true,
+        { typ: 'jaehrlichFestesDatum', monat: 1, tag: 1 },
+        'benutzer',
+      ),
+      oeffnungsregel: createGeoeffnet('09:00', '17:00'),
+    };
 
     const [ersterJanuar] = createDienstplanKalendertage({
       monat: '2026-01',
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
       wochenregeln: WOCHENREGELN,
-      sondertage: [neujahr],
-      ausnahmen: [ausnahme],
+      sondertage: [neujahr, sonderoeffnung],
     });
 
     expect(ersterJanuar).toEqual({
       datum: '2026-01-01',
       wochentag: 'donnerstag',
       istSonntag: false,
-      aktiveSondertage: [{ id: 'neujahr', bezeichnung: 'Neujahr' }],
-      oeffnungsregelQuelle: 'ausnahme',
-      oeffnungsregel: ausnahme.oeffnungsregel,
+      aktiveSondertage: [
+        { id: 'neujahr', bezeichnung: 'Neujahr' },
+        { id: 'sonderoeffnung', bezeichnung: 'Sonderöffnung' },
+      ],
+      oeffnungsregelQuelle: 'sondertag',
+      oeffnungsregel: sonderoeffnung.oeffnungsregel,
       rasterzeiten: [],
       bezeichnung: 'Sonderöffnung',
-      ausnahmeId: '2026-01-01',
+      sondertagId: 'sonderoeffnung',
       gesetzlicherFeiertag: { schluessel: 'neujahr', bezeichnung: 'Neujahr' },
     });
   });
@@ -74,15 +91,15 @@ describe('createDienstplanKalendertage', () => {
       createModellschicht('frueh', '08:00', '12:00'),
       createModellschicht('spaet', '12:00', '18:00'),
     ];
-    const wochenregeln: TWochenoeffnungszeiten = {
-      ...WOCHENREGELN,
+    const absoluteWochenregeln: TAbsoluteWochenregeln = {
+      ...ABSOLUTE_WOCHENREGELN,
       montag,
     };
     const kalendertag = createDienstplanKalendertage({
       monat: '2026-05',
-      wochenregeln,
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
+      wochenregeln: createWochenregeln(absoluteWochenregeln),
       sondertage: [],
-      ausnahmen: [],
       modellschichten,
     }).find((eintrag) => {
       return eintrag.datum === '2026-05-04';
@@ -99,7 +116,7 @@ describe('createDienstplanKalendertage', () => {
     ]);
   });
 
-  it('should preserve an inactive statutory holiday while using the weekday opening rule', () => {
+  it('should preserve a statutory holiday in standard mode with the general standard opening', () => {
     const karfreitag = createSondertag('karfreitag', 'Karfreitag', false, {
       typ: 'gesetzlicherFeiertag',
       feiertagSchluessel: 'karfreitag',
@@ -107,9 +124,12 @@ describe('createDienstplanKalendertage', () => {
 
     const kalendertag = createDienstplanKalendertage({
       monat: '2026-04',
-      wochenregeln: WOCHENREGELN,
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
+      wochenregeln: {
+        ...WOCHENREGELN,
+        freitag: { modus: 'geschlossen' },
+      },
       sondertage: [karfreitag],
-      ausnahmen: [],
     }).find((eintrag) => {
       return eintrag.datum === '2026-04-03';
     });
@@ -118,14 +138,48 @@ describe('createDienstplanKalendertage', () => {
       expect.objectContaining({
         wochentag: 'freitag',
         oeffnungsregelQuelle: 'wochentag',
+        oeffnungsregel: STANDARDOEFFNUNGSREGEL,
         gesetzlicherFeiertag: { schluessel: 'karfreitag', bezeichnung: 'Karfreitag' },
       }),
     );
   });
 
+  it('should snapshot the Sunday opening source for a statutory holiday', () => {
+    const sonntagsregel = createGeoeffnet('10:00', '01:00');
+    const neujahr = {
+      ...createSondertag('neujahr', 'Neujahr', true, {
+        typ: 'gesetzlicherFeiertag' as const,
+        feiertagSchluessel: 'neujahr' as const,
+      }),
+      modus: 'wieSonntag' as const,
+    };
+
+    const kalendertag = createDienstplanKalendertage({
+      monat: '2026-01',
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
+      wochenregeln: {
+        ...WOCHENREGELN,
+        sonntag: { modus: 'abweichend', oeffnungsregel: sonntagsregel },
+      },
+      sondertage: [neujahr],
+    })[0];
+
+    expect(kalendertag).toEqual(
+      expect.objectContaining({
+        datum: '2026-01-01',
+        istSonntag: false,
+        oeffnungsregelQuelle: 'sonntag',
+        oeffnungsregel: sonntagsregel,
+        bezeichnung: 'Neujahr',
+        sondertagId: 'neujahr',
+        gesetzlicherFeiertag: { schluessel: 'neujahr', bezeichnung: 'Neujahr' },
+      }),
+    );
+  });
+
   it('should keep one stable grid for weekdays, Sundays and holidays including a Sunday holiday', () => {
-    const wochenregeln: TWochenoeffnungszeiten = {
-      ...WOCHENREGELN,
+    const absoluteWochenregeln: TAbsoluteWochenregeln = {
+      ...ABSOLUTE_WOCHENREGELN,
       samstag: createGeoeffnet('08:00', '18:00'),
       sonntag: createGeoeffnet('10:00', '18:00'),
     };
@@ -146,9 +200,9 @@ describe('createDienstplanKalendertage', () => {
 
     const kalendertage = createDienstplanKalendertage({
       monat: '2026-05',
-      wochenregeln,
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
+      wochenregeln: createWochenregeln(absoluteWochenregeln),
       sondertage: [tagDerArbeit, pfingstsonntag],
-      ausnahmen: [],
       modellschichten: [
         createModellschicht('frueh', '08:00', '16:30'),
         createModellschicht('spaet', '16:30', '01:00'),
@@ -203,18 +257,27 @@ describe('createDienstplanKalendertage', () => {
     ]);
   });
 
-  it('should keep model inner limits for a one-time opening exception', () => {
+  it('should keep model inner limits for a user-defined annual special opening', () => {
     const neujahr = createSondertag('neujahr', 'Neujahr', true, {
       typ: 'gesetzlicherFeiertag',
       feiertagSchluessel: 'neujahr',
     });
-    const ausnahme = createAusnahme('2026-01-01', 'Sonderöffnung');
+    const sonderoeffnung = {
+      ...createSondertag(
+        'sonderoeffnung',
+        'Sonderöffnung',
+        true,
+        { typ: 'jaehrlichFestesDatum', monat: 1, tag: 1 },
+        'benutzer',
+      ),
+      oeffnungsregel: createGeoeffnet('09:00', '17:00'),
+    };
 
     const [ersterJanuar] = createDienstplanKalendertage({
       monat: '2026-01',
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
       wochenregeln: WOCHENREGELN,
-      sondertage: [neujahr],
-      ausnahmen: [ausnahme],
+      sondertage: [neujahr, sonderoeffnung],
       modellschichten: [
         createModellschicht('frueh', '07:00', '12:00'),
         createModellschicht('spaet', '12:00', '18:00'),
@@ -229,7 +292,7 @@ describe('createDienstplanKalendertage', () => {
 
   it('should adjust the outer raster times to an overnight opening rule with preparation', () => {
     const oeffnungsregel = createGeoeffnet('10:00', '01:00', true);
-    const wochenregeln: TWochenoeffnungszeiten = {
+    const absoluteWochenregeln: TAbsoluteWochenregeln = {
       montag: oeffnungsregel,
       dienstag: oeffnungsregel,
       mittwoch: oeffnungsregel,
@@ -240,9 +303,9 @@ describe('createDienstplanKalendertage', () => {
     };
     const sonntag = createDienstplanKalendertage({
       monat: '2026-10',
-      wochenregeln,
+      standardoeffnungsregel: oeffnungsregel,
+      wochenregeln: createWochenregeln(absoluteWochenregeln),
       sondertage: [],
-      ausnahmen: [],
       modellschichten: [
         {
           ...createModellschicht('frueh', '08:00', '16:30'),
@@ -265,7 +328,7 @@ describe('createDienstplanKalendertage', () => {
 
   it('should resolve inner start-day and following-day boundaries within an overnight opening', () => {
     const oeffnungsregel = createGeoeffnet('18:00', '01:00', true);
-    const wochenregeln: TWochenoeffnungszeiten = {
+    const absoluteWochenregeln: TAbsoluteWochenregeln = {
       montag: oeffnungsregel,
       dienstag: oeffnungsregel,
       mittwoch: oeffnungsregel,
@@ -276,9 +339,9 @@ describe('createDienstplanKalendertage', () => {
     };
     const [ersterOktober] = createDienstplanKalendertage({
       monat: '2026-10',
-      wochenregeln,
+      standardoeffnungsregel: oeffnungsregel,
+      wochenregeln: createWochenregeln(absoluteWochenregeln),
       sondertage: [],
-      ausnahmen: [],
       modellschichten: [
         {
           id: 'frueh',
@@ -309,9 +372,9 @@ describe('createDienstplanKalendertage', () => {
   it('should not provide raster times on a closed day', () => {
     const sonntag = createDienstplanKalendertage({
       monat: '2026-10',
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
       wochenregeln: WOCHENREGELN,
       sondertage: [],
-      ausnahmen: [],
       modellschichten: [createModellschicht('frueh', '08:00', '16:30')],
     }).find((eintrag) => {
       return eintrag.datum === '2026-10-11';
@@ -322,7 +385,7 @@ describe('createDienstplanKalendertage', () => {
 
   it('should omit only a model shift that does not fit a short opening day', () => {
     const oeffnungsregel = createGeoeffnet('08:00', '14:00');
-    const wochenregeln: TWochenoeffnungszeiten = {
+    const absoluteWochenregeln: TAbsoluteWochenregeln = {
       montag: oeffnungsregel,
       dienstag: oeffnungsregel,
       mittwoch: oeffnungsregel,
@@ -334,9 +397,9 @@ describe('createDienstplanKalendertage', () => {
 
     const [ersterOktober] = createDienstplanKalendertage({
       monat: '2026-10',
-      wochenregeln,
+      standardoeffnungsregel: oeffnungsregel,
+      wochenregeln: createWochenregeln(absoluteWochenregeln),
       sondertage: [],
-      ausnahmen: [],
       modellschichten: [
         createModellschicht('frueh', '08:00', '12:00'),
         createModellschicht('spaet', '16:30', '01:00'),
@@ -348,7 +411,7 @@ describe('createDienstplanKalendertage', () => {
 
   it('should keep an opened day without raster times when no model shift fits', () => {
     const oeffnungsregel = createGeoeffnet('08:00', '10:00');
-    const wochenregeln: TWochenoeffnungszeiten = {
+    const absoluteWochenregeln: TAbsoluteWochenregeln = {
       montag: oeffnungsregel,
       dienstag: oeffnungsregel,
       mittwoch: oeffnungsregel,
@@ -359,9 +422,9 @@ describe('createDienstplanKalendertage', () => {
     };
     const [ersterOktober] = createDienstplanKalendertage({
       monat: '2026-10',
-      wochenregeln,
+      standardoeffnungsregel: oeffnungsregel,
+      wochenregeln: createWochenregeln(absoluteWochenregeln),
       sondertage: [],
-      ausnahmen: [],
       modellschichten: [
         createModellschicht('frueh', '08:00', '12:00'),
         createModellschicht('spaet', '16:30', '01:00'),
@@ -372,36 +435,48 @@ describe('createDienstplanKalendertage', () => {
     expect(ersterOktober.rasterzeiten).toEqual([]);
   });
 
-  it('should reject multiple active special days without a date exception', () => {
+  it('should reject multiple active user-defined annual special days', () => {
     const sondertage = [
-      createSondertag('heiligabend', 'Heiligabend', true, {
-        typ: 'jaehrlichFestesDatum',
-        monat: 12,
-        tag: 24,
-      }),
-      createSondertag('jubilaeum', 'Jubiläum', true, {
-        typ: 'jaehrlichFestesDatum',
-        monat: 12,
-        tag: 24,
-      }),
+      createSondertag(
+        'heiligabend',
+        'Heiligabend',
+        true,
+        {
+          typ: 'jaehrlichFestesDatum',
+          monat: 12,
+          tag: 24,
+        },
+        'benutzer',
+      ),
+      createSondertag(
+        'jubilaeum',
+        'Jubiläum',
+        true,
+        {
+          typ: 'jaehrlichFestesDatum',
+          monat: 12,
+          tag: 24,
+        },
+        'benutzer',
+      ),
     ];
 
     expect(() => {
       return createDienstplanKalendertage({
         monat: '2026-12',
+        standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
         wochenregeln: WOCHENREGELN,
         sondertage,
-        ausnahmen: [],
       });
-    }).toThrow('Für 2026-12-24 sind mehrere aktive Sondertage konfiguriert');
+    }).toThrow('Für 2026-12-24 sind mehrere aktive benutzerdefinierte Sondertage konfiguriert');
   });
 
   it('should reject a missing raster time instead of deriving a fallback', () => {
     const [kalendertag] = createDienstplanKalendertage({
       monat: '2026-01',
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
       wochenregeln: WOCHENREGELN,
       sondertage: [],
-      ausnahmen: [],
     });
 
     expect(() => getDienstplanRasterzeit(kalendertag, 'frueh')).toThrow(
@@ -414,8 +489,24 @@ function createGeoeffnet(
   beginnLokalzeit: string,
   endeLokalzeit: string,
   endetAmFolgetag = false,
-): TOeffnungsregel {
+): IGeoeffneteOeffnungsregel {
   return { geoeffnet: true, beginnLokalzeit, endeLokalzeit, endetAmFolgetag };
+}
+
+function createWochenregeln(absoluteWochenregeln: TAbsoluteWochenregeln): TWochenregeln {
+  return Object.fromEntries(
+    Object.entries(absoluteWochenregeln).map(([wochentag, regel]) => {
+      if (!regel.geoeffnet) return [wochentag, { modus: 'geschlossen' }];
+      const istStandard =
+        regel.beginnLokalzeit === STANDARDOEFFNUNGSREGEL.beginnLokalzeit &&
+        regel.endeLokalzeit === STANDARDOEFFNUNGSREGEL.endeLokalzeit &&
+        regel.endetAmFolgetag === STANDARDOEFFNUNGSREGEL.endetAmFolgetag;
+      return [
+        wochentag,
+        istStandard ? { modus: 'standard' } : { modus: 'abweichend', oeffnungsregel: regel },
+      ];
+    }),
+  ) as TWochenregeln;
 }
 
 function createSondertag(
@@ -423,6 +514,7 @@ function createSondertag(
   bezeichnung: string,
   aktiv: boolean,
   datumsregel: IFilialeinstellungSondertagEintrag['datumsregel'],
+  herkunft: IFilialeinstellungSondertagEintrag['herkunft'] = 'system',
 ): IFilialeinstellungSondertagEintrag {
   return {
     id,
@@ -431,23 +523,9 @@ function createSondertag(
     filialeId: 'b-1',
     bezeichnung,
     aktiv,
-    herkunft: 'system',
+    herkunft,
     datumsregel,
     oeffnungsregel: createGeoeffnet('10:00', '16:00'),
-    erstelltVonUid: 'uid-1',
-    aktualisiertVonUid: 'uid-1',
-  };
-}
-
-function createAusnahme(datum: string, bezeichnung: string): IFilialeinstellungAusnahmeEintrag {
-  return {
-    id: datum,
-    datum,
-    unternehmerId: 'u-1',
-    firmaId: 'f-1',
-    filialeId: 'b-1',
-    bezeichnung,
-    oeffnungsregel: createGeoeffnet('09:00', '17:00'),
     erstelltVonUid: 'uid-1',
     aktualisiertVonUid: 'uid-1',
   };

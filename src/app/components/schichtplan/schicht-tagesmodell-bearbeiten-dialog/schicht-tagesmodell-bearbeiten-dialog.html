@@ -1,0 +1,103 @@
+<!-- pur-system/src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog.html -->
+
+<h2 mat-dialog-title>Schicht-Tagesmodell {{ istBearbeitung ? 'bearbeiten' : 'anlegen' }}</h2>
+<mat-dialog-content>
+  <form
+    id="schicht-tagesmodell-form"
+    class="pur-form pur-form--flex"
+    [formGroup]="form"
+    (ngSubmit)="save()"
+  >
+    <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+      <mat-label>Bezeichnung</mat-label>
+      <input matInput formControlName="bezeichnung" />
+    </mat-form-field>
+    <mat-checkbox class="pur-form__item pur-form__item--checkbox" formControlName="aktiv">
+      Aktiv
+    </mat-checkbox>
+
+    @for (vorlage of ['wochentag', 'sonntag']; track vorlage) {
+      <div class="pur-form__group">
+        <div class="vorlagenkopf">
+          <h2 class="pur-form__group-titel">
+            {{ vorlage === 'wochentag' ? 'Wochentagsvorlage Montag–Samstag' : 'Sonntagsvorlage' }}
+          </h2>
+          <button matButton type="button" (click)="addSchicht($any(vorlage))">
+            <mat-icon>add</mat-icon>Schicht hinzufügen
+          </button>
+        </div>
+        <div [formArrayName]="vorlage">
+          @for (
+            schicht of getVorlageForm($any(vorlage)).controls;
+            track schicht;
+            let index = $index
+          ) {
+            <div class="pur-form__group pur-form__group--outlined" [formGroupName]="index">
+              <div class="vorlagenkopf">
+                <h2 class="pur-form__group-titel">Schicht {{ index + 1 }}</h2>
+                <button
+                  matIconButton
+                  type="button"
+                  [disabled]="getVorlageForm($any(vorlage)).length === 1"
+                  (click)="removeSchicht($any(vorlage), index)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+                <mat-label>Bezeichnung</mat-label>
+                <input matInput formControlName="bezeichnung" />
+              </mat-form-field>
+              <div class="zeitzeile">
+                <app-eingabe-zeit label="Kernbeginn" formControlName="beginnLokalzeit" />
+                <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+                  <mat-label>Tag</mat-label>
+                  <mat-select formControlName="beginnTag">
+                    <mat-option value="starttag">Starttag</mat-option>
+                    <mat-option value="folgetag">Folgetag</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <app-eingabe-zeit label="Kernende" formControlName="endeLokalzeit" />
+                <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+                  <mat-label>Tag</mat-label>
+                  <mat-select formControlName="endeTag">
+                    <mat-option value="starttag">Starttag</mat-option>
+                    <mat-option value="folgetag">Folgetag</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              <div class="zeitzeile">
+                <app-eingabe-minuten label="Vorbereitung" formControlName="vorbereitungsminuten" />
+                <app-eingabe-minuten
+                  label="Nachbereitung"
+                  formControlName="nachbereitungsminuten"
+                />
+                <mat-checkbox formControlName="mehrfachbelegungErlaubt"
+                  >Mehrfachbelegung</mat-checkbox
+                >
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+    @if (store.error(); as fehlermeldung) {
+      <p class="pur-message pur-message--error pur-message--full" role="alert">
+        {{ fehlermeldung }}
+      </p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" [disabled]="store.inProgress()" mat-dialog-close>
+    Abbrechen
+  </button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="schicht-tagesmodell-form"
+    [disabled]="form.invalid || store.inProgress()"
+  >
+    Speichern
+  </button>
+</mat-dialog-actions>

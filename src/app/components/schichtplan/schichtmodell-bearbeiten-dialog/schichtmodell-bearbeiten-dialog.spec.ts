@@ -5,7 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
-import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../../commons/constants/filialeinstellung.constants';
+import { STANDARD_OEFFNUNGSREGEL } from '../../../commons/constants/filialeinstellung.constants';
 import { ISchichtrastermodellAnlage } from '../../../commons/models/domain/schichtmodell';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
@@ -23,11 +23,11 @@ describe('SchichtmodellBearbeitenDialog', () => {
   const close = vi.fn();
 
   async function createComponent(
-    daten: Omit<TSchichtmodellBearbeitenDialogDaten, 'schliesszeitraum'>,
+    daten: Omit<TSchichtmodellBearbeitenDialogDaten, 'standardoeffnungsregel'>,
   ) {
     const dialogDaten: TSchichtmodellBearbeitenDialogDaten = {
       ...daten,
-      schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
+      standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL,
     };
     TestBed.configureTestingModule({
       imports: [SchichtmodellBearbeitenDialog],
@@ -121,7 +121,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
     expect(zweiteSchicht.controls.vorbereitungsminuten.value).toBe(20);
   });
 
-  it('should derive the end day from the end time and closing period', async () => {
+  it('should derive the end day from the end time and standard opening rule', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
     component.addModellschicht();

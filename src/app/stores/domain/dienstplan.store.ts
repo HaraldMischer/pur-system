@@ -22,7 +22,12 @@ import {
   ISchichtEintrag,
   ISchichtPausenaktualisierung,
 } from '../../commons/models/domain/schicht';
-import { ISchichtrastermodellBestand } from '../../commons/models/domain/schichtmodell';
+import type { ITagesschichtEintrag } from '../../commons/models/domain/schicht-tagesmodell';
+import {
+  IFreieTagesschichtSchreibdaten,
+  ISchichtrastermodellBestand,
+  ISchichttagesmodellBestand,
+} from '../../commons/models/domain/schichtmodell';
 import { compareModellschichtenNachReihenfolge } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { BenutzerStore } from '../app/benutzer.store';
@@ -40,7 +45,8 @@ import {
 
 type TDienstplanLademodus = 'veroeffentlicht' | 'vollstaendig';
 
-export type TDienstplanKontextBestand = IDienstplanBestand & {
+export type TDienstplanKontextBestand = Omit<IDienstplanBestand, 'tagesschichten'> & {
+  readonly tagesschichten: readonly ITagesschichtEintrag[];
   readonly unternehmerId: string;
   readonly firmaId: string;
   readonly filialeId: string;
@@ -84,6 +90,7 @@ function createLeerenKontext(pfad: IFilialPfad): TDienstplanKontextBestand {
     versionen: [],
     schichten: [],
     modellschichten: [],
+    tagesschichten: [],
     monatsmodi: {},
     vollstaendigGeladen: false,
     download: false,
@@ -283,6 +290,44 @@ export const DienstplanStore = signalStore(
       }
 
       /**
+       * Legt einen initialen Monatsplan aus einem Schicht-Tagesmodell an.
+       *
+       * @param pfad - Vollständiger Filialpfad.
+       * @param monat - Monat im Format `YYYY-MM`.
+       * @param schichtmodell - Aktives Schicht-Tagesmodell derselben Filiale.
+       * @param freieSondertagsschichten - Vollständige freie Strukturen geöffneter Sondertage.
+       */
+      async function createDienstplanAusTagesmodell(
+        pfad: IFilialPfad,
+        monat: string,
+        schichtmodell: ISchichttagesmodellBestand,
+        freieSondertagsschichten: readonly IFreieTagesschichtSchreibdaten[],
+      ): Promise<void> {
+        await executeWrite(async () => {
+          const kontext = requireSchreibkontext(pfad, monat, false);
+          if (kontext.dienstplaene.some((dienstplan) => dienstplan.id === monat)) {
+            throw createDienstplanAnlageFehler(
+              'Für diesen Monat ist bereits ein Dienstplan vorhanden.',
+            );
+          }
+          const ergebnis = await dienstplanService.createDienstplanAusTagesmodell(
+            pfad,
+            monat,
+            schichtmodell,
+            freieSondertagsschichten,
+            requireBenutzerUid(),
+          );
+          setKontext(pfad, {
+            ...kontext,
+            dienstplaene: [...kontext.dienstplaene, ergebnis.dienstplan],
+            versionen: [...kontext.versionen, ergebnis.version].sort(sortVersionen),
+            tagesschichten: [...kontext.tagesschichten, ...ergebnis.tagesschichten],
+            monatsmodi: { ...kontext.monatsmodi, [monat]: 'vollstaendig' },
+          });
+        });
+      }
+
+      /**
        * Löscht einen leeren, noch nie veröffentlichten Dienstplan.
        *
        * @param pfad - Vollständiger Pfad der Entwurfsversion.
@@ -320,6 +365,9 @@ export const DienstplanStore = signalStore(
               return eintrag.dienstplanId !== pfad.dienstplanId;
             }),
             modellschichten: kontext.modellschichten.filter((eintrag) => {
+              return eintrag.dienstplanId !== pfad.dienstplanId;
+            }),
+            tagesschichten: kontext.tagesschichten.filter((eintrag) => {
               return eintrag.dienstplanId !== pfad.dienstplanId;
             }),
           });
@@ -828,6 +876,7 @@ export const DienstplanStore = signalStore(
         loadDienstplanMonat,
         loadDienstplanBestand,
         createDienstplan,
+        createDienstplanAusTagesmodell,
         deleteDienstplan,
         publishDienstplan,
         createEntwurfAusVeroeffentlichung,
@@ -888,6 +937,12 @@ function mergeMonatBestand(
       return (
         a.dienstplanId.localeCompare(b.dienstplanId) || compareModellschichtenNachReihenfolge(a, b)
       );
+    }),
+    tagesschichten: [
+      ...kontext.tagesschichten.filter((tagesschicht) => tagesschicht.dienstplanId !== monat),
+      ...(bestand.tagesschichten ?? []),
+    ].sort((a, b) => {
+      return a.datum.localeCompare(b.datum) || a.reihenfolge - b.reihenfolge;
     }),
   };
 }

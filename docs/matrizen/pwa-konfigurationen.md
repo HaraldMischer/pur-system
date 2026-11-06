@@ -2,9 +2,10 @@
 
 # Matrix: PWA-Konfigurationen
 
-Diese Übersicht enthält die technischen Build-, Vorschau-, Service-Worker- und Hosting-Konfigurationen der
+Diese Matrix ist die verbindliche Quelle für technische Build-, Vorschau-, Service-Worker- und Hosting-Konfigurationen der
 Auslieferungsvarianten. Fachliche Cache- und Offline-Entscheidungen stehen in der
-[Cache- und Betriebsartenmatrix](./cache-strategien.md).
+[Cache- und Betriebsartenmatrix](./cache-strategien.md), der aktuelle Veröffentlichungs- und Prüfstand im
+[Projektstand](../projekt-stand.md).
 
 ## 1. Build- und Auslieferungsmatrix
 

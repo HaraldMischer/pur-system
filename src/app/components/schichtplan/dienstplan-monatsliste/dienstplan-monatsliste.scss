@@ -1,0 +1,107 @@
+// pur-system/src/app/components/schichtplan/dienstplan-monatsliste/dienstplan-monatsliste.scss
+
+.monatsliste,
+.listentag__schichten {
+  display: grid;
+  gap: 12px;
+}
+
+.listentag {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.tagesschicht {
+  display: flex;
+  gap: 12px;
+}
+
+.listentag__kopf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 6px;
+
+  &--sonntag {
+    background: var(--pur-sys-tag-sonntag);
+  }
+
+  &--feiertag {
+    background: var(--pur-sys-tag-feiertag);
+  }
+
+  &--sondertag {
+    background: var(--pur-sys-tag-sondertag);
+  }
+}
+
+.tag {
+  display: grid;
+  gap: 2px;
+}
+
+.oeffnungszeit {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+}
+
+.listentag__schichten {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.tagesschicht {
+  flex-direction: column;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 96px;
+}
+
+.zellenkopf {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.schicht {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+  overflow-wrap: anywhere;
+
+  .zellenkopf + &,
+  & + & {
+    margin-top: 8px;
+  }
+
+  span {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-medium);
+  }
+
+  &.cdk-drag-disabled {
+    cursor: default;
+  }
+
+  &:not(.cdk-drag-disabled) {
+    cursor: grab;
+  }
+}
+
+.zelle--konflikt {
+  background: var(--mat-sys-error-container);
+}
+
+@media (max-width: 700px) {
+  .listentag {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -5,10 +5,10 @@ import type {
   IDienstplanRasterzeit,
 } from '../../models/domain/dienstplan-kalendertag';
 import type {
-  IFilialeinstellungAusnahmeEintrag,
   IFilialeinstellungSondertagEintrag,
+  IGeoeffneteOeffnungsregel,
   TOeffnungsregel,
-  TWochenoeffnungszeiten,
+  TWochenregeln,
 } from '../../models/domain/filialeinstellung';
 import type {
   IModellschichtDaten,
@@ -22,9 +22,9 @@ const MAX_DARSTELLBARE_MINUTEN = 2 * MINUTEN_PRO_TAG;
 
 export interface IDienstplanKalendertageAnfrage {
   monat: string;
-  wochenregeln: TWochenoeffnungszeiten;
+  standardoeffnungsregel: IGeoeffneteOeffnungsregel;
+  wochenregeln: TWochenregeln;
   sondertage: readonly IFilialeinstellungSondertagEintrag[];
-  ausnahmen: readonly IFilialeinstellungAusnahmeEintrag[];
   modellschichten?: readonly IDienstplanRasterModellschicht[];
 }
 
@@ -51,9 +51,9 @@ export function createDienstplanKalendertage(
     const datum = `${anfrage.monat}-${String(index + 1).padStart(2, '0')}`;
     const aufgeloest = resolveOeffnungsregel({
       datum,
+      standardoeffnungsregel: anfrage.standardoeffnungsregel,
       wochenregeln: anfrage.wochenregeln,
       sondertage: anfrage.sondertage,
-      ausnahmen: anfrage.ausnahmen,
     });
     const rasterzeiten = createRasterzeiten(
       aufgeloest.oeffnungsregel,
@@ -69,7 +69,6 @@ export function createDienstplanKalendertage(
       rasterzeiten,
       ...(aufgeloest.bezeichnung ? { bezeichnung: aufgeloest.bezeichnung } : {}),
       ...(aufgeloest.sondertagId ? { sondertagId: aufgeloest.sondertagId } : {}),
-      ...(aufgeloest.ausnahmeId ? { ausnahmeId: aufgeloest.ausnahmeId } : {}),
       ...(aufgeloest.gesetzlicherFeiertag
         ? { gesetzlicherFeiertag: aufgeloest.gesetzlicherFeiertag }
         : {}),

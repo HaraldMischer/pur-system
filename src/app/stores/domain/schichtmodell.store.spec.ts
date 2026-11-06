@@ -8,7 +8,7 @@ import {
   ISchichtrastermodellBestand,
 } from '../../commons/models/domain/schichtmodell';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
-import { SchichtmodellService } from '../../services/domain/schichtmodell.service';
+import { SchichtRastermodellService } from '../../services/domain/schicht-rastermodell.service';
 import { BenutzerStore } from '../app/benutzer.store';
 import { SchichtmodellStore } from './schichtmodell.store';
 
@@ -45,7 +45,7 @@ describe('SchichtmodellStore', () => {
       providers: [
         SchichtmodellStore,
         {
-          provide: SchichtmodellService,
+          provide: SchichtRastermodellService,
           useValue: {
             loadSchichtmodelle,
             createSchichtmodell,
@@ -128,7 +128,7 @@ function createBestand(
       id,
       bezeichnung: id === 'sommer' ? 'Sommer' : 'Winter',
       aktiv: true,
-      planungsart: 'schichtraster',
+      planungsart: 'schichtrastermodell',
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },

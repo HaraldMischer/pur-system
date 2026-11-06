@@ -2,6 +2,9 @@
 
 # App-Dateninitialisierung
 
+Die verbindlichen rollenabhängigen Ladeumfänge stehen in der [Datenladematrix](../../matrizen/datenladen.md), Cache- und
+Quellenstrategien in der [Cache-Matrix](../../matrizen/cache-strategien.md).
+
 Der `AppDatenInitService` lädt abhängig von der Benutzerrolle alle für die Sitzung erforderlichen Stamm- und Mitarbeiterdaten. Er
 wird vom `AppSitzungsInitService` aufgerufen und arbeitet mit dem `StammdatenStore`, dem `MitarbeiterStore` sowie dem
 `MitarbeiterService` zusammen.

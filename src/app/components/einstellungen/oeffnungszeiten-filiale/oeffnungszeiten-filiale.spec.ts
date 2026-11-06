@@ -3,14 +3,14 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 
-import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../../commons/constants/filialeinstellung.constants';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import {
   FilialeinstellungStore,
   TFilialeinstellungKontext,
 } from '../../../stores/domain/filialeinstellung.store';
-import { DatumsausnahmeBearbeitenDialog } from '../datumsausnahme-bearbeiten-dialog/datumsausnahme-bearbeiten-dialog';
+import { AbweichendeOeffnungszeitBearbeitenDialog } from '../abweichende-oeffnungszeit-bearbeiten-dialog/abweichende-oeffnungszeit-bearbeiten-dialog';
 import { SondertagBearbeitenDialog } from '../sondertag-bearbeiten-dialog/sondertag-bearbeiten-dialog';
 import { OeffnungszeitenFiliale } from './oeffnungszeiten-filiale';
 
@@ -37,10 +37,13 @@ describe('OeffnungszeitenFiliale', () => {
   const loadFilialeinstellung = vi.fn().mockResolvedValue(undefined);
   const initializeFilialeinstellung = vi.fn().mockResolvedValue(undefined);
   const saveGrundlagen = vi.fn().mockResolvedValue(undefined);
+  const updateSondertag = vi.fn().mockResolvedValue(undefined);
+  const updateSystemSondertag = vi.fn().mockResolvedValue(undefined);
   const open = vi.fn();
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    open.mockReturnValue({ afterClosed: () => of(undefined) });
     kontext.set({
       ...PFAD,
       rohdaten: null,
@@ -60,6 +63,8 @@ describe('OeffnungszeitenFiliale', () => {
             loadFilialeinstellung,
             initializeFilialeinstellung,
             saveGrundlagen,
+            updateSondertag,
+            updateSystemSondertag,
           },
         },
         { provide: MatDialog, useValue: { open } },
@@ -77,10 +82,7 @@ describe('OeffnungszeitenFiliale', () => {
     expect(fixture.componentInstance.wochentage).toHaveLength(7);
     expect(fixture.componentInstance.form.contains('bundesland')).toBe(false);
     expect(fixture.componentInstance.form.contains('zeitzone')).toBe(false);
-    expect(fixture.componentInstance.form.controls.schliesszeitraum.getRawValue()).toEqual({
-      beginnLokalzeit: '01:00',
-      endeLokalzeit: '06:00',
-    });
+    expect(fixture.componentInstance.form.contains('schliesszeitraum')).toBe(false);
   });
 
   it('should initialize weekdays with the overnight standard opening hours', async () => {
@@ -102,27 +104,22 @@ describe('OeffnungszeitenFiliale', () => {
     expect(gespeicherteGrundlagen).toEqual(
       expect.objectContaining({
         bundesland: 'DE-NW',
-        schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
+        standardoeffnungsregel: {
+          geoeffnet: true,
+          beginnLokalzeit: '06:00',
+          endeLokalzeit: '01:00',
+          endetAmFolgetag: true,
+        },
         wochenregeln: expect.objectContaining({
-          montag: {
-            geoeffnet: true,
-            beginnLokalzeit: '06:00',
-            endeLokalzeit: '01:00',
-            endetAmFolgetag: true,
-          },
-          sonntag: {
-            geoeffnet: true,
-            beginnLokalzeit: '06:00',
-            endeLokalzeit: '01:00',
-            endetAmFolgetag: true,
-          },
+          montag: { modus: 'standard' },
+          sonntag: { modus: 'standard' },
         }),
       }),
     );
     expect(gespeicherteGrundlagen).not.toHaveProperty('zeitzone');
   });
 
-  it('should disable only the time controls of closed weekdays', async () => {
+  it('should enable time controls only for overriding weekdays', async () => {
     const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
     fixture.componentRef.setInput('pfad', PFAD);
@@ -130,13 +127,24 @@ describe('OeffnungszeitenFiliale', () => {
     await fixture.whenStable();
     const component = fixture.componentInstance;
 
-    expect(component.form.controls.montag.controls.beginnLokalzeit.enabled).toBe(true);
-    expect(component.form.controls.montag.controls.endeLokalzeit.enabled).toBe(true);
+    expect(component.form.controls.montag.controls.beginnLokalzeit.disabled).toBe(true);
+    expect(component.form.controls.montag.controls.endeLokalzeit.disabled).toBe(true);
 
-    component.form.controls.dienstag.controls.geoeffnet.setValue(false);
+    component.form.controls.dienstag.controls.modus.setValue('abweichend');
 
-    expect(component.form.controls.montag.controls.geoeffnet.value).toBe(true);
-    expect(component.form.controls.montag.controls.beginnLokalzeit.enabled).toBe(true);
+    expect(component.form.controls.montag.controls.modus.value).toBe('standard');
+    expect(component.form.controls.montag.controls.beginnLokalzeit.disabled).toBe(true);
+    expect(component.form.controls.dienstag.controls.beginnLokalzeit.enabled).toBe(true);
+    expect(component.form.controls.dienstag.controls.endeLokalzeit.enabled).toBe(true);
+
+    component.form.controls.dienstag.controls.endeLokalzeit.setValue(
+      component.form.controls.dienstag.controls.beginnLokalzeit.value,
+    );
+    expect(component.form.invalid).toBe(true);
+
+    component.form.controls.dienstag.controls.modus.setValue('geschlossen');
+
+    expect(component.form.valid).toBe(true);
     expect(component.form.controls.dienstag.controls.beginnLokalzeit.disabled).toBe(true);
     expect(component.form.controls.dienstag.controls.endeLokalzeit.disabled).toBe(true);
 
@@ -150,54 +158,74 @@ describe('OeffnungszeitenFiliale', () => {
       return { ...wert, inProgress: false };
     });
     fixture.detectChanges();
-    expect(component.form.controls.montag.controls.beginnLokalzeit.enabled).toBe(true);
+    expect(component.form.controls.montag.controls.beginnLokalzeit.disabled).toBe(true);
     expect(component.form.controls.dienstag.controls.beginnLokalzeit.disabled).toBe(true);
   });
 
-  it('should block weekly opening hours that overlap the closing period', async () => {
+  it('should edit an overriding weekday opening interval in a dialog', async () => {
+    open.mockReturnValueOnce({
+      afterClosed: () => of({ beginnLokalzeit: '08:00', endeLokalzeit: '22:00' }),
+    });
     const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
     fixture.componentRef.setInput('pfad', PFAD);
     fixture.detectChanges();
     await fixture.whenStable();
+    const component = fixture.componentInstance;
+    component.form.controls.sonntag.controls.modus.setValue('abweichend');
 
-    fixture.componentInstance.form.controls.schliesszeitraum.controls.endeLokalzeit.setValue(
-      '07:00',
-    );
-    fixture.detectChanges();
+    component.openWochenoeffnungszeitBearbeiten('sonntag');
+    await fixture.whenStable();
 
-    expect(fixture.componentInstance.form.hasError('oeffnungsregelAusserhalbOeffnungsrahmen')).toBe(
-      true,
+    expect(open).toHaveBeenCalledWith(
+      AbweichendeOeffnungszeitBearbeitenDialog,
+      expect.objectContaining({
+        data: {
+          bezeichnung: 'Sonntag',
+          beginnLokalzeit: '06:00',
+          endeLokalzeit: '01:00',
+        },
+      }),
     );
-    const submit = fixture.nativeElement.querySelector(
-      'button[type="submit"]',
-    ) as HTMLButtonElement;
-    expect(submit.disabled).toBe(true);
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'Die Öffnungsregel „Montag“ überschneidet den Schließzeitraum.',
+    expect(component.form.controls.sonntag.getRawValue()).toEqual({
+      modus: 'abweichend',
+      beginnLokalzeit: '08:00',
+      endeLokalzeit: '22:00',
+    });
+    expect(component.form.controls.sonntag.dirty).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('08:00–22:00');
+
+    await component.saveGrundlagen();
+
+    expect(initializeFilialeinstellung).toHaveBeenLastCalledWith(
+      PFAD,
+      expect.objectContaining({
+        wochenregeln: expect.objectContaining({
+          sonntag: {
+            modus: 'abweichend',
+            oeffnungsregel: {
+              geoeffnet: true,
+              beginnLokalzeit: '08:00',
+              endeLokalzeit: '22:00',
+              endetAmFolgetag: false,
+            },
+          },
+        }),
+      }),
     );
   });
 
-  it('should open separate dialogs for annual special days and concrete date exceptions', () => {
+  it('should open the dialog for an annual special day', () => {
     const fixture = TestBed.createComponent(OeffnungszeitenFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
     fixture.componentRef.setInput('pfad', PFAD);
 
     fixture.componentInstance.openSondertagAnlegen();
-    fixture.componentInstance.openDatumsausnahmeAnlegen();
 
-    expect(open).toHaveBeenNthCalledWith(
-      1,
+    expect(open).toHaveBeenCalledWith(
       SondertagBearbeitenDialog,
       expect.objectContaining({
-        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
-      }),
-    );
-    expect(open).toHaveBeenNthCalledWith(
-      2,
-      DatumsausnahmeBearbeitenDialog,
-      expect.objectContaining({
-        data: { pfad: PFAD, schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW },
+        data: { pfad: PFAD },
       }),
     );
   });
@@ -257,20 +285,28 @@ describe('OeffnungszeitenFiliale', () => {
             aktualisiertVonUid: 'uid-1',
           },
           oeffnungszeiten: {
-            schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW,
+            standardoeffnungsregel: {
+              geoeffnet: true,
+              beginnLokalzeit: '06:00',
+              endeLokalzeit: '01:00',
+              endetAmFolgetag: true,
+            },
             wochenregeln: {
               montag: {
-                geoeffnet: false,
-                beginnLokalzeit: '07:00',
-                endeLokalzeit: '01:00',
-                endetAmFolgetag: true,
+                modus: 'abweichend',
+                oeffnungsregel: {
+                  geoeffnet: true,
+                  beginnLokalzeit: '07:00',
+                  endeLokalzeit: '01:00',
+                  endetAmFolgetag: true,
+                },
               },
-              dienstag: { geoeffnet: false },
-              mittwoch: { geoeffnet: false },
-              donnerstag: { geoeffnet: false },
-              freitag: { geoeffnet: false },
-              samstag: { geoeffnet: false },
-              sonntag: { geoeffnet: false },
+              dienstag: { modus: 'geschlossen' },
+              mittwoch: { modus: 'geschlossen' },
+              donnerstag: { modus: 'geschlossen' },
+              freitag: { modus: 'geschlossen' },
+              samstag: { modus: 'geschlossen' },
+              sonntag: { modus: 'geschlossen' },
             },
             erstelltVonUid: 'uid-1',
             aktualisiertVonUid: 'uid-1',
@@ -325,6 +361,26 @@ describe('OeffnungszeitenFiliale', () => {
             },
             {
               ...PFAD,
+              id: 'volkstrauertag',
+              bezeichnung: 'Volkstrauertag',
+              aktiv: true,
+              modus: 'abweichend',
+              herkunft: 'system',
+              datumsregel: {
+                typ: 'berechneterSondertag',
+                sondertagSchluessel: 'volkstrauertag',
+              },
+              oeffnungsregel: {
+                geoeffnet: true,
+                beginnLokalzeit: '13:00',
+                endeLokalzeit: '01:00',
+                endetAmFolgetag: true,
+              },
+              erstelltVonUid: 'uid-1',
+              aktualisiertVonUid: 'uid-1',
+            },
+            {
+              ...PFAD,
               id: 'heiligabend',
               bezeichnung: 'Heiligabend',
               aktiv: true,
@@ -346,17 +402,6 @@ describe('OeffnungszeitenFiliale', () => {
               aktualisiertVonUid: 'uid-1',
             },
           ],
-          ausnahmen: [
-            {
-              ...PFAD,
-              id: '2026-11-12',
-              datum: '2026-11-12',
-              bezeichnung: 'Betriebsversammlung',
-              oeffnungsregel: { geoeffnet: false },
-              erstelltVonUid: 'uid-1',
-              aktualisiertVonUid: 'uid-1',
-            },
-          ],
         },
       };
     });
@@ -367,17 +412,18 @@ describe('OeffnungszeitenFiliale', () => {
     await fixture.whenStable();
 
     expect(fixture.componentInstance.form.controls.montag.getRawValue()).toEqual({
-      geoeffnet: false,
+      modus: 'abweichend',
       beginnLokalzeit: '07:00',
       endeLokalzeit: '01:00',
     });
     const submit = fixture.nativeElement.querySelector(
       'button[type="submit"]',
     ) as HTMLButtonElement;
-    expect(submit.disabled).toBe(true);
+    expect(submit.disabled).toBe(false);
+    expect(fixture.componentInstance.hasFehlendeSystemtage()).toBe(true);
 
     await fixture.componentInstance.saveGrundlagen();
-    expect(saveGrundlagen).not.toHaveBeenCalled();
+    expect(saveGrundlagen).toHaveBeenCalledOnce();
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Tag der Arbeit');
@@ -390,14 +436,131 @@ describe('OeffnungszeitenFiliale', () => {
     expect(text.indexOf('Tag der Arbeit')).toBeLessThan(text.indexOf('1. Weihnachtstag'));
     expect(text.indexOf('Winteraktion')).toBeLessThan(text.indexOf('Heiligabend'));
     expect(text).toContain('03.02.');
+    expect(text).toContain('Volkstrauertag');
+    expect(text).toContain('13:00–01:00 Uhr');
     expect(text).toContain('Heiligabend');
-    expect(text).toContain('Betriebsversammlung');
-    expect(text).toContain('Inaktiv · Wochentagsregel gilt');
-    expect(text).toContain('Aktiv · Geöffnet 08:00–18:00 Uhr');
+    expect(text).toContain('08:00–18:00 Uhr');
     expect(text).toContain('24.12.');
     expect(text).not.toContain('Jährlich am');
-    expect(text).toContain('Aktiv · Geschlossen');
-    expect(text).toContain('Aktiv · Geschlossen · Einmalig am 12.11.2026');
+    expect(
+      fixture.componentInstance.getSondertagsmodus(fixture.componentInstance.feiertage()[0]),
+    ).toBe('standard');
+    expect(
+      fixture.componentInstance.getSondertagsmodus(fixture.componentInstance.feiertage()[2]),
+    ).toBe('abweichend');
+    const tagDerArbeit = fixture.componentInstance.feiertage().find((feiertag) => {
+      return feiertag.id === 'tag-der-arbeit';
+    });
+    const ersterWeihnachtstag = fixture.componentInstance.feiertage().find((feiertag) => {
+      return feiertag.id === 'erster-weihnachtstag';
+    });
+    expect(tagDerArbeit).toBeDefined();
+    expect(ersterWeihnachtstag).toBeDefined();
+    if (!tagDerArbeit || !ersterWeihnachtstag) return;
+    expect(fixture.componentInstance.getSondertagOeffnungsregel(tagDerArbeit)).toEqual({
+      geoeffnet: true,
+      beginnLokalzeit: '06:00',
+      endeLokalzeit: '01:00',
+      endetAmFolgetag: true,
+    });
+
+    fixture.componentInstance.form.controls.sonntag.patchValue({
+      modus: 'abweichend',
+      beginnLokalzeit: '10:00',
+      endeLokalzeit: '01:00',
+    });
+    await fixture.componentInstance.updateSondertagsmodus(tagDerArbeit, 'wieSonntag');
+
+    expect(updateSystemSondertag).toHaveBeenLastCalledWith(PFAD, 'tag-der-arbeit', {
+      aktiv: true,
+      modus: 'wieSonntag',
+      oeffnungsregel: { geoeffnet: false },
+    });
+    expect(
+      fixture.componentInstance.getSondertagOeffnungsregel({
+        ...tagDerArbeit,
+        aktiv: true,
+        modus: 'wieSonntag',
+      }),
+    ).toEqual({
+      geoeffnet: true,
+      beginnLokalzeit: '10:00',
+      endeLokalzeit: '01:00',
+      endetAmFolgetag: true,
+    });
+
+    await fixture.componentInstance.updateSondertagsmodus(tagDerArbeit, 'abweichend');
+
+    expect(updateSystemSondertag).toHaveBeenLastCalledWith(PFAD, 'tag-der-arbeit', {
+      aktiv: true,
+      modus: 'abweichend',
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '06:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+    });
+
+    open.mockReturnValueOnce({
+      afterClosed: () => of({ beginnLokalzeit: '09:00', endeLokalzeit: '20:00' }),
+    });
+    fixture.componentInstance.openSondertagOeffnungszeitBearbeiten(ersterWeihnachtstag);
+    await vi.waitFor(() => {
+      expect(updateSystemSondertag).toHaveBeenLastCalledWith(PFAD, 'erster-weihnachtstag', {
+        aktiv: true,
+        modus: 'abweichend',
+        oeffnungsregel: {
+          geoeffnet: true,
+          beginnLokalzeit: '09:00',
+          endeLokalzeit: '20:00',
+          endetAmFolgetag: false,
+        },
+      });
+    });
+    expect(open).toHaveBeenLastCalledWith(
+      AbweichendeOeffnungszeitBearbeitenDialog,
+      expect.objectContaining({
+        data: {
+          bezeichnung: '1. Weihnachtstag',
+          beginnLokalzeit: '08:00',
+          endeLokalzeit: '18:00',
+        },
+      }),
+    );
+    const winteraktion = fixture.componentInstance.sondertage().find((sondertag) => {
+      return sondertag.id === 'winteraktion';
+    });
+    const heiligabend = fixture.componentInstance.sondertage().find((sondertag) => {
+      return sondertag.id === 'heiligabend';
+    });
+    const volkstrauertag = fixture.componentInstance.sondertage().find((sondertag) => {
+      return sondertag.id === 'volkstrauertag';
+    });
+    expect(winteraktion).toBeDefined();
+    expect(heiligabend).toBeDefined();
+    expect(volkstrauertag).toBeDefined();
+    if (!winteraktion || !heiligabend || !volkstrauertag) return;
+    expect(fixture.componentInstance.getSondertagsmodus(winteraktion)).toBe('standard');
+    expect(fixture.componentInstance.getSondertagsmodus(heiligabend)).toBe('geschlossen');
+    expect(fixture.componentInstance.getSondertagsmodus(volkstrauertag)).toBe('abweichend');
+    expect(fixture.componentInstance.getJaehrlichesDatum(volkstrauertag)).toMatch(
+      /^\d{2}\.\d{2}\.\d{2}$/,
+    );
+
+    await fixture.componentInstance.updateSondertagsmodus(winteraktion, 'abweichend');
+
+    expect(updateSondertag).toHaveBeenLastCalledWith(PFAD, 'winteraktion', {
+      bezeichnung: 'Winteraktion',
+      aktiv: true,
+      datumsregel: { typ: 'jaehrlichFestesDatum', monat: 2, tag: 3 },
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '06:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+    });
     kontext.update((wert) => {
       if (!wert.bestand) {
         return wert;
@@ -409,7 +572,6 @@ describe('OeffnungszeitenFiliale', () => {
           sondertage: wert.bestand.sondertage.filter((sondertag) => {
             return sondertag.datumsregel.typ === 'gesetzlicherFeiertag';
           }),
-          ausnahmen: [],
         },
       };
     });
@@ -417,6 +579,5 @@ describe('OeffnungszeitenFiliale', () => {
 
     const leerText = (fixture.nativeElement as HTMLElement).textContent;
     expect(leerText).toContain('Noch keine jährlichen Sondertage');
-    expect(leerText).toContain('Noch keine einmaligen Sondertage');
   });
 });

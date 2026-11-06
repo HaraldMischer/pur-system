@@ -2,8 +2,11 @@
 
 # Matrix: Datenladen
 
-Diese Übersicht zeigt die Verantwortlichkeiten, den benutzerabhängigen Ladeumfang und die Zustände des Sitzungsstarts.
-Architektur und Datenfluss stehen im [Projektplan](../projekt-plan.md).
+Diese Matrix ist die verbindliche Quelle für Ladeverantwortlichkeiten, benutzerabhängige Ladeumfänge und Zustände des
+Sitzungsstarts. Die technische Umsetzung beschreiben
+[`AppSitzungsInitService`](../architektur/services/app-sitzungs-init-service.md) und
+[`AppDatenInitService`](../architektur/services/app-daten-init-service.md). Cache- und Quellenstrategien stehen in der
+[Cache-Matrix](./cache-strategien.md).
 
 ## 1. Verantwortungsmatrix
 

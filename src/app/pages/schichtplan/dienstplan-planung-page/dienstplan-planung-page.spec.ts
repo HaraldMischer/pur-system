@@ -23,6 +23,7 @@ import {
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
+import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { MonatSelector } from '../../../components/date-selectors/monat-selector/monat-selector';
 import { DienstplanPlanungPage } from './dienstplan-planung-page';
@@ -122,10 +123,22 @@ describe('DienstplanPlanungPage', () => {
           },
         },
         {
+          provide: SchichtTagesmodellStore,
+          useValue: {
+            loadSchichtTagesmodelle: vi.fn().mockResolvedValue(undefined),
+            getSchichtTagesmodellKontext: vi.fn().mockReturnValue({
+              schichttagesmodelle: [],
+              download: false,
+              isLoaded: true,
+              error: null,
+            }),
+          },
+        },
+        {
           provide: FilialeinstellungStore,
           useValue: {
             loadFilialeinstellung: vi.fn().mockResolvedValue(undefined),
-            getFilialeinstellungKontext: vi.fn().mockReturnValue({ bestand: { ausnahmen: [] } }),
+            getFilialeinstellungKontext: vi.fn().mockReturnValue({ bestand: {} }),
           },
         },
         { provide: MatDialog, useValue: { open: vi.fn() } },
@@ -345,7 +358,7 @@ describe('DienstplanPlanungPage', () => {
           zeitzone: 'Europe/Berlin',
           schichtmodellId: 'modell-1',
           schichtmodellBezeichnung: 'Standard',
-          planungsart: 'schichtraster',
+          planungsart: 'schichtrastermodell',
           naechsteVersionsnummer: 3,
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
@@ -389,6 +402,7 @@ describe('DienstplanPlanungPage', () => {
       ],
       schichten,
       modellschichten: [],
+      tagesschichten: [],
       monatsmodi: { '2026-10': 'vollstaendig' },
       vollstaendigGeladen: false,
       download: false,

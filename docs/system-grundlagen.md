@@ -37,9 +37,9 @@ Betriebliche Mitarbeiterrollen werden im Array `rollen` gespeichert. Vorgesehen 
 - `techniker`
 - `dienstplaner`
 
-Diese Rollen beschreiben Tätigkeiten im Betrieb und gewähren keine Auth- oder Firestore-Berechtigungen. `dienstplaner` wird in
-der Filial-App zusätzlich als clientseitige Bedienvoraussetzung für Planungsaktionen ausgewertet, erweitert aber keine
-Datenrechte.
+Diese Rollen beschreiben Tätigkeiten im Betrieb und gewähren keine Auth- oder Firestore-Berechtigungen. `dienstplaner` ist für
+eine spätere clientseitige Bedienbegrenzung von Planungsaktionen in der Filial-App vorgesehen. Der dafür benötigte betriebliche
+Sitzungszustand ist noch nicht umgesetzt; die Rolle erweitert keine Datenrechte.
 
 ## Benutzerrollen
 
@@ -116,10 +116,12 @@ Auth-Rolle, `zugriffe`, fachlichem Kontext und den Firestore Rules.
 
 ## Weiterführende Dokumente
 
-- `docs/projekt-plan.md` beschreibt das fachliche und architektonische Zielbild.
-- `docs/fachkonzepte/dienst-und-schichtplanung.md` beschreibt das vollständige Zielbild der Schichtverwaltung.
-- `docs/architektur` enthält die technische Dokumentation konkreter Components, Services und Stores.
-- `docs/projekt-stand.md` beschreibt den aktuellen Umsetzungsstand.
-- `docs/matrizen/berechtigungen.md` enthält die detaillierten Datenrechte.
-- `docs/matrizen/datenladen.md` beschreibt das rollenabhängige Laden.
-- `docs/matrizen/cache-strategien.md` beschreibt Cache- und Netzwerkverhalten.
+- Die [globalen Projektregeln](./projekt-regeln.md) legen dauerhafte Produkt-, Design- und Verhaltensregeln fest.
+- Der [Projektplan](./projekt-plan.md) beschreibt das fachliche und architektonische Zielbild.
+- Das [Fachkonzept Dienst- und Schichtplanung](./fachkonzepte/dienst-und-schichtplanung.md) enthält die vollständigen fachlichen
+  Regeln der Schichtverwaltung.
+- [`docs/architektur`](./architektur) enthält die technische Dokumentation konkreter Components, Services und Stores.
+- Der [Projektstand](./projekt-stand.md) beschreibt den aktuellen Umsetzungs-, Prüf- und Veröffentlichungsstand.
+- Die [Berechtigungsmatrix](./matrizen/berechtigungen.md) enthält die verbindlichen Pfad- und CRUD-Rechte.
+- Die [Datenladematrix](./matrizen/datenladen.md) beschreibt das rollenabhängige Laden.
+- Die [Cache-Matrix](./matrizen/cache-strategien.md) beschreibt Cache- und Netzwerkverhalten.

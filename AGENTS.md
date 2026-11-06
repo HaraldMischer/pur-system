@@ -23,20 +23,21 @@
 
 ## Projektziel
 
+- Dauerhaft gültige projektweite Produkt-, Design- und Verhaltensregeln stehen in `docs/projekt-regeln.md`.
 - Das fachliche und architektonische Zielbild steht in `docs/projekt-plan.md`.
 - Der aktuelle Umsetzungsstand steht in `docs/projekt-stand.md`.
-- Konkrete nächste Arbeitsschritte stehen in `docs/todo_next.md`.
+- Konkrete nächste Arbeitsschritte stehen in `docs/todo_naechste.md`.
 - Bewusst zurückgestellte Arbeitsschritte stehen in `docs/todo_spaeter.md`.
-- Abgeschlossene Arbeitsschritte stehen in `docs/todo_done.md`.
+- Abgeschlossene Arbeitsschritte stehen in `docs/todo_erledigt.md`.
 - Agents richten neue Umsetzung an diesen Dokumenten aus.
 
 ## Todo-Dokumentation
 
-- Offene Hauptaufgaben werden in `docs/todo_next.md` unter einem fachlichen Todo gebündelt und mit fortlaufenden Unterpunkten wie
+- Offene Hauptaufgaben werden in `docs/todo_naechste.md` unter einem fachlichen Todo gebündelt und mit fortlaufenden Unterpunkten wie
   `4.1`, `4.2` und `4.3` gegliedert.
 - Bewusst zurückgestellte Hauptaufgaben werden unter Erhalt ihres Bearbeitungsstands in `docs/todo_spaeter.md` geführt und bei
-  konkretem fachlichem Bedarf nach `docs/todo_next.md` übernommen.
-- Vollständig abgeschlossene Hauptaufgaben werden unter Erhalt ihrer Erledigt-Markierungen nach `docs/todo_done.md` verschoben.
+  konkretem fachlichem Bedarf nach `docs/todo_naechste.md` übernommen.
+- Vollständig abgeschlossene Hauptaufgaben werden unter Erhalt ihrer Erledigt-Markierungen nach `docs/todo_erledigt.md` verschoben.
 - Jeder Todo-Unterpunkt verwendet in dieser Reihenfolge die Bereiche `Ziel`, `Betroffene Dateien`, fachlich benannte und
   nummerierte Schritte, `Tests und Abschluss` sowie `Erledigt, wenn`.
 - `Betroffene Dateien` unterscheidet vorhandene Dateien unter `Änderungen` von neu anzulegenden Dateien unter `Neu hinzuzufügen`.
@@ -300,12 +301,17 @@
 - Verwende die vorhandenen npm-Skripte aus dem Projekt-Root. Der lokale Dev-Server startet mit `npm run web:pur-system`.
 - Füge Dependencies nur bei begründetem Bedarf hinzu und aktualisiere `package.json` und `package-lock.json` gemeinsam.
 - Ergänze oder aktualisiere passende `.spec.ts` Dateien bei Verhaltensänderungen.
-- Führe während der Umsetzung gezielte Tests für das betroffene Verhalten aus.
-- Bei reinen Stylingänderungen werden keine Unit-Tests ausgeführt.
-- Führe `npm test` ohne Watch-Modus vor einem Commit oder auf ausdrücklichen Wunsch des Benutzers aus.
-- Übernimmt der Benutzer die vollständige Prüfung, nennt der Agent die noch auszuführenden Tests. Die Änderung gilt erst nach
-  dem vom Benutzer gemeldeten erfolgreichen Ergebnis als vollständig geprüft.
-- Führe bei Build-, Template- oder größeren UI-Änderungen zusätzlich das zur betroffenen App passende vorhandene Build-Skript
-  (`npm run build:master`, `npm run build:office`, `npm run build:filiale` oder `npm run build:mitarbeiter`) aus. Sind mehrere
-  App-Varianten betroffen, führe die entsprechenden Builds einzeln aus. Verwende `npm run build` nur, wenn dieses Skript in der
-  `package.json` tatsächlich vorhanden ist.
+- Automatisierte Tests und Builds führt standardmäßig der Benutzer manuell aus. Der Agent führt sie nur aus, wenn der Benutzer
+  ihn ausdrücklich dazu auffordert.
+- Nach einer abgeschlossenen Codeänderung fordert der Agent den Benutzer zu den passenden manuellen Prüfungen auf und nennt
+  dafür konkrete Terminalbefehle. Für einzelne Unit-Tests nennt er einen gezielten Befehl mit `npm test -- --include=...`; für
+  Firestore Rules nennt er `npm run test:rules`. Alternativ kann er bei einzelnen Tests auf die Testaktion der IDE verweisen.
+- Bei reinen Stylingänderungen werden keine Unit-Tests verlangt.
+- Vor einem Commit empfiehlt der Agent `npm test` ohne Watch-Modus, führt den Befehl aber nur auf ausdrücklichen Wunsch des
+  Benutzers selbst aus.
+- Bei Build-, Template- oder größeren UI-Änderungen nennt der Agent zusätzlich das zur betroffenen App passende vorhandene
+  Build-Skript (`npm run build:master`, `npm run build:office`, `npm run build:filiale` oder `npm run build:mitarbeiter`). Sind
+  mehrere App-Varianten betroffen, nennt er die entsprechenden Builds einzeln. `npm run build` wird nur genannt, wenn dieses
+  Skript in der `package.json` tatsächlich vorhanden ist.
+- Eine Änderung gilt erst nach dem vom Benutzer gemeldeten erfolgreichen Prüfergebnis als vollständig geprüft. Bis dahin weist
+  der Agent die noch ausstehenden Tests und Builds ausdrücklich aus.

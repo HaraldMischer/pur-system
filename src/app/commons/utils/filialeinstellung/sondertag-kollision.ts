@@ -16,15 +16,16 @@ export class SondertagDatumskollisionFehler extends Error {
  * Prüft einen jährlich festen aktiven Sondertag gegen den vorhandenen Bestand.
  *
  * @param sondertage - Vollständig geladene Sondertage der Filiale.
- * @param ziel - Zu speichernder Aktivstatus und Monatstag.
+ * @param ziel - Zu speichernde Herkunft, Aktivstatus und Monatstag.
  * @param ausgenommeneId - ID des gerade bearbeiteten Sondertags.
- * @throws Wenn ein anderer aktiver jährlich fester Sondertag auf denselben Monatstag fällt.
+ * @throws Wenn ein anderer aktiver jährlich fester Sondertag derselben Herkunft auf denselben Monatstag fällt.
  */
 export function assertKeineAktiveSondertagDatumskollision(
   sondertage: readonly IFilialeinstellungSondertagEintrag[],
   ziel: {
     readonly bezeichnung: string;
     readonly aktiv: boolean;
+    readonly herkunft: IFilialeinstellungSondertagEintrag['herkunft'];
     readonly datumsregel: IJaehrlichFestesDatum;
   },
   ausgenommeneId?: string,
@@ -35,6 +36,7 @@ export function assertKeineAktiveSondertagDatumskollision(
     return (
       sondertag.id !== ausgenommeneId &&
       sondertag.aktiv &&
+      sondertag.herkunft === ziel.herkunft &&
       regel.typ === 'jaehrlichFestesDatum' &&
       regel.monat === ziel.datumsregel.monat &&
       regel.tag === ziel.datumsregel.tag

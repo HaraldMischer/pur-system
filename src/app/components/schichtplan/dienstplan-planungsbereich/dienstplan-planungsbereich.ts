@@ -21,31 +21,42 @@ import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import {
   IModellschichtMomentaufnahmeEintrag,
   ISchichtrastermodellBestand,
+  ISchichttagesmodellBestand,
 } from '../../../commons/models/domain/schichtmodell';
-import { getDienstplanRasterzeit } from '../../../commons/utils/dienstplan/dienstplan-kalendertage';
+import {
+  createDienstplanKalendertage,
+  getDienstplanRasterzeit,
+} from '../../../commons/utils/dienstplan/dienstplan-kalendertage';
 import { createMitarbeiterbelegungReferenzSchluessel } from '../../../commons/utils/dienstplan/mitarbeiterbelegung';
 import { createSchichtZeitstempelAusLokalzeiten } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
+import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
+import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
+import {
+  TSchichtplanMitarbeiterAblage,
+  TSchichtplanRasterauswahl,
+  TSchichtplanTagesschichtMitarbeiterAblage,
+  TSchichtplanTagesschichtauswahl,
+  TSchichtplanTagesschichtVerschiebung,
+  TSchichtplanVerschiebung,
+} from '../dienstplan-planung.types';
 import { DienstplanAnlegenDialog } from '../dienstplan-anlegen-dialog/dienstplan-anlegen-dialog';
+import { DienstplanMonatsliste } from '../dienstplan-monatsliste/dienstplan-monatsliste';
+import { DienstplanMonatstabelle } from '../dienstplan-monatstabelle/dienstplan-monatstabelle';
 import {
   SchichtBearbeitenDialog,
   TSchichtVerschiebeziel,
 } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
-import {
-  DienstplanMonatstabelle,
-  TSchichtplanMitarbeiterAblage,
-  TSchichtplanRasterauswahl,
-  TSchichtplanVerschiebung,
-} from '../dienstplan-monatstabelle/dienstplan-monatstabelle';
+import { TagesschichtBelegenDialog } from '../tagesschicht-belegen-dialog/tagesschicht-belegen-dialog';
 
 @Component({
   selector: 'app-dienstplan-planungsbereich',
-  imports: [MatButtonModule, DienstplanMonatstabelle],
+  imports: [MatButtonModule, DienstplanMonatsliste, DienstplanMonatstabelle],
   templateUrl: './dienstplan-planungsbereich.html',
   styleUrl: './dienstplan-planungsbereich.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -55,9 +66,11 @@ export class DienstplanPlanungsbereich {
 
   readonly benutzerStore = inject(BenutzerStore);
   readonly dienstplanStore = inject(DienstplanStore);
+  readonly filialeinstellungStore = inject(FilialeinstellungStore);
   readonly mitarbeiterbelegungStore = inject(MitarbeiterbelegungStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
   readonly schichtmodellStore = inject(SchichtmodellStore);
+  readonly schichtTagesmodellStore = inject(SchichtTagesmodellStore);
   private readonly dialog = inject(MatDialog);
 
   // ===== Öffentliche API ======================
@@ -114,9 +127,35 @@ export class DienstplanPlanungsbereich {
         }) ?? [])
       : [];
   });
+  readonly tagesschichten = computed(() => {
+    const dienstplanId = this.dienstplan()?.id;
+    return dienstplanId
+      ? (this.kontext()?.tagesschichten.filter((tagesschicht) => {
+          return tagesschicht.dienstplanId === dienstplanId;
+        }) ?? [])
+      : [];
+  });
   readonly entwurfVersion = computed(() => {
     const entwurfId = this.dienstplan()?.entwurfVersionId;
     return this.versionen().find((version) => version.id === entwurfId) ?? null;
+  });
+  readonly aktiveVersion = computed(() => {
+    const dienstplan = this.dienstplan();
+    if (!dienstplan) return null;
+    return (
+      this.entwurfVersion() ??
+      this.versionen().find((version) => {
+        return version.id === dienstplan.veroeffentlichteVersionId;
+      }) ??
+      null
+    );
+  });
+  readonly statusBezeichnung = computed(() => {
+    const status = this.aktiveVersion()?.status;
+    if (status === 'entwurf') return 'Entwurf';
+    if (status === 'veroeffentlicht') return 'Veröffentlicht';
+    if (status === 'archiviert') return 'Archiviert';
+    return 'Kein Stand';
   });
   readonly entwurfSchichten = computed(() => {
     const entwurfId = this.entwurfVersion()?.id;
@@ -129,6 +168,16 @@ export class DienstplanPlanungsbereich {
   readonly unbesetzteSchichtplaetze = computed(() => {
     const dienstplan = this.dienstplan();
     if (!dienstplan || !this.entwurfVersion()) return 0;
+    if (dienstplan.planungsart === 'schichttagesmodell') {
+      const belegteIds = new Set(
+        this.entwurfSchichten()
+          .map((schicht) => schicht.tagesschichtId)
+          .filter((id): id is string => Boolean(id)),
+      );
+      return this.tagesschichten().filter((tagesschicht) => {
+        return !belegteIds.has(tagesschicht.id);
+      }).length;
+    }
     const belegteSchichtplaetze = new Set(
       this.entwurfSchichten().map((schicht) => {
         return JSON.stringify([schicht.datum, schicht.modellschichtId]);
@@ -313,14 +362,16 @@ export class DienstplanPlanungsbereich {
    */
   async openDienstplanDialog(): Promise<void> {
     if (!this.darfSchreiben()) return;
-    const schichtmodelle = await this.loadAktiveSchichtmodelle();
-    if (!schichtmodelle) return;
+    const modelle = await this.loadAktiveSchichtmodelle();
+    if (!modelle) return;
     this.dialog.open(DienstplanAnlegenDialog, {
       panelClass: ['pur-dialog__panel'],
       data: {
         pfad: this.pfad(),
         monat: this.monat(),
-        schichtmodelle,
+        schichtmodelle: modelle.rastermodelle,
+        schichttagesmodelle: modelle.tagesmodelle,
+        kalendertage: modelle.kalendertage,
       },
     });
   }
@@ -466,6 +517,12 @@ export class DienstplanPlanungsbereich {
    * @param schicht - Zu bearbeitende Mitarbeiterschicht.
    */
   openSchichtBearbeitenDialog(schicht: ISchichtEintrag): void {
+    if (!schicht.modellschichtId) {
+      this.aktionsfehler.set(
+        'Die Bearbeitung einer Tagesmodellbelegung ist in dieser Ansicht noch nicht verfügbar.',
+      );
+      return;
+    }
     this.openSchichtDialogIntern({ datum: '', modellschichtId: schicht.modellschichtId }, schicht);
   }
 
@@ -572,6 +629,94 @@ export class DienstplanPlanungsbereich {
     }
   }
 
+  /**
+   * Belegt eine konkrete Tagesschicht unmittelbar per Drag-and-drop.
+   */
+  async createTagesschichtAusAblage(
+    ablage: TSchichtplanTagesschichtMitarbeiterAblage,
+  ): Promise<void> {
+    const dienstplan = this.dienstplan();
+    const version = this.entwurfVersion();
+    if (!dienstplan || !version || !this.darfSchreiben()) return;
+    try {
+      await this.dienstplanStore.createSchicht(
+        { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
+        {
+          datum: ablage.datum,
+          mitarbeiterId: ablage.mitarbeiterId,
+          tagesschichtId: ablage.tagesschichtId,
+        },
+      );
+    } catch (error: unknown) {
+      this.aktionsfehler.set(
+        error instanceof Error ? error.message : 'Die Tagesschicht konnte nicht belegt werden.',
+      );
+    }
+  }
+
+  /**
+   * Verschiebt eine vorhandene Belegung auf eine andere konkrete Tagesschicht.
+   */
+  async moveTagesschichtAusAblage(
+    verschiebung: TSchichtplanTagesschichtVerschiebung,
+  ): Promise<void> {
+    const dienstplan = this.dienstplan();
+    const version = this.entwurfVersion();
+    if (!dienstplan || !version || !this.darfSchreiben()) return;
+    try {
+      await this.dienstplanStore.updateSchicht(
+        { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
+        verschiebung.schicht.id,
+        {
+          datum: verschiebung.datum,
+          mitarbeiterId: verschiebung.schicht.mitarbeiterId,
+          tagesschichtId: verschiebung.tagesschichtId,
+        },
+      );
+    } catch (error: unknown) {
+      this.aktionsfehler.set(
+        error instanceof Error
+          ? error.message
+          : 'Die Tagesschichtbelegung konnte nicht verschoben werden.',
+      );
+    }
+  }
+
+  /**
+   * Öffnet die alternative Mitarbeiterzuordnung für eine konkrete Tagesschicht.
+   */
+  openTagesschichtDialog(
+    auswahl: TSchichtplanTagesschichtauswahl,
+    schicht?: ISchichtEintrag,
+  ): void {
+    const dienstplan = this.dienstplan();
+    const version = this.entwurfVersion();
+    const tagesschicht = this.tagesschichten().find((eintrag) => {
+      return eintrag.id === auswahl.tagesschichtId && eintrag.datum === auswahl.datum;
+    });
+    if (!dienstplan || !version || !tagesschicht || !this.darfSchreiben()) return;
+    this.dialog.open(TagesschichtBelegenDialog, {
+      data: {
+        pfad: { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
+        tagesschicht,
+        mitarbeiter: this.schichtMitarbeiter(),
+        ...(schicht ? { schicht } : {}),
+      },
+      panelClass: ['pur-dialog__panel'],
+    });
+  }
+
+  /**
+   * Öffnet eine vorhandene Tagesmodellbelegung zur Änderung oder Löschung.
+   */
+  openTagesschichtBearbeitenDialog(schicht: ISchichtEintrag): void {
+    if (!schicht.tagesschichtId) return;
+    this.openTagesschichtDialog(
+      { datum: schicht.datum, tagesschichtId: schicht.tagesschichtId },
+      schicht,
+    );
+  }
+
   // ===== Interne Helfer =======================
 
   private openSchichtDialogIntern(
@@ -667,10 +812,18 @@ export class DienstplanPlanungsbereich {
     }
   }
 
-  private async loadAktiveSchichtmodelle(): Promise<readonly ISchichtrastermodellBestand[] | null> {
+  private async loadAktiveSchichtmodelle(): Promise<{
+    rastermodelle: readonly ISchichtrastermodellBestand[];
+    tagesmodelle: readonly ISchichttagesmodellBestand[];
+    kalendertage: ReturnType<typeof createDienstplanKalendertage>;
+  } | null> {
     this.aktionsfehler.set(null);
     try {
-      await this.schichtmodellStore.loadSchichtmodelle(this.pfad());
+      await Promise.all([
+        this.schichtmodellStore.loadSchichtmodelle(this.pfad()),
+        this.schichtTagesmodellStore.loadSchichtTagesmodelle(this.pfad()),
+        this.filialeinstellungStore.loadFilialeinstellung(this.pfad()),
+      ]);
     } catch {
       this.aktionsfehler.set(
         this.schichtmodellStore.getSchichtmodellKontext(this.pfad())?.error ??
@@ -679,18 +832,37 @@ export class DienstplanPlanungsbereich {
       );
       return null;
     }
-    const schichtmodelle =
+    const rastermodelle =
       this.schichtmodellStore
         .getSchichtmodellKontext(this.pfad())
         ?.schichtmodelle.filter((bestand) => {
           return bestand.schichtmodell.aktiv && bestand.modellschichten.length > 0;
         }) ?? [];
-    if (schichtmodelle.length === 0) {
+    const tagesmodelle =
+      this.schichtTagesmodellStore
+        .getSchichtTagesmodellKontext(this.pfad())
+        ?.schichttagesmodelle.filter((bestand) => {
+          return bestand.schichtmodell.aktiv && bestand.tagesvorlagenschichten.length > 0;
+        }) ?? [];
+    const einstellungen = this.filialeinstellungStore.getFilialeinstellungKontext(
+      this.pfad(),
+    )?.bestand;
+    if (!einstellungen) {
+      this.aktionsfehler.set('Die Öffnungszeiten konnten nicht geladen werden.');
+      return null;
+    }
+    if (rastermodelle.length === 0 && tagesmodelle.length === 0) {
       this.aktionsfehler.set(
         'Lege zuerst ein aktives Schichtmodell mit mindestens einer Schicht an.',
       );
       return null;
     }
-    return schichtmodelle;
+    const kalendertage = createDienstplanKalendertage({
+      monat: this.monat(),
+      standardoeffnungsregel: einstellungen.oeffnungszeiten.standardoeffnungsregel,
+      wochenregeln: einstellungen.oeffnungszeiten.wochenregeln,
+      sondertage: einstellungen.sondertage,
+    });
+    return { rastermodelle, tagesmodelle, kalendertage };
   }
 }

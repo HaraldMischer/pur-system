@@ -2,48 +2,46 @@
 
 # FilialeinstellungService
 
+Die fachlichen Öffnungs- und Kalendergrenzen stehen in der [Öffnungszeiten-Matrix](../../matrizen/oeffnungszeiten.md), die
+verbindlichen Pfad- und CRUD-Rechte in der [Berechtigungsmatrix](../../matrizen/berechtigungen.md).
+
 Der `FilialeinstellungService` ist der fachliche Firestore-Service für allgemeine Filialeinstellungen, regelmäßige
-Wochenöffnungszeiten, Sondertage und datumsbezogene Ausnahmen. Jeder Aufruf erhält einen vollständigen `IFilialPfad`; globale
+Wochenöffnungszeiten und Sondertage. Jeder Aufruf erhält einen vollständigen `IFilialPfad`; globale
 oder firmenweite Einstellungsabfragen sind nicht vorgesehen.
 
 ## Laden und Initialisierung
 
 Der Service lädt die beiden verbindlichen Dokumente `einstellung/allgemein` und `einstellung/oeffnungszeiten` sowie die
-Subcollections `sondertag` und `ausnahme`. Fehlen beide Hauptdokumente, liefert er einen noch nicht initialisierten Bestand.
-Existiert nur eines der beiden Dokumente oder fehlt im Öffnungszeitendokument der Schließzeitraum, wird der unvollständige
-Zustand als Fehler behandelt.
+Subcollection `sondertag`. Fehlen beide Hauptdokumente, liefert er einen noch nicht initialisierten Bestand.
+Existiert nur eines der beiden Dokumente oder fehlen im Öffnungszeitendokument Standardöffnung oder Wochentagsmodi, wird der
+unvollständige Zustand als Fehler behandelt.
 
-Die Initialisierung verlangt Bundesland, Schließzeitraum und vollständige Wochenregeln für alle sieben Tage. Die Oberfläche
-übergibt zunächst fest Nordrhein-Westfalen (`DE-NW`) und den Schließzeitraum `01:00` bis `06:00` Uhr. Daraus wird für alle
-Wochentage der maximale Öffnungsrahmen `06:00` bis `01:00` Uhr am Folgetag abgeleitet. Der Service legt die dafür geltenden
-systemdefinierten Feiertage sowie die zentral vorgesehenen festen Sondertage inaktiv an, sodass zunächst die Wochentagsregel
-gilt. Ihre geschlossenen Öffnungsregeln erhalten Beginn, Ende und Folgetagskennzeichen aus dem aktuellen maximalen
-Öffnungsrahmen. Werte werden nicht aus Adresse oder Postleitzahl abgeleitet. Die anwendungsweit feste technische Zeitzone
+Die Initialisierung verlangt Bundesland, eine geöffnete Standardöffnungsregel und vollständige Wochentagsmodi für alle sieben
+Tage. Die Oberfläche übergibt zunächst fest Nordrhein-Westfalen (`DE-NW`) und die Standardöffnungszeit `06:00` bis `01:00` Uhr
+am Folgetag; alle Wochentage beginnen im Modus `standard`. Gesetzliche Feiertage beginnen grundsätzlich mit `Wie Sonntag`,
+Karfreitag geschlossen und Allerheiligen abweichend mit `18:00–01:00 Uhr`. Heiligabend und Silvester beginnen ab dem
+Standardbeginn bis `16:00 Uhr`, Volkstrauertag mit `13:00–01:00 Uhr` und Totensonntag mit `18:00–01:00 Uhr`. Werte werden nicht
+aus Adresse oder Postleitzahl abgeleitet. Die anwendungsweit feste technische Zeitzone
 `Europe/Berlin` wird nicht in den Filialeinstellungen gespeichert.
 
 ## Schreiben
 
-Allgemeine Einstellungen, Schließzeitraum und Wochenregeln werden gemeinsam gespeichert. Ein Bundeslandwechsel gleicht die
-systemdefinierten Feiertage atomar ab: gemeinsame Einträge behalten ihre angepasste Öffnungsregel, nicht mehr geltende werden
-entfernt und neue inaktiv ergänzt. Benutzerdefinierte Sondertage bleiben erhalten.
+Allgemeine Einstellungen, Standardöffnungsregel und Wochentagsmodi werden gemeinsam gespeichert. Ein
+Bundeslandwechsel gleicht die systemdefinierten Feiertage atomar ab: gemeinsame Einträge behalten ihre angepasste
+Öffnungsregel, nicht mehr geltende werden entfernt und neue mit der bundeslandspezifischen Vorbelegung ergänzt.
+Benutzerdefinierte Sondertage bleiben erhalten.
 
-Eigene jährliche Sondertage und konkrete Datumsausnahmen werden über getrennte Serviceaktionen angelegt, aktualisiert und
-gelöscht. Jährliche Sondertage besitzen Monat und Tag sowie einen Aktivstatus. Datumsausnahmen besitzen ein vollständiges
-Datum und keinen Aktivstatus. Das Datum bildet zugleich ihre Firestore-Dokument-ID und bleibt bei der Aktualisierung eines
-bestehenden Eintrags unverändert. Systemdefinierte Sondertage behalten Identität, Bezeichnung, Herkunft und Datumsregel;
-veränderbar sind nur Aktivstatus und Öffnungsregel. Jeder Schreibvorgang ergänzt die fachlichen Metadaten mit Benutzer-UID und
-Serverzeitstempel.
+Eigene jährliche Sondertage werden über Serviceaktionen angelegt, aktualisiert und gelöscht. Sie besitzen Monat und Tag sowie
+einen Aktivstatus. Systemdefinierte Sondertage behalten Identität, Bezeichnung, Herkunft und Datumsregel; veränderbar sind nur
+Aktivstatus und Öffnungsregel. Jeder Schreibvorgang ergänzt die fachlichen Metadaten mit Benutzer-UID und Serverzeitstempel.
 
 ## Validierung
 
-Der Service validiert Bundesland, Schließzeitraum, vollständige Wochenregeln, lokale Zeitwerte, jährlich feste Daten und
-konkrete Datumswerte. Eine geöffnete Regel muss verschiedene Beginn- und Endzeiten besitzen; `endetAmFolgetag` muss aus ihrer
-Reihenfolge korrekt abgeleitet sein. Jede geöffnete Wochen-, Sondertags- und Ausnahmeregel muss vollständig in dem aus dem
-Schließzeitraum abgeleiteten Öffnungsrahmen liegen. Beim Ändern des Schließzeitraums wird der vollständig geladene Bestand
-geprüft; widersprechende Regeln verhindern den Schreibvorgang und werden nicht automatisch verändert. Eine geschlossene Regel
-darf entweder keine Zeitwerte oder eine vollständige gültige Zeitfolge enthalten. Solange die Regel geschlossen ist, werden
-vorhandene Zeitwerte fachlich nicht berücksichtigt. Schichtzeiten sowie Vor- und Nachbereitungsminuten sind nicht Teil dieser
-Prüfung.
+Der Service validiert Bundesland, Standardöffnungsregel, genau sieben Wochentagsmodi, lokale Zeitwerte, jährlich feste Daten
+und systemdefinierte berechnete Datumsregeln. Nur der Modus `abweichend` enthält eine eigene geöffnete Regel. Eine geöffnete
+Regel muss verschiedene Beginn- und Endzeiten besitzen; `endetAmFolgetag` muss aus ihrer Reihenfolge korrekt abgeleitet sein.
+Standardöffnungsregel sowie jede geöffnete abweichende Wochen- und Sondertagsregel müssen eine positive Zeitspanne
+besitzen. Schichtzeiten sowie Vor- und Nachbereitungsminuten sind nicht Teil dieser Prüfung.
 
 Die Firestore Rules prüfen dieselben Dokumentgrenzen unabhängig vom Client. Masterkonten sind rollenbedingt berechtigt. Office-
 und Filialkonten benötigen sowohl den konkreten Filialzugriff als auch den App-Bereich `einstellungen`.

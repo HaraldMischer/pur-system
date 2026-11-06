@@ -6,10 +6,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { environment } from '../../../environments/environment';
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
-import {
-  IFilialeinstellungAusnahmeEintrag,
-  IFilialeinstellungSondertagEintrag,
-} from '../../commons/models/domain/filialeinstellung';
+import { IFilialeinstellungSondertagEintrag } from '../../commons/models/domain/filialeinstellung';
 import {
   IAufgeloesteOeffnungsregel,
   resolveOeffnungsregel,
@@ -21,7 +18,6 @@ import { StoreSnapshotService } from '../../services/core/store-snapshot.service
 import {
   FilialeinstellungFachfehler,
   FilialeinstellungService,
-  IFilialeinstellungAusnahmeSchreibdaten,
   IFilialeinstellungBestand,
   IFilialeinstellungGrundlagen,
   IFilialeinstellungRohdaten,
@@ -101,14 +97,6 @@ function sortSondertage(
   });
 }
 
-function sortAusnahmen(
-  ausnahmen: readonly IFilialeinstellungAusnahmeEintrag[],
-): readonly IFilialeinstellungAusnahmeEintrag[] {
-  return [...ausnahmen].sort((links, rechts) => {
-    return links.datum.localeCompare(rechts.datum);
-  });
-}
-
 function replaceSondertag(
   sondertage: readonly IFilialeinstellungSondertagEintrag[],
   aktualisiert: IFilialeinstellungSondertagEintrag,
@@ -124,7 +112,6 @@ function sortBestand(bestand: IFilialeinstellungBestand): IFilialeinstellungBest
   return {
     ...bestand,
     sondertage: sortSondertage(bestand.sondertage),
-    ausnahmen: sortAusnahmen(bestand.ausnahmen),
   };
 }
 
@@ -251,7 +238,6 @@ export const FilialeinstellungStore = signalStore(
               pfad,
               anlage,
               bestand.sondertage,
-              bestand.oeffnungszeiten.schliesszeitraum,
               benutzerUid,
             );
             return {
@@ -284,7 +270,6 @@ export const FilialeinstellungStore = signalStore(
               sondertag,
               aktualisierung,
               bestand.sondertage,
-              bestand.oeffnungszeiten.schliesszeitraum,
               benutzerUid,
             );
             return {
@@ -296,7 +281,7 @@ export const FilialeinstellungStore = signalStore(
       }
 
       /**
-       * Ändert Aktivstatus und Öffnungsregel eines systemdefinierten Sondertags.
+       * Ändert Modus und Öffnungsregel eines systemdefinierten Sondertags.
        */
       async function updateSystemSondertag(
         pfad: IFilialPfad,
@@ -317,7 +302,6 @@ export const FilialeinstellungStore = signalStore(
               sondertag,
               aktualisierung,
               bestand.sondertage,
-              bestand.oeffnungszeiten.schliesszeitraum,
               benutzerUid,
             );
             return {
@@ -352,95 +336,6 @@ export const FilialeinstellungStore = signalStore(
         );
       }
 
-      /**
-       * Legt eine datumsbezogene Ausnahme im Filialkontext an.
-       */
-      async function createAusnahme(
-        pfad: IFilialPfad,
-        anlage: IFilialeinstellungAusnahmeSchreibdaten,
-      ): Promise<void> {
-        const kontext = requireKontext(pfad, true);
-        const benutzerUid = requireBenutzerUid();
-        await executeWrite(
-          pfad,
-          kontext,
-          'Der einmalige Sondertag konnte nicht angelegt werden.',
-          async () => {
-            const bestand = requireBestand(kontext);
-            if (bestand.ausnahmen.some((ausnahme) => ausnahme.datum === anlage.datum)) {
-              throw new FilialeinstellungFachfehler(
-                'Für dieses Datum ist bereits eine Ausnahme vorhanden.',
-              );
-            }
-            const ausnahme = await filialeinstellungService.createAusnahme(
-              pfad,
-              anlage,
-              bestand.oeffnungszeiten.schliesszeitraum,
-              benutzerUid,
-            );
-            return { ...bestand, ausnahmen: sortAusnahmen([...bestand.ausnahmen, ausnahme]) };
-          },
-        );
-      }
-
-      /**
-       * Aktualisiert eine datumsbezogene Ausnahme im Filialkontext.
-       */
-      async function updateAusnahme(
-        pfad: IFilialPfad,
-        datum: string,
-        aktualisierung: IFilialeinstellungAusnahmeSchreibdaten,
-      ): Promise<void> {
-        const kontext = requireKontext(pfad, true);
-        const benutzerUid = requireBenutzerUid();
-        const ausnahme = requireAusnahme(kontext, datum);
-        await executeWrite(
-          pfad,
-          kontext,
-          'Der einmalige Sondertag konnte nicht gespeichert werden.',
-          async () => {
-            const bestand = requireBestand(kontext);
-            const aktualisiert = await filialeinstellungService.updateAusnahme(
-              pfad,
-              ausnahme,
-              aktualisierung,
-              bestand.oeffnungszeiten.schliesszeitraum,
-              benutzerUid,
-            );
-            return {
-              ...bestand,
-              ausnahmen: bestand.ausnahmen.map((eintrag) => {
-                return eintrag.id === datum ? aktualisiert : eintrag;
-              }),
-            };
-          },
-        );
-      }
-
-      /**
-       * Löscht eine datumsbezogene Ausnahme aus dem Filialkontext.
-       */
-      async function deleteAusnahme(pfad: IFilialPfad, datum: string): Promise<void> {
-        const kontext = requireKontext(pfad, true);
-        requireBenutzerUid();
-        requireAusnahme(kontext, datum);
-        await executeWrite(
-          pfad,
-          kontext,
-          'Der einmalige Sondertag konnte nicht gelöscht werden.',
-          async () => {
-            const bestand = requireBestand(kontext);
-            await filialeinstellungService.deleteAusnahme(pfad, datum);
-            return {
-              ...bestand,
-              ausnahmen: bestand.ausnahmen.filter((eintrag) => {
-                return eintrag.id !== datum;
-              }),
-            };
-          },
-        );
-      }
-
       // ===== Methoden: Sonstige Aktionen ==========
 
       /**
@@ -460,9 +355,9 @@ export const FilialeinstellungStore = signalStore(
         const bestand = requireBestand(requireKontext(pfad, true));
         return resolveOeffnungsregel({
           datum,
+          standardoeffnungsregel: bestand.oeffnungszeiten.standardoeffnungsregel,
           wochenregeln: bestand.oeffnungszeiten.wochenregeln,
           sondertage: bestand.sondertage,
-          ausnahmen: bestand.ausnahmen,
         });
       }
 
@@ -652,17 +547,6 @@ export const FilialeinstellungStore = signalStore(
         return sondertag;
       }
 
-      function requireAusnahme(
-        kontext: TFilialeinstellungKontext,
-        datum: string,
-      ): IFilialeinstellungAusnahmeEintrag {
-        const ausnahme = requireBestand(kontext).ausnahmen.find((eintrag) => {
-          return eintrag.id === datum;
-        });
-        if (!ausnahme) throw new Error('Die Datumsausnahme wurde im Filialkontext nicht gefunden.');
-        return ausnahme;
-      }
-
       function requireBenutzerUid(): string {
         const benutzerUid = benutzerStore.benutzerId();
         if (!benutzerUid) throw new Error('Für den Schreibvorgang fehlt die Benutzeridentität.');
@@ -683,9 +567,6 @@ export const FilialeinstellungStore = signalStore(
         updateSondertag,
         updateSystemSondertag,
         deleteSondertag,
-        createAusnahme,
-        updateAusnahme,
-        deleteAusnahme,
         getFilialeinstellungKontext,
         resolveOeffnungsregelFuerDatum,
         resetFilialeinstellungen,

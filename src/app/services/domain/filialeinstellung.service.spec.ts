@@ -2,12 +2,11 @@
 
 import { TestBed } from '@angular/core/testing';
 
-import { STANDARD_SCHLIESSZEITRAUM_NRW } from '../../commons/constants/filialeinstellung.constants';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import {
+  IGeoeffneteOeffnungsregel,
   IFilialeinstellungSondertagEintrag,
-  TOeffnungsregel,
-  TWochenoeffnungszeiten,
+  TWochenregeln,
 } from '../../commons/models/domain/filialeinstellung';
 import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
 import {
@@ -85,7 +84,7 @@ describe('FilialeinstellungService', () => {
     );
   });
 
-  it('should load the complete configuration from all four path areas', async () => {
+  it('should load the complete configuration from all three path areas', async () => {
     firestoreDbServiceMock.loadDocument
       .mockResolvedValueOnce({
         id: 'allgemein',
@@ -98,109 +97,46 @@ describe('FilialeinstellungService', () => {
       .mockResolvedValueOnce({
         id: 'oeffnungszeiten',
         daten: {
-          schliesszeitraum: grundlagen.schliesszeitraum,
+          standardoeffnungsregel: grundlagen.standardoeffnungsregel,
           wochenregeln: grundlagen.wochenregeln,
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
         },
       });
-    firestoreDbServiceMock.loadCollection
-      .mockResolvedValueOnce([
-        {
-          id: 'heiligabend',
-          daten: {
-            bezeichnung: 'Heiligabend',
-            aktiv: true,
-            herkunft: 'system',
-            datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
-            oeffnungsregel: { geoeffnet: false },
-            erstelltVonUid: 'uid-1',
-            aktualisiertVonUid: 'uid-1',
-          },
+    firestoreDbServiceMock.loadCollection.mockResolvedValueOnce([
+      {
+        id: 'heiligabend',
+        daten: {
+          bezeichnung: 'Heiligabend',
+          aktiv: true,
+          herkunft: 'system',
+          datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
+          oeffnungsregel: { geoeffnet: false },
+          erstelltVonUid: 'uid-1',
+          aktualisiertVonUid: 'uid-1',
         },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: '2026-12-23',
-          daten: {
-            datum: '2026-12-23',
-            bezeichnung: 'Sonderöffnung',
-            oeffnungsregel: {
-              geoeffnet: true,
-              beginnLokalzeit: '08:00',
-              endeLokalzeit: '12:00',
-              endetAmFolgetag: false,
-            },
-            erstelltVonUid: 'uid-1',
-            aktualisiertVonUid: 'uid-1',
-          },
-        },
-      ]);
+      },
+    ]);
     const service = TestBed.inject(FilialeinstellungService);
 
     const rohdaten = await service.loadFilialeinstellungRohdaten(pfad);
     const bestand = service.validateFilialeinstellungRohdaten(pfad, rohdaten);
 
     expect(bestand?.sondertage[0]).toMatchObject({ ...pfad, id: 'heiligabend' });
-    expect(bestand?.ausnahmen[0]).toMatchObject({ ...pfad, id: '2026-12-23' });
   });
 
-  it('should accept stored times for a closed weekly opening rule', async () => {
-    const wochenregelnMitGeschlossenenZeiten = {
-      ...grundlagen.wochenregeln,
-      sonntag: {
-        geoeffnet: false,
-        beginnLokalzeit: '08:00',
-        endeLokalzeit: '18:00',
-        endetAmFolgetag: false,
-      },
-    } as TWochenoeffnungszeiten;
-    firestoreDbServiceMock.loadDocument
-      .mockResolvedValueOnce({
-        id: 'allgemein',
-        daten: {
-          bundesland: 'DE-NW',
-          erstelltVonUid: 'uid-1',
-          aktualisiertVonUid: 'uid-1',
-        },
-      })
-      .mockResolvedValueOnce({
-        id: 'oeffnungszeiten',
-        daten: {
-          schliesszeitraum: grundlagen.schliesszeitraum,
-          wochenregeln: wochenregelnMitGeschlossenenZeiten,
-          erstelltVonUid: 'uid-1',
-          aktualisiertVonUid: 'uid-1',
-        },
-      });
-    const service = TestBed.inject(FilialeinstellungService);
-
-    const rohdaten = await service.loadFilialeinstellungRohdaten(pfad);
-
-    expect(rohdaten.oeffnungszeiten?.daten.wochenregeln.sonntag).toMatchObject({
-      geoeffnet: false,
-      beginnLokalzeit: '08:00',
-      endeLokalzeit: '18:00',
-    });
-    const bestand = service.validateFilialeinstellungRohdaten(pfad, rohdaten);
-
-    expect(bestand?.oeffnungszeiten.wochenregeln.sonntag).toEqual({
-      geoeffnet: false,
-      beginnLokalzeit: '08:00',
-      endeLokalzeit: '18:00',
-      endetAmFolgetag: false,
-    });
-  });
-
-  it('should reject incomplete stored times for a closed opening rule', async () => {
+  it('should reject incomplete stored times for an overriding opening rule', async () => {
     const service = TestBed.inject(FilialeinstellungService);
     const ungueltigeGrundlagen = {
       ...grundlagen,
       wochenregeln: {
         ...grundlagen.wochenregeln,
-        sonntag: { geoeffnet: false, beginnLokalzeit: '08:00' },
+        sonntag: {
+          modus: 'abweichend',
+          oeffnungsregel: { geoeffnet: true, beginnLokalzeit: '08:00' },
+        },
       },
-    } as IFilialeinstellungGrundlagen;
+    } as unknown as IFilialeinstellungGrundlagen;
 
     await expect(
       service.initializeFilialeinstellung(pfad, ungueltigeGrundlagen, 'uid-1'),
@@ -208,30 +144,72 @@ describe('FilialeinstellungService', () => {
     expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
   });
 
+  it('should reject an individual opening rule in standard mode', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const ungueltigeGrundlagen = {
+      ...grundlagen,
+      wochenregeln: {
+        ...grundlagen.wochenregeln,
+        montag: {
+          modus: 'standard',
+          oeffnungsregel: grundlagen.standardoeffnungsregel,
+        },
+      },
+    } as unknown as IFilialeinstellungGrundlagen;
+
+    await expect(
+      service.initializeFilialeinstellung(pfad, ungueltigeGrundlagen, 'uid-1'),
+    ).rejects.toThrow('darf keine eigene Öffnungsregel enthalten');
+    expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
+  });
+
   it('should initialize explicit foundations and the system special days atomically', async () => {
     const service = TestBed.inject(FilialeinstellungService);
-    const initialeGrundlagen = {
-      ...grundlagen,
-      schliesszeitraum: {
-        beginnLokalzeit: '02:00',
-        endeLokalzeit: '06:00',
-        endetAmFolgetag: false,
-      },
-    };
-
-    const bestand = await service.initializeFilialeinstellung(pfad, initialeGrundlagen, 'uid-1');
+    const bestand = await service.initializeFilialeinstellung(pfad, grundlagen, 'uid-1');
 
     expect(bestand.allgemein.bundesland).toBe('DE-NW');
     expect(bestand.sondertage.some((sondertag) => sondertag.id === 'heiligabend')).toBe(true);
     expect(
-      bestand.sondertage.every((sondertag) => {
-        return (
-          sondertag.oeffnungsregel.beginnLokalzeit === '06:00' &&
-          sondertag.oeffnungsregel.endeLokalzeit === '02:00' &&
-          sondertag.oeffnungsregel.endetAmFolgetag === true
-        );
-      }),
+      bestand.sondertage
+        .filter((sondertag) => {
+          return (
+            sondertag.datumsregel.typ === 'gesetzlicherFeiertag' &&
+            sondertag.id !== 'karfreitag' &&
+            sondertag.id !== 'allerheiligen'
+          );
+        })
+        .every((sondertag) => {
+          return sondertag.aktiv && sondertag.modus === 'wieSonntag';
+        }),
     ).toBe(true);
+    expect(
+      bestand.sondertage.find((sondertag) => {
+        return sondertag.id === 'volkstrauertag';
+      }),
+    ).toMatchObject({
+      aktiv: true,
+      modus: 'abweichend',
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '13:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+    });
+    expect(
+      bestand.sondertage.find((sondertag) => {
+        return sondertag.id === 'totensonntag';
+      }),
+    ).toMatchObject({
+      aktiv: true,
+      modus: 'abweichend',
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '18:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+    });
     const transactionCall = firestoreDbServiceMock.executeDocumentTransaction.mock.calls[0];
     expect(transactionCall[0]).toBe('unternehmer/u-1/firma/f-1/filiale/b-1/einstellung/allgemein');
     const operationen: TFirestoreBatchOperation[] = transactionCall[1](null).operationen;
@@ -245,12 +223,13 @@ describe('FilialeinstellungService', () => {
       operationen.find((operation) => operation.documentPath.endsWith('/heiligabend')),
     ).toMatchObject({
       daten: {
-        aktiv: false,
+        aktiv: true,
+        modus: 'abweichend',
         oeffnungsregel: {
-          geoeffnet: false,
-          beginnLokalzeit: '06:00',
-          endeLokalzeit: '02:00',
-          endetAmFolgetag: true,
+          geoeffnet: true,
+          beginnLokalzeit: '07:00',
+          endeLokalzeit: '16:00',
+          endetAmFolgetag: false,
         },
       },
     });
@@ -298,6 +277,33 @@ describe('FilialeinstellungService', () => {
     });
   });
 
+  it('should add missing calculated North Rhine-Westphalia special days atomically', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const bestand = createBestand([createSondertag('intern', 'benutzer')]);
+
+    const aktualisiert = await service.saveGrundlagen(pfad, bestand, grundlagen, 'uid-2');
+
+    expect(
+      aktualisiert.sondertage.find((sondertag) => {
+        return sondertag.id === 'volkstrauertag';
+      }),
+    ).toMatchObject({
+      aktiv: true,
+      modus: 'abweichend',
+      datumsregel: {
+        typ: 'berechneterSondertag',
+        sondertagSchluessel: 'volkstrauertag',
+      },
+    });
+    expect(firestoreDbServiceMock.updateDocumentsAtomically.mock.calls[0][0]).toContainEqual(
+      expect.objectContaining({
+        documentPath:
+          'unternehmer/u-1/firma/f-1/filiale/b-1/einstellung/oeffnungszeiten/sondertag/volkstrauertag',
+        daten: expect.objectContaining({ aktiv: true, modus: 'abweichend' }),
+      }),
+    );
+  });
+
   it('should create, update and delete a user-defined special day', async () => {
     const service = TestBed.inject(FilialeinstellungService);
     const anlage = {
@@ -307,19 +313,12 @@ describe('FilialeinstellungService', () => {
       oeffnungsregel: { geoeffnet: false } as const,
     };
 
-    const sondertag = await service.createSondertag(
-      pfad,
-      anlage,
-      [],
-      grundlagen.schliesszeitraum,
-      'uid-1',
-    );
+    const sondertag = await service.createSondertag(pfad, anlage, [], 'uid-1');
     const aktualisiert = await service.updateSondertag(
       pfad,
       sondertag,
       { ...anlage, bezeichnung: ' Inventurtag ' },
       [sondertag],
-      grundlagen.schliesszeitraum,
       'uid-2',
     );
     await service.deleteSondertag(pfad, aktualisiert);
@@ -343,8 +342,7 @@ describe('FilialeinstellungService', () => {
           datumsregel: { typ: 'jaehrlichFestesDatum', monat: 12, tag: 24 },
           oeffnungsregel: { geoeffnet: false },
         },
-        [createSondertag('heiligabend', 'system')],
-        grundlagen.schliesszeitraum,
+        [createSondertag('betriebsruhe-vorhanden', 'benutzer')],
         'uid-1',
       ),
     ).rejects.toThrow('Betriebsruhe');
@@ -369,7 +367,6 @@ describe('FilialeinstellungService', () => {
         },
       },
       [sondertag],
-      grundlagen.schliesszeitraum,
       'uid-2',
     );
 
@@ -384,35 +381,59 @@ describe('FilialeinstellungService', () => {
     );
   });
 
-  it('should manage one exception by its ISO date and reject date changes', async () => {
+  it('should reject deleting a calculated system special day', async () => {
     const service = TestBed.inject(FilialeinstellungService);
-    const anlage = {
-      datum: '2026-12-23',
-      bezeichnung: 'Sonderöffnung',
-      oeffnungsregel: { geoeffnet: false } as const,
+    const volkstrauertag = {
+      ...createSondertag('volkstrauertag', 'system'),
+      bezeichnung: 'Volkstrauertag',
+      datumsregel: {
+        typ: 'berechneterSondertag' as const,
+        sondertagSchluessel: 'volkstrauertag' as const,
+      },
     };
-    const ausnahme = await service.createAusnahme(
-      pfad,
-      anlage,
-      grundlagen.schliesszeitraum,
-      'uid-1',
+
+    await expect(service.deleteSondertag(pfad, volkstrauertag)).rejects.toThrow(
+      'Systemdefinierte Sondertage können nicht gelöscht werden.',
     );
+    expect(firestoreDbServiceMock.deleteDocument).not.toHaveBeenCalled();
+  });
+
+  it('should persist Sunday mode only for statutory holidays', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const feiertag = {
+      ...createSondertag('neujahr', 'system'),
+      datumsregel: {
+        typ: 'gesetzlicherFeiertag' as const,
+        feiertagSchluessel: 'neujahr' as const,
+      },
+    };
 
     await expect(
-      service.updateAusnahme(
+      service.updateSystemSondertag(
         pfad,
-        ausnahme,
-        { ...anlage, datum: '2026-12-24' },
-        grundlagen.schliesszeitraum,
+        feiertag,
+        {
+          aktiv: true,
+          modus: 'wieSonntag',
+          oeffnungsregel: { geoeffnet: false },
+        },
+        [feiertag],
         'uid-2',
       ),
-    ).rejects.toThrow('nicht geändert');
-    await service.deleteAusnahme(pfad, '2026-12-23');
-
-    expect(ausnahme.id).toBe('2026-12-23');
-    expect(firestoreDbServiceMock.deleteDocument).toHaveBeenCalledWith(
-      'unternehmer/u-1/firma/f-1/filiale/b-1/einstellung/oeffnungszeiten/ausnahme/2026-12-23',
-    );
+    ).resolves.toMatchObject({ aktiv: true, modus: 'wieSonntag' });
+    await expect(
+      service.updateSystemSondertag(
+        pfad,
+        createSondertag('heiligabend', 'system'),
+        {
+          aktiv: true,
+          modus: 'wieSonntag',
+          oeffnungsregel: { geoeffnet: false },
+        },
+        [],
+        'uid-2',
+      ),
+    ).rejects.toThrow('kann nicht wie ein Sonntag behandelt werden');
   });
 
   it('should reject invalid weekly opening hours before writing', async () => {
@@ -422,10 +443,13 @@ describe('FilialeinstellungService', () => {
       wochenregeln: {
         ...grundlagen.wochenregeln,
         montag: {
-          geoeffnet: true,
-          beginnLokalzeit: '07:00',
-          endeLokalzeit: '01:00',
-          endetAmFolgetag: false,
+          modus: 'abweichend',
+          oeffnungsregel: {
+            geoeffnet: true,
+            beginnLokalzeit: '07:00',
+            endeLokalzeit: '01:00',
+            endetAmFolgetag: false,
+          },
         },
       },
     } as IFilialeinstellungGrundlagen;
@@ -441,111 +465,29 @@ describe('FilialeinstellungService', () => {
     expect((fehler as Error).message).toContain('Zeitfolge');
     expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
   });
-
-  it('should require a closing period in stored opening settings', () => {
-    const service = TestBed.inject(FilialeinstellungService);
-    const rohdaten = {
-      allgemein: {
-        id: 'allgemein',
-        daten: {
-          bundesland: 'DE-NW',
-          erstelltVonUid: 'uid-1',
-          aktualisiertVonUid: 'uid-1',
-        },
-      },
-      oeffnungszeiten: {
-        id: 'oeffnungszeiten',
-        daten: {
-          wochenregeln: grundlagen.wochenregeln,
-          erstelltVonUid: 'uid-1',
-          aktualisiertVonUid: 'uid-1',
-        },
-      },
-      sondertage: [],
-      ausnahmen: [],
-    } as unknown as Parameters<typeof service.validateFilialeinstellungRohdaten>[1];
-
-    expect(() => service.validateFilialeinstellungRohdaten(pfad, rohdaten)).toThrow(
-      'Der Schließzeitraum enthält keine gültige Zeitfolge.',
-    );
-  });
-
-  it('should reject weekly opening hours that overlap the closing period', async () => {
-    const service = TestBed.inject(FilialeinstellungService);
-    const widerspruechlicheGrundlagen: IFilialeinstellungGrundlagen = {
-      ...grundlagen,
-      wochenregeln: {
-        ...grundlagen.wochenregeln,
-        montag: {
-          geoeffnet: true,
-          beginnLokalzeit: '05:30',
-          endeLokalzeit: '01:00',
-          endetAmFolgetag: true,
-        },
-      },
-    };
-
-    await expect(
-      service.initializeFilialeinstellung(pfad, widerspruechlicheGrundlagen, 'uid-1'),
-    ).rejects.toThrow('montag');
-    expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
-  });
-
-  it('should reject a closing-period change that conflicts with a stored special day', async () => {
-    const service = TestBed.inject(FilialeinstellungService);
-    const bestand = createBestand([
-      {
-        ...createSondertag('sonderoeffnung', 'benutzer'),
-        oeffnungsregel: {
-          geoeffnet: true,
-          beginnLokalzeit: '06:30',
-          endeLokalzeit: '22:00',
-          endetAmFolgetag: false,
-        },
-      },
-    ]);
-
-    await expect(
-      service.saveGrundlagen(
-        pfad,
-        bestand,
-        {
-          ...grundlagen,
-          schliesszeitraum: {
-            beginnLokalzeit: '01:00',
-            endeLokalzeit: '07:00',
-            endetAmFolgetag: false,
-          },
-          wochenregeln: Object.fromEntries(
-            Object.entries(grundlagen.wochenregeln).map(([wochentag, regel]) => {
-              return [wochentag, regel.geoeffnet ? { ...regel, beginnLokalzeit: '07:00' } : regel];
-            }),
-          ) as TWochenoeffnungszeiten,
-        },
-        'uid-2',
-      ),
-    ).rejects.toThrow('sonderoeffnung');
-    expect(firestoreDbServiceMock.updateDocumentsAtomically).not.toHaveBeenCalled();
-  });
 });
 
 function createGrundlagen(): IFilialeinstellungGrundlagen {
-  const geoeffnet: TOeffnungsregel = {
+  const standardoeffnungsregel: IGeoeffneteOeffnungsregel = {
     geoeffnet: true,
     beginnLokalzeit: '07:00',
     endeLokalzeit: '01:00',
     endetAmFolgetag: true,
   };
-  const wochenregeln: TWochenoeffnungszeiten = {
-    montag: geoeffnet,
-    dienstag: geoeffnet,
-    mittwoch: geoeffnet,
-    donnerstag: geoeffnet,
-    freitag: geoeffnet,
-    samstag: geoeffnet,
-    sonntag: { geoeffnet: false },
+  const wochenregeln: TWochenregeln = {
+    montag: { modus: 'standard' },
+    dienstag: { modus: 'standard' },
+    mittwoch: { modus: 'standard' },
+    donnerstag: { modus: 'standard' },
+    freitag: { modus: 'standard' },
+    samstag: { modus: 'standard' },
+    sonntag: { modus: 'geschlossen' },
   };
-  return { bundesland: 'DE-NW', schliesszeitraum: STANDARD_SCHLIESSZEITRAUM_NRW, wochenregeln };
+  return {
+    bundesland: 'DE-NW',
+    standardoeffnungsregel,
+    wochenregeln,
+  };
 }
 
 function createSondertag(
@@ -576,12 +518,11 @@ function createBestand(
       aktualisiertVonUid: 'uid-1',
     },
     oeffnungszeiten: {
-      schliesszeitraum: grundlagen.schliesszeitraum,
+      standardoeffnungsregel: grundlagen.standardoeffnungsregel,
       wochenregeln: grundlagen.wochenregeln,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },
     sondertage,
-    ausnahmen: [],
   };
 }

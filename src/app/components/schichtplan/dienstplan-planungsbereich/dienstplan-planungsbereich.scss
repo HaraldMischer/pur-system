@@ -1,1 +1,31 @@
 // pur-system/src/app/components/schichtplan/dienstplan-planungsbereich/dienstplan-planungsbereich.scss
+
+.monatsplan {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.monatskopf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  min-height: 40px;
+}
+
+.status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-large);
+}
+
+.kopf-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}

@@ -4,7 +4,8 @@
 
 Diese Übersicht beschreibt den einmaligen Übergangsprozess zur Übernahme der Legacy-Daten in die neue Firestore-Struktur. Die
 hier dokumentierten Zuordnungen und Wiederholungsregeln gehören nicht zum regulären fachlichen Systembetrieb. Der abgeschlossene
-Umsetzungsverlauf steht in `docs/todo_done.md`; der aktuelle Stand ist in `docs/projekt-stand.md` zusammengefasst.
+Umsetzungsverlauf steht in den [erledigten Todos](../todo_erledigt.md); der aktuelle Stand ist im
+[Projektstand](../projekt-stand.md) zusammengefasst.
 
 ## 1. Geltungsbereich
 

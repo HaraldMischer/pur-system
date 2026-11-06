@@ -19,23 +19,12 @@ import { IModellschichtMomentaufnahmeEintrag } from '../../../commons/models/dom
 import { compareModellschichtenNachReihenfolge } from '../../../commons/utils/dienstplan/modellschicht-sortierung';
 import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstplan/schicht-zeit';
 import { getMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
-
-export type TSchichtplanRasterauswahl = {
-  readonly datum: string;
-  readonly modellschichtId: string;
-};
-
-export type TSchichtplanMitarbeiterAblage = TSchichtplanRasterauswahl & {
-  readonly mitarbeiterId: string;
-};
-
-export type TSchichtplanVerschiebung = TSchichtplanRasterauswahl & {
-  readonly schicht: ISchichtEintrag;
-};
-
-export type TSchichtplanDragDaten =
-  | { readonly art: 'mitarbeiter'; readonly mitarbeiterId: string }
-  | { readonly art: 'schicht'; readonly schicht: ISchichtEintrag };
+import {
+  TSchichtplanDragDaten,
+  TSchichtplanMitarbeiterAblage,
+  TSchichtplanRasterauswahl,
+  TSchichtplanVerschiebung,
+} from '../dienstplan-planung.types';
 
 type TSchichtplanZelle = {
   readonly modellschicht: IModellschichtMomentaufnahmeEintrag;
@@ -75,7 +64,7 @@ export class DienstplanMonatstabelle {
   // ===== Öffentliche API ======================
 
   readonly dienstplan = input.required<IDienstplanEintrag>();
-  readonly versionen = input.required<readonly IDienstplanVersionEintrag[]>();
+  readonly aktiveVersion = input.required<IDienstplanVersionEintrag | null>();
   readonly schichten = input.required<readonly ISchichtEintrag[]>();
   readonly modellschichten = input.required<readonly IModellschichtMomentaufnahmeEintrag[]>();
   readonly konfliktSchichtIds = input<ReadonlySet<string>>(new Set());
@@ -83,14 +72,6 @@ export class DienstplanMonatstabelle {
   readonly erlaubteMitarbeiterIds = input<readonly string[]>([]);
   readonly darfSchreiben = input(false);
   readonly schreibvorgang = input(false);
-  readonly dienstplanLoeschenAnzeigen = input(false);
-  readonly dienstplanLoeschenDeaktiviert = input(false);
-  readonly dienstplanLoeschenHinweis = input('');
-  readonly dienstplanVeroeffentlichenAnzeigen = input(false);
-  readonly dienstplanVeroeffentlichenDeaktiviert = input(false);
-  readonly dienstplanVeroeffentlichenHinweis = input('');
-  readonly entwurfAnlegenAnzeigen = input(false);
-  readonly entwurfAnlegenDeaktiviert = input(false);
   readonly schichtAnlegen = output<TSchichtplanRasterauswahl>();
   readonly schichtAblegen = output<TSchichtplanMitarbeiterAblage>();
   readonly schichtVerschieben = output<TSchichtplanVerschiebung>();
@@ -98,28 +79,8 @@ export class DienstplanMonatstabelle {
   readonly schichtVerschiebungErlaubt = input<
     (schicht: ISchichtEintrag, ziel: TSchichtplanRasterauswahl) => boolean
   >(() => true);
-  readonly dienstplanLoeschen = output<void>();
-  readonly dienstplanVeroeffentlichen = output<void>();
-  readonly entwurfAnlegen = output<void>();
 
   // ===== Öffentliche Ableitungen ==============
-
-  readonly aktiveVersion = computed(() => {
-    const dienstplan = this.dienstplan();
-    const entwurf = this.versionen().find((version) => version.id === dienstplan.entwurfVersionId);
-    return (
-      entwurf ??
-      this.versionen().find((version) => version.id === dienstplan.veroeffentlichteVersionId) ??
-      null
-    );
-  });
-  readonly statusBezeichnung = computed(() => {
-    const status = this.aktiveVersion()?.status;
-    if (status === 'entwurf') return 'Entwurf';
-    if (status === 'veroeffentlicht') return 'Veröffentlicht';
-    if (status === 'archiviert') return 'Archiviert';
-    return 'Kein Stand';
-  });
   readonly geordneteModellschichten = computed(() => {
     const dienstplanId = this.dienstplan().id;
     return this.modellschichten()
@@ -358,6 +319,6 @@ function getKalendertagHervorhebung(
   return kalendertag.istSonntag ? 'sonntag' : null;
 }
 
-function getZellenschluessel(datum: string, modellschichtId: string): string {
+function getZellenschluessel(datum: string, modellschichtId: string | undefined): string {
   return JSON.stringify([datum, modellschichtId]);
 }

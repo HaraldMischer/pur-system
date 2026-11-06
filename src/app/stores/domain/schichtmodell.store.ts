@@ -13,7 +13,7 @@ import {
 } from '../../commons/models/domain/schichtmodell';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
-import { SchichtmodellService } from '../../services/domain/schichtmodell.service';
+import { SchichtRastermodellService } from '../../services/domain/schicht-rastermodell.service';
 import { BenutzerStore } from '../app/benutzer.store';
 
 // ===== Top-Level Helper =====================
@@ -56,7 +56,7 @@ export const SchichtmodellStore = signalStore(
   withMethods(
     (
       store,
-      schichtmodellService = inject(SchichtmodellService),
+      schichtmodellService = inject(SchichtRastermodellService),
       benutzerStore = inject(BenutzerStore),
       destroyRef = inject(DestroyRef),
       storeSnapshotService = inject(StoreSnapshotService),

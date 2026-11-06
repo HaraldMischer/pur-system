@@ -1,0 +1,37 @@
+<!-- pur-system/src/app/components/einstellungen/abweichende-oeffnungszeit-bearbeiten-dialog/abweichende-oeffnungszeit-bearbeiten-dialog.html -->
+
+<h2 mat-dialog-title>Abweichende Öffnungszeit {{ daten.bezeichnung }}</h2>
+<mat-dialog-content class="pur-dialog__content">
+  <form
+    id="abweichende-oeffnungszeit-form"
+    class="pur-form pur-form--grid"
+    [formGroup]="form"
+    (ngSubmit)="apply()"
+  >
+    <div class="pur-form__row">
+      <app-eingabe-zeit
+        class="pur-form__item pur-form__item--field pur-form__item--50"
+        label="Beginn"
+        formControlName="beginnLokalzeit"
+        required
+      />
+      <app-eingabe-zeit
+        class="pur-form__item pur-form__item--field pur-form__item--50"
+        label="Ende"
+        formControlName="endeLokalzeit"
+        required
+      />
+    </div>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" [mat-dialog-close]="undefined">Abbrechen</button>
+  <button
+    matButton="filled"
+    type="submit"
+    form="abweichende-oeffnungszeit-form"
+    [disabled]="form.invalid || !hatAenderungen()"
+  >
+    Übernehmen
+  </button>
+</mat-dialog-actions>

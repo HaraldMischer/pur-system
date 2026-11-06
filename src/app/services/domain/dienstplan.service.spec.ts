@@ -108,6 +108,7 @@ describe('DienstplanService', () => {
       versionen: [],
       schichten: [],
       modellschichten: [],
+      tagesschichten: [],
     });
     expect(loadDocumentMock).toHaveBeenCalledWith(
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10',
@@ -141,7 +142,7 @@ describe('DienstplanService', () => {
   it('should reject a monthly plan with an unsupported planning type', async () => {
     loadDocumentMock.mockResolvedValue({
       id: '2026-10',
-      daten: createDienstplanDokument({ planungsart: 'schichtbausteine' }),
+      daten: createDienstplanDokument({ planungsart: 'nicht-unterstuetzt' as never }),
     });
     const service = TestBed.inject(DienstplanService);
 
@@ -164,9 +165,13 @@ describe('DienstplanService', () => {
       return { id: 'v-1', daten: createVersionDokument({ status: 'veroeffentlicht' }) };
     });
     loadCollectionMock.mockImplementation(async (path: string) => {
-      return path.endsWith('/modellschicht')
-        ? [{ id: 'frueh', daten: createModellschichtDaten() }]
-        : [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }];
+      if (path.endsWith('/rastermodellschicht')) {
+        return [{ id: 'frueh', daten: createModellschichtDaten() }];
+      }
+      if (path.endsWith('/schicht')) {
+        return [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }];
+      }
+      return [];
     });
     const service = TestBed.inject(DienstplanService);
 
@@ -199,10 +204,13 @@ describe('DienstplanService', () => {
           { id: `${path.includes('2026-10') ? 'v-1' : 'v-2'}`, daten: createVersionDokument() },
         ];
       }
-      if (path.endsWith('/modellschicht')) {
+      if (path.endsWith('/rastermodellschicht')) {
         return [{ id: 'frueh', daten: createModellschichtDaten() }];
       }
-      return [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }];
+      if (path.endsWith('/schicht')) {
+        return [{ id: 's-1', daten: createSchichtDokument('2026-10-05T08:00') }];
+      }
+      return [];
     });
     const service = TestBed.inject(DienstplanService);
 
@@ -239,7 +247,7 @@ describe('DienstplanService', () => {
         entwurfVersionId: 'neu-1',
         schichtmodellId: 'modell-1',
         schichtmodellBezeichnung: 'Sommer',
-        planungsart: 'schichtraster',
+        planungsart: 'schichtrastermodell',
         kalendertage: expect.arrayContaining([
           expect.objectContaining({ datum: '2024-02-01', wochentag: 'donnerstag' }),
         ]),
@@ -289,7 +297,7 @@ describe('DienstplanService', () => {
       }),
       expect.objectContaining({
         documentPath:
-          'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2024-02/modellschicht/frueh',
+          'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2024-02/rastermodellschicht/frueh',
         daten: createModellschichtDaten(),
       }),
     ]);
@@ -363,7 +371,7 @@ describe('DienstplanService', () => {
     await expect(
       service.createDienstplan(pfad, '2026-10', createSchichtmodell(), 'uid-1'),
     ).rejects.toThrow(
-      'Der Dienstplan konnte nicht angelegt werden. Für 2026-10-03 sind mehrere aktive Sondertage konfiguriert: Sondertag 1, Sondertag 2.',
+      'Der Dienstplan konnte nicht angelegt werden. Für 2026-10-03 sind mehrere aktive benutzerdefinierte Sondertage konfiguriert: Sondertag 1, Sondertag 2.',
     );
     expect(updateDocumentsAtomicallyMock).not.toHaveBeenCalled();
   });
@@ -375,7 +383,7 @@ describe('DienstplanService', () => {
       ...schichtmodell,
       schichtmodell: {
         ...schichtmodell.schichtmodell,
-        planungsart: 'schichtbausteine',
+        planungsart: 'schichttagesmodell',
       },
     } as unknown as ISchichtrastermodellBestand;
 
@@ -437,6 +445,11 @@ describe('DienstplanService', () => {
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1',
     );
     expect(transaktion[1]({ id: 'v-1', daten: createVersionDokument() }).operationen).toEqual([
+      {
+        documentPath:
+          'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/rastermodellschicht/frueh',
+        delete: true,
+      },
       {
         documentPath:
           'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/modellschicht/frueh',
@@ -685,7 +698,7 @@ describe('DienstplanService', () => {
         naechsteVersionsnummer: 3,
         schichtmodellId: 'modell-1',
         schichtmodellBezeichnung: 'Sommer',
-        planungsart: 'schichtraster',
+        planungsart: 'schichtrastermodell',
       }),
     );
     expect(ergebnis.version).toEqual(
@@ -1131,7 +1144,7 @@ describe('DienstplanService', () => {
 
   it('should allow another employee when the model shift permits multiple occupancy', async () => {
     loadDocumentMock.mockImplementation(async (path: string) => {
-      return path.endsWith('/modellschicht/frueh')
+      return path.endsWith('/rastermodellschicht/frueh')
         ? {
             id: 'frueh',
             daten: { ...createModellschichtDaten(), mehrfachbelegungErlaubt: true },
@@ -1388,7 +1401,7 @@ describe('DienstplanService', () => {
       zeitzone: 'Europe/Berlin',
       schichtmodellId: 'modell-1',
       schichtmodellBezeichnung: 'Sommer',
-      planungsart: 'schichtraster',
+      planungsart: 'schichtrastermodell',
       naechsteVersionsnummer: 2,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
@@ -1434,25 +1447,20 @@ describe('DienstplanService', () => {
         aktualisiertVonUid: 'uid-1',
       },
       oeffnungszeiten: {
-        schliesszeitraum: {
-          beginnLokalzeit: '01:00',
-          endeLokalzeit: '06:00',
-          endetAmFolgetag: false,
-        },
+        standardoeffnungsregel: wochenregel,
         wochenregeln: {
-          montag: wochenregel,
-          dienstag: wochenregel,
-          mittwoch: wochenregel,
-          donnerstag: wochenregel,
-          freitag: wochenregel,
-          samstag: wochenregel,
-          sonntag: { geoeffnet: false },
+          montag: { modus: 'standard' },
+          dienstag: { modus: 'standard' },
+          mittwoch: { modus: 'standard' },
+          donnerstag: { modus: 'standard' },
+          freitag: { modus: 'standard' },
+          samstag: { modus: 'standard' },
+          sonntag: { modus: 'geschlossen' },
         },
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },
       sondertage: [],
-      ausnahmen: [],
     };
   }
 
@@ -1520,7 +1528,7 @@ describe('DienstplanService', () => {
         id,
         bezeichnung,
         aktiv: true,
-        planungsart: 'schichtraster',
+        planungsart: 'schichtrastermodell',
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },

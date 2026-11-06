@@ -9,19 +9,24 @@ export interface ISchichtZeitdaten {
   ende: Timestamp;
 }
 
-export interface ISchichtAnlage {
+interface ISchichtAnlageBasis {
   datum: string;
   mitarbeiterId: string;
-  modellschichtId: string;
 }
 
-export interface ISchichtAktualisierung extends ISchichtAnlage {}
+export type TSchichtZielReferenz =
+  | { modellschichtId: string; tagesschichtId?: never }
+  | { modellschichtId?: never; tagesschichtId: string };
 
-export interface ISchichtDaten extends ISchichtAnlage, ISchichtZeitdaten {
-  pauseMinuten?: number;
-}
+export type ISchichtAnlage = ISchichtAnlageBasis & TSchichtZielReferenz;
+export type ISchichtAktualisierung = ISchichtAnlage;
 
-export interface ISchichtEintrag extends ISchichtDaten {
+export type ISchichtDaten = ISchichtAnlage &
+  ISchichtZeitdaten & {
+    pauseMinuten?: number;
+  };
+
+export type ISchichtEintrag = ISchichtDaten & {
   id: string;
   dienstplanId: string;
   versionId: string;
@@ -32,7 +37,7 @@ export interface ISchichtEintrag extends ISchichtDaten {
   erstelltVonUid: string;
   aktualisiertAm?: Timestamp;
   aktualisiertVonUid: string;
-}
+};
 
 export interface ISchichtPausenaktualisierung {
   unternehmerId: string;
@@ -52,13 +57,13 @@ export interface ISchichtSchreibergebnis {
 
 // ===== Firestore-Dokumente ==================
 
-export interface ISchichtDokument extends ISchichtZeitdaten {
-  datum: string;
-  mitarbeiterId: string;
-  modellschichtId: string;
-  erstelltAm?: Timestamp;
-  erstelltVonUid: string;
-  aktualisiertAm?: Timestamp;
-  aktualisiertVonUid: string;
-  pauseMinuten?: number;
-}
+export type ISchichtDokument = ISchichtZeitdaten &
+  TSchichtZielReferenz & {
+    datum: string;
+    mitarbeiterId: string;
+    erstelltAm?: Timestamp;
+    erstelltVonUid: string;
+    aktualisiertAm?: Timestamp;
+    aktualisiertVonUid: string;
+    pauseMinuten?: number;
+  };
