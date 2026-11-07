@@ -1,5 +1,6 @@
 // pur-system/src/app/commons/utils/dienstplan/dienstplan-zeitachse.ts
 
+import { ZEITRASTER_MINUTEN } from '../../constants/zeit.constants';
 import { getLokalzeitMinuten } from './schicht-lokalzeit';
 
 // ===== Konstanten & Typen ===================
@@ -30,6 +31,7 @@ export interface IDienstplanZeitachse {
   readonly beginnMinuten: number;
   readonly endeMinuten: number;
   readonly dauerMinuten: number;
+  readonly rasterAnzahl: number;
   readonly stundenAnzahl: number;
   readonly marken: readonly IDienstplanZeitachsenMarke[];
 }
@@ -79,6 +81,7 @@ export function createDienstplanZeitachse(
     beginnMinuten,
     endeMinuten,
     dauerMinuten,
+    rasterAnzahl: dauerMinuten / ZEITRASTER_MINUTEN,
     stundenAnzahl: dauerMinuten / MINUTEN_PRO_STUNDE,
     marken,
   };
@@ -89,7 +92,7 @@ export function createDienstplanZeitachse(
  *
  * @param intervalle - Zeitintervalle eines Kalendertags.
  * @param zeitachse - Gemeinsame Zeitachse der Monatsdarstellung.
- * @returns Minutengenaue Rasterlinien und vertikale Spuren je Intervall.
+ * @returns Rasterlinien im 15-Minuten-Abstand und vertikale Spuren je Intervall.
  */
 export function createDienstplanZeitachsenPositionen(
   intervalle: readonly IDienstplanZeitachsenIntervall[],
@@ -123,8 +126,8 @@ export function createDienstplanZeitachsenPositionen(
     }
     return {
       id: intervall.id,
-      beginnRasterlinie: intervall.beginn - zeitachse.beginnMinuten + 1,
-      endeRasterlinie: intervall.ende - zeitachse.beginnMinuten + 1,
+      beginnRasterlinie: getRasterlinie(intervall.beginn - zeitachse.beginnMinuten),
+      endeRasterlinie: getRasterlinie(intervall.ende - zeitachse.beginnMinuten),
       spur,
     };
   });
@@ -183,10 +186,17 @@ function createRasterposition(
 ): IDienstplanZeitachsenPosition {
   return {
     id,
-    beginnRasterlinie: beginn + 1,
-    endeRasterlinie: ende + 1,
+    beginnRasterlinie: getRasterlinie(beginn),
+    endeRasterlinie: getRasterlinie(ende),
     spur,
   };
+}
+
+function getRasterlinie(minutenVersatz: number): number {
+  if (minutenVersatz % ZEITRASTER_MINUTEN !== 0) {
+    throw new Error('Die Zeitgrenze liegt außerhalb des 15-Minuten-Rasters.');
+  }
+  return minutenVersatz / ZEITRASTER_MINUTEN + 1;
 }
 
 function getAbsoluteMinuten(zeitgrenze: IDienstplanZeitgrenze): number {

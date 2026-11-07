@@ -163,6 +163,22 @@ describe('FilialeinstellungService', () => {
     expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
   });
 
+  it('should reject opening times outside the 15-minute grid', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const ungueltigeGrundlagen = {
+      ...grundlagen,
+      standardoeffnungsregel: {
+        ...grundlagen.standardoeffnungsregel,
+        beginnLokalzeit: '07:07',
+      },
+    } as IFilialeinstellungGrundlagen;
+
+    await expect(
+      service.initializeFilialeinstellung(pfad, ungueltigeGrundlagen, 'uid-1'),
+    ).rejects.toThrow('Die Öffnungsregel muss im 15-Minuten-Raster liegen.');
+    expect(firestoreDbServiceMock.executeDocumentTransaction).not.toHaveBeenCalled();
+  });
+
   it('should initialize explicit foundations and the system special days atomically', async () => {
     const service = TestBed.inject(FilialeinstellungService);
     const bestand = await service.initializeFilialeinstellung(pfad, grundlagen, 'uid-1');

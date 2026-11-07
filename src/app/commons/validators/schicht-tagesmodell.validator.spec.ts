@@ -84,6 +84,18 @@ describe('Schicht-Tagesmodell-Validierung', () => {
       'Die Tagesschicht benötigt einen festen Beginn.',
     );
   });
+
+  it('weist Schichtgrenzen außerhalb des 15-Minuten-Rasters zurück', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, '17:07'),
+      createSchicht('wochentag', 1, '15:00', undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
+    ];
+
+    expect(() => {
+      assertGueltigeTagesvorlagenschichten(schichten, oeffnungen);
+    }).toThrow('15-Minuten-Raster');
+  });
 });
 
 function createSchicht(

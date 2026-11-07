@@ -1,10 +1,10 @@
 <!-- pur-system/src/app/components/schichtplan/dienstplan-monatsliste/dienstplan-monatsliste.html -->
 
-<div class="monatsliste-scroll">
+<div class="pur-scroll">
   <div
     class="monatsliste"
     [style.--zeitachsenbreite]="zeitachsenbreite() + 'px'"
-    [style.--zeitachsenminuten]="zeitachse().dauerMinuten"
+    [style.--zeitachsenraster]="zeitachse().rasterAnzahl"
   >
     <div class="zeitachsenkopf">
       <strong class="zeitachsenkopf__titel">Uhrzeit</strong>
@@ -24,11 +24,12 @@
           [class.listentag__kopf--feiertag]="tag.hervorhebung === 'feiertag'"
           [class.listentag__kopf--sondertag]="tag.hervorhebung === 'sondertag'"
         >
-          <time class="tag" [attr.datetime]="tag.kalendertag.datum">
-            <strong>{{ tag.wochentagBezeichnung }}</strong>
-            <span>{{ tag.datumBezeichnung }}</span>
-          </time>
-          <span class="oeffnungszeit">
+          <!-- Wochentag -->
+          <span class="pur-text pur-text--label pur-text--ellipsis">
+            {{ tag.wochentagBezeichnung }} {{ tag.datumBezeichnung }}
+          </span>
+          <!-- Öffnungszeit -->
+          <span class="pur-text pur-text--small pur-text--secondary pur-text--ellipsis">
             @if (tag.kalendertag.oeffnungsregel.geoeffnet) {
               {{ tag.kalendertag.oeffnungsregel.beginnLokalzeit }}–{{
                 tag.kalendertag.oeffnungsregel.endeLokalzeit
@@ -37,8 +38,12 @@
               Geschlossen
             }
           </span>
+          <!-- Kalendereigenschaft -->
           @if (tag.kalendereigenschaftBezeichnung; as bezeichnung) {
-            <span class="pur-text pur-text--small" [attr.title]="bezeichnung">
+            <span
+              class="pur-text pur-text--small pur-text--secondary pur-text--ellipsis"
+              [attr.title]="bezeichnung"
+            >
               {{ bezeichnung }}
             </span>
           }
@@ -50,7 +55,7 @@
               title="Geschlossen"
               [class.zeitachsenkarte--am-anfang]="bereich.beginnRasterlinie === 1"
               [class.zeitachsenkarte--am-ende]="
-                bereich.endeRasterlinie === zeitachse().dauerMinuten + 1
+                bereich.endeRasterlinie === zeitachse().rasterAnzahl + 1
               "
               [style.grid-column-start]="bereich.beginnRasterlinie"
               [style.grid-column-end]="bereich.endeRasterlinie"
@@ -65,7 +70,7 @@
               class="tagesschicht"
               [class.zeitachsenkarte--am-anfang]="zelle.zeitachsenposition.beginnRasterlinie === 1"
               [class.zeitachsenkarte--am-ende]="
-                zelle.zeitachsenposition.endeRasterlinie === zeitachse().dauerMinuten + 1
+                zelle.zeitachsenposition.endeRasterlinie === zeitachse().rasterAnzahl + 1
               "
               [style.grid-column-start]="zelle.zeitachsenposition.beginnRasterlinie"
               [style.grid-column-end]="zelle.zeitachsenposition.endeRasterlinie"

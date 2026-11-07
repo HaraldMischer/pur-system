@@ -161,9 +161,10 @@ Hauptquellen.
   Modellbestandteil; bestätigte Lücken und Überlappungen sind möglich. Geschlossene oder zu kurze Tage bleiben unbelegbar.
 - Mitarbeiter können per Drag-and-drop eingeplant, verschoben und entfernt werden. Mehrfachbelegung, Pausen und
   filialübergreifende Zeitkonflikte werden fachlich geprüft.
-- Die Monatsdarstellung des Tagesmodells ordnet konkrete Tagesschichten minutengenau auf einer gemeinsamen Zeitachse an.
-  Geschlossene Außenbereiche werden als eigene Karten dargestellt, offene Lücken bleiben frei und zeitliche Überschneidungen
-  verwenden getrennte Spuren. Tagesköpfe zeigen gesetzliche Feiertage und aktive Sondertage mit ihrer Bezeichnung.
+- Die Monatsdarstellung des Tagesmodells ordnet konkrete Tagesschichten in einem verbindlichen 15-Minuten-Raster auf einer
+  gemeinsamen Zeitachse an. Geschlossene Außenbereiche werden als eigene Karten dargestellt, offene Lücken bleiben frei und
+  zeitliche Überschneidungen verwenden getrennte Spuren. Tagesköpfe zeigen gesetzliche Feiertage und aktive Sondertage mit
+  ihrer Bezeichnung.
 - Der firmenweite Belegungsindex wird live angezeigt und vor jedem Schreibzugriff innerhalb einer Firestore-Transaktion erneut
   geprüft. Veraltete Revisionen und parallele Konflikte brechen den Vorgang nachvollziehbar ab.
 - Ein leerer Erstentwurf kann gelöscht und neu angelegt werden. Veröffentlichungen archivieren einen vorherigen Stand und

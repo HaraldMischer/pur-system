@@ -32,6 +32,23 @@ export function getLokalzeitMinuten(lokalzeit: string): number | null {
 }
 
 /**
+ * Prüft eine lokale Uhrzeit auf ein vorgegebenes Minutenraster.
+ *
+ * @param lokalzeit - Lokale Uhrzeit im Format `HH:mm`.
+ * @param minutenschritt - Positiver ganzzahliger Abstand zwischen erlaubten Uhrzeiten.
+ * @returns true, wenn die Uhrzeit gültig ist und auf dem Minutenraster liegt.
+ */
+export function istLokalzeitImMinutenraster(lokalzeit: string, minutenschritt: number): boolean {
+  const minuten = getLokalzeitMinuten(lokalzeit);
+  return (
+    minuten !== null &&
+    Number.isInteger(minutenschritt) &&
+    minutenschritt > 0 &&
+    minuten % minutenschritt === 0
+  );
+}
+
+/**
  * Ordnet eine innere Modellschichtgrenze anhand der Standardöffnung dem Start- oder Folgetag zu.
  *
  * @param lokalzeit - Lokale Uhrzeit im Format `HH:mm`.

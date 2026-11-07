@@ -28,9 +28,10 @@ eindeutige Zuordnung zum Start- oder Folgetag. Die erste Modellschicht darf nich
 nicht negative Nachbereitungsminuten enthalten. Jede Modellschicht legt außerdem verbindlich fest, ob eine Mehrfachbelegung
 derselben Rasterzelle erlaubt ist.
 
-Der gemeinsame TypeScript-Validator prüft diese Struktur, die Modellschicht-IDs, die Zeitgrenzen und die positiven, bereits
-ohne Kalendertag bestimmbaren Dauern. Innere Beginn- und Endgrenzen bleiben unabhängig: Überlappungen zwischen Rasterplätzen
-sind erlaubt, Lücken werden als nicht blockierender Hinweis behandelt. Eine zeitliche Sortierung findet nicht statt.
+Der gemeinsame TypeScript-Validator prüft diese Struktur, die Modellschicht-IDs, das verbindliche 15-Minuten-Raster der
+Zeitgrenzen und die positiven, bereits ohne Kalendertag bestimmbaren Dauern. Innere Beginn- und Endgrenzen bleiben unabhängig:
+Überlappungen zwischen Rasterplätzen sind erlaubt, Lücken werden als nicht blockierender Hinweis behandelt. Eine zeitliche
+Sortierung findet nicht statt.
 
 Jedes Schichtmodell besitzt die verpflichtende `planungsart`. Neue Rastermodelle speichern `schichtrastermodell`, neue
 Tagesmodelle `schichttagesmodell`. Historische Rastermodelle mit `schichtraster` werden beim Lesen kontrolliert als

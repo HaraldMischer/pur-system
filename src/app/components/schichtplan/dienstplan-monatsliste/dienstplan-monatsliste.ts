@@ -98,7 +98,7 @@ export class DienstplanMonatsliste {
     return createDienstplanZeitachse(zeitfenster);
   });
   readonly zeitachsenbreite = computed(() => {
-    return this.zeitachse().stundenAnzahl * 48;
+    return this.zeitachse().stundenAnzahl * 40;
   });
   readonly tage = computed<readonly TSchichtplanListentag[]>(() => {
     const dienstplanId = this.dienstplan().id;
@@ -261,10 +261,11 @@ export class DienstplanMonatsliste {
 }
 
 function formatWochentag(datum: Date): string {
-  return new Intl.DateTimeFormat('de-DE', {
+  const wochentag = new Intl.DateTimeFormat('de-DE', {
     timeZone: 'UTC',
-    weekday: 'long',
+    weekday: 'short',
   }).format(datum);
+  return `${wochentag}.`;
 }
 
 function formatDatum(datum: Date): string {
@@ -272,7 +273,7 @@ function formatDatum(datum: Date): string {
     timeZone: 'UTC',
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
+    year: '2-digit',
   }).format(datum);
 }
 

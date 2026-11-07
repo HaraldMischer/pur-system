@@ -1,6 +1,7 @@
 // pur-system/src/app/commons/validators/schicht-tagesmodell.validator.ts
 
 import { MAX_RANDMINUTEN } from '../constants/schichtmodell.constants';
+import { ZEITRASTER_MINUTEN } from '../constants/zeit.constants';
 import type { IGeoeffneteOeffnungsregel } from '../models/domain/filialeinstellung';
 import type {
   ITagesvorlagenschichtSchreibdaten,
@@ -9,9 +10,9 @@ import type {
   TTagesvorlageTyp,
 } from '../models/domain/schicht-tagesmodell';
 import { resolveTagesvorlagenschichten } from '../utils/dienstplan/tagesvorlagenschichten';
+import { getLokalzeitMinuten } from '../utils/dienstplan/schicht-lokalzeit';
 
 const MINUTEN_PRO_TAG = 24 * 60;
-const LOKALZEIT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
 /**
  * Prüft beide Vorlagen eines Schicht-Tagesmodells einschließlich ihrer Öffnungsgrenzen.
@@ -141,11 +142,14 @@ function parseZeitgrenze(zeitgrenze: ITagesvorlagenschichtZeitgrenze): number {
 }
 
 function parseLokalzeit(lokalzeit: string): number {
-  if (!LOKALZEIT_PATTERN.test(lokalzeit)) {
+  const minuten = getLokalzeitMinuten(lokalzeit);
+  if (minuten === null) {
     throw new Error('Die Tagesschicht enthält eine ungültige Lokalzeit.');
   }
-  const [stunden, minuten] = lokalzeit.split(':').map(Number);
-  return stunden * 60 + minuten;
+  if (minuten % ZEITRASTER_MINUTEN !== 0) {
+    throw new Error('Die Lokalzeit der Tagesschicht muss im 15-Minuten-Raster liegen.');
+  }
+  return minuten;
 }
 
 function assertRandminuten(minuten: number): void {

@@ -17,6 +17,13 @@
     font: var(--mat-sys-body-small);
   }
 
+  &--ellipsis {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   &--secondary {
     color: var(--mat-sys-on-surface-variant);
   }

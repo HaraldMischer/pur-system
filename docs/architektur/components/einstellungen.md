@@ -52,7 +52,9 @@ Ein nur einmal benötigter Tag wird als benutzerdefinierter jährlicher Sonderta
 Monatspläne deaktiviert oder gelöscht. Die Tagesmomentaufnahmen bestehender Dienstpläne bleiben davon unberührt.
 
 Die lokalen Zeit- und Datumseingaben verwenden die wiederverwendbaren Components `EingabeZeit` und `EingabeDatum`. Beide
-arbeiten als browserunabhängige maskierte Texteingaben. `EingabeDatum` unterstützt jährliche Daten ohne Jahr als `TT.MM.`.
+arbeiten als browserunabhängige maskierte Texteingaben. `EingabeZeit` erlaubt standardmäßig minutengenaue Werte und kann über
+`minutenschritt` ein engeres Raster vorgeben. Öffnungs- und Schichtzeiten verwenden einen Schritt von 15 Minuten und werden beim
+Verlassen des Feldes auf den nächsten Rasterwert gerundet. `EingabeDatum` unterstützt jährliche Daten ohne Jahr als `TT.MM.`.
 Löschvorgänge werden über den gemeinsamen Bestätigungsdialog abgesichert.
 
 Die Oberfläche stellt die Standardöffnungszeit als responsiv angeordnete Zeitfelder dar. Standardöffnungszeit, abweichende

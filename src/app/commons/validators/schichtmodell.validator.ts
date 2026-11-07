@@ -1,13 +1,17 @@
 // pur-system/src/app/commons/validators/schichtmodell.validator.ts
 
 import { MAX_RANDMINUTEN } from '../constants/schichtmodell.constants';
+import { ZEITRASTER_MINUTEN } from '../constants/zeit.constants';
 import {
   IModellschichtSchreibdaten,
   IModellschichtZeitgrenze,
 } from '../models/domain/schichtmodell';
+import {
+  getLokalzeitMinuten,
+  istLokalzeitImMinutenraster,
+} from '../utils/dienstplan/schicht-lokalzeit';
 
 const MINUTEN_PRO_TAG = 24 * 60;
-const LOKALZEIT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
 /**
  * Prüft die vollständige Struktur geordneter Modellschichten.
@@ -105,10 +109,13 @@ export function hatModellschichtLuecken(
 
 function assertZeitgrenze(zeitgrenze: IModellschichtZeitgrenze): void {
   if (
-    !LOKALZEIT_PATTERN.test(zeitgrenze.lokalzeit) ||
+    getLokalzeitMinuten(zeitgrenze.lokalzeit) === null ||
     (zeitgrenze.tag !== 'starttag' && zeitgrenze.tag !== 'folgetag')
   ) {
     throw new Error('Die Modellschicht enthält keine gültige Zeitgrenze.');
+  }
+  if (!istLokalzeitImMinutenraster(zeitgrenze.lokalzeit, ZEITRASTER_MINUTEN)) {
+    throw new Error('Die Zeitgrenze der Modellschicht muss im 15-Minuten-Raster liegen.');
   }
 }
 

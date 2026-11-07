@@ -19,11 +19,10 @@ describe('DienstplanMonatsliste', () => {
     const tag = fixture.componentInstance.tage()[0];
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
 
-    expect(tag.wochentagBezeichnung).toBe('Sonntag');
-    expect(tag.datumBezeichnung).toBe('01.11.2026');
+    expect(tag.wochentagBezeichnung).toBe('So.');
+    expect(tag.datumBezeichnung).toBe('01.11.26');
     expect(tag.zellen.map((zelle) => zelle.tagesschicht.id)).toEqual(['tagesschicht-1']);
-    expect(text).toContain('Sonntag');
-    expect(text).toContain('01.11.2026');
+    expect(text).toContain('So. 01.11.26');
     expect(text).toContain('10:00–01:00 Uhr');
     expect(text).toContain('Allerheiligen · Sonderöffnung');
   });

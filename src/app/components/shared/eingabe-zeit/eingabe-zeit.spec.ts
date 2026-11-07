@@ -13,6 +13,7 @@ import { EingabeZeit } from './eingabe-zeit';
       label="Beginn"
       required
       [formControl]="control"
+      [minutenschritt]="minutenschritt"
       [readonly]="schreibgeschuetzt"
     />
   `,
@@ -22,6 +23,7 @@ class TestHost {
     nonNullable: true,
     validators: [Validators.required],
   });
+  minutenschritt = 1;
   schreibgeschuetzt = false;
 }
 
@@ -147,6 +149,44 @@ describe('EingabeZeit', () => {
 
     expect(input.value).toBe('07:30');
     expect(fixture.componentInstance.control.value).toBe('07:30');
+    expect(fixture.componentInstance.control.valid).toBe(true);
+  });
+
+  it('should preserve minute-precise values by default', () => {
+    const fixture = TestBed.createComponent(TestHost);
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+
+    input.value = '08:07';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.control.value).toBe('08:07');
+    expect(fixture.componentInstance.control.valid).toBe(true);
+  });
+
+  it('should round values to the configured minute step after leaving the input', () => {
+    const fixture = TestBed.createComponent(TestHost);
+    fixture.componentInstance.minutenschritt = 15;
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+
+    input.value = '08:07';
+    input.dispatchEvent(new Event('input'));
+    expect(fixture.componentInstance.control.hasError('minutenschritt')).toBe(true);
+    input.dispatchEvent(new Event('blur'));
+    expect(fixture.componentInstance.control.value).toBe('08:00');
+
+    input.value = '08:08';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
+    expect(fixture.componentInstance.control.value).toBe('08:15');
+
+    input.value = '23:53';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
+    expect(fixture.componentInstance.control.value).toBe('00:00');
     expect(fixture.componentInstance.control.valid).toBe(true);
   });
 

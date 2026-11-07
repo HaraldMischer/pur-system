@@ -10,6 +10,7 @@ import {
   formatSchichtUhrzeit,
   getLokalzeitMinuten,
   getModellschichtTagFuerLokalzeit,
+  istLokalzeitImMinutenraster,
 } from './schicht-lokalzeit';
 
 describe('Schicht-Lokalzeit', () => {
@@ -22,6 +23,12 @@ describe('Schicht-Lokalzeit', () => {
   it('should convert a valid local time into minutes since start of day', () => {
     expect(getLokalzeitMinuten('16:30')).toBe(990);
     expect(getLokalzeitMinuten('24:00')).toBeNull();
+  });
+
+  it('should detect whether a local time lies on the configured minute grid', () => {
+    expect(istLokalzeitImMinutenraster('08:15', 15)).toBe(true);
+    expect(istLokalzeitImMinutenraster('08:07', 15)).toBe(false);
+    expect(istLokalzeitImMinutenraster('ungültig', 15)).toBe(false);
   });
 
   it('should derive the model-shift day from the standard opening rule', () => {

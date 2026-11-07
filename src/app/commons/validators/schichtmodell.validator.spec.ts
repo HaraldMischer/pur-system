@@ -49,6 +49,12 @@ describe('Schichtmodellvalidierung', () => {
       tag: 'ungueltig' as 'starttag',
     };
     expect(() => assertGueltigeModellschichten(ungueltigerTag)).toThrow('Zeitgrenze');
+
+    const ausserhalbZeitraster = createModellschichten();
+    ausserhalbZeitraster[1].beginn = { lokalzeit: '16:07', tag: 'starttag' };
+    expect(() => {
+      assertGueltigeModellschichten(ausserhalbZeitraster);
+    }).toThrow('15-Minuten-Raster');
   });
 
   it('should reject nonpositive inner durations and misplaced edge minutes', () => {

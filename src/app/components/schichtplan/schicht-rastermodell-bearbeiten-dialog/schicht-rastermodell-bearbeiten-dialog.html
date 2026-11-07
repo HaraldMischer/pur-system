@@ -85,6 +85,7 @@
               <app-eingabe-zeit
                 class="pur-form__item pur-form__item--field pur-form__item--20"
                 label="Beginn"
+                minutenschritt="15"
                 [formControl]="modellschicht.controls.beginnLokalzeit"
                 required
               />
@@ -101,6 +102,7 @@
               <app-eingabe-zeit
                 class="pur-form__item pur-form__item--field pur-form__item--20"
                 label="Ende"
+                minutenschritt="15"
                 [formControl]="modellschicht.controls.endeLokalzeit"
                 required
               />

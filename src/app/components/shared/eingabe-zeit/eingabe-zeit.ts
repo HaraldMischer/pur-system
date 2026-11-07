@@ -7,6 +7,7 @@ import {
   effect,
   forwardRef,
   input,
+  numberAttribute,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -47,11 +48,32 @@ function normalisiereEingabeZeit(wert: string): string {
   return `${vollstaendigeEingabe[1].padStart(2, '0')}:${vollstaendigeEingabe[2]}`;
 }
 
-function getLokalzeitFehler(wert: unknown, erforderlich: boolean): ValidationErrors | null {
+function getMinutenschritt(minutenschritt: number): number {
+  return Number.isInteger(minutenschritt) && minutenschritt > 0 && 60 % minutenschritt === 0
+    ? minutenschritt
+    : 1;
+}
+
+function rundeEingabeZeit(wert: string, minutenschritt: number): string {
+  if (!LOKALZEIT_PATTERN.test(wert)) return wert;
+  const [stunden, minuten] = wert.split(':').map(Number);
+  const tagesminuten = 24 * 60;
+  const gerundeteMinuten = Math.round((stunden * 60 + minuten) / minutenschritt) * minutenschritt;
+  const minutenImTag = gerundeteMinuten % tagesminuten;
+  return `${String(Math.floor(minutenImTag / 60)).padStart(2, '0')}:${String(minutenImTag % 60).padStart(2, '0')}`;
+}
+
+function getLokalzeitFehler(
+  wert: unknown,
+  erforderlich: boolean,
+  minutenschritt: number,
+): ValidationErrors | null {
   if (typeof wert !== 'string' || wert.length === 0) {
     return erforderlich ? { required: true } : null;
   }
-  return LOKALZEIT_PATTERN.test(wert) ? null : { lokalzeit: true };
+  if (!LOKALZEIT_PATTERN.test(wert)) return { lokalzeit: true };
+  const minuten = Number(wert.slice(3));
+  return minuten % minutenschritt === 0 ? null : { minutenschritt: true };
 }
 
 @Component({
@@ -82,6 +104,7 @@ export class EingabeZeit implements ControlValueAccessor, Validator {
     alias: 'readonly',
     transform: booleanAttribute,
   });
+  readonly minutenschritt = input(1, { transform: numberAttribute });
   readonly subscriptSizing = input<SubscriptSizing>('fixed');
 
   // ===== Öffentliche Werte ====================
@@ -104,10 +127,11 @@ export class EingabeZeit implements ControlValueAccessor, Validator {
     });
     effect(() => {
       const erforderlich = this.required();
+      const minutenschritt = getMinutenschritt(this.minutenschritt());
       this.eingabeControl.setValidators([
         ...(erforderlich ? [Validators.required] : []),
         (control) => {
-          return getLokalzeitFehler(control.value, erforderlich);
+          return getLokalzeitFehler(control.value, erforderlich, minutenschritt);
         },
       ]);
       this.eingabeControl.updateValueAndValidity({ emitEvent: false });
@@ -154,7 +178,11 @@ export class EingabeZeit implements ControlValueAccessor, Validator {
    * Prüft den Formularwert auf eine vollständige gültige Lokalzeit.
    */
   validate(control: AbstractControl): ValidationErrors | null {
-    return getLokalzeitFehler(control.value, this.required());
+    return getLokalzeitFehler(
+      control.value,
+      this.required(),
+      getMinutenschritt(this.minutenschritt()),
+    );
   }
 
   /**
@@ -169,8 +197,9 @@ export class EingabeZeit implements ControlValueAccessor, Validator {
    */
   handleBlur(): void {
     const normalisiert = normalisiereEingabeZeit(this.eingabeControl.value);
-    if (normalisiert !== this.eingabeControl.value) {
-      this.eingabeControl.setValue(normalisiert);
+    const gerundet = rundeEingabeZeit(normalisiert, getMinutenschritt(this.minutenschritt()));
+    if (gerundet !== this.eingabeControl.value) {
+      this.eingabeControl.setValue(gerundet);
     }
     this.onTouched();
   }

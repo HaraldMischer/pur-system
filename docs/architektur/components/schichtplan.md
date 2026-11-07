@@ -196,11 +196,11 @@ aus ihren Vorlagen erzeugten Instanzen; Feier- und Sondertage zeigen ihre währe
 Danach dienen alle Tagesschichten als Drag-and-drop-Ziele und über dieselbe alternative Aktion zur Mitarbeiterzuordnung.
 
 Die Tagesschichten liegen auf einer gemeinsamen Monatszeitachse von der frühesten Öffnung bis zum spätesten Öffnungsende. Die
-Kopfzeile zeigt volle Stunden, positioniert Beginn und Ende einer Tagesschicht aber minutengenau. Bereiche der gemeinsamen Achse
-vor oder nach der wirksamen Tagesöffnung erscheinen als `Geschlossen`; offene Lücken zwischen Tagesschichten bleiben frei.
-Später beginnende Tagesöffnungen bleiben dadurch gegenüber früher geöffneten Tagen zeitlich vergleichbar. Zeitlich
-überschneidende Tagesschichten verwenden getrennte Spuren. Auf kleinen Viewports bleibt die vollständige Zeitachse horizontal
-scrollbar; die Tagesangaben bleiben beim Scrollen am linken Rand sichtbar.
+Kopfzeile zeigt volle Stunden; Beginn und Ende von Öffnungen und Tagesschichten liegen verbindlich auf einem 15-Minuten-Raster.
+Bereiche der gemeinsamen Achse vor oder nach der wirksamen Tagesöffnung erscheinen als `Geschlossen`; offene Lücken zwischen
+Tagesschichten bleiben frei. Später beginnende Tagesöffnungen bleiben dadurch gegenüber früher geöffneten Tagen zeitlich
+vergleichbar. Zeitlich überschneidende Tagesschichten verwenden getrennte Spuren. Auf kleinen Viewports bleibt die vollständige
+Zeitachse horizontal scrollbar; die Tagesangaben bleiben beim Scrollen am linken Rand sichtbar.
 
 Die Planungsoberfläche wählt anhand der diskriminierten Planungsart ausschließlich die passende Darstellung und Aktionen aus.
 Rasterzellen referenzieren weiterhin Rastermodellschichten; Tageszellen referenzieren ausschließlich konkrete Tagesschichten.

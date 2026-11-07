@@ -7,6 +7,7 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
+import { ZEITRASTER_MINUTEN } from '../../commons/constants/zeit.constants';
 import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
 import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import {
@@ -30,6 +31,10 @@ import {
 } from '../../commons/utils/filialeinstellung/feiertag';
 import { assertKeineAktiveSondertagDatumskollision } from '../../commons/utils/filialeinstellung/sondertag-kollision';
 import { getSondertagsmodus } from '../../commons/utils/filialeinstellung/oeffnungsregel-aufloesung';
+import {
+  getLokalzeitMinuten,
+  istLokalzeitImMinutenraster,
+} from '../../commons/utils/dienstplan/schicht-lokalzeit';
 import {
   FirestoreDbService,
   IFirestoreDokument,
@@ -97,13 +102,25 @@ function assertOeffnungsregel(oeffnungsregel: TOeffnungsregel | undefined): void
   if (
     typeof beginnLokalzeit !== 'string' ||
     typeof endeLokalzeit !== 'string' ||
-    typeof endetAmFolgetag !== 'boolean' ||
-    !LOKALZEIT_PATTERN.test(beginnLokalzeit) ||
-    !LOKALZEIT_PATTERN.test(endeLokalzeit) ||
+    typeof endetAmFolgetag !== 'boolean'
+  ) {
+    throw new FilialeinstellungFachfehler('Die Öffnungsregel enthält keine gültige Zeitfolge.');
+  }
+  const beginnMinuten = getLokalzeitMinuten(beginnLokalzeit);
+  const endeMinuten = getLokalzeitMinuten(endeLokalzeit);
+  if (
+    beginnMinuten === null ||
+    endeMinuten === null ||
     beginnLokalzeit === endeLokalzeit ||
     endetAmFolgetag !== endeLokalzeit < beginnLokalzeit
   ) {
     throw new FilialeinstellungFachfehler('Die Öffnungsregel enthält keine gültige Zeitfolge.');
+  }
+  if (
+    !istLokalzeitImMinutenraster(beginnLokalzeit, ZEITRASTER_MINUTEN) ||
+    !istLokalzeitImMinutenraster(endeLokalzeit, ZEITRASTER_MINUTEN)
+  ) {
+    throw new FilialeinstellungFachfehler('Die Öffnungsregel muss im 15-Minuten-Raster liegen.');
   }
 }
 
@@ -255,8 +272,6 @@ const WOCHENTAGE = [
   'samstag',
   'sonntag',
 ] as const;
-const LOKALZEIT_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-
 @Injectable({ providedIn: 'root' })
 export class FilialeinstellungService {
   // ===== Interne Dependency Injection =========
