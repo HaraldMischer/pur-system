@@ -31,6 +31,7 @@ import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
 import { SchichtBearbeitenDialog } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
 import { DienstplanAnlegenDialog } from '../dienstplan-anlegen-dialog/dienstplan-anlegen-dialog';
+import { TagesschichtBelegenDialog } from '../tagesschicht-belegen-dialog/tagesschicht-belegen-dialog';
 import { DienstplanPlanungsbereich } from './dienstplan-planungsbereich';
 
 const PFAD = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' } as const;
@@ -650,6 +651,59 @@ describe('DienstplanPlanungsbereich', () => {
           datum: '2026-10-05',
           mitarbeiter: [MITARBEITER],
           modellschicht: MODELLSCHICHT,
+        }),
+      }),
+    );
+  });
+
+  it('should offer active branch employees in an unassigned day-shift plan', async () => {
+    getMitarbeiter.mockReturnValue([
+      MITARBEITER,
+      { ...MITARBEITER, id: 'm-inaktiv', aktiv: false },
+      { ...MITARBEITER, id: 'm-andere-filiale', filialIds: ['b-2'] },
+    ]);
+    const tagesschicht = {
+      ...PFAD,
+      id: 'tagesschicht-1',
+      dienstplanId: '2026-10',
+      datum: '2026-10-05',
+      herkunft: 'wochentag' as const,
+      vorlagenschichtId: 'vorlage-1',
+      bezeichnung: 'Früh',
+      reihenfolge: 0,
+      kernbeginnLokalzeit: '08:00',
+      kernendeLokalzeit: '16:00',
+      kernbeginnAmFolgetag: false,
+      kernendeAmFolgetag: false,
+      beginn: Timestamp.fromDate(new Date('2026-10-05T08:00:00+02:00')),
+      ende: Timestamp.fromDate(new Date('2026-10-05T16:00:00+02:00')),
+      mehrfachbelegungErlaubt: false,
+      vorbereitungsminuten: 0,
+      nachbereitungsminuten: 0,
+    };
+    kontext.set(
+      createKontext({
+        dienstplaene: [{ ...DIENSTPLAN, planungsart: 'schichttagesmodell' }],
+        versionen: [VERSION],
+        tagesschichten: [tagesschicht],
+      }),
+    );
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openTagesschichtDialog({
+      datum: '2026-10-05',
+      tagesschichtId: 'tagesschicht-1',
+    });
+
+    expect(dialogOpen).toHaveBeenCalledWith(
+      TagesschichtBelegenDialog,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          pfad: { ...PFAD, dienstplanId: '2026-10', versionId: 'v-1' },
+          tagesschicht,
+          mitarbeiter: [MITARBEITER],
         }),
       }),
     );

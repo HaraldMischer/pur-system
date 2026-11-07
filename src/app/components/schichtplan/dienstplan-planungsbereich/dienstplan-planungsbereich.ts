@@ -699,7 +699,7 @@ export class DienstplanPlanungsbereich {
       data: {
         pfad: { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
         tagesschicht,
-        mitarbeiter: this.schichtMitarbeiter(),
+        mitarbeiter: this.mitarbeiter(),
         ...(schicht ? { schicht } : {}),
       },
       panelClass: ['pur-dialog__panel'],

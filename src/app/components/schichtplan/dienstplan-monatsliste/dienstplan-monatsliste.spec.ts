@@ -42,7 +42,26 @@ describe('DienstplanMonatsliste', () => {
     });
   });
 
-  function createFixture(): ComponentFixture<DienstplanMonatsliste> {
+  it('should show only the configured preparation or follow-up time', () => {
+    const ersteSchicht = createFixture(15, 0);
+    ersteSchicht.detectChanges();
+    const ersteSchichtText = (ersteSchicht.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(ersteSchichtText).toContain('+15 Min. Vorbereitung');
+    expect(ersteSchichtText).not.toContain('Nachbereitung');
+
+    const letzteSchicht = createFixture(0, 30);
+    letzteSchicht.detectChanges();
+    const letzteSchichtText = (letzteSchicht.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(letzteSchichtText).not.toContain('Vorbereitung');
+    expect(letzteSchichtText).toContain('+30 Min. Nachbereitung');
+  });
+
+  function createFixture(
+    vorbereitungsminuten = 0,
+    nachbereitungsminuten = 0,
+  ): ComponentFixture<DienstplanMonatsliste> {
     const fixture = TestBed.createComponent(DienstplanMonatsliste);
     fixture.componentRef.setInput('dienstplan', {
       id: '2026-11',
@@ -113,8 +132,8 @@ describe('DienstplanMonatsliste', () => {
         beginn: Timestamp.fromDate(new Date('2026-11-01T10:00:00+01:00')),
         ende: Timestamp.fromDate(new Date('2026-11-02T01:00:00+01:00')),
         mehrfachbelegungErlaubt: false,
-        vorbereitungsminuten: 0,
-        nachbereitungsminuten: 0,
+        vorbereitungsminuten,
+        nachbereitungsminuten,
       },
     ]);
     fixture.componentRef.setInput('darfSchreiben', true);

@@ -89,10 +89,18 @@
                   zelle.tagesschicht.nachbereitungsminuten > 0
                 ) {
                   <span class="pur-text pur-text--small pur-text--secondary">
-                    +{{ zelle.tagesschicht.vorbereitungsminuten }} Min. Vorbereitung · +{{
-                      zelle.tagesschicht.nachbereitungsminuten
-                    }}
-                    Min. Nachbereitung
+                    @if (zelle.tagesschicht.vorbereitungsminuten > 0) {
+                      +{{ zelle.tagesschicht.vorbereitungsminuten }} Min. Vorbereitung
+                    }
+                    @if (
+                      zelle.tagesschicht.vorbereitungsminuten > 0 &&
+                      zelle.tagesschicht.nachbereitungsminuten > 0
+                    ) {
+                      ·
+                    }
+                    @if (zelle.tagesschicht.nachbereitungsminuten > 0) {
+                      +{{ zelle.tagesschicht.nachbereitungsminuten }} Min. Nachbereitung
+                    }
                   </span>
                 }
                 @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {

@@ -231,7 +231,7 @@ werden, wenn mehrere Mitarbeiter dieselbe Schichtart mit identischen Zeiten bese
 Mitarbeiter eine eigene konkrete Schicht. Die Mehrfachbelegung fasst diese Schichten lediglich in derselben Rasterzelle
 zusammen.
 
-## Spätere Ausbaustufe: Schicht-Tagesmodell
+## Schicht-Tagesmodell
 
 Als zweite Planungsart wird das `schichttagesmodell` neben dem bestehenden Schicht-Rastermodell umgesetzt. Es ist kein
 erweitertes Raster, kein Katalog von Schichtbausteinen und kein Sonderfall der Rastermodellschichten. Beide Modelle besitzen
@@ -260,6 +260,11 @@ nicht zum Schicht-Tagesmodell. Die aufgelösten Grenzen bilden die Kernzeit und 
 Nur die erste Schicht einer Vorlage besitzt Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; bei einer einzelnen
 Schicht gelten beide Werte. Diese Randminuten erweitern die Kernzeit zur tatsächlichen Arbeitszeit und dürfen als einzige Werte
 vor den Öffnungsbeginn beziehungsweise nach das Öffnungsende reichen.
+
+Beim Ergänzen einer Vorlagenschicht halbiert der Modelldialog den verbleibenden Zeitraum von der bisher letzten Beginnzeit bis
+zum Schichtende. Die berechnete Grenze wird als Ende der bisherigen und als Beginn der neuen Schicht vorbelegt. Beide Grenzen
+bleiben unabhängig bearbeitbar; Lücken und Überlappungen sind weiterhin ausdrücklich zulässig. Die Halbierung berücksichtigt
+auch eine über Mitternacht reichende Öffnung.
 
 Beim initialen Erstellen eines Monatsdienstplans wird jeder Kalendertag mit seiner wirksamen Öffnung und seinen unabhängigen
 Kalendereigenschaften aufgelöst. Reguläre Wochentage von Montag bis Samstag erhalten eigene Tagesschichten aus der

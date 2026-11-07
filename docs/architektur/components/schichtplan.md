@@ -132,8 +132,8 @@ kann die Mitarbeiterzuordnung geändert werden. Die alternative Aktion `Schicht 
 von Zieltag und Zielmodellschicht ein; auch dabei bleiben die abgeleiteten Zeitwerte schreibgeschützt. Eine belegte
 Einfachschicht oder filialübergreifende Überschneidung des ausgewählten Mitarbeiters wird angezeigt und sperrt das Speichern.
 
-`SchichtmodellBearbeitenDialog` verwaltet die Bezeichnung und den Aktivstatus eines Schichtmodells sowie eine dynamische Liste
-seiner Modellschichten. Jede Modellschicht besitzt eine Bezeichnung, die standardmäßig deaktivierte Option
+`SchichtRastermodellBearbeitenDialog` verwaltet die Bezeichnung und den Aktivstatus eines Schicht-Rastermodells sowie eine
+dynamische Liste seiner Modellschichten. Jede Modellschicht besitzt eine Bezeichnung, die standardmäßig deaktivierte Option
 `Mehrfachbelegung` und ihre gespeicherte fachliche Reihenfolge. Der Beginn der ersten Modellschicht und das Ende der letzten
 werden als tagesabhängig angezeigt und nicht bearbeitet; bei einer einzelnen Modellschicht gilt dies für beide Grenzen. Feste
 innere Beginn- und Endzeiten werden ausschließlich als Uhrzeit erfasst; ihre Zuordnung zum Start- oder Folgetag leitet der
@@ -168,17 +168,21 @@ wird fachlich als Schicht-Rastermodelldialog benannt. Die wirkungslose Auswahl `
 
 Der Schicht-Tagesmodelldialog enthält getrennte Bereiche für eine Wochentagsvorlage von Montag bis Samstag und eine
 Sonntagsvorlage. In jedem Bereich können beliebig viele eigene Vorlagenschichten mit Beginn, Ende, Reihenfolge und
-Mehrfachbelegung angelegt, entfernt und geordnet werden. Der Beginn der ersten und das Ende der letzten Schicht werden wie im
-Rastermodelldialog als nicht bearbeitbarer `Schichtstart` beziehungsweise nicht bearbeitbares `Schichtende` dargestellt. Nur die
-inneren Grenzen bleiben editierbar. Nur die erste Schicht zeigt die Vorbereitung und nur die letzte die Nachbereitung; bei einer
-einzelnen Schicht sind beide Werte verfügbar. Beim Hinzufügen oder Entfernen einer äußeren Schicht werden die betroffenen
-Randminuten auf die neue erste beziehungsweise letzte Schicht übertragen. Beide Vorlagen dürfen eine unterschiedliche Anzahl
-und Identität von Schichten besitzen.
+Mehrfachbelegung in fachlicher Reihenfolge angelegt und entfernt werden. Der Beginn der ersten und das Ende der letzten Schicht
+werden wie im Rastermodelldialog als nicht bearbeitbarer `Schichtstart` beziehungsweise nicht bearbeitbares `Schichtende`
+dargestellt. Nur die inneren Grenzen bleiben editierbar. Nur die erste Schicht zeigt die Vorbereitung und nur die letzte die
+Nachbereitung; bei einer einzelnen Schicht sind beide Werte verfügbar. Beim Hinzufügen oder Entfernen einer äußeren Schicht
+werden die betroffenen Randminuten auf die neue erste beziehungsweise letzte Schicht übertragen. Beide Vorlagen dürfen eine
+unterschiedliche Anzahl und Identität von Schichten besitzen.
+
+Beim Hinzufügen einer Schicht wird der verbleibende Zeitraum von der bisher letzten Beginnzeit bis zum Schichtende halbiert.
+Diese automatisch berechnete innere Grenze wird als Ende der bisherigen und als Beginn der neuen Schicht vorbelegt. Beide
+Grenzen bleiben anschließend unabhängig bearbeitbar, sodass bewusste Lücken und Überlappungen möglich sind. Öffnungen über
+Mitternacht werden bei der Halbierung berücksichtigt.
 
 Kernzeiten müssen innerhalb der für die Vorlage maßgeblichen Öffnung liegen. Lücken und Überschneidungen bleiben zulässig;
 jede Kernschicht benötigt eine positive Dauer. Die Randminuten der ersten und letzten Schicht erweitern die Tagesstruktur zur
-tatsächlichen Arbeitszeit. Prozentwerte und automatisch aus der Öffnungsdauer berechnete Übergänge werden im
-Schicht-Tagesmodell nicht angeboten.
+tatsächlichen Arbeitszeit. Prozentwerte und relative Übergangsregeln werden im Schicht-Tagesmodell nicht angeboten.
 
 Der Dienstplan-Anlegen-Dialog führt für Schicht-Tagesmodelle eine vollständige Monatsinitialisierung aus. Nach der Modellwahl
 öffnet er für die erkannten abweichend geöffneten Feier- und Sondertage die freie Tagesstruktur. Für jeden dieser Tage werden
@@ -215,7 +219,7 @@ ein gemeinsames Raster dar.
 - `src/app/components/schichtplan/dienstplan-monatstabelle`
 - `src/app/components/schichtplan/schicht-bearbeiten-dialog`
 - `src/app/components/schichtplan/tagesschicht-belegen-dialog`
-- `src/app/components/schichtplan/schichtmodell-bearbeiten-dialog`
+- `src/app/components/schichtplan/schicht-rastermodell-bearbeiten-dialog`
 - `src/app/components/schichtplan/schichtmodelle-filiale`
 - `src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog`
 - `src/app/components/schichtplan/dienstplan-tagesstruktur-bearbeiten-dialog`

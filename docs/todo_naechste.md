@@ -60,7 +60,6 @@ veröffentlichter Plan kann wie bisher gelöscht und mit einer anderen Struktur 
 - src/app/components/schichtplan/dienstplan-planungsbereich/
 - src/app/components/schichtplan/dienstplan-monatstabelle/
 - src/app/components/schichtplan/schicht-bearbeiten-dialog/
-- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/
 - src/app/components/schichtplan/schichtmodelle-filiale/
 - src/app/components/einstellungen/oeffnungszeiten-filiale/
 - src/app/services/domain/dienstplan.service.ts
@@ -93,6 +92,7 @@ Neu hinzuzufügen:
 - src/app/commons/models/domain/schicht-tagesmodell.ts
 - src/app/commons/utils/dienstplan/dienstplan-tagesschichten.ts
 - src/app/commons/utils/dienstplan/dienstplan-tagesschichten.spec.ts
+- src/app/commons/utils/dienstplan/tagesvorlagenschichten.ts
 - src/app/commons/validators/schicht-tagesmodell.validator.ts
 - src/app/commons/validators/schicht-tagesmodell.validator.spec.ts
 - src/app/components/schichtplan/schicht-rastermodell-bearbeiten-dialog/
@@ -116,8 +116,9 @@ Neu hinzuzufügen:
 - [x] Die Planungsartwerte verbindlich als `schichtrastermodell` und `schichttagesmodell` benennen.
 - [x] Das bestehende Schicht-Rastermodell in seinem fachlichen Verhalten erhalten und nicht um Tagesvorlagen erweitern.
 - [x] Das Schicht-Tagesmodell mit einer Wochentagsvorlage und einer unabhängigen Sonntagsvorlage ausstatten.
-- [x] Beginn und Ende aller Vorlagen- und Tagesschichten ausschließlich als konkrete Uhrzeiten am Start- oder Folgetag
-      konfigurieren. Prozentuale und relative Übergänge gehören nicht zum Schicht-Tagesmodell.
+- [x] Nur die inneren Grenzen der Vorlagenschichten sowie alle Grenzen freier Tagesschichten als konkrete Uhrzeiten am Start-
+      oder Folgetag konfigurieren. Die äußeren Vorlagengrenzen aus der wirksamen Öffnung ableiten. Prozentuale und relative
+      Übergänge gehören nicht zum Schicht-Tagesmodell.
 - [x] Feier- und Sondertage ohne wiederverwendbare Vorlage innerhalb der Monatsplananlage frei konfigurieren.
 - [x] Für gesetzliche Feiertage die vier Öffnungsarten `Standard`, `Wie Sonntag`, `Abweichend` und `Geschlossen` festlegen.
       `Wie Sonntag` verweist dynamisch auf die wirksame Sonntagsöffnung und die Sonntagsvorlage; nur `Abweichend` benötigt eine
@@ -159,6 +160,8 @@ Neu hinzuzufügen:
 - [x] Je Vorlage beliebig viele Schichten mit stabiler ID, Bezeichnung, Reihenfolge, inneren Grenzen und optionaler
       Mehrfachbelegung konfigurieren; äußere Grenzen aus der wirksamen Tagesöffnung ableiten sowie Vorbereitung nur an der
       ersten und Nachbereitung nur an der letzten Schicht zulassen.
+- [x] Beim Hinzufügen einer Schicht den verbleibenden Zeitraum bis zum Schichtende halbieren und die berechnete innere Grenze
+      unabhängig bearbeitbar als Ende der bisherigen sowie Beginn der neuen Schicht vorbelegen.
 - [x] Unterschiedliche Schichtanzahlen, Längen, Lücken und Überschneidungen zwischen Wochentags- und Sonntagsvorlage zulassen.
 - [x] Kernzeiten gegen die für die Vorlage maßgebliche Öffnung validieren.
 - [ ] Die tatsächliche Arbeitszeit einschließlich Vor- und Nachbereitung im Modelldialog nachvollziehbar anzeigen.
