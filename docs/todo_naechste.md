@@ -22,8 +22,10 @@ Die Planungsarten heißen verbindlich `schichtrastermodell` und `schichttagesmod
 Modellen, Oberfläche und Dokumentation entfernt.
 
 Ein Schicht-Tagesmodell enthält eine Wochentagsvorlage für Montag bis Samstag und eine davon unabhängige Sonntagsvorlage. Beide
-Vorlagen besitzen beliebig viele eigene Schichten mit konkreten Uhrzeiten, Reihenfolge, Mehrfachbelegung sowie Vor- und
-Nachbereitung. Anzahl, Identität und Zeiten der Schichten dürfen sich zwischen beiden Vorlagen unterscheiden.
+Vorlagen besitzen beliebig viele eigene Schichten mit konkreten inneren Grenzen, Reihenfolge und Mehrfachbelegung. Der Beginn
+der ersten und das Ende der letzten Schicht werden aus der wirksamen Öffnung des konkreten Kalendertags abgeleitet. Nur die erste
+Schicht einer Vorlage besitzt Vorbereitung und nur die letzte Nachbereitung; bei einer einzelnen Schicht gelten beide Werte.
+Anzahl, Identität und innere Grenzen der Schichten dürfen sich zwischen beiden Vorlagen unterscheiden.
 
 Beim initialen Erstellen eines Monatsdienstplans wird für jeden Kalendertag eine eigene Tagesstruktur erzeugt. Reguläre
 Wochentage und Sonntage übernehmen ihre Schichten aus der passenden Vorlage. Gesetzliche Feiertage erhalten die Öffnungsarten
@@ -32,8 +34,8 @@ die Sonntagsvorlage. Nur abweichend geöffnete Feier- und Sondertage werden vor 
 Erst wenn alle erforderlichen Tagesstrukturen vollständig sind, werden Monatsplan, erste Entwurfsversion und Tagesschichten
 atomar angelegt. Danach ordnet der Planer Mitarbeiter den vorbereiteten Tagesschichten zu.
 
-Beginn und Ende jeder Kernschicht müssen innerhalb der wirksamen Öffnung liegen. Ausschließlich die je Schicht konfigurierte
-Vor- und Nachbereitungszeit darf die Kernzeit über die Öffnungsgrenzen hinaus erweitern. Geschlossene Tage enthalten keine
+Beginn und Ende jeder Kernschicht müssen innerhalb der wirksamen Öffnung liegen. Ausschließlich die konfigurierte Vor- und
+Nachbereitungszeit darf die Kernzeit über die Öffnungsgrenzen hinaus erweitern. Geschlossene Tage enthalten keine
 Tagesschichten. Die vollständige Tagesstruktur ist eine unveränderliche Monatsmomentaufnahme; ein leerer, noch nie
 veröffentlichter Plan kann wie bisher gelöscht und mit einer anderen Struktur neu angelegt werden.
 
@@ -154,8 +156,9 @@ Neu hinzuzufügen:
 - [x] Schicht-Tagesmodelle in einem eigenen Service und Store laden, anlegen, bearbeiten und deaktivieren.
 - [x] In der Modellverwaltung Schicht-Rastermodell und Schicht-Tagesmodell eindeutig getrennt anbieten.
 - [x] Im Schicht-Tagesmodell getrennte Bereiche für Wochentags- und Sonntagsvorlage darstellen.
-- [x] Je Vorlage beliebig viele Schichten mit stabiler ID, Bezeichnung, Reihenfolge, Kernbeginn, Kernende, Vor- und
-      Nachbereitung sowie optionaler Mehrfachbelegung konfigurieren.
+- [x] Je Vorlage beliebig viele Schichten mit stabiler ID, Bezeichnung, Reihenfolge, inneren Grenzen und optionaler
+      Mehrfachbelegung konfigurieren; äußere Grenzen aus der wirksamen Tagesöffnung ableiten sowie Vorbereitung nur an der
+      ersten und Nachbereitung nur an der letzten Schicht zulassen.
 - [x] Unterschiedliche Schichtanzahlen, Längen, Lücken und Überschneidungen zwischen Wochentags- und Sonntagsvorlage zulassen.
 - [x] Kernzeiten gegen die für die Vorlage maßgebliche Öffnung validieren.
 - [ ] Die tatsächliche Arbeitszeit einschließlich Vor- und Nachbereitung im Modelldialog nachvollziehbar anzeigen.

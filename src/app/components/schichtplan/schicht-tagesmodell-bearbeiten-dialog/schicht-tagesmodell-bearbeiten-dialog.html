@@ -1,86 +1,128 @@
 <!-- pur-system/src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog.html -->
 
 <h2 mat-dialog-title>Schicht-Tagesmodell {{ istBearbeitung ? 'bearbeiten' : 'anlegen' }}</h2>
-<mat-dialog-content>
+<mat-dialog-content class="pur-dialog__content">
   <form
     id="schicht-tagesmodell-form"
-    class="pur-form pur-form--flex"
+    class="pur-form pur-form--grid"
     [formGroup]="form"
     (ngSubmit)="save()"
   >
-    <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-      <mat-label>Bezeichnung</mat-label>
-      <input matInput formControlName="bezeichnung" />
-    </mat-form-field>
-    <mat-checkbox class="pur-form__item pur-form__item--checkbox" formControlName="aktiv">
-      Aktiv
-    </mat-checkbox>
+    <div class="pur-form__group">
+      <div class="pur-form__row">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+          <mat-label>Bezeichnung</mat-label>
+          <input matInput formControlName="bezeichnung" />
+        </mat-form-field>
+        <mat-checkbox
+          class="pur-form__item pur-form__item--checkbox pur-form__item--auto"
+          formControlName="aktiv"
+        >
+          Aktiv
+        </mat-checkbox>
+      </div>
+    </div>
 
-    @for (vorlage of ['wochentag', 'sonntag']; track vorlage) {
-      <div class="pur-form__group">
-        <div class="vorlagenkopf">
-          <h2 class="pur-form__group-titel">
-            {{ vorlage === 'wochentag' ? 'Wochentagsvorlage Montag–Samstag' : 'Sonntagsvorlage' }}
-          </h2>
-          <button matButton type="button" (click)="addSchicht($any(vorlage))">
-            <mat-icon>add</mat-icon>Schicht hinzufügen
-          </button>
-        </div>
-        <div [formArrayName]="vorlage">
+    <div class="pur-form__group pur-form__group-list">
+      @for (vorlage of ['wochentag', 'sonntag']; track vorlage) {
+        <section class="pur-form__group pur-form__group-list">
+          <header class="pur-form__group-header tagesvorlage-kopf">
+            <h2 class="pur-form__group-titel">
+              {{ vorlage === 'wochentag' ? 'Wochentagsvorlage Montag–Samstag' : 'Sonntagsvorlage' }}
+            </h2>
+            <div class="pur-form__group-actions">
+              <button matButton type="button" (click)="addSchicht($any(vorlage))">
+                <mat-icon>add</mat-icon>
+                Schicht hinzufügen
+              </button>
+            </div>
+          </header>
+
           @for (
             schicht of getVorlageForm($any(vorlage)).controls;
             track schicht;
             let index = $index
           ) {
-            <div class="pur-form__group pur-form__group--outlined" [formGroupName]="index">
-              <div class="vorlagenkopf">
+            <section class="pur-form__group pur-form__group--outlined" [formGroup]="schicht">
+              <header class="pur-form__group-header">
                 <h2 class="pur-form__group-titel">Schicht {{ index + 1 }}</h2>
-                <button
-                  matIconButton
-                  type="button"
-                  [disabled]="getVorlageForm($any(vorlage)).length === 1"
-                  (click)="removeSchicht($any(vorlage), index)"
+                <div class="pur-form__group-actions">
+                  <mat-checkbox formControlName="mehrfachbelegungErlaubt">
+                    Mehrfachbelegung
+                  </mat-checkbox>
+                  <button
+                    matIconButton
+                    type="button"
+                    aria-label="Schicht entfernen"
+                    [disabled]="getVorlageForm($any(vorlage)).length === 1"
+                    (click)="removeSchicht($any(vorlage), index)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </header>
+
+              <div class="pur-form__row schicht-kerndaten">
+                <mat-form-field
+                  appearance="outline"
+                  class="pur-form__item pur-form__item--field pur-form__item--40"
                 >
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-              <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-                <mat-label>Bezeichnung</mat-label>
-                <input matInput formControlName="bezeichnung" />
-              </mat-form-field>
-              <div class="zeitzeile">
-                <app-eingabe-zeit label="Kernbeginn" formControlName="beginnLokalzeit" />
-                <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-                  <mat-label>Tag</mat-label>
-                  <mat-select formControlName="beginnTag">
-                    <mat-option value="starttag">Starttag</mat-option>
-                    <mat-option value="folgetag">Folgetag</mat-option>
-                  </mat-select>
+                  <mat-label>Bezeichnung</mat-label>
+                  <input matInput formControlName="bezeichnung" />
                 </mat-form-field>
-                <app-eingabe-zeit label="Kernende" formControlName="endeLokalzeit" />
-                <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-                  <mat-label>Tag</mat-label>
-                  <mat-select formControlName="endeTag">
-                    <mat-option value="starttag">Starttag</mat-option>
-                    <mat-option value="folgetag">Folgetag</mat-option>
-                  </mat-select>
-                </mat-form-field>
+                @if (index === 0) {
+                  <mat-form-field
+                    appearance="outline"
+                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                  >
+                    <mat-label>Beginn</mat-label>
+                    <input matInput readonly value="Schichtstart" />
+                  </mat-form-field>
+                } @else {
+                  <app-eingabe-zeit
+                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                    label="Beginn"
+                    formControlName="beginnLokalzeit"
+                    required
+                  />
+                }
+                @if (index === getVorlageForm($any(vorlage)).length - 1) {
+                  <mat-form-field
+                    appearance="outline"
+                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                  >
+                    <mat-label>Ende</mat-label>
+                    <input matInput readonly value="Schichtende" />
+                  </mat-form-field>
+                } @else {
+                  <app-eingabe-zeit
+                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                    label="Ende"
+                    formControlName="endeLokalzeit"
+                    required
+                  />
+                }
+                @if (index === 0) {
+                  <app-eingabe-minuten
+                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                    label="Vorbereitung"
+                    formControlName="vorbereitungsminuten"
+                  />
+                }
+                @if (index === getVorlageForm($any(vorlage)).length - 1) {
+                  <app-eingabe-minuten
+                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                    label="Nachbereitung"
+                    formControlName="nachbereitungsminuten"
+                  />
+                }
               </div>
-              <div class="zeitzeile">
-                <app-eingabe-minuten label="Vorbereitung" formControlName="vorbereitungsminuten" />
-                <app-eingabe-minuten
-                  label="Nachbereitung"
-                  formControlName="nachbereitungsminuten"
-                />
-                <mat-checkbox formControlName="mehrfachbelegungErlaubt"
-                  >Mehrfachbelegung</mat-checkbox
-                >
-              </div>
-            </div>
+            </section>
           }
-        </div>
-      </div>
-    }
+        </section>
+      }
+    </div>
+
     @if (store.error(); as fehlermeldung) {
       <p class="pur-message pur-message--error pur-message--full" role="alert">
         {{ fehlermeldung }}
@@ -88,7 +130,7 @@
     }
   </form>
 </mat-dialog-content>
-<mat-dialog-actions align="end">
+<mat-dialog-actions class="pur-dialog__footer" align="end">
   <button matButton type="button" [disabled]="store.inProgress()" mat-dialog-close>
     Abbrechen
   </button>

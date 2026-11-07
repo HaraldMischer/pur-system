@@ -5,8 +5,10 @@ import type { IGeoeffneteOeffnungsregel } from '../models/domain/filialeinstellu
 import type {
   ITagesvorlagenschichtSchreibdaten,
   ITagesvorlagenschichtZeitgrenze,
+  TTagesstrukturSchichtSchreibdaten,
   TTagesvorlageTyp,
 } from '../models/domain/schicht-tagesmodell';
+import { resolveTagesvorlagenschichten } from '../utils/dienstplan/tagesvorlagenschichten';
 
 const MINUTEN_PRO_TAG = 24 * 60;
 const LOKALZEIT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
@@ -32,7 +34,13 @@ export function assertGueltigeTagesvorlagenschichten(
           : 'Die Sonntagsvorlage benötigt mindestens eine Schicht.',
       );
     }
-    assertVorlage(vorlagenschichten, oeffnungen[vorlage]);
+    assertVorlagengrenzen(vorlagenschichten);
+    const aufgeloesteSchichten = resolveTagesvorlagenschichten(
+      vorlagenschichten,
+      oeffnungen[vorlage],
+    );
+    assertTagesstruktur(aufgeloesteSchichten, oeffnungen[vorlage]);
+    assertRandminutenPositionen(vorlagenschichten);
   });
 }
 
@@ -43,20 +51,17 @@ export function assertGueltigeTagesvorlagenschichten(
  * @param oeffnung - Wirksame Öffnung des konkreten Tages.
  */
 export function assertGueltigeTagesstruktur(
-  schichten: readonly Omit<ITagesvorlagenschichtSchreibdaten, 'vorlage'>[],
+  schichten: readonly TTagesstrukturSchichtSchreibdaten[],
   oeffnung: IGeoeffneteOeffnungsregel,
 ): void {
   if (schichten.length === 0) {
     throw new Error('Ein geöffneter Tag benötigt mindestens eine Schicht.');
   }
-  assertVorlage(
-    schichten.map((schicht) => ({ ...schicht, vorlage: 'wochentag' as const })),
-    oeffnung,
-  );
+  assertTagesstruktur(schichten, oeffnung);
 }
 
-function assertVorlage(
-  schichten: readonly ITagesvorlagenschichtSchreibdaten[],
+function assertTagesstruktur(
+  schichten: readonly TTagesstrukturSchichtSchreibdaten[],
   oeffnung: IGeoeffneteOeffnungsregel,
 ): void {
   const oeffnungsbeginn = parseLokalzeit(oeffnung.beginnLokalzeit);
@@ -83,6 +88,45 @@ function assertVorlage(
     assertRandminuten(schicht.nachbereitungsminuten);
     if (typeof schicht.mehrfachbelegungErlaubt !== 'boolean') {
       throw new Error('Die Mehrfachbelegung der Tagesschicht ist ungültig.');
+    }
+  });
+}
+
+function assertVorlagengrenzen(schichten: readonly ITagesvorlagenschichtSchreibdaten[]): void {
+  const letzterIndex = schichten.length - 1;
+  schichten.forEach((schicht, index) => {
+    const istErsteSchicht = index === 0;
+    const istLetzteSchicht = index === letzterIndex;
+    if (istErsteSchicht === Boolean(schicht.beginn)) {
+      throw new Error(
+        istErsteSchicht
+          ? 'Die erste Tagesschicht darf keinen festen Beginn enthalten.'
+          : 'Die Tagesschicht benötigt einen festen Beginn.',
+      );
+    }
+    if (istLetzteSchicht === Boolean(schicht.ende)) {
+      throw new Error(
+        istLetzteSchicht
+          ? 'Die letzte Tagesschicht darf kein festes Ende enthalten.'
+          : 'Die Tagesschicht benötigt ein festes Ende.',
+      );
+    }
+  });
+}
+
+function assertRandminutenPositionen(
+  schichten: readonly ITagesvorlagenschichtSchreibdaten[],
+): void {
+  schichten.forEach((schicht, index) => {
+    const istErsteSchicht = index === 0;
+    const istLetzteSchicht = index === schichten.length - 1;
+    if (
+      (!istErsteSchicht && schicht.vorbereitungsminuten !== 0) ||
+      (!istLetzteSchicht && schicht.nachbereitungsminuten !== 0)
+    ) {
+      throw new Error(
+        'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
+      );
     }
   });
 }

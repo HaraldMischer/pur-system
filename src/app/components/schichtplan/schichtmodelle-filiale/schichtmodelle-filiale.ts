@@ -33,9 +33,9 @@ import {
   TSchichtTagesmodellBearbeitenDialogDaten,
 } from '../schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog';
 import {
-  SchichtmodellBearbeitenDialog,
-  TSchichtmodellBearbeitenDialogDaten,
-} from '../schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog';
+  SchichtRastermodellBearbeitenDialog,
+  TSchichtRastermodellBearbeitenDialogDaten,
+} from '../schicht-rastermodell-bearbeiten-dialog/schicht-rastermodell-bearbeiten-dialog';
 
 @Component({
   selector: 'app-schichtmodelle-filiale',
@@ -185,12 +185,12 @@ export class SchichtmodelleFiliale {
     const standardoeffnungsregel =
       this.filialeinstellungKontext()?.bestand?.oeffnungszeiten.standardoeffnungsregel;
     if (!standardoeffnungsregel) return;
-    const daten: TSchichtmodellBearbeitenDialogDaten = {
+    const daten: TSchichtRastermodellBearbeitenDialogDaten = {
       pfad: this.pfad(),
       standardoeffnungsregel,
       ...(bestand ? { bestand } : {}),
     };
-    this.dialog.open(SchichtmodellBearbeitenDialog, {
+    this.dialog.open(SchichtRastermodellBearbeitenDialog, {
       data: daten,
       panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
     });

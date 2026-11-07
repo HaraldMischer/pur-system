@@ -253,10 +253,13 @@ Vorlage besitzt eine frei wählbare, fachlich geordnete Anzahl eigener Vorlagens
 sich in Anzahl, Identität, Bezeichnung, Kernzeiten, Lücken, Überschneidungen, Mehrfachbelegung sowie Vor- und Nachbereitung
 vollständig unterscheiden.
 
-Eine Vorlagenschicht besitzt eine eigene stabile ID und konkrete Lokalzeiten am Start- oder Folgetag. Prozentuale Anteile und
-relative Übergänge gehören nicht zum Schicht-Tagesmodell. Beginn und Ende bilden die Kernzeit. Beide Grenzen müssen innerhalb
-der für die Vorlage maßgeblichen Öffnung liegen. Vor- und Nachbereitungsminuten erweitern die Kernzeit zur tatsächlichen
-Arbeitszeit und dürfen als einzige Werte vor den Öffnungsbeginn beziehungsweise nach das Öffnungsende reichen.
+Eine Vorlagenschicht besitzt eine eigene stabile ID. Die erste Schicht speichert keinen festen Beginn und die letzte kein festes
+Ende; diese Außengrenzen werden beim Erzeugen eines Monatsplans aus der wirksamen Öffnung des konkreten Kalendertags abgeleitet.
+Nur innere Grenzen besitzen konkrete Lokalzeiten am Start- oder Folgetag. Prozentuale Anteile und relative Übergänge gehören
+nicht zum Schicht-Tagesmodell. Die aufgelösten Grenzen bilden die Kernzeit und müssen innerhalb der wirksamen Öffnung liegen.
+Nur die erste Schicht einer Vorlage besitzt Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; bei einer einzelnen
+Schicht gelten beide Werte. Diese Randminuten erweitern die Kernzeit zur tatsächlichen Arbeitszeit und dürfen als einzige Werte
+vor den Öffnungsbeginn beziehungsweise nach das Öffnungsende reichen.
 
 Beim initialen Erstellen eines Monatsdienstplans wird jeder Kalendertag mit seiner wirksamen Öffnung und seinen unabhängigen
 Kalendereigenschaften aufgelöst. Reguläre Wochentage von Montag bis Samstag erhalten eigene Tagesschichten aus der

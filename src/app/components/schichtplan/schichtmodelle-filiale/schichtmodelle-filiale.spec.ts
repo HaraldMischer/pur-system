@@ -15,7 +15,7 @@ import {
   SchichtmodellStore,
   TSchichtmodellKontext,
 } from '../../../stores/domain/schichtmodell.store';
-import { SchichtmodellBearbeitenDialog } from '../schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog';
+import { SchichtRastermodellBearbeitenDialog } from '../schicht-rastermodell-bearbeiten-dialog/schicht-rastermodell-bearbeiten-dialog';
 import { SchichtmodelleFiliale } from './schichtmodelle-filiale';
 
 const PFAD = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' } as const;
@@ -131,7 +131,7 @@ describe('SchichtmodelleFiliale', () => {
     expect(tagesmodellHinzufuegen).toBeUndefined();
     rastermodellHinzufuegen?.click();
     expect(open).toHaveBeenCalledWith(
-      SchichtmodellBearbeitenDialog,
+      SchichtRastermodellBearbeitenDialog,
       expect.objectContaining({
         data: { pfad: PFAD, standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL },
       }),

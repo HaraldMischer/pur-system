@@ -20,8 +20,8 @@ export interface ITagesvorlagenschichtDaten {
   vorlage: TTagesvorlageTyp;
   bezeichnung: string;
   reihenfolge: number;
-  beginn: ITagesvorlagenschichtZeitgrenze;
-  ende: ITagesvorlagenschichtZeitgrenze;
+  beginn?: ITagesvorlagenschichtZeitgrenze;
+  ende?: ITagesvorlagenschichtZeitgrenze;
   mehrfachbelegungErlaubt: boolean;
   vorbereitungsminuten: number;
   nachbereitungsminuten: number;
@@ -93,6 +93,8 @@ export interface IFreieTagesschichtSchreibdaten {
   vorbereitungsminuten: number;
   nachbereitungsminuten: number;
 }
+
+export type TTagesstrukturSchichtSchreibdaten = Omit<IFreieTagesschichtSchreibdaten, 'datum'>;
 
 export interface ITagesvorlagenschichtDokument extends ITagesvorlagenschichtDaten {}
 

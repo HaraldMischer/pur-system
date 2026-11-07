@@ -125,8 +125,9 @@ Tagesinstanz-IDs. Beide Strukturen werden nicht über optionale Mischfelder vere
 
 Nach Auswahl eines Schicht-Tagesmodells löst die Monatsplananlage zunächst alle Kalendertage und wirksamen Öffnungen auf.
 Reguläre Wochentage von Montag bis Samstag erhalten ihre Tagesschichten aus der Wochentagsvorlage, reguläre Sonntage aus der
-Sonntagsvorlage. Für jeden geöffneten Feier- oder Sondertag muss der Planer innerhalb der Anlage eine freie Tagesstruktur
-konfigurieren. Geschlossene Tage enthalten keine Tagesschichten.
+Sonntagsvorlage. Der Beginn der ersten und das Ende der letzten Vorlagenschicht werden dabei aus der wirksamen Öffnung des
+konkreten Kalendertags abgeleitet. Für jeden geöffneten Feier- oder Sondertag muss der Planer innerhalb der Anlage eine freie
+Tagesstruktur konfigurieren. Geschlossene Tage enthalten keine Tagesschichten.
 
 Vor dem Schreiben validiert der Service jede Kernzeit gegen die wirksame Öffnung ihres konkreten Kalendertags. Vor- und
 Nachbereitungsminuten erweitern die Kernzeit zur tatsächlichen Arbeitszeit und dürfen als einzige Werte über die

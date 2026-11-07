@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.ts
+// pur-system/src/app/components/schichtplan/schicht-rastermodell-bearbeiten-dialog/schicht-rastermodell-bearbeiten-dialog.ts
 
 import {
   ChangeDetectionStrategy,
@@ -48,14 +48,14 @@ import { EingabeZeit } from '../../shared/eingabe-zeit/eingabe-zeit';
 
 // ===== Top-Level Helper =====================
 
-export type TSchichtmodellBearbeitenDialogDaten = {
+export type TSchichtRastermodellBearbeitenDialogDaten = {
   readonly pfad: IFilialPfad;
   readonly standardoeffnungsregel: IGeoeffneteOeffnungsregel;
   readonly bestand?: ISchichtrastermodellBestand;
 };
 
 @Component({
-  selector: 'app-schichtmodell-bearbeiten-dialog',
+  selector: 'app-schicht-rastermodell-bearbeiten-dialog',
   imports: [
     MatButtonModule,
     MatCheckboxModule,
@@ -67,17 +67,17 @@ export type TSchichtmodellBearbeitenDialogDaten = {
     EingabeZeit,
     ReactiveFormsModule,
   ],
-  templateUrl: './schichtmodell-bearbeiten-dialog.html',
-  styleUrl: './schichtmodell-bearbeiten-dialog.scss',
+  templateUrl: './schicht-rastermodell-bearbeiten-dialog.html',
+  styleUrl: './schicht-rastermodell-bearbeiten-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SchichtmodellBearbeitenDialog {
+export class SchichtRastermodellBearbeitenDialog {
   // ===== Interne Dependency Injection =========
 
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly dialogRef = inject(MatDialogRef<SchichtmodellBearbeitenDialog, boolean>);
-  readonly daten = inject<TSchichtmodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject(MatDialogRef<SchichtRastermodellBearbeitenDialog, boolean>);
+  readonly daten = inject<TSchichtRastermodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly schichtmodellStore = inject(SchichtmodellStore);
 
   // ===== Interner State =======================
@@ -88,7 +88,7 @@ export class SchichtmodellBearbeitenDialog {
 
   readonly istBearbeitung = Boolean(this.daten.bestand);
   readonly hatAenderungen = signal(!this.istBearbeitung);
-  readonly schichtmodellForm = new FormGroup({
+  readonly schichtRastermodellForm = new FormGroup({
     bezeichnung: new FormControl(this.daten.bestand?.schichtmodell.bezeichnung ?? '', {
       nonNullable: true,
       validators: [Validators.required, nichtLeerValidator, Validators.maxLength(80)],
@@ -113,18 +113,18 @@ export class SchichtmodellBearbeitenDialog {
     this.urspruenglicheAktualisierung = this.daten.bestand
       ? JSON.stringify(this.getAktualisierung())
       : null;
-    this.schichtmodellForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+    this.schichtRastermodellForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.updateHatAenderungen();
     });
     effect(() => {
       const inProgress = this.schichtmodellStore.inProgress();
       untracked(() => {
         if (inProgress) {
-          this.schichtmodellForm.disable({ emitEvent: false });
+          this.schichtRastermodellForm.disable({ emitEvent: false });
         } else {
-          this.schichtmodellForm.enable({ emitEvent: false });
+          this.schichtRastermodellForm.enable({ emitEvent: false });
           if (!this.istBearbeitung) {
-            this.schichtmodellForm.controls.aktiv.disable({ emitEvent: false });
+            this.schichtRastermodellForm.controls.aktiv.disable({ emitEvent: false });
           }
         }
       });
@@ -139,7 +139,7 @@ export class SchichtmodellBearbeitenDialog {
    * Der erstmals eingegebene Beginn belegt einmalig das Ende der bisherigen letzten Schicht vor.
    */
   addModellschicht(): void {
-    const modellschichten = this.schichtmodellForm.controls.modellschichten;
+    const modellschichten = this.schichtRastermodellForm.controls.modellschichten;
     const bisherigeLetzteModellschicht = modellschichten.at(-1);
     const bisherigeNachbereitungsminuten =
       bisherigeLetzteModellschicht?.controls.nachbereitungsminuten.value ?? 0;
@@ -165,7 +165,7 @@ export class SchichtmodellBearbeitenDialog {
    * @param index - Position der zu entfernenden Modellschicht.
    */
   removeModellschicht(index: number): void {
-    const modellschichten = this.schichtmodellForm.controls.modellschichten;
+    const modellschichten = this.schichtRastermodellForm.controls.modellschichten;
     if (modellschichten.length <= 1) return;
     if (index === 0) {
       modellschichten
@@ -186,11 +186,11 @@ export class SchichtmodellBearbeitenDialog {
   }
 
   /**
-   * Validiert und speichert das vollständige Schichtmodell.
+   * Validiert und speichert das vollständige Schicht-Rastermodell.
    */
-  async saveSchichtmodell(): Promise<void> {
-    if (this.schichtmodellForm.invalid || this.schichtmodellStore.inProgress()) {
-      this.schichtmodellForm.markAllAsTouched();
+  async saveSchichtRastermodell(): Promise<void> {
+    if (this.schichtRastermodellForm.invalid || this.schichtmodellStore.inProgress()) {
+      this.schichtRastermodellForm.markAllAsTouched();
       return;
     }
     if (this.istBearbeitung && !this.hatAenderungen()) return;
@@ -200,7 +200,7 @@ export class SchichtmodellBearbeitenDialog {
         this.dialog
           .open(BestaetigungDialog, {
             data: {
-              titel: 'Schichtmodell mit Lücken speichern?',
+              titel: 'Schicht-Rastermodell mit Lücken speichern?',
               nachricht:
                 'Zwischen den Modellschichten bestehen zeitliche Lücken. In diesen Zeiten ist im Dienstplan keine Rasterbelegung vorgesehen.',
               bestaetigenText: 'Trotzdem speichern',
@@ -220,7 +220,7 @@ export class SchichtmodellBearbeitenDialog {
           bestand.schichtmodell.id,
           {
             ...anlage,
-            aktiv: this.schichtmodellForm.controls.aktiv.getRawValue(),
+            aktiv: this.schichtRastermodellForm.controls.aktiv.getRawValue(),
           },
         );
       } else {
@@ -305,7 +305,7 @@ export class SchichtmodellBearbeitenDialog {
   }
 
   private updateModellschichtPositionen(): void {
-    const formen = this.schichtmodellForm.controls.modellschichten.controls;
+    const formen = this.schichtRastermodellForm.controls.modellschichten.controls;
     const letzterIndex = formen.length - 1;
     formen.forEach((form, index) => {
       form.controls.beginnLokalzeit.setValidators(index > 0 ? [Validators.required] : null);
@@ -320,7 +320,7 @@ export class SchichtmodellBearbeitenDialog {
   }
 
   private getModellschichten(): IModellschichtSchreibdaten[] {
-    const formen = this.schichtmodellForm.controls.modellschichten.controls;
+    const formen = this.schichtRastermodellForm.controls.modellschichten.controls;
     const vorbereitungsminuten = formen.at(0)?.controls.vorbereitungsminuten.value ?? 0;
     const nachbereitungsminuten = formen.at(-1)?.controls.nachbereitungsminuten.value ?? 0;
     const letzterIndex = formen.length - 1;
@@ -353,7 +353,7 @@ export class SchichtmodellBearbeitenDialog {
 
   private getAnlage(): ISchichtrastermodellAnlage {
     return {
-      bezeichnung: this.schichtmodellForm.controls.bezeichnung.value.trim(),
+      bezeichnung: this.schichtRastermodellForm.controls.bezeichnung.value.trim(),
       modellschichten: this.getModellschichten(),
     };
   }
@@ -361,7 +361,7 @@ export class SchichtmodellBearbeitenDialog {
   private getAktualisierung(): ISchichtrastermodellAktualisierung {
     return {
       ...this.getAnlage(),
-      aktiv: this.schichtmodellForm.controls.aktiv.getRawValue(),
+      aktiv: this.schichtRastermodellForm.controls.aktiv.getRawValue(),
     };
   }
 

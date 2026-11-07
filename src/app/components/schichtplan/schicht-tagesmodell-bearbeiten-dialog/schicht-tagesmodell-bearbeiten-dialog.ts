@@ -1,6 +1,14 @@
 // pur-system/src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog.ts
 
-import { ChangeDetectionStrategy, Component, effect, inject, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  effect,
+  inject,
+  untracked,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -8,7 +16,6 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 
 import { MAX_RANDMINUTEN } from '../../../commons/constants/schichtmodell.constants';
 import type { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
@@ -20,6 +27,11 @@ import type {
   TModellschichtTag,
   TTagesvorlageTyp,
 } from '../../../commons/models/domain/schichtmodell';
+import {
+  addLokalzeitMinuten,
+  getLokalzeitMinuten,
+  getModellschichtTagFuerLokalzeit,
+} from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { EingabeMinuten } from '../../shared/eingabe-minuten/eingabe-minuten';
@@ -53,7 +65,6 @@ export type TSchichtTagesmodellBearbeitenDialogDaten = {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatSelectModule,
     EingabeMinuten,
     EingabeZeit,
   ],
@@ -64,6 +75,7 @@ export type TSchichtTagesmodellBearbeitenDialogDaten = {
 export class SchichtTagesmodellBearbeitenDialog {
   // ===== Interne Dependency Injection =========
 
+  private readonly destroyRef = inject(DestroyRef);
   private readonly dialogRef = inject(MatDialogRef<SchichtTagesmodellBearbeitenDialog, boolean>);
   readonly daten = inject<TSchichtTagesmodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly store = inject(SchichtTagesmodellStore);
@@ -101,9 +113,24 @@ export class SchichtTagesmodellBearbeitenDialog {
 
   /**
    * Fügt der ausgewählten Tagesvorlage eine frei konfigurierbare Schicht hinzu.
+   *
+   * Die neue innere Grenze halbiert den verbleibenden Zeitraum bis zum Schichtende.
    */
   addSchicht(vorlage: TTagesvorlageTyp): void {
-    this.form.controls[vorlage].push(this.createSchichtForm());
+    const schichten = this.form.controls[vorlage];
+    const bisherigeLetzteSchicht = schichten.at(-1);
+    const automatischeGrenze = this.getHalbierteLetzteSchichtgrenze(
+      vorlage,
+      bisherigeLetzteSchicht,
+    );
+    const bisherigeNachbereitungsminuten =
+      bisherigeLetzteSchicht?.controls.nachbereitungsminuten.value ?? 0;
+    bisherigeLetzteSchicht?.controls.nachbereitungsminuten.setValue(0);
+    bisherigeLetzteSchicht?.controls.endeLokalzeit.setValue(automatischeGrenze);
+    const neueSchicht = this.createSchichtForm(vorlage, undefined, false, true);
+    neueSchicht.controls.beginnLokalzeit.setValue(automatischeGrenze);
+    neueSchicht.controls.nachbereitungsminuten.setValue(bisherigeNachbereitungsminuten);
+    schichten.push(neueSchicht);
   }
 
   /**
@@ -121,7 +148,24 @@ export class SchichtTagesmodellBearbeitenDialog {
   removeSchicht(vorlage: TTagesvorlageTyp, index: number): void {
     const schichten = this.form.controls[vorlage];
     if (schichten.length <= 1) return;
+    if (index === 0) {
+      schichten
+        .at(1)
+        .controls.vorbereitungsminuten.setValue(
+          schichten.at(0).controls.vorbereitungsminuten.value,
+        );
+    }
+    if (index === schichten.length - 1) {
+      schichten
+        .at(index - 1)
+        .controls.nachbereitungsminuten.setValue(
+          schichten.at(index).controls.nachbereitungsminuten.value,
+        );
+    }
     schichten.removeAt(index);
+    const oeffnung = this.daten.oeffnungen[vorlage];
+    schichten.at(0).controls.beginnLokalzeit.setValue(oeffnung.beginnLokalzeit);
+    schichten.at(-1).controls.endeLokalzeit.setValue(oeffnung.endeLokalzeit);
   }
 
   /**
@@ -164,30 +208,91 @@ export class SchichtTagesmodellBearbeitenDialog {
     const schichten = this.daten.bestand?.tagesvorlagenschichten.filter((schicht) => {
       return schicht.vorlage === vorlage;
     });
-    return (schichten?.length ? schichten : [undefined]).map((schicht) => {
-      return this.createSchichtForm(schicht);
+    const schichtdaten = schichten?.length ? schichten : [undefined];
+    const formen = schichtdaten.map((schicht, index) => {
+      return this.createSchichtForm(
+        vorlage,
+        schicht,
+        index === 0,
+        index === schichtdaten.length - 1,
+      );
     });
+    const letzterIndex = formen.length - 1;
+    formen.forEach((form, index) => {
+      if (index > 0) form.controls.vorbereitungsminuten.setValue(0, { emitEvent: false });
+      if (index < letzterIndex) {
+        form.controls.nachbereitungsminuten.setValue(0, { emitEvent: false });
+      }
+    });
+    return formen;
   }
 
-  private createSchichtForm(schicht?: ITagesvorlagenschichtEintrag): TSchichtForm {
-    return new FormGroup({
+  private getHalbierteLetzteSchichtgrenze(
+    vorlage: TTagesvorlageTyp,
+    letzteSchicht: TSchichtForm | undefined,
+  ): string {
+    const oeffnung = this.daten.oeffnungen[vorlage];
+    const beginn = getLokalzeitMinuten(
+      letzteSchicht?.controls.beginnLokalzeit.value ?? oeffnung.beginnLokalzeit,
+    );
+    const ende = getLokalzeitMinuten(oeffnung.endeLokalzeit);
+    if (beginn === null || ende === null) return '';
+    const absoluterBeginn =
+      beginn + (letzteSchicht?.controls.beginnTag.value === 'folgetag' ? 24 * 60 : 0);
+    const absolutesEnde = ende + (oeffnung.endetAmFolgetag ? 24 * 60 : 0);
+    if (absolutesEnde <= absoluterBeginn) return '';
+    return (
+      addLokalzeitMinuten(
+        '00:00',
+        absoluterBeginn + Math.floor((absolutesEnde - absoluterBeginn) / 2),
+      ) ?? ''
+    );
+  }
+
+  private createSchichtForm(
+    vorlage: TTagesvorlageTyp,
+    schicht?: ITagesvorlagenschichtEintrag,
+    istErsteSchicht = false,
+    istLetzteSchicht = false,
+  ): TSchichtForm {
+    const oeffnung = this.daten.oeffnungen[vorlage];
+    const beginnLokalzeit = istErsteSchicht
+      ? oeffnung.beginnLokalzeit
+      : (schicht?.beginn?.lokalzeit ?? '');
+    const endeLokalzeit = istLetzteSchicht
+      ? oeffnung.endeLokalzeit
+      : (schicht?.ende?.lokalzeit ?? '');
+    const beginnTag = istErsteSchicht
+      ? 'starttag'
+      : schicht?.beginn
+        ? (getModellschichtTagFuerLokalzeit(schicht.beginn.lokalzeit, oeffnung) ??
+          schicht.beginn.tag)
+        : 'starttag';
+    const endeTag = istLetzteSchicht
+      ? oeffnung.endetAmFolgetag
+        ? 'folgetag'
+        : 'starttag'
+      : schicht?.ende
+        ? (getModellschichtTagFuerLokalzeit(schicht.ende.lokalzeit, oeffnung) ?? schicht.ende.tag)
+        : 'starttag';
+    const form = new FormGroup({
       id: new FormControl(schicht?.id ?? '', { nonNullable: true }),
       bezeichnung: new FormControl(schicht?.bezeichnung ?? '', {
         nonNullable: true,
         validators: [Validators.required, nichtLeerValidator, Validators.maxLength(80)],
       }),
-      beginnLokalzeit: new FormControl(schicht?.beginn.lokalzeit ?? '', {
+      beginnLokalzeit: new FormControl(beginnLokalzeit, {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      beginnTag: new FormControl<TModellschichtTag>(schicht?.beginn.tag ?? 'starttag', {
+      beginnTag: new FormControl<TModellschichtTag>(beginnTag, {
         nonNullable: true,
       }),
-      endeLokalzeit: new FormControl(schicht?.ende.lokalzeit ?? '', {
+      endeLokalzeit: new FormControl(endeLokalzeit, {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      endeTag: new FormControl<TModellschichtTag>(schicht?.ende.tag ?? 'starttag', {
+      endeTag: new FormControl<TModellschichtTag>(endeTag, {
         nonNullable: true,
       }),
       vorbereitungsminuten: new FormControl(schicht?.vorbereitungsminuten ?? 0, {
@@ -202,20 +307,39 @@ export class SchichtTagesmodellBearbeitenDialog {
         nonNullable: true,
       }),
     });
+    form.controls.beginnLokalzeit.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((lokalzeit) => {
+        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, oeffnung);
+        if (tag) form.controls.beginnTag.setValue(tag);
+      });
+    form.controls.endeLokalzeit.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((lokalzeit) => {
+        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, oeffnung);
+        if (tag) form.controls.endeTag.setValue(tag);
+      });
+    return form;
   }
 
   private mapVorlage(vorlage: TTagesvorlageTyp): ITagesvorlagenschichtSchreibdaten[] {
-    return this.form.controls[vorlage].controls.map((schicht, reihenfolge) => {
+    const schichten = this.form.controls[vorlage].controls;
+    const letzterIndex = schichten.length - 1;
+    return schichten.map((schicht, reihenfolge) => {
       const wert = schicht.getRawValue();
       return {
         ...(wert.id ? { id: wert.id } : {}),
         vorlage,
         bezeichnung: wert.bezeichnung.trim(),
         reihenfolge,
-        beginn: { lokalzeit: wert.beginnLokalzeit, tag: wert.beginnTag },
-        ende: { lokalzeit: wert.endeLokalzeit, tag: wert.endeTag },
-        vorbereitungsminuten: wert.vorbereitungsminuten,
-        nachbereitungsminuten: wert.nachbereitungsminuten,
+        ...(reihenfolge > 0
+          ? { beginn: { lokalzeit: wert.beginnLokalzeit, tag: wert.beginnTag } }
+          : {}),
+        ...(reihenfolge < letzterIndex
+          ? { ende: { lokalzeit: wert.endeLokalzeit, tag: wert.endeTag } }
+          : {}),
+        vorbereitungsminuten: reihenfolge === 0 ? wert.vorbereitungsminuten : 0,
+        nachbereitungsminuten: reihenfolge === letzterIndex ? wert.nachbereitungsminuten : 0,
         mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
       };
     });

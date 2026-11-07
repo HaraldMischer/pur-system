@@ -9,6 +9,7 @@ describe('Dienstplan-Tagesschichten', () => {
     const kalendertage = [
       createKalendertag('2026-12-05', false),
       createKalendertag('2026-12-06', true),
+      createKalendertag('2026-12-07', false, false, '09:00', '23:00', false),
       {
         ...createKalendertag('2026-12-25', false, false, '10:00'),
         oeffnungsregelQuelle: 'sonntag' as const,
@@ -36,10 +37,11 @@ describe('Dienstplan-Tagesschichten', () => {
 
     expect(ergebnis.filter((schicht) => schicht.datum === '2026-12-05')).toHaveLength(2);
     expect(ergebnis.filter((schicht) => schicht.datum === '2026-12-06')).toHaveLength(3);
+    const abweichenderWochentag = ergebnis.filter((schicht) => schicht.datum === '2026-12-07');
+    expect(abweichenderWochentag[0].kernbeginnLokalzeit).toBe('09:00');
+    expect(abweichenderWochentag.at(-1)?.kernendeLokalzeit).toBe('23:00');
     expect(ergebnis.filter((schicht) => schicht.datum === '2026-12-25')).toHaveLength(3);
-    expect(ergebnis.find((schicht) => schicht.datum === '2026-12-25')?.herkunft).toBe(
-      'sonntag',
-    );
+    expect(ergebnis.find((schicht) => schicht.datum === '2026-12-25')?.herkunft).toBe('sonntag');
     expect(ergebnis.find((schicht) => schicht.datum === '2026-12-24')?.herkunft).toBe('sondertag');
   });
 });
@@ -76,8 +78,8 @@ function createModell(): ISchichttagesmodellBestand {
       aktualisiertVonUid: 'uid-1',
     },
     tagesvorlagenschichten: [
-      ...createVorlage(pfad, 'wochentag', 2, '07:00'),
-      ...createVorlage(pfad, 'sonntag', 3, '10:00'),
+      ...createVorlage(pfad, 'wochentag', 2),
+      ...createVorlage(pfad, 'sonntag', 3),
     ],
   };
 }
@@ -86,10 +88,9 @@ function createVorlage(
   pfad: { unternehmerId: string; firmaId: string; filialeId: string },
   vorlage: 'wochentag' | 'sonntag',
   anzahl: number,
-  ersterBeginn: string,
 ) {
   return Array.from({ length: anzahl }, (_, reihenfolge) => {
-    const beginn = reihenfolge === 0 ? ersterBeginn : `${10 + reihenfolge * 4}:00`;
+    const beginn = `${10 + reihenfolge * 4}:00`;
     const istLetzte = reihenfolge === anzahl - 1;
     return {
       ...pfad,
@@ -98,11 +99,10 @@ function createVorlage(
       vorlage,
       bezeichnung: `Schicht ${reihenfolge + 1}`,
       reihenfolge,
-      beginn: { lokalzeit: beginn, tag: 'starttag' as const },
-      ende: {
-        lokalzeit: istLetzte ? '01:00' : `${14 + reihenfolge * 4}:00`,
-        tag: istLetzte ? ('folgetag' as const) : ('starttag' as const),
-      },
+      ...(reihenfolge > 0 ? { beginn: { lokalzeit: beginn, tag: 'starttag' as const } } : {}),
+      ...(!istLetzte
+        ? { ende: { lokalzeit: `${14 + reihenfolge * 4}:00`, tag: 'starttag' as const } }
+        : {}),
       vorbereitungsminuten: 0,
       nachbereitungsminuten: 0,
       mehrfachbelegungErlaubt: false,

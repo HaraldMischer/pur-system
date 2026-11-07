@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
+// pur-system/src/app/components/schichtplan/schicht-rastermodell-bearbeiten-dialog/schicht-rastermodell-bearbeiten-dialog.spec.ts
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -9,11 +9,11 @@ import { STANDARD_OEFFNUNGSREGEL } from '../../../commons/constants/filialeinste
 import { ISchichtrastermodellAnlage } from '../../../commons/models/domain/schichtmodell';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
-  SchichtmodellBearbeitenDialog,
-  TSchichtmodellBearbeitenDialogDaten,
-} from './schichtmodell-bearbeiten-dialog';
+  SchichtRastermodellBearbeitenDialog,
+  TSchichtRastermodellBearbeitenDialogDaten,
+} from './schicht-rastermodell-bearbeiten-dialog';
 
-describe('SchichtmodellBearbeitenDialog', () => {
+describe('SchichtRastermodellBearbeitenDialog', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
   const inProgress = signal(false);
   const error = signal<string | null>(null);
@@ -23,14 +23,14 @@ describe('SchichtmodellBearbeitenDialog', () => {
   const close = vi.fn();
 
   async function createComponent(
-    daten: Omit<TSchichtmodellBearbeitenDialogDaten, 'standardoeffnungsregel'>,
+    daten: Omit<TSchichtRastermodellBearbeitenDialogDaten, 'standardoeffnungsregel'>,
   ) {
-    const dialogDaten: TSchichtmodellBearbeitenDialogDaten = {
+    const dialogDaten: TSchichtRastermodellBearbeitenDialogDaten = {
       ...daten,
       standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL,
     };
     TestBed.configureTestingModule({
-      imports: [SchichtmodellBearbeitenDialog],
+      imports: [SchichtRastermodellBearbeitenDialog],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: dialogDaten },
         {
@@ -42,7 +42,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
     });
     TestBed.overrideProvider(MatDialog, { useValue: { open } });
     await TestBed.compileComponents();
-    return TestBed.createComponent(SchichtmodellBearbeitenDialog);
+    return TestBed.createComponent(SchichtRastermodellBearbeitenDialog);
   }
 
   beforeEach(() => {
@@ -55,11 +55,11 @@ describe('SchichtmodellBearbeitenDialog', () => {
   it('should create a single model shift without fixed outer boundaries', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
-    const schicht = component.schichtmodellForm.controls.modellschichten.at(0);
-    component.schichtmodellForm.controls.bezeichnung.setValue(' Sommer ');
+    const schicht = component.schichtRastermodellForm.controls.modellschichten.at(0);
+    component.schichtRastermodellForm.controls.bezeichnung.setValue(' Sommer ');
     schicht.controls.bezeichnung.setValue(' Tag ');
 
-    await component.saveSchichtmodell();
+    await component.saveSchichtRastermodell();
 
     const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtrastermodellAnlage;
     expect(anlage).toEqual({
@@ -80,14 +80,14 @@ describe('SchichtmodellBearbeitenDialog', () => {
   it('should append shifts, transfer the outer minutes and prefill the previous end once', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
-    const ersteSchicht = component.schichtmodellForm.controls.modellschichten.at(0);
+    const ersteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(0);
     ersteSchicht.controls.vorbereitungsminuten.setValue(30);
     ersteSchicht.controls.nachbereitungsminuten.setValue(15);
 
     component.addModellschicht();
 
-    const zweiteSchicht = component.schichtmodellForm.controls.modellschichten.at(1);
-    expect(component.schichtmodellForm.controls.modellschichten.at(0)).toBe(ersteSchicht);
+    const zweiteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(1);
+    expect(component.schichtRastermodellForm.controls.modellschichten.at(0)).toBe(ersteSchicht);
     expect(ersteSchicht.controls.vorbereitungsminuten.value).toBe(30);
     expect(ersteSchicht.controls.nachbereitungsminuten.value).toBe(0);
     expect(zweiteSchicht.controls.nachbereitungsminuten.value).toBe(15);
@@ -103,21 +103,21 @@ describe('SchichtmodellBearbeitenDialog', () => {
     expect(ersteSchicht.controls.endeTag.value).toBe('folgetag');
 
     component.removeModellschicht(1);
-    expect(component.schichtmodellForm.controls.modellschichten).toHaveLength(1);
+    expect(component.schichtRastermodellForm.controls.modellschichten).toHaveLength(1);
     expect(ersteSchicht.controls.nachbereitungsminuten.value).toBe(15);
   });
 
   it('should transfer preparation when removing the first shift', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
-    const ersteSchicht = component.schichtmodellForm.controls.modellschichten.at(0);
+    const ersteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(0);
     ersteSchicht.controls.vorbereitungsminuten.setValue(20);
     component.addModellschicht();
-    const zweiteSchicht = component.schichtmodellForm.controls.modellschichten.at(1);
+    const zweiteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(1);
 
     component.removeModellschicht(0);
 
-    expect(component.schichtmodellForm.controls.modellschichten.at(0)).toBe(zweiteSchicht);
+    expect(component.schichtRastermodellForm.controls.modellschichten.at(0)).toBe(zweiteSchicht);
     expect(zweiteSchicht.controls.vorbereitungsminuten.value).toBe(20);
   });
 
@@ -125,7 +125,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
     component.addModellschicht();
-    const ersteSchicht = component.schichtmodellForm.controls.modellschichten.at(0);
+    const ersteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(0);
 
     ersteSchicht.controls.endeLokalzeit.setValue('00:30');
     expect(ersteSchicht.controls.endeTag.value).toBe('folgetag');
@@ -137,15 +137,15 @@ describe('SchichtmodellBearbeitenDialog', () => {
   it('should submit model shifts in their semantic order with explicit day assignments', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
-    component.schichtmodellForm.controls.bezeichnung.setValue('Standard');
-    const ersteSchicht = component.schichtmodellForm.controls.modellschichten.at(0);
+    component.schichtRastermodellForm.controls.bezeichnung.setValue('Standard');
+    const ersteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(0);
     ersteSchicht.controls.bezeichnung.setValue('Früh');
     component.addModellschicht();
-    const zweiteSchicht = component.schichtmodellForm.controls.modellschichten.at(1);
+    const zweiteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(1);
     zweiteSchicht.controls.bezeichnung.setValue('Spät');
     zweiteSchicht.controls.beginnLokalzeit.setValue('00:30');
 
-    await component.saveSchichtmodell();
+    await component.saveSchichtRastermodell();
 
     const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtrastermodellAnlage;
     expect(anlage.modellschichten.map(({ bezeichnung }) => bezeichnung)).toEqual(['Früh', 'Spät']);
@@ -157,8 +157,8 @@ describe('SchichtmodellBearbeitenDialog', () => {
   it('should submit multiple occupancy and edge minutes only on the outer shifts', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
-    component.schichtmodellForm.controls.bezeichnung.setValue('Standard');
-    const ersteSchicht = component.schichtmodellForm.controls.modellschichten.at(0);
+    component.schichtRastermodellForm.controls.bezeichnung.setValue('Standard');
+    const ersteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(0);
     ersteSchicht.patchValue({
       bezeichnung: 'Früh',
       mehrfachbelegungErlaubt: true,
@@ -166,7 +166,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
       nachbereitungsminuten: 15,
     });
 
-    await component.saveSchichtmodell();
+    await component.saveSchichtRastermodell();
 
     const anlage = createSchichtmodell.mock.calls[0][1] as ISchichtrastermodellAnlage;
     expect(anlage.modellschichten[0]).toEqual(
@@ -181,25 +181,25 @@ describe('SchichtmodellBearbeitenDialog', () => {
   it('should validate a fully fixed inner model shift', async () => {
     const fixture = await createComponent({ pfad });
     const component = fixture.componentInstance;
-    component.schichtmodellForm.controls.bezeichnung.setValue('Standard');
-    const ersteSchicht = component.schichtmodellForm.controls.modellschichten.at(0);
+    component.schichtRastermodellForm.controls.bezeichnung.setValue('Standard');
+    const ersteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(0);
     ersteSchicht.controls.bezeichnung.setValue('Früh');
     component.addModellschicht();
-    const mittlereSchicht = component.schichtmodellForm.controls.modellschichten.at(1);
+    const mittlereSchicht = component.schichtRastermodellForm.controls.modellschichten.at(1);
     mittlereSchicht.controls.bezeichnung.setValue('Mitte');
     mittlereSchicht.controls.beginnLokalzeit.setValue('12:00');
     component.addModellschicht();
-    const letzteSchicht = component.schichtmodellForm.controls.modellschichten.at(2);
+    const letzteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(2);
     letzteSchicht.controls.bezeichnung.setValue('Spät');
     letzteSchicht.controls.beginnLokalzeit.setValue('18:00');
 
     mittlereSchicht.controls.endeLokalzeit.setValue('11:00');
     expect(mittlereSchicht.hasError('ungueltigeZeitfolge')).toBe(true);
-    await component.saveSchichtmodell();
+    await component.saveSchichtRastermodell();
     expect(createSchichtmodell).not.toHaveBeenCalled();
 
     mittlereSchicht.controls.endeLokalzeit.setValue('18:00');
-    await component.saveSchichtmodell();
+    await component.saveSchichtRastermodell();
     expect(createSchichtmodell).toHaveBeenCalledOnce();
   });
 
@@ -211,7 +211,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
     ersteSchicht.controls.endeLokalzeit.setValue('14:00');
     zweiteSchicht.controls.beginnLokalzeit.setValue('16:00');
 
-    await component.saveSchichtmodell();
+    await component.saveSchichtRastermodell();
 
     expect(open).toHaveBeenCalledWith(
       expect.anything(),
@@ -230,7 +230,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
     ersteSchicht.controls.endeLokalzeit.setValue('14:00');
     zweiteSchicht.controls.beginnLokalzeit.setValue('16:00');
 
-    await component.saveSchichtmodell();
+    await component.saveSchichtRastermodell();
 
     expect(open).toHaveBeenCalledOnce();
     expect(createSchichtmodell).toHaveBeenCalledOnce();
@@ -244,19 +244,19 @@ describe('SchichtmodellBearbeitenDialog', () => {
     ersteSchicht.controls.endeLokalzeit.setValue('17:00');
     zweiteSchicht.controls.beginnLokalzeit.setValue('16:00');
 
-    await component.saveSchichtmodell();
+    await component.saveSchichtRastermodell();
 
     expect(open).not.toHaveBeenCalled();
     expect(createSchichtmodell).toHaveBeenCalledOnce();
   });
 });
 
-function createZweiSchichten(component: SchichtmodellBearbeitenDialog) {
-  component.schichtmodellForm.controls.bezeichnung.setValue('Standard');
-  const ersteSchicht = component.schichtmodellForm.controls.modellschichten.at(0);
+function createZweiSchichten(component: SchichtRastermodellBearbeitenDialog) {
+  component.schichtRastermodellForm.controls.bezeichnung.setValue('Standard');
+  const ersteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(0);
   ersteSchicht.controls.bezeichnung.setValue('Früh');
   component.addModellschicht();
-  const zweiteSchicht = component.schichtmodellForm.controls.modellschichten.at(1);
+  const zweiteSchicht = component.schichtRastermodellForm.controls.modellschichten.at(1);
   zweiteSchicht.controls.bezeichnung.setValue('Spät');
   zweiteSchicht.controls.beginnLokalzeit.setValue('16:00');
   return [ersteSchicht, zweiteSchicht] as const;

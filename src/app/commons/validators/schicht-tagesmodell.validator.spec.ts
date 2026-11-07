@@ -21,10 +21,10 @@ describe('Schicht-Tagesmodell-Validierung', () => {
 
   it('akzeptiert unabhängige Vorlagen mit Überlappungen', () => {
     const schichten: ITagesvorlagenschichtSchreibdaten[] = [
-      createSchicht('wochentag', 0, '07:00', '17:00'),
-      createSchicht('wochentag', 1, '15:00', '01:00', 'folgetag'),
-      createSchicht('sonntag', 0, '10:00', '18:00'),
-      createSchicht('sonntag', 1, '17:00', '01:00', 'folgetag'),
+      createSchicht('wochentag', 0, undefined, '17:00'),
+      createSchicht('wochentag', 1, '15:00', undefined),
+      createSchicht('sonntag', 0, undefined, '18:00'),
+      createSchicht('sonntag', 1, '17:00', undefined),
     ];
 
     expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).not.toThrow();
@@ -32,12 +32,56 @@ describe('Schicht-Tagesmodell-Validierung', () => {
 
   it('weist Kernzeiten außerhalb der Öffnung zurück', () => {
     const schichten: ITagesvorlagenschichtSchreibdaten[] = [
-      createSchicht('wochentag', 0, '06:00', '16:00'),
-      createSchicht('sonntag', 0, '10:00', '18:00'),
+      createSchicht('wochentag', 0, undefined, '16:00'),
+      createSchicht('wochentag', 1, '06:00', undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
     ];
 
     expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
       'Die Kernzeit der Tagesschicht muss innerhalb der Öffnung liegen.',
+    );
+  });
+
+  it('erlaubt Randminuten nur an der ersten und letzten Schicht jeder Vorlage', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, '17:00', 'starttag', 15, 0),
+      createSchicht('wochentag', 1, '15:00', undefined, 'starttag', 5, 15),
+      createSchicht('sonntag', 0, undefined, undefined, 'starttag', 15, 15),
+    ];
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
+    );
+
+    schichten[1].vorbereitungsminuten = 0;
+    schichten[0].nachbereitungsminuten = 5;
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
+    );
+
+    schichten[0].nachbereitungsminuten = 0;
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).not.toThrow();
+  });
+
+  it('verlangt dynamische Außengrenzen und feste innere Grenzen', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, '17:00'),
+      createSchicht('wochentag', 1, '15:00', undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
+    ];
+    schichten[0].beginn = { lokalzeit: '07:00', tag: 'starttag' };
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Die erste Tagesschicht darf keinen festen Beginn enthalten.',
+    );
+
+    delete schichten[0].beginn;
+    delete schichten[1].beginn;
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Die Tagesschicht benötigt einen festen Beginn.',
     );
   });
 });
@@ -45,18 +89,20 @@ describe('Schicht-Tagesmodell-Validierung', () => {
 function createSchicht(
   vorlage: 'wochentag' | 'sonntag',
   reihenfolge: number,
-  beginn: string,
-  ende: string,
+  beginn: string | undefined,
+  ende: string | undefined,
   endeTag: 'starttag' | 'folgetag' = 'starttag',
+  vorbereitungsminuten = 0,
+  nachbereitungsminuten = 0,
 ): ITagesvorlagenschichtSchreibdaten {
   return {
     vorlage,
     bezeichnung: `Schicht ${reihenfolge + 1}`,
     reihenfolge,
-    beginn: { lokalzeit: beginn, tag: 'starttag' },
-    ende: { lokalzeit: ende, tag: endeTag },
-    vorbereitungsminuten: 15,
-    nachbereitungsminuten: 15,
+    ...(beginn ? { beginn: { lokalzeit: beginn, tag: 'starttag' as const } } : {}),
+    ...(ende ? { ende: { lokalzeit: ende, tag: endeTag } } : {}),
+    vorbereitungsminuten,
+    nachbereitungsminuten,
     mehrfachbelegungErlaubt: false,
   };
 }

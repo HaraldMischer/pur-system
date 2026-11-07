@@ -145,6 +145,9 @@ Hauptquellen.
   normalisiert; `schichtbausteine` ist aus dem Anwendungscode entfernt.
 - Beide Planungsarten besitzen getrennte Modell-, Vorlagen- und Momentaufnahmepfade. Der vorhandene Rasterablauf bleibt
   fachlich erhalten; das Tagesmodell besitzt unabhängige Wochentags- und Sonntagsvorlagen.
+- In jeder Tagesmodellvorlage werden der Beginn der ersten und das Ende der letzten Schicht aus der wirksamen Tagesöffnung
+  abgeleitet. Nur die erste Schicht besitzt Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; beim Hinzufügen oder
+  Entfernen einer äußeren Schicht werden diese Randminuten entsprechend übertragen.
 - Das Schicht-Tagesmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Geöffnete Feier- und
   Sondertage werden vor dem atomaren Schreiben frei konfiguriert, geschlossene Tage bleiben ohne Tagesschichten.
 - Die vollständige Unit-Test-Suite mit 143 Testdateien und 1.051 Tests sowie `npm run build:master` wurden am 06.11.2026 als

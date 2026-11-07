@@ -167,13 +167,17 @@ eigene Bearbeitungsdialoge, Stores und Services. Der bisherige Schichtmodelldial
 wird fachlich als Schicht-Rastermodelldialog benannt. Die wirkungslose Auswahl `Übergänge: Fest / Relativ` wird daraus entfernt.
 
 Der Schicht-Tagesmodelldialog enthält getrennte Bereiche für eine Wochentagsvorlage von Montag bis Samstag und eine
-Sonntagsvorlage. In jedem Bereich können beliebig viele eigene Vorlagenschichten mit Kernbeginn, Kernende, Vor- und
-Nachbereitung, Reihenfolge und Mehrfachbelegung angelegt, entfernt und geordnet werden. Beide Vorlagen dürfen eine
-unterschiedliche Anzahl und Identität von Schichten besitzen.
+Sonntagsvorlage. In jedem Bereich können beliebig viele eigene Vorlagenschichten mit Beginn, Ende, Reihenfolge und
+Mehrfachbelegung angelegt, entfernt und geordnet werden. Der Beginn der ersten und das Ende der letzten Schicht werden wie im
+Rastermodelldialog als nicht bearbeitbarer `Schichtstart` beziehungsweise nicht bearbeitbares `Schichtende` dargestellt. Nur die
+inneren Grenzen bleiben editierbar. Nur die erste Schicht zeigt die Vorbereitung und nur die letzte die Nachbereitung; bei einer
+einzelnen Schicht sind beide Werte verfügbar. Beim Hinzufügen oder Entfernen einer äußeren Schicht werden die betroffenen
+Randminuten auf die neue erste beziehungsweise letzte Schicht übertragen. Beide Vorlagen dürfen eine unterschiedliche Anzahl
+und Identität von Schichten besitzen.
 
 Kernzeiten müssen innerhalb der für die Vorlage maßgeblichen Öffnung liegen. Lücken und Überschneidungen bleiben zulässig;
-jede Kernschicht benötigt eine positive Dauer. Vor- und Nachbereitung werden je Schicht in Minuten erfasst und erweitern die
-Kernzeit zur tatsächlichen Arbeitszeit. Prozentwerte und automatisch aus der Öffnungsdauer berechnete Übergänge werden im
+jede Kernschicht benötigt eine positive Dauer. Die Randminuten der ersten und letzten Schicht erweitern die Tagesstruktur zur
+tatsächlichen Arbeitszeit. Prozentwerte und automatisch aus der Öffnungsdauer berechnete Übergänge werden im
 Schicht-Tagesmodell nicht angeboten.
 
 Der Dienstplan-Anlegen-Dialog führt für Schicht-Tagesmodelle eine vollständige Monatsinitialisierung aus. Nach der Modellwahl

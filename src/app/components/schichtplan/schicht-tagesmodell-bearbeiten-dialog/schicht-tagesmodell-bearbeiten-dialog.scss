@@ -1,13 +1,24 @@
 // pur-system/src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog.scss
 
-.vorlagenkopf,
-.zeitzeile {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
+@media (min-width: 601px) and (max-width: 800px) {
+  .schicht-kerndaten {
+    > .pur-form__item--40 {
+      flex: 1 0 100%;
+    }
+
+    > .pur-form__item--20 {
+      flex: 1 1 calc((100% - 16px) / 2);
+    }
+  }
 }
 
-.vorlagenkopf {
-  justify-content: space-between;
+@media (max-width: 600px) {
+  .tagesvorlage-kopf {
+    align-items: flex-start;
+    flex-direction: column;
+
+    > .pur-form__group-actions {
+      width: 100%;
+    }
+  }
 }

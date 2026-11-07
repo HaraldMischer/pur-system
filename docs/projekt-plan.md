@@ -193,16 +193,18 @@ Rastergrenzen werden aus der wirksamen Tagesöffnung einschließlich Vor- und Na
 Modellbestandteil. Geschlossene oder zeitlich zu kurze Tage können keine ungültigen Schichten erzeugen.
 
 Das Schicht-Tagesmodell enthält eine Wochentagsvorlage für Montag bis Samstag und eine davon unabhängige Sonntagsvorlage.
-Anzahl, Identität und Zeiten ihrer Schichten dürfen sich unterscheiden. Beim initialen Erstellen eines Monatsplans erhält jeder
-Kalendertag eine eigene Tagesstruktur. Reguläre Tage übernehmen die passende Vorlage. Feiertage mit `Wie Sonntag` übernehmen
-die wirksame Sonntagsöffnung und die Sonntagsvorlage, ohne bei der Monatsplananlage erneut konfiguriert zu werden. Nur
-abweichend geöffnete Feier- und Sondertage werden vor dem Anlegen des Plans frei konfiguriert. Geschlossene Tage enthalten
-keine Tagesschichten.
+Anzahl, Identität und innere Grenzen ihrer Schichten dürfen sich unterscheiden. Der Beginn der ersten und das Ende der letzten
+Schicht werden nicht fest gespeichert. Beim initialen Erstellen eines Monatsplans erhält jeder Kalendertag eine eigene
+Tagesstruktur, deren Außengrenzen aus seiner wirksamen Öffnung abgeleitet werden. Reguläre Tage übernehmen die passende Vorlage.
+Feiertage mit `Wie Sonntag` übernehmen die wirksame Sonntagsöffnung und die Sonntagsvorlage, ohne bei der Monatsplananlage erneut
+konfiguriert zu werden. Nur abweichend geöffnete Feier- und Sondertage werden vor dem Anlegen des Plans frei konfiguriert.
+Geschlossene Tage enthalten keine Tagesschichten.
 
-Beginn und Ende jeder Kernschicht des Schicht-Tagesmodells müssen innerhalb der wirksamen Öffnung liegen. Nur ihre ausdrücklich
-konfigurierte Vor- und Nachbereitungszeit darf über die Öffnungsgrenzen hinausreichen. Monatsplan, Kalender-Momentaufnahme und
-alle Tagesschichten werden erst nach vollständiger Tageskonfiguration atomar angelegt. Spätere Änderungen am Modell oder an den
-Öffnungszeiten verändern bestehende Monatspläne nicht.
+Die aufgelösten Grenzen jeder Kernschicht des Schicht-Tagesmodells müssen innerhalb der wirksamen Öffnung liegen. Innerhalb jeder
+Modellvorlage besitzt nur die erste Schicht Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; bei einer einzelnen
+Schicht gelten beide Werte. Ausschließlich konfigurierte Randzeiten dürfen über die Öffnungsgrenzen hinausreichen. Monatsplan,
+Kalender-Momentaufnahme und alle Tagesschichten werden erst nach vollständiger Tageskonfiguration atomar angelegt. Spätere
+Änderungen am Modell oder an den Öffnungszeiten verändern bestehende Monatspläne nicht.
 
 Schichten eines Mitarbeiters werden filialübergreifend auf zeitliche Konflikte geprüft. Pausen werden aus den gemeinsamen
 Arbeitsblöcken eines Tages berechnet und in der Planungsmomentaufnahme erhalten. Veröffentlichungen, parallele Änderungen und

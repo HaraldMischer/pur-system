@@ -1,21 +1,19 @@
-<!-- pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.html -->
+<!-- pur-system/src/app/components/schichtplan/schicht-rastermodell-bearbeiten-dialog/schicht-rastermodell-bearbeiten-dialog.html -->
 
-<h2 mat-dialog-title>
-  {{ istBearbeitung ? 'Schichtmodell bearbeiten' : 'Schichtmodell anlegen' }}
-</h2>
+<h2 mat-dialog-title>Schicht-Rastermodell {{ istBearbeitung ? 'bearbeiten' : 'anlegen' }}</h2>
 <mat-dialog-content class="pur-dialog__content">
   <form
-    id="schichtmodell-form"
+    id="schicht-rastermodell-form"
     class="pur-form pur-form--grid"
-    [formGroup]="schichtmodellForm"
-    (ngSubmit)="saveSchichtmodell()"
+    [formGroup]="schichtRastermodellForm"
+    (ngSubmit)="saveSchichtRastermodell()"
   >
     <div class="pur-form__group">
       <div class="pur-form__row">
         <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
           <mat-label>Bezeichnung</mat-label>
           <input matInput formControlName="bezeichnung" maxlength="80" />
-          @if (schichtmodellForm.controls.bezeichnung.hasError('maxlength')) {
+          @if (schichtRastermodellForm.controls.bezeichnung.hasError('maxlength')) {
             <mat-error>Die Bezeichnung darf höchstens 80 Zeichen lang sein.</mat-error>
           }
         </mat-form-field>
@@ -40,7 +38,7 @@
       </header>
 
       @for (
-        modellschicht of schichtmodellForm.controls.modellschichten.controls;
+        modellschicht of schichtRastermodellForm.controls.modellschichten.controls;
         track modellschicht;
         let index = $index
       ) {
@@ -55,7 +53,7 @@
                 matIconButton
                 type="button"
                 aria-label="Schicht entfernen"
-                [disabled]="schichtmodellForm.controls.modellschichten.length === 1"
+                [disabled]="schichtRastermodellForm.controls.modellschichten.length === 1"
                 (click)="removeModellschicht(index)"
               >
                 <mat-icon>delete</mat-icon>
@@ -91,7 +89,7 @@
                 required
               />
             }
-            @if (index === schichtmodellForm.controls.modellschichten.length - 1) {
+            @if (index === schichtRastermodellForm.controls.modellschichten.length - 1) {
               <mat-form-field
                 appearance="outline"
                 class="pur-form__item pur-form__item--field pur-form__item--20"
@@ -108,7 +106,7 @@
               />
             }
 
-            @if (index > 0 && index < schichtmodellForm.controls.modellschichten.length - 1) {
+            @if (index > 0 && index < schichtRastermodellForm.controls.modellschichten.length - 1) {
               <span
                 class="pur-form__item pur-form__item--20 modellschicht-platzhalter"
                 aria-hidden="true"
@@ -123,7 +121,7 @@
                 required
               />
             }
-            @if (index === schichtmodellForm.controls.modellschichten.length - 1) {
+            @if (index === schichtRastermodellForm.controls.modellschichten.length - 1) {
               <app-eingabe-minuten
                 class="pur-form__item pur-form__item--field pur-form__item--20"
                 label="Nachbereitung"
@@ -157,9 +155,9 @@
   <button
     matButton="filled"
     type="submit"
-    form="schichtmodell-form"
+    form="schicht-rastermodell-form"
     [disabled]="
-      schichtmodellForm.invalid ||
+      schichtRastermodellForm.invalid ||
       schichtmodellStore.inProgress() ||
       (istBearbeitung && !hatAenderungen())
     "

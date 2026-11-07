@@ -7,12 +7,13 @@ import type {
   IFreieTagesschichtSchreibdaten,
   ISchichttagesmodellBestand,
   ITagesschichtDaten,
-  ITagesvorlagenschichtSchreibdaten,
   TTagesschichtHerkunft,
+  TTagesstrukturSchichtSchreibdaten,
   TTagesvorlageTyp,
 } from '../../models/domain/schicht-tagesmodell';
 import { assertGueltigeTagesstruktur } from '../../validators/schicht-tagesmodell.validator';
 import { createSchichtZeitstempelAusLokalzeiten } from './schicht-lokalzeit';
+import { resolveTagesvorlagenschichten } from './tagesvorlagenschichten';
 
 export type TTagesschichtAnlage = ITagesschichtDaten & {
   readonly id?: string;
@@ -43,14 +44,17 @@ export function createDienstplanTagesschichten(
         ? 'sonntag'
         : 'wochentag';
     const herkunft: TTagesschichtHerkunft = istSondertag ? 'sondertag' : vorlage;
-    const schichten = istSondertag
+    const schichten: TTagesstrukturSchichtSchreibdaten[] = istSondertag
       ? (freieNachDatum.get(kalendertag.datum) ?? []).map((schicht) => {
           const { datum: _datum, ...daten } = schicht;
           return daten;
         })
-      : anfrage.schichttagesmodell.tagesvorlagenschichten.filter((schicht) => {
-          return schicht.vorlage === vorlage;
-        });
+      : resolveTagesvorlagenschichten(
+          anfrage.schichttagesmodell.tagesvorlagenschichten.filter((schicht) => {
+            return schicht.vorlage === vorlage;
+          }),
+          kalendertag.oeffnungsregel,
+        );
     assertGueltigeTagesstruktur(schichten, kalendertag.oeffnungsregel);
     return schichten.map((schicht) => {
       return createTagesschicht(kalendertag.datum, herkunft, schicht, anfrage.zeitzone);
@@ -61,7 +65,7 @@ export function createDienstplanTagesschichten(
 function createTagesschicht(
   datum: string,
   herkunft: TTagesschichtHerkunft,
-  schicht: Omit<ITagesvorlagenschichtSchreibdaten, 'vorlage'>,
+  schicht: TTagesstrukturSchichtSchreibdaten,
   zeitzone: string,
 ): TTagesschichtAnlage {
   const kernzeit = createSchichtZeitstempelAusLokalzeiten(

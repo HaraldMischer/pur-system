@@ -57,13 +57,16 @@ besitzen getrennte Eintrags-, Schreib- und Dokumenttypen. Der bisherige Wert `sc
 vorbereitete Typ `ISchichtbausteinmodellDokument` entfällt.
 
 Der Schicht-Tagesmodell-Service verwaltet genau eine Wochentagsvorlage und eine Sonntagsvorlage je Modell. Ihre
-Vorlagenschichten besitzen eigene stabile IDs, konkrete Kernzeiten am Start- oder Folgetag, Reihenfolge, Mehrfachbelegung sowie
-Vor- und Nachbereitung. Unterschiedliche Schichtanzahlen, Lücken und Überschneidungen zwischen beiden Vorlagen sind zulässig.
-Relative Übergänge und Prozentwerte werden nicht gespeichert.
+Vorlagenschichten besitzen eigene stabile IDs, Reihenfolge und Mehrfachbelegung. Der Beginn der ersten und das Ende der letzten
+Schicht werden nicht gespeichert; nur innere Grenzen besitzen konkrete Lokalzeiten am Start- oder Folgetag.
+Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Schicht einer Vorlage zulässig; bei
+einer einzelnen Schicht gelten beide Werte. Unterschiedliche Schichtanzahlen, Lücken und Überschneidungen zwischen beiden
+Vorlagen sind zulässig. Relative Übergänge und Prozentwerte werden nicht gespeichert.
 
-Der TypeScript-Code validiert jede Kernzeit gegen die für die Vorlage maßgebliche Öffnung. Vor- und
-Nachbereitungsminuten erweitern die Kernzeit zur tatsächlichen Arbeitszeit. Nur diese Erweiterung darf vor den Öffnungsbeginn
-oder nach das Öffnungsende reichen. Firestore Rules erhalten keine fachliche Feldvalidierung.
+Der TypeScript-Code löst die dynamischen Außengrenzen zunächst gegen die für die Vorlage maßgebliche Öffnung auf und validiert
+anschließend jede Kernzeit sowie die Randminuten gegen ihre zulässige Position. Vor- und Nachbereitungsminuten erweitern die
+Tagesstruktur zur tatsächlichen Arbeitszeit. Nur diese Erweiterung darf vor den Öffnungsbeginn oder nach das Öffnungsende
+reichen. Firestore Rules erhalten keine fachliche Feldvalidierung.
 
 Feier- und Sondertage sind nicht Bestandteil des Schicht-Tagesmodells. Ihre konkrete Tagesstruktur entsteht frei innerhalb der
 Monatsplananlage. Der Schicht-Tagesmodell-Service stellt dafür weder Sondertagsvorlagen noch einen Schichtbausteinkatalog bereit.
