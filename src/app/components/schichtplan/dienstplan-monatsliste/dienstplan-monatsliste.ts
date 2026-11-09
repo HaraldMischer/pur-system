@@ -34,6 +34,7 @@ type TSchichtplanTagesschichtZelle = {
   readonly schichten: readonly ISchichtEintrag[];
   readonly mitarbeiterIds: readonly string[];
   readonly hatKonflikt: boolean;
+  readonly konfliktMeldungen: readonly string[];
   readonly zeitachsenposition: IDienstplanZeitachsenPosition;
 };
 
@@ -62,6 +63,9 @@ export class DienstplanMonatsliste {
   readonly schichten = input.required<readonly ISchichtEintrag[]>();
   readonly tagesschichten = input.required<readonly ITagesschichtEintrag[]>();
   readonly konfliktSchichtIds = input<ReadonlySet<string>>(new Set());
+  readonly konfliktMeldungenNachSchichtId = input<ReadonlyMap<string, readonly string[]>>(
+    new Map(),
+  );
   readonly mitarbeiter = input<readonly IMitarbeiterEintrag[]>([]);
   readonly erlaubteMitarbeiterIds = input<readonly string[]>([]);
   readonly darfSchreiben = input(false);
@@ -71,6 +75,7 @@ export class DienstplanMonatsliste {
   readonly tagesschichtVerschieben = output<TSchichtplanTagesschichtVerschiebung>();
   readonly tagesschichtBearbeiten = output<ISchichtEintrag>();
   readonly mehrfachbelegungAbgelehnt = output<TSchichtplanMehrfachbelegungAblehnung>();
+  readonly mitarbeiterBereitsEingeplant = output<void>();
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -132,6 +137,11 @@ export class DienstplanMonatsliste {
           const belegungen = schichten.filter((schicht) => {
             return schicht.tagesschichtId === tagesschicht.id;
           });
+          const konfliktMeldungen = new Set(
+            belegungen.flatMap((schicht) => {
+              return this.konfliktMeldungenNachSchichtId().get(schicht.id) ?? [];
+            }),
+          );
           return {
             tagesschicht,
             schichten: belegungen,
@@ -139,6 +149,7 @@ export class DienstplanMonatsliste {
             hatKonflikt: belegungen.some((schicht) => {
               return this.konfliktSchichtIds().has(schicht.id);
             }),
+            konfliktMeldungen: [...konfliktMeldungen],
           };
         });
       const positionen = createDienstplanZeitachsenPositionen(
@@ -237,6 +248,10 @@ export class DienstplanMonatsliste {
     if (dragDaten.art === 'schicht') {
       if (!this.erlaubteMitarbeiterIds().includes(dragDaten.schicht.mitarbeiterId)) return;
       if (dragDaten.schicht.tagesschichtId === ziel.tagesschicht.id) return;
+      if (ziel.mitarbeiterIds.includes(dragDaten.schicht.mitarbeiterId)) {
+        this.mitarbeiterBereitsEingeplant.emit();
+        return;
+      }
       this.tagesschichtVerschieben.emit({
         schicht: dragDaten.schicht,
         datum: ziel.tagesschicht.datum,
@@ -245,7 +260,10 @@ export class DienstplanMonatsliste {
       return;
     }
     if (!this.erlaubteMitarbeiterIds().includes(dragDaten.mitarbeiterId)) return;
-    if (ziel.mitarbeiterIds.includes(dragDaten.mitarbeiterId)) return;
+    if (ziel.mitarbeiterIds.includes(dragDaten.mitarbeiterId)) {
+      this.mitarbeiterBereitsEingeplant.emit();
+      return;
+    }
     this.tagesschichtAblegen.emit({
       mitarbeiterId: dragDaten.mitarbeiterId,
       datum: ziel.tagesschicht.datum,

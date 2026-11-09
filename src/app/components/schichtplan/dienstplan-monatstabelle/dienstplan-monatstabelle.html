@@ -121,13 +121,17 @@
                   @if ((schicht.pauseMinuten ?? 0) > 0) {
                     <span>Bezahlte Pause: {{ schicht.pauseMinuten }} Min.</span>
                   }
-                  @if (konfliktSchichtIds().has(schicht.id)) {
-                    <span class="konflikthinweis">Zeitkonflikt</span>
-                  }
                   @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                     <button matButton type="button" (click)="schichtBearbeiten.emit(schicht)">
                       Bearbeiten
                     </button>
+                  }
+                </div>
+              }
+              @if (zelle.konfliktMeldungen.length > 0) {
+                <div class="konflikthinweise">
+                  @for (meldung of zelle.konfliktMeldungen; track meldung) {
+                    <p class="pur-message pur-message--error">{{ meldung }}</p>
                   }
                 </div>
               }

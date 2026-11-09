@@ -741,7 +741,9 @@ describe('DienstplanService', () => {
     const transaktion = executeDocumentsTransactionMock.mock.calls[0];
     expect(transaktion[0]).toEqual([
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1',
+      'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-04',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-05',
+      'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-06',
     ]);
     const operationen = transaktion[1](
       new Map([
@@ -795,27 +797,29 @@ describe('DienstplanService', () => {
             path,
             path.endsWith('/version/v-1')
               ? { id: 'v-1', daten: createVersionDokument() }
-              : {
-                  id: 'm-1__2026-10-05',
-                  daten: {
-                    mitarbeiterId: 'm-1',
-                    datum: '2026-10-05',
-                    belegungen: [
-                      {
-                        datum: '2026-10-05',
-                        mitarbeiterId: 'm-1',
-                        filialeId: 'b-2',
-                        dienstplanId: '2026-10',
-                        versionId: 'v-2',
-                        schichtId: 's-2',
-                        status: 'entwurf',
-                        beginn: Timestamp.fromDate(new Date('2026-10-05T11:00:00+02:00')),
-                        ende: Timestamp.fromDate(new Date('2026-10-05T13:00:00+02:00')),
-                      },
-                    ],
-                    aktualisiertVonUid: 'uid-2',
-                  },
-                },
+              : path.endsWith('/m-1__2026-10-05')
+                ? {
+                    id: 'm-1__2026-10-05',
+                    daten: {
+                      mitarbeiterId: 'm-1',
+                      datum: '2026-10-05',
+                      belegungen: [
+                        {
+                          datum: '2026-10-05',
+                          mitarbeiterId: 'm-1',
+                          filialeId: 'b-2',
+                          dienstplanId: '2026-10',
+                          versionId: 'v-2',
+                          schichtId: 's-2',
+                          status: 'entwurf',
+                          beginn: Timestamp.fromDate(new Date('2026-10-05T11:00:00+02:00')),
+                          ende: Timestamp.fromDate(new Date('2026-10-05T13:00:00+02:00')),
+                        },
+                      ],
+                      aktualisiertVonUid: 'uid-2',
+                    },
+                  }
+                : null,
           );
         });
         return (aktion(dokumente) as { ergebnis: unknown }).ergebnis;
@@ -857,7 +861,7 @@ describe('DienstplanService', () => {
         aktion: (dokumente: ReadonlyMap<string, unknown>) => unknown,
       ) => {
         const versionPath = paths.find((path) => path.includes('/version/'))!;
-        const belegungsPath = paths.find((path) => path.includes('/mitarbeiterbelegung/'))!;
+        const belegungsPath = paths.find((path) => path.endsWith('/m-1__2026-10-05'))!;
         const dokumente = new Map<string, unknown>([
           [
             versionPath,
@@ -941,6 +945,7 @@ describe('DienstplanService', () => {
 
     expect(executeDocumentsTransactionMock.mock.calls[0][0]).toEqual([
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1',
+      'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-04',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-05',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-06',
     ]);
@@ -982,6 +987,7 @@ describe('DienstplanService', () => {
 
     expect(executeDocumentsTransactionMock.mock.calls[0][0]).toEqual([
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1',
+      'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-04',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-05',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-06',
     ]);
@@ -1010,15 +1016,17 @@ describe('DienstplanService', () => {
             path,
             path.endsWith('/version/v-1')
               ? { id: 'v-1', daten: createVersionDokument() }
-              : {
-                  id: 'm-1__2026-10-05',
-                  daten: {
-                    mitarbeiterId: 'm-1',
-                    datum: '2026-10-05',
-                    belegungen: [bestehendeBelegung],
-                    aktualisiertVonUid: 'uid-2',
-                  },
-                },
+              : path.endsWith('/m-1__2026-10-05')
+                ? {
+                    id: 'm-1__2026-10-05',
+                    daten: {
+                      mitarbeiterId: 'm-1',
+                      datum: '2026-10-05',
+                      belegungen: [bestehendeBelegung],
+                      aktualisiertVonUid: 'uid-2',
+                    },
+                  }
+                : null,
           );
         });
         return (aktion(dokumente) as { ergebnis: unknown }).ergebnis;
@@ -1069,6 +1077,199 @@ describe('DienstplanService', () => {
         }),
       }),
     );
+  });
+
+  it('should update every indexed copy when adding a shift before an overnight shift', async () => {
+    const spaetBelegung = {
+      datum: '2026-10-05',
+      mitarbeiterId: 'm-1',
+      filialeId: 'b-1',
+      dienstplanId: '2026-10',
+      versionId: 'v-1',
+      schichtId: 's-spaet',
+      status: 'entwurf' as const,
+      beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
+      ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
+      pauseMinuten: 30,
+    };
+    loadDocumentMock.mockImplementation(async (path: string) => {
+      if (path.endsWith('/modellschicht/frueh')) {
+        return { id: 'frueh', daten: createModellschichtDaten() };
+      }
+      if (path.endsWith('/dienstplan/2026-10')) {
+        const dienstplan = createDienstplanDokument();
+        return {
+          id: '2026-10',
+          daten: {
+            ...dienstplan,
+            kalendertage: [
+              {
+                ...dienstplan.kalendertage[0],
+                rasterzeiten: [
+                  {
+                    modellschichtId: 'frueh',
+                    beginnLokalzeit: '08:00',
+                    endeLokalzeit: '16:30',
+                    beginntAmFolgetag: false,
+                    endetAmFolgetag: false,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+      }
+      return null;
+    });
+    let operationen: readonly { documentPath: string; daten?: Record<string, unknown> }[] = [];
+    executeDocumentsTransactionMock.mockImplementationOnce(
+      async (
+        paths: readonly string[],
+        aktion: (dokumente: ReadonlyMap<string, unknown>) => unknown,
+      ) => {
+        const dokumente = new Map<string, unknown>();
+        paths.forEach((path) => {
+          if (path.endsWith('/version/v-1')) {
+            dokumente.set(path, { id: 'v-1', daten: createVersionDokument() });
+            return;
+          }
+          const datum = path.slice(-10);
+          dokumente.set(
+            path,
+            datum === '2026-10-05' || datum === '2026-10-06'
+              ? {
+                  id: `m-1__${datum}`,
+                  daten: {
+                    mitarbeiterId: 'm-1',
+                    datum,
+                    belegungen: [spaetBelegung],
+                    aktualisiertVonUid: 'uid-1',
+                  },
+                }
+              : null,
+          );
+        });
+        const transaktion = aktion(dokumente) as {
+          ergebnis: unknown;
+          operationen: readonly { documentPath: string; daten?: Record<string, unknown> }[];
+        };
+        operationen = transaktion.operationen;
+        return transaktion.ergebnis;
+      },
+    );
+    const service = TestBed.inject(DienstplanService);
+
+    const ergebnis = await service.createSchicht(versionsPfad, 2, createSchichtAnlage(), 'uid-1');
+
+    expect(ergebnis.pauseAktualisierungen).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ schichtId: 'neu-1', pauseMinuten: 0 }),
+        expect.objectContaining({ schichtId: 's-spaet', pauseMinuten: 45 }),
+      ]),
+    );
+    for (const datum of ['2026-10-05', '2026-10-06']) {
+      expect(operationen).toContainEqual(
+        expect.objectContaining({
+          documentPath: `unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__${datum}`,
+          daten: expect.objectContaining({
+            belegungen: expect.arrayContaining([
+              expect.objectContaining({ schichtId: 's-spaet', pauseMinuten: 45 }),
+            ]),
+          }),
+        }),
+      );
+    }
+  });
+
+  it('should update every remaining indexed copy after deleting the preceding shift', async () => {
+    const fruehSchicht: ISchichtEintrag = {
+      ...createSchichtEintrag(),
+      beginn: Timestamp.fromDate(new Date('2026-10-05T08:00:00+02:00')),
+      ende: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
+      pauseMinuten: 0,
+    };
+    const fruehBelegung = {
+      datum: '2026-10-05',
+      mitarbeiterId: 'm-1',
+      filialeId: 'b-1',
+      dienstplanId: '2026-10',
+      versionId: 'v-1',
+      schichtId: 's-1',
+      status: 'entwurf' as const,
+      beginn: fruehSchicht.beginn,
+      ende: fruehSchicht.ende,
+      pauseMinuten: 0,
+    };
+    const spaetBelegung = {
+      ...fruehBelegung,
+      schichtId: 's-spaet',
+      beginn: Timestamp.fromDate(new Date('2026-10-05T16:30:00+02:00')),
+      ende: Timestamp.fromDate(new Date('2026-10-06T01:00:00+02:00')),
+      pauseMinuten: 45,
+    };
+    let operationen: readonly { documentPath: string; daten?: Record<string, unknown> }[] = [];
+    executeDocumentsTransactionMock.mockImplementationOnce(
+      async (
+        paths: readonly string[],
+        aktion: (dokumente: ReadonlyMap<string, unknown>) => unknown,
+      ) => {
+        const dokumente = new Map<string, unknown>();
+        paths.forEach((path) => {
+          if (path.endsWith('/version/v-1')) {
+            dokumente.set(path, { id: 'v-1', daten: createVersionDokument() });
+            return;
+          }
+          const datum = path.slice(-10);
+          dokumente.set(
+            path,
+            datum === '2026-10-05'
+              ? {
+                  id: `m-1__${datum}`,
+                  daten: {
+                    mitarbeiterId: 'm-1',
+                    datum,
+                    belegungen: [fruehBelegung, spaetBelegung],
+                    aktualisiertVonUid: 'uid-1',
+                  },
+                }
+              : datum === '2026-10-06'
+                ? {
+                    id: `m-1__${datum}`,
+                    daten: {
+                      mitarbeiterId: 'm-1',
+                      datum,
+                      belegungen: [spaetBelegung],
+                      aktualisiertVonUid: 'uid-1',
+                    },
+                  }
+                : null,
+          );
+        });
+        const transaktion = aktion(dokumente) as {
+          ergebnis: unknown;
+          operationen: readonly { documentPath: string; daten?: Record<string, unknown> }[];
+        };
+        operationen = transaktion.operationen;
+        return transaktion.ergebnis;
+      },
+    );
+    const service = TestBed.inject(DienstplanService);
+
+    const ergebnis = await service.deleteSchicht(versionsPfad, fruehSchicht, 2, 'uid-1');
+
+    expect(ergebnis.pauseAktualisierungen).toEqual([
+      expect.objectContaining({ schichtId: 's-spaet', pauseMinuten: 30 }),
+    ]);
+    for (const datum of ['2026-10-05', '2026-10-06']) {
+      expect(operationen).toContainEqual(
+        expect.objectContaining({
+          documentPath: `unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__${datum}`,
+          daten: expect.objectContaining({
+            belegungen: [expect.objectContaining({ schichtId: 's-spaet', pauseMinuten: 30 })],
+          }),
+        }),
+      );
+    }
   });
 
   it('should reject creating a shift when its model cell is unavailable on that day', async () => {
@@ -1231,8 +1432,10 @@ describe('DienstplanService', () => {
 
     expect(executeDocumentsTransactionMock.mock.calls[0][0]).toEqual([
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1',
+      'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-04',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-05',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-06',
+      'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-07',
     ]);
     expect(ergebnis).toMatchObject({
       versionRevision: 3,
@@ -1292,6 +1495,7 @@ describe('DienstplanService', () => {
 
     expect(executeDocumentsTransactionMock.mock.calls[0][0]).toEqual([
       'unternehmer/u-1/firma/f-1/filiale/b-1/dienstplan/2026-10/version/v-1',
+      'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-04',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-05',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-06',
       'unternehmer/u-1/firma/f-1/mitarbeiterbelegung/m-1__2026-10-07',
@@ -1320,25 +1524,27 @@ describe('DienstplanService', () => {
             path,
             path.endsWith('/version/v-1')
               ? { id: 'v-1', daten: createVersionDokument() }
-              : {
-                  id: 'm-1__2026-10-05',
-                  daten: {
-                    mitarbeiterId: 'm-1',
-                    datum: '2026-10-05',
-                    belegungen: [
-                      {
-                        filialeId: 'b-1',
-                        dienstplanId: '2026-10',
-                        versionId: 'v-1',
-                        schichtId: 's-1',
-                        status: 'entwurf',
-                        beginn: schicht.beginn,
-                        ende: schicht.ende,
-                      },
-                    ],
-                    aktualisiertVonUid: 'uid-1',
-                  },
-                },
+              : path.endsWith('/m-1__2026-10-05')
+                ? {
+                    id: 'm-1__2026-10-05',
+                    daten: {
+                      mitarbeiterId: 'm-1',
+                      datum: '2026-10-05',
+                      belegungen: [
+                        {
+                          filialeId: 'b-1',
+                          dienstplanId: '2026-10',
+                          versionId: 'v-1',
+                          schichtId: 's-1',
+                          status: 'entwurf',
+                          beginn: schicht.beginn,
+                          ende: schicht.ende,
+                        },
+                      ],
+                      aktualisiertVonUid: 'uid-1',
+                    },
+                  }
+                : null,
           );
         });
         return (aktion(dokumente) as { ergebnis: unknown }).ergebnis;

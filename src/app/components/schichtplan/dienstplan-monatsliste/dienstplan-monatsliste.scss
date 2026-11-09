@@ -124,7 +124,6 @@
         height: auto;
         padding: 0;
       }
-
     }
 
     &--geschlossen {
@@ -173,4 +172,10 @@
   &:not(.cdk-drag-disabled) {
     cursor: grab;
   }
+}
+
+.konflikthinweise {
+  display: grid;
+  gap: 4px;
+  margin-top: auto;
 }

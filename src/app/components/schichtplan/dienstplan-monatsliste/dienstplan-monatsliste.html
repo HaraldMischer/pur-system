@@ -152,6 +152,13 @@
                   }
                 </div>
               }
+              @if (zelle.konfliktMeldungen.length > 0) {
+                <div class="konflikthinweise">
+                  @for (meldung of zelle.konfliktMeldungen; track meldung) {
+                    <p class="pur-message pur-message--error">{{ meldung }}</p>
+                  }
+                </div>
+              }
             </div>
           }
         </div>

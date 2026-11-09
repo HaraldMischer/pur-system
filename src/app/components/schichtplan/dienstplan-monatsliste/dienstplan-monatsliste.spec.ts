@@ -92,6 +92,46 @@ describe('DienstplanMonatsliste', () => {
     expect(anlegen).not.toHaveBeenCalled();
   });
 
+  it('should show the concrete conflict message below the affected day shift', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('schichten', [createSchicht()]);
+    fixture.componentRef.setInput('konfliktSchichtIds', new Set(['schicht-1']));
+    fixture.componentRef.setInput(
+      'konfliktMeldungenNachSchichtId',
+      new Map([['schicht-1', ['Eine Mitarbeiterschicht besitzt keinen gültigen Pausenwert.']]]),
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Eine Mitarbeiterschicht besitzt keinen gültigen Pausenwert.',
+    );
+  });
+
+  it('should reject assigning the same employee to a multiple day shift again', () => {
+    const fixture = createFixture();
+    const ablehnung = vi.fn();
+    const anlegen = vi.fn();
+    fixture.componentRef.setInput(
+      'tagesschichten',
+      fixture.componentInstance.tagesschichten().map((tagesschicht) => {
+        return { ...tagesschicht, mehrfachbelegungErlaubt: true };
+      }),
+    );
+    fixture.componentRef.setInput('schichten', [createSchicht()]);
+    fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-1']);
+    fixture.componentInstance.mitarbeiterBereitsEingeplant.subscribe(ablehnung);
+    fixture.componentInstance.tagesschichtAblegen.subscribe(anlegen);
+    fixture.detectChanges();
+
+    fixture.componentInstance.handleTagesschichtDrop({
+      item: { data: { art: 'mitarbeiter', mitarbeiterId: 'm-1' } },
+      container: { data: fixture.componentInstance.tage()[0].zellen[0] },
+    } as unknown as Parameters<DienstplanMonatsliste['handleTagesschichtDrop']>[0]);
+
+    expect(ablehnung).toHaveBeenCalledOnce();
+    expect(anlegen).not.toHaveBeenCalled();
+  });
+
   function createFixture(
     vorbereitungsminuten = 0,
     nachbereitungsminuten = 0,

@@ -35,6 +35,7 @@ type TSchichtplanZelle = {
   readonly schichtIds: readonly string[];
   readonly mitarbeiterIds: readonly string[];
   readonly hatKonflikt: boolean;
+  readonly konfliktMeldungen: readonly string[];
 };
 
 type TSchichtplanAblageziel = TSchichtplanRasterauswahl & {
@@ -71,6 +72,9 @@ export class DienstplanMonatstabelle {
   readonly schichten = input.required<readonly ISchichtEintrag[]>();
   readonly modellschichten = input.required<readonly IModellschichtMomentaufnahmeEintrag[]>();
   readonly konfliktSchichtIds = input<ReadonlySet<string>>(new Set());
+  readonly konfliktMeldungenNachSchichtId = input<ReadonlyMap<string, readonly string[]>>(
+    new Map(),
+  );
   readonly mitarbeiter = input<readonly IMitarbeiterEintrag[]>([]);
   readonly erlaubteMitarbeiterIds = input<readonly string[]>([]);
   readonly darfSchreiben = input(false);
@@ -80,6 +84,7 @@ export class DienstplanMonatstabelle {
   readonly schichtVerschieben = output<TSchichtplanVerschiebung>();
   readonly schichtBearbeiten = output<ISchichtEintrag>();
   readonly mehrfachbelegungAbgelehnt = output<TSchichtplanMehrfachbelegungAblehnung>();
+  readonly mitarbeiterBereitsEingeplant = output<void>();
   readonly schichtVerschiebungErlaubt = input<
     (schicht: ISchichtEintrag, ziel: TSchichtplanRasterauswahl) => boolean
   >(() => true);
@@ -112,6 +117,7 @@ export class DienstplanMonatstabelle {
       this.geordneteModellschichten(),
       schichten,
       this.konfliktSchichtIds(),
+      this.konfliktMeldungenNachSchichtId(),
     );
   });
 
@@ -148,21 +154,23 @@ export class DienstplanMonatstabelle {
       const schicht = dragDaten.schicht;
       const istBisherigeZelle =
         schicht.datum === drop.data.datum && schicht.modellschichtId === drop.data.modellschichtId;
+      const mitarbeiterIstBereitsEingeplant = drop.data.mitarbeiterIds.includes(
+        schicht.mitarbeiterId,
+      );
       return (
         this.kannSchichtenAblegen() &&
         drop.data.verfuegbar &&
         this.erlaubteMitarbeiterIds().includes(schicht.mitarbeiterId) &&
         (istBisherigeZelle ||
-          (!drop.data.mitarbeiterIds.includes(schicht.mitarbeiterId) &&
-            this.schichtVerschiebungErlaubt()(schicht, drop.data)))
+          mitarbeiterIstBereitsEingeplant ||
+          this.schichtVerschiebungErlaubt()(schicht, drop.data))
       );
     }
     const mitarbeiterId = dragDaten.mitarbeiterId;
     return (
       this.kannSchichtenAblegen() &&
       drop.data.verfuegbar &&
-      this.erlaubteMitarbeiterIds().includes(mitarbeiterId) &&
-      !drop.data.mitarbeiterIds.includes(mitarbeiterId)
+      this.erlaubteMitarbeiterIds().includes(mitarbeiterId)
     );
   };
 
@@ -183,9 +191,7 @@ export class DienstplanMonatstabelle {
       if (
         !this.kannSchichtenAblegen() ||
         !ziel.verfuegbar ||
-        !this.erlaubteMitarbeiterIds().includes(schicht.mitarbeiterId) ||
-        ziel.mitarbeiterIds.includes(schicht.mitarbeiterId) ||
-        !this.schichtVerschiebungErlaubt()(schicht, ziel)
+        !this.erlaubteMitarbeiterIds().includes(schicht.mitarbeiterId)
       ) {
         return;
       }
@@ -195,6 +201,11 @@ export class DienstplanMonatstabelle {
         });
         return;
       }
+      if (ziel.mitarbeiterIds.includes(schicht.mitarbeiterId)) {
+        this.mitarbeiterBereitsEingeplant.emit();
+        return;
+      }
+      if (!this.schichtVerschiebungErlaubt()(schicht, ziel)) return;
       this.schichtVerschieben.emit({
         schicht,
         datum: ziel.datum,
@@ -216,7 +227,10 @@ export class DienstplanMonatstabelle {
       });
       return;
     }
-    if (ziel.mitarbeiterIds.includes(mitarbeiterId)) return;
+    if (ziel.mitarbeiterIds.includes(mitarbeiterId)) {
+      this.mitarbeiterBereitsEingeplant.emit();
+      return;
+    }
     this.schichtAblegen.emit({
       mitarbeiterId,
       datum: ziel.datum,
@@ -268,6 +282,7 @@ function createTage(
   modellschichten: readonly IModellschichtMomentaufnahmeEintrag[],
   schichten: readonly ISchichtEintrag[],
   konfliktSchichtIds: ReadonlySet<string>,
+  konfliktMeldungenNachSchichtId: ReadonlyMap<string, readonly string[]>,
 ): TSchichtplanTag[] {
   const schichtenNachZelle = new Map<string, ISchichtEintrag[]>();
   for (const schicht of schichten) {
@@ -312,6 +327,11 @@ function createTage(
         )
           .slice()
           .sort((a, b) => a.id.localeCompare(b.id));
+        const konfliktMeldungen = new Set(
+          zellenschichten.flatMap((schicht) => {
+            return konfliktMeldungenNachSchichtId.get(schicht.id) ?? [];
+          }),
+        );
         return {
           modellschicht,
           rasterzeit,
@@ -319,6 +339,7 @@ function createTage(
           schichtIds: zellenschichten.map((schicht) => schicht.id),
           mitarbeiterIds: zellenschichten.map((schicht) => schicht.mitarbeiterId),
           hatKonflikt: zellenschichten.some((schicht) => konfliktSchichtIds.has(schicht.id)),
+          konfliktMeldungen: [...konfliktMeldungen],
         };
       }),
     });

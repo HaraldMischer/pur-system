@@ -377,6 +377,33 @@ describe('DienstplanStore', () => {
     ]);
   });
 
+  it('should apply a recalculated paid break to the remaining shift after deletion', async () => {
+    const bestand = createBestand();
+    const geloeschteSchicht = bestand.schichten[0];
+    const verbleibendeSchicht = {
+      ...geloeschteSchicht,
+      id: 's-2',
+      pauseMinuten: 45,
+    };
+    loadDienstplanMonatMock.mockResolvedValueOnce({
+      ...bestand,
+      schichten: [geloeschteSchicht, verbleibendeSchicht],
+    });
+    deleteSchichtMock.mockResolvedValueOnce({
+      schicht: geloeschteSchicht,
+      versionRevision: 3,
+      pauseAktualisierungen: [{ ...versionsPfad, schichtId: 's-2', pauseMinuten: 30 }],
+    });
+    const store = TestBed.inject(DienstplanStore);
+    await store.loadDienstplanMonat(pfad, '2026-10', false);
+
+    await store.deleteSchicht(versionsPfad, 's-1');
+
+    expect(store.getDienstplanKontext(pfad)?.schichten).toEqual([
+      expect.objectContaining({ id: 's-2', pauseMinuten: 30 }),
+    ]);
+  });
+
   it('should delete an empty never-published plan from the loaded month', async () => {
     loadDienstplanMonatMock.mockResolvedValueOnce({ ...createBestand(), schichten: [] });
     const store = TestBed.inject(DienstplanStore);

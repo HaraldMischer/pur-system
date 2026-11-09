@@ -68,6 +68,7 @@ import {
   getMitarbeiterbelegungKonflikte,
   getMitarbeiterbelegungPausenzuordnungen,
   getMitarbeiterbelegungTage,
+  getMitarbeiterbelegungZeitraumTage,
   updateMitarbeiterbelegungDokument,
 } from '../../commons/utils/dienstplan/mitarbeiterbelegung';
 import {
@@ -1059,8 +1060,9 @@ export class DienstplanService {
     const zeitzone = await this.loadDienstplanZeitzone(pfad);
     const versionPath = FIRESTORE_DOCUMENT_PATHS.dienstplanVersion(pfad);
     const belegungstage = this.getMitarbeiterbelegungstage(pfad, schicht, zeitzone);
+    const pausenTage = this.getMitarbeiterbelegungPausentage(pfad, [schicht], zeitzone);
     return this.firestoreDbService.executeDocumentsTransaction<ISchichtSchreibergebnis>(
-      [versionPath, ...belegungstage.map((eintrag) => eintrag.documentPath)],
+      [versionPath, ...pausenTage.map((eintrag) => eintrag.documentPath)],
       (dokumente) => {
         const version = dokumente.get(versionPath)?.daten as IDienstplanVersionDokument | undefined;
         if (!version) {
@@ -1076,6 +1078,7 @@ export class DienstplanService {
         const belegungsaenderungen = this.createMitarbeiterbelegungAenderungen(
           pfad,
           dokumente,
+          pausenTage,
           belegungstage,
           referenz,
           [],
@@ -1220,12 +1223,13 @@ export class DienstplanService {
       ? this.getMitarbeiterbelegungstage(pfad, vorherigeSchicht, zeitzone)
       : [];
     const aktuelleTage = this.getMitarbeiterbelegungstage(pfad, schicht, zeitzone);
+    const pausenTage = this.getMitarbeiterbelegungPausentage(
+      pfad,
+      vorherigeSchicht ? [vorherigeSchicht, schicht] : [schicht],
+      zeitzone,
+    );
     return this.firestoreDbService.executeDocumentsTransaction<ISchichtSchreibergebnis>(
-      [
-        versionPath,
-        ...vorherigeTage.map((eintrag) => eintrag.documentPath),
-        ...aktuelleTage.map((eintrag) => eintrag.documentPath),
-      ],
+      [versionPath, ...pausenTage.map((eintrag) => eintrag.documentPath)],
       (dokumente) => {
         const version = dokumente.get(versionPath)?.daten as IDienstplanVersionDokument | undefined;
         if (!version) {
@@ -1249,6 +1253,7 @@ export class DienstplanService {
         const belegungsaenderungen = this.createMitarbeiterbelegungAenderungen(
           pfad,
           dokumente,
+          pausenTage,
           vorherigeTage,
           vorherigeReferenz,
           aktuelleTage,
@@ -1425,6 +1430,40 @@ export class DienstplanService {
     return [...tage.values()];
   }
 
+  /**
+   * Liefert alle Belegungstage, die für eine konsistente Pausenneuberechnung benötigt werden.
+   *
+   * Neben den unmittelbar berührten Kalendertagen werden die angrenzenden Tage des Dienstplandatums einbezogen. Dadurch
+   * werden mehrfach indexierte Referenzen von Schichten über Mitternacht gemeinsam aktualisiert.
+   */
+  private getMitarbeiterbelegungPausentage(
+    pfad: IDienstplanVersionPfad,
+    schichten: readonly ISchichtDaten[],
+    zeitzone: string,
+  ): readonly TMitarbeiterbelegungTag[] {
+    const tage = new Map<string, TMitarbeiterbelegungTag>();
+    for (const schicht of schichten) {
+      const daten = [
+        ...getMitarbeiterbelegungZeitraumTage(schicht.datum, schicht.datum),
+        ...getMitarbeiterbelegungTage(schicht, zeitzone),
+      ];
+      for (const datum of new Set(daten)) {
+        const mitarbeiterbelegungId = createMitarbeiterbelegungId(schicht.mitarbeiterId, datum);
+        const tag = {
+          mitarbeiterId: schicht.mitarbeiterId,
+          datum,
+          documentPath: FIRESTORE_DOCUMENT_PATHS.mitarbeiterbelegung({
+            unternehmerId: pfad.unternehmerId,
+            firmaId: pfad.firmaId,
+            mitarbeiterbelegungId,
+          }),
+        };
+        tage.set(tag.documentPath, tag);
+      }
+    }
+    return [...tage.values()].sort((a, b) => a.documentPath.localeCompare(b.documentPath));
+  }
+
   private createStatuswechselBelegungsoperationen(
     pfad: IDienstplanVersionPfad,
     dokumente: TFirestoreTransaktionsDokumente,
@@ -1568,6 +1607,7 @@ export class DienstplanService {
   private createMitarbeiterbelegungAenderungen(
     pfad: IFirmaPfad,
     dokumente: TFirestoreTransaktionsDokumente,
+    pausenTage: readonly TMitarbeiterbelegungTag[],
     vorherigeTage: readonly TMitarbeiterbelegungTag[],
     vorherigeReferenz: IMitarbeiterbelegungReferenz | null,
     aktuelleTage: readonly TMitarbeiterbelegungTag[],
@@ -1575,13 +1615,9 @@ export class DienstplanService {
     benutzerUid: string,
     zeitstempel: FieldValue,
   ): TMitarbeiterbelegungAenderungen {
-    const tage = new Map<string, TMitarbeiterbelegungTag>();
-    [...vorherigeTage, ...aktuelleTage].forEach((tag) => {
-      tage.set(tag.documentPath, tag);
-    });
     const operationen: TFirestoreBatchOperation[] = [];
     const aktualisierteDokumente: IMitarbeiterbelegungDokument[] = [];
-    for (const tag of tage.values()) {
+    for (const tag of pausenTage) {
       const vorherigeGilt = vorherigeTage.some((eintrag) => {
         return eintrag.documentPath === tag.documentPath;
       });

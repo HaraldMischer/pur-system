@@ -18,6 +18,7 @@ import {
   IModellschichtMomentaufnahmeEintrag,
   ISchichtrastermodellBestand,
 } from '../../../commons/models/domain/schichtmodell';
+import { IMitarbeiterbelegungKonflikt } from '../../../commons/utils/dienstplan/mitarbeiterbelegung';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import {
   DienstplanStore,
@@ -171,7 +172,7 @@ describe('DienstplanPlanungsbereich', () => {
   const loadSchichtmodelle = vi.fn().mockResolvedValue(undefined);
   const dialogOpen = vi.fn();
   const getMitarbeiter = vi.fn().mockReturnValue([]);
-  const belegungskonflikte = signal<readonly never[]>([]);
+  const belegungskonflikte = signal<readonly IMitarbeiterbelegungKonflikt[]>([]);
   const hatMitarbeiterZeitkonflikt = vi.fn().mockReturnValue(false);
   const schichtmodelle = signal<readonly ISchichtrastermodellBestand[]>([createSchichtmodell()]);
 
@@ -412,6 +413,58 @@ describe('DienstplanPlanungsbereich', () => {
         nachricht: 'Diese Schicht kann nur einmal belegt werden.',
       },
     });
+  });
+
+  it('should explain that the employee is already assigned to the shift', () => {
+    const fixture = createComponent(true);
+
+    fixture.componentInstance.openMitarbeiterBereitsEingeplantHinweis();
+
+    expect(dialogOpen).toHaveBeenCalledWith(HinweisDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: {
+        titel: 'Mitarbeiter bereits eingeplant',
+        nachricht: 'Dieser Mitarbeiter ist hier bereits eingeplant.',
+      },
+    });
+  });
+
+  it('should provide the concrete conflict messages for affected draft shifts', () => {
+    kontext.set(
+      createKontext({
+        dienstplaene: [DIENSTPLAN],
+        versionen: [VERSION],
+        modellschichten: [MODELLSCHICHT],
+      }),
+    );
+    belegungskonflikte.set([
+      {
+        art: 'ungueltige-pause',
+        schwere: 'blockierend',
+        meldung: 'Eine Mitarbeiterschicht besitzt keinen gültigen Pausenwert.',
+        belegungen: [
+          {
+            datum: '2026-10-05',
+            mitarbeiterId: 'm-1',
+            filialeId: 'b-1',
+            dienstplanId: '2026-10',
+            versionId: 'v-1',
+            schichtId: 's-1',
+            status: 'entwurf',
+            beginn: Timestamp.fromDate(new Date('2026-10-05T07:00:00+02:00')),
+            ende: Timestamp.fromDate(new Date('2026-10-05T12:00:00+02:00')),
+            pauseMinuten: 0,
+          },
+        ],
+      },
+    ]);
+    const fixture = createComponent(true);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.konfliktMeldungenNachSchichtId().get('s-1')).toEqual([
+      'Eine Mitarbeiterschicht besitzt keinen gültigen Pausenwert.',
+    ]);
+    expect(fixture.componentInstance.konfliktSchichtIds()).toEqual(new Set(['s-1']));
   });
 
   it('should load only published data for an employee account', async () => {

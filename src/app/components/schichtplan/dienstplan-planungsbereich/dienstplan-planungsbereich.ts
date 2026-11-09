@@ -196,24 +196,34 @@ export class DienstplanPlanungsbereich {
       );
     }, 0);
   });
-  readonly konfliktSchichtIds = computed(() => {
+  readonly konfliktMeldungenNachSchichtId = computed(() => {
     const dienstplanId = this.dienstplan()?.id;
     const versionId = this.entwurfVersion()?.id;
     const pfad = this.pfad();
-    if (!dienstplanId || !versionId) return new Set<string>();
-    return new Set(
-      this.mitarbeiterbelegungStore
-        .konflikte()
-        .flatMap((konflikt) => konflikt.belegungen)
-        .filter((belegung) => {
-          return (
-            belegung.filialeId === pfad.filialeId &&
-            belegung.dienstplanId === dienstplanId &&
-            belegung.versionId === versionId
-          );
-        })
-        .map((belegung) => belegung.schichtId),
+    if (!dienstplanId || !versionId) return new Map<string, readonly string[]>();
+    const meldungenNachSchichtId = new Map<string, Set<string>>();
+    for (const konflikt of this.mitarbeiterbelegungStore.konflikte()) {
+      for (const belegung of konflikt.belegungen) {
+        if (
+          belegung.filialeId !== pfad.filialeId ||
+          belegung.dienstplanId !== dienstplanId ||
+          belegung.versionId !== versionId
+        ) {
+          continue;
+        }
+        const meldungen = meldungenNachSchichtId.get(belegung.schichtId) ?? new Set<string>();
+        meldungen.add(konflikt.meldung);
+        meldungenNachSchichtId.set(belegung.schichtId, meldungen);
+      }
+    }
+    return new Map(
+      [...meldungenNachSchichtId].map(([schichtId, meldungen]) => {
+        return [schichtId, [...meldungen]] as const;
+      }),
     );
+  });
+  readonly konfliktSchichtIds = computed(() => {
+    return new Set(this.konfliktMeldungenNachSchichtId().keys());
   });
   readonly download = computed(() => {
     return this.kontext()?.download ?? false;
@@ -389,6 +399,19 @@ export class DienstplanPlanungsbereich {
       data: {
         titel: 'Mehrfachbelegung nicht erlaubt',
         nachricht: 'Diese Schicht kann nur einmal belegt werden.',
+      },
+    });
+  }
+
+  /**
+   * Informiert über die bereits vorhandene Belegung eines Mitarbeiters in derselben Schicht.
+   */
+  openMitarbeiterBereitsEingeplantHinweis(): void {
+    this.dialog.open(HinweisDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: {
+        titel: 'Mitarbeiter bereits eingeplant',
+        nachricht: 'Dieser Mitarbeiter ist hier bereits eingeplant.',
       },
     });
   }

@@ -141,6 +141,24 @@ describe('DienstplanMonatstabelle', () => {
     expect(anlegen).not.toHaveBeenCalled();
   });
 
+  it('should reject assigning the same employee to a multiple cell again', () => {
+    const fixture = createFixture();
+    const ablehnung = vi.fn();
+    const anlegen = vi.fn();
+    fixture.componentRef.setInput('schichten', [createSchicht('s-1', 'm-1')]);
+    fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-1']);
+    fixture.componentInstance.mitarbeiterBereitsEingeplant.subscribe(ablehnung);
+    fixture.componentInstance.schichtAblegen.subscribe(anlegen);
+    fixture.detectChanges();
+
+    fixture.componentInstance.handlePlanungselementDrop(
+      createDropEvent('m-1', '2026-02-03', 'spaet', ['m-1'], true),
+    );
+
+    expect(ablehnung).toHaveBeenCalledOnce();
+    expect(anlegen).not.toHaveBeenCalled();
+  });
+
   it('should move an existing draft shift while preserving its identity and employee', () => {
     const fixture = createFixture();
     const schicht = createSchicht('s-1', 'm-1');
@@ -212,9 +230,16 @@ describe('DienstplanMonatstabelle', () => {
     const fixture = createFixture();
     fixture.componentRef.setInput('schichten', [createSchicht('s-1', 'm-1')]);
     fixture.componentRef.setInput('konfliktSchichtIds', new Set(['s-1']));
+    fixture.componentRef.setInput(
+      'konfliktMeldungenNachSchichtId',
+      new Map([['s-1', ['Eine Mitarbeiterschicht besitzt keinen gültigen Pausenwert.']]]),
+    );
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Zeitkonflikt');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Eine Mitarbeiterschicht besitzt keinen gültigen Pausenwert.',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('Zeitkonflikt');
   });
 
   it('should show a paid break only on the shift that stores it', () => {

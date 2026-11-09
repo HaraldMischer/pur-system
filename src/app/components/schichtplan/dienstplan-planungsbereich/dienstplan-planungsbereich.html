@@ -83,6 +83,7 @@
             [schichten]="schichten()"
             [tagesschichten]="tagesschichten()"
             [konfliktSchichtIds]="konfliktSchichtIds()"
+            [konfliktMeldungenNachSchichtId]="konfliktMeldungenNachSchichtId()"
             [mitarbeiter]="schichtMitarbeiter()"
             [erlaubteMitarbeiterIds]="mitarbeiterIds()"
             [darfSchreiben]="darfSchreiben()"
@@ -92,6 +93,7 @@
             (tagesschichtVerschieben)="moveTagesschichtAusAblage($event)"
             (tagesschichtBearbeiten)="openTagesschichtBearbeitenDialog($event)"
             (mehrfachbelegungAbgelehnt)="openMehrfachbelegungHinweis($event)"
+            (mitarbeiterBereitsEingeplant)="openMitarbeiterBereitsEingeplantHinweis()"
           />
         } @else {
           <app-dienstplan-monatstabelle
@@ -100,6 +102,7 @@
             [schichten]="schichten()"
             [modellschichten]="modellschichten()"
             [konfliktSchichtIds]="konfliktSchichtIds()"
+            [konfliktMeldungenNachSchichtId]="konfliktMeldungenNachSchichtId()"
             [mitarbeiter]="schichtMitarbeiter()"
             [erlaubteMitarbeiterIds]="mitarbeiterIds()"
             [schichtVerschiebungErlaubt]="darfSchichtVerschieben"
@@ -110,6 +113,7 @@
             (schichtVerschieben)="moveSchichtAusAblage($event)"
             (schichtBearbeiten)="openSchichtBearbeitenDialog($event)"
             (mehrfachbelegungAbgelehnt)="openMehrfachbelegungHinweis($event)"
+            (mitarbeiterBereitsEingeplant)="openMitarbeiterBereitsEingeplantHinweis()"
           />
         }
       </section>
