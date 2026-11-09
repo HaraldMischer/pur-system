@@ -1,0 +1,17 @@
+<!-- pur-system/src/app/components/shared/hinweis-dialog/hinweis-dialog.html -->
+
+<h2 mat-dialog-title>{{ daten.titel }}</h2>
+
+<mat-dialog-content class="pur-dialog__content">
+  <div class="pur-form pur-form--grid">
+    <p class="pur-message pur-message--info pur-message--full">
+      {{ daten.nachricht }}
+    </p>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton="filled" type="button" [mat-dialog-close]="true">
+    {{ daten.schliessenText ?? 'Schließen' }}
+  </button>
+</mat-dialog-actions>

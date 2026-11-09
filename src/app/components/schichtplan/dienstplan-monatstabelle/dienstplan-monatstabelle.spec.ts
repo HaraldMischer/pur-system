@@ -103,9 +103,11 @@ describe('DienstplanMonatstabelle', () => {
     fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-2']);
     fixture.componentRef.setInput('schichten', [createSchicht('s-1', 'm-1')]);
     const ablagen: unknown[] = [];
+    const ablehnung = vi.fn();
     fixture.componentInstance.schichtAblegen.subscribe((ablage) => {
       ablagen.push(ablage);
     });
+    fixture.componentInstance.mehrfachbelegungAbgelehnt.subscribe(ablehnung);
     fixture.detectChanges();
 
     fixture.componentInstance.handlePlanungselementDrop(
@@ -118,6 +120,25 @@ describe('DienstplanMonatstabelle', () => {
     expect(ablagen).toEqual([
       { mitarbeiterId: 'm-2', datum: '2026-02-03', modellschichtId: 'spaet' },
     ]);
+    expect(ablehnung).toHaveBeenCalledWith({ schichtBezeichnung: 'Früh' });
+  });
+
+  it('should keep the add action clickable but not open it for an occupied single cell', () => {
+    const fixture = createFixture();
+    const anlegen = vi.fn();
+    fixture.componentRef.setInput('schichten', [
+      { ...createSchicht('s-1', 'm-1'), modellschichtId: 'frueh' },
+    ]);
+    fixture.componentInstance.schichtAnlegen.subscribe(anlegen);
+    fixture.detectChanges();
+
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'tbody tr:nth-child(3) td:first-of-type button',
+    );
+    expect(button?.disabled).toBe(false);
+    button?.click();
+
+    expect(anlegen).not.toHaveBeenCalled();
   });
 
   it('should move an existing draft shift while preserving its identity and employee', () => {
@@ -430,6 +451,7 @@ describe('DienstplanMonatstabelle', () => {
         data: {
           datum,
           modellschichtId,
+          schichtBezeichnung: modellschichtId === 'frueh' ? 'Früh' : 'Spät',
           rasterzeit: null,
           schichtIds: [],
           mitarbeiterIds,
@@ -453,6 +475,7 @@ describe('DienstplanMonatstabelle', () => {
         data: {
           datum,
           modellschichtId,
+          schichtBezeichnung: modellschichtId === 'frueh' ? 'Früh' : 'Spät',
           rasterzeit: null,
           schichtIds,
           mitarbeiterIds: [],

@@ -28,6 +28,10 @@ export type TSchichtplanTagesschichtVerschiebung = TSchichtplanTagesschichtauswa
   readonly schicht: ISchichtEintrag;
 };
 
+export type TSchichtplanMehrfachbelegungAblehnung = {
+  readonly schichtBezeichnung: string;
+};
+
 export type TSchichtplanDragDaten =
   | { readonly art: 'mitarbeiter'; readonly mitarbeiterId: string }
   | { readonly art: 'schicht'; readonly schicht: ISchichtEintrag };

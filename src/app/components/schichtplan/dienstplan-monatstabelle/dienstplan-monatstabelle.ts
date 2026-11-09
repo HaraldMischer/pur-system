@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import {
   IDienstplanEintrag,
@@ -21,6 +22,7 @@ import { calculateSchichtLohnzeitMinuten } from '../../../commons/utils/dienstpl
 import { getMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
 import {
   TSchichtplanDragDaten,
+  TSchichtplanMehrfachbelegungAblehnung,
   TSchichtplanMitarbeiterAblage,
   TSchichtplanRasterauswahl,
   TSchichtplanVerschiebung,
@@ -36,6 +38,7 @@ type TSchichtplanZelle = {
 };
 
 type TSchichtplanAblageziel = TSchichtplanRasterauswahl & {
+  readonly schichtBezeichnung: string;
   readonly rasterzeit: IDienstplanRasterzeit | null;
   readonly schichtIds: readonly string[];
   readonly mitarbeiterIds: readonly string[];
@@ -55,7 +58,7 @@ type TSchichtplanTag = {
 
 @Component({
   selector: 'app-dienstplan-monatstabelle',
-  imports: [CdkDrag, CdkDropList, MatButtonModule, MatIconModule],
+  imports: [CdkDrag, CdkDropList, MatButtonModule, MatIconModule, MatTooltipModule],
   templateUrl: './dienstplan-monatstabelle.html',
   styleUrl: './dienstplan-monatstabelle.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -76,6 +79,7 @@ export class DienstplanMonatstabelle {
   readonly schichtAblegen = output<TSchichtplanMitarbeiterAblage>();
   readonly schichtVerschieben = output<TSchichtplanVerschiebung>();
   readonly schichtBearbeiten = output<ISchichtEintrag>();
+  readonly mehrfachbelegungAbgelehnt = output<TSchichtplanMehrfachbelegungAblehnung>();
   readonly schichtVerschiebungErlaubt = input<
     (schicht: ISchichtEintrag, ziel: TSchichtplanRasterauswahl) => boolean
   >(() => true);
@@ -114,6 +118,25 @@ export class DienstplanMonatstabelle {
   // ===== Öffentliche Aktionen =================
 
   /**
+   * Öffnet die Belegung einer Modellschicht, sofern ihre Belegungsgrenze nicht erreicht ist.
+   *
+   * @param datum - Datum der ausgewählten Schicht.
+   * @param modellschicht - Ausgewählte Modellschicht.
+   * @param istBelegt - Gibt an, ob bereits mindestens eine Belegung vorhanden ist.
+   */
+  handleSchichtAnlegen(
+    datum: string,
+    modellschicht: IModellschichtMomentaufnahmeEintrag,
+    istBelegt: boolean,
+  ): void {
+    if (!modellschicht.mehrfachbelegungErlaubt && istBelegt) return;
+    this.schichtAnlegen.emit({
+      datum,
+      modellschichtId: modellschicht.id,
+    });
+  }
+
+  /**
    * Prüft, ob der gezogene Mitarbeiter oder die gezogene Schicht abgelegt werden darf.
    */
   readonly darfPlanungselementAblegen = (
@@ -125,14 +148,12 @@ export class DienstplanMonatstabelle {
       const schicht = dragDaten.schicht;
       const istBisherigeZelle =
         schicht.datum === drop.data.datum && schicht.modellschichtId === drop.data.modellschichtId;
-      const fremdeSchichtIds = drop.data.schichtIds.filter((id) => id !== schicht.id);
       return (
         this.kannSchichtenAblegen() &&
         drop.data.verfuegbar &&
         this.erlaubteMitarbeiterIds().includes(schicht.mitarbeiterId) &&
         (istBisherigeZelle ||
-          ((drop.data.mehrfachbelegungErlaubt || fremdeSchichtIds.length === 0) &&
-            !drop.data.mitarbeiterIds.includes(schicht.mitarbeiterId) &&
+          (!drop.data.mitarbeiterIds.includes(schicht.mitarbeiterId) &&
             this.schichtVerschiebungErlaubt()(schicht, drop.data)))
       );
     }
@@ -141,7 +162,6 @@ export class DienstplanMonatstabelle {
       this.kannSchichtenAblegen() &&
       drop.data.verfuegbar &&
       this.erlaubteMitarbeiterIds().includes(mitarbeiterId) &&
-      (drop.data.mehrfachbelegungErlaubt || drop.data.mitarbeiterIds.length === 0) &&
       !drop.data.mitarbeiterIds.includes(mitarbeiterId)
     );
   };
@@ -164,10 +184,15 @@ export class DienstplanMonatstabelle {
         !this.kannSchichtenAblegen() ||
         !ziel.verfuegbar ||
         !this.erlaubteMitarbeiterIds().includes(schicht.mitarbeiterId) ||
-        (!ziel.mehrfachbelegungErlaubt && fremdeSchichtIds.length > 0) ||
         ziel.mitarbeiterIds.includes(schicht.mitarbeiterId) ||
         !this.schichtVerschiebungErlaubt()(schicht, ziel)
       ) {
+        return;
+      }
+      if (!ziel.mehrfachbelegungErlaubt && fremdeSchichtIds.length > 0) {
+        this.mehrfachbelegungAbgelehnt.emit({
+          schichtBezeichnung: ziel.schichtBezeichnung,
+        });
         return;
       }
       this.schichtVerschieben.emit({
@@ -181,12 +206,17 @@ export class DienstplanMonatstabelle {
     if (
       !this.kannSchichtenAblegen() ||
       !ziel.verfuegbar ||
-      !this.erlaubteMitarbeiterIds().includes(mitarbeiterId) ||
-      (!ziel.mehrfachbelegungErlaubt && ziel.mitarbeiterIds.length > 0) ||
-      ziel.mitarbeiterIds.includes(mitarbeiterId)
+      !this.erlaubteMitarbeiterIds().includes(mitarbeiterId)
     ) {
       return;
     }
+    if (!ziel.mehrfachbelegungErlaubt && ziel.mitarbeiterIds.length > 0) {
+      this.mehrfachbelegungAbgelehnt.emit({
+        schichtBezeichnung: ziel.schichtBezeichnung,
+      });
+      return;
+    }
+    if (ziel.mitarbeiterIds.includes(mitarbeiterId)) return;
     this.schichtAblegen.emit({
       mitarbeiterId,
       datum: ziel.datum,

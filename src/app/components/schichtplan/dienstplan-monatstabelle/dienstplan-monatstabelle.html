@@ -45,6 +45,7 @@
               [cdkDropListData]="{
                 datum: tag.datum,
                 modellschichtId: zelle.modellschicht.id,
+                schichtBezeichnung: zelle.modellschicht.bezeichnung,
                 rasterzeit: zelle.rasterzeit,
                 schichtIds: zelle.schichtIds,
                 mitarbeiterIds: zelle.mitarbeiterIds,
@@ -72,9 +73,11 @@
                   <button
                     matIconButton
                     type="button"
-                    [disabled]="
-                      schreibvorgang() ||
-                      (!zelle.modellschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
+                    [disabled]="schreibvorgang()"
+                    [matTooltip]="
+                      !zelle.modellschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0
+                        ? 'Diese Schicht kann nur einmal belegt werden.'
+                        : 'Diese Schicht mit einem Mitarbeiter belegen.'
                     "
                     [attr.aria-label]="
                       zelle.modellschicht.bezeichnung +
@@ -85,10 +88,11 @@
                       ' anlegen'
                     "
                     (click)="
-                      schichtAnlegen.emit({
-                        datum: tag.datum,
-                        modellschichtId: zelle.modellschicht.id,
-                      })
+                      handleSchichtAnlegen(
+                        tag.datum,
+                        zelle.modellschicht,
+                        zelle.schichten.length > 0
+                      )
                     "
                   >
                     <mat-icon aria-hidden="true">add</mat-icon>

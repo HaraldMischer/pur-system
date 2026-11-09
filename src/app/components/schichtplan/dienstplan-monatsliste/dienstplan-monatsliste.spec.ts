@@ -57,6 +57,41 @@ describe('DienstplanMonatsliste', () => {
     expect(letzteSchichtText).toContain('+30 Min. Nachbereitung');
   });
 
+  it('should reject an additional employee for a single-occupancy day shift', () => {
+    const fixture = createFixture();
+    const ablehnung = vi.fn();
+    const anlegen = vi.fn();
+    fixture.componentRef.setInput('erlaubteMitarbeiterIds', ['m-2']);
+    fixture.componentRef.setInput('schichten', [createSchicht()]);
+    fixture.componentInstance.mehrfachbelegungAbgelehnt.subscribe(ablehnung);
+    fixture.componentInstance.tagesschichtAblegen.subscribe(anlegen);
+    fixture.detectChanges();
+
+    fixture.componentInstance.handleTagesschichtDrop({
+      item: { data: { art: 'mitarbeiter', mitarbeiterId: 'm-2' } },
+      container: { data: fixture.componentInstance.tage()[0].zellen[0] },
+    } as unknown as Parameters<DienstplanMonatsliste['handleTagesschichtDrop']>[0]);
+
+    expect(ablehnung).toHaveBeenCalledWith({ schichtBezeichnung: '1. Schicht' });
+    expect(anlegen).not.toHaveBeenCalled();
+  });
+
+  it('should keep the add action clickable but not open it for an occupied single shift', () => {
+    const fixture = createFixture();
+    const anlegen = vi.fn();
+    fixture.componentRef.setInput('schichten', [createSchicht()]);
+    fixture.componentInstance.tagesschichtAnlegen.subscribe(anlegen);
+    fixture.detectChanges();
+
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '.monatsliste__zeitbereich-header button',
+    );
+    expect(button?.disabled).toBe(false);
+    button?.click();
+
+    expect(anlegen).not.toHaveBeenCalled();
+  });
+
   function createFixture(
     vorbereitungsminuten = 0,
     nachbereitungsminuten = 0,
@@ -137,5 +172,23 @@ describe('DienstplanMonatsliste', () => {
     ]);
     fixture.componentRef.setInput('darfSchreiben', true);
     return fixture;
+  }
+
+  function createSchicht() {
+    return {
+      id: 'schicht-1',
+      dienstplanId: '2026-11',
+      versionId: 'v-1',
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      filialeId: 'b-1',
+      datum: '2026-11-01',
+      mitarbeiterId: 'm-1',
+      tagesschichtId: 'tagesschicht-1',
+      beginn: Timestamp.fromDate(new Date('2026-11-01T10:00:00+01:00')),
+      ende: Timestamp.fromDate(new Date('2026-11-02T01:00:00+01:00')),
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    };
   }
 });

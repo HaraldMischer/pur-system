@@ -118,15 +118,14 @@
                   <button
                     matIconButton
                     type="button"
-                    [disabled]="
-                      schreibvorgang() ||
-                      (!zelle.tagesschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0)
+                    [disabled]="schreibvorgang()"
+                    [matTooltip]="
+                      !zelle.tagesschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0
+                        ? 'Diese Schicht kann nur einmal belegt werden.'
+                        : 'Diese Schicht mit einem Mitarbeiter belegen.'
                     "
                     (click)="
-                      tagesschichtAnlegen.emit({
-                        datum: zelle.tagesschicht.datum,
-                        tagesschichtId: zelle.tagesschicht.id,
-                      })
+                      handleTagesschichtAnlegen(zelle.tagesschicht, zelle.schichten.length > 0)
                     "
                   >
                     <mat-icon>add</mat-icon>

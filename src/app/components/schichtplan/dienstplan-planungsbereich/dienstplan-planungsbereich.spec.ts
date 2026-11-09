@@ -29,6 +29,7 @@ import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung
 import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
+import { HinweisDialog } from '../../shared/hinweis-dialog/hinweis-dialog';
 import { SchichtBearbeitenDialog } from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
 import { DienstplanAnlegenDialog } from '../dienstplan-anlegen-dialog/dienstplan-anlegen-dialog';
 import { TagesschichtBelegenDialog } from '../tagesschicht-belegen-dialog/tagesschicht-belegen-dialog';
@@ -397,6 +398,20 @@ describe('DienstplanPlanungsbereich', () => {
         }),
       }),
     );
+  });
+
+  it('should explain a rejected multiple occupancy in a dialog', () => {
+    const fixture = createComponent(true);
+
+    fixture.componentInstance.openMehrfachbelegungHinweis({ schichtBezeichnung: 'Spät' });
+
+    expect(dialogOpen).toHaveBeenCalledWith(HinweisDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: {
+        titel: 'Mehrfachbelegung nicht erlaubt',
+        nachricht: 'Diese Schicht kann nur einmal belegt werden.',
+      },
+    });
   });
 
   it('should load only published data for an employee account', async () => {

@@ -37,8 +37,10 @@ import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
+import { HinweisDialog } from '../../shared/hinweis-dialog/hinweis-dialog';
 import {
   TSchichtplanMitarbeiterAblage,
+  TSchichtplanMehrfachbelegungAblehnung,
   TSchichtplanRasterauswahl,
   TSchichtplanTagesschichtMitarbeiterAblage,
   TSchichtplanTagesschichtauswahl,
@@ -372,6 +374,21 @@ export class DienstplanPlanungsbereich {
         schichtmodelle: modelle.rastermodelle,
         schichttagesmodelle: modelle.tagesmodelle,
         kalendertage: modelle.kalendertage,
+      },
+    });
+  }
+
+  /**
+   * Informiert über eine durch das Schichtmodell ausgeschlossene Mehrfachbelegung.
+   *
+   * @param ablehnung - Bezeichnung der betroffenen Schicht.
+   */
+  openMehrfachbelegungHinweis(ablehnung: TSchichtplanMehrfachbelegungAblehnung): void {
+    this.dialog.open(HinweisDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: {
+        titel: 'Mehrfachbelegung nicht erlaubt',
+        nachricht: 'Diese Schicht kann nur einmal belegt werden.',
       },
     });
   }

@@ -4,6 +4,7 @@ import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import {
   IDienstplanEintrag,
@@ -22,6 +23,7 @@ import {
 } from '../../../commons/utils/dienstplan/dienstplan-zeitachse';
 import {
   TSchichtplanDragDaten,
+  TSchichtplanMehrfachbelegungAblehnung,
   TSchichtplanTagesschichtMitarbeiterAblage,
   TSchichtplanTagesschichtauswahl,
   TSchichtplanTagesschichtVerschiebung,
@@ -47,7 +49,7 @@ type TSchichtplanListentag = {
 
 @Component({
   selector: 'app-dienstplan-monatsliste',
-  imports: [CdkDrag, CdkDropList, MatButtonModule, MatIconModule],
+  imports: [CdkDrag, CdkDropList, MatButtonModule, MatIconModule, MatTooltipModule],
   templateUrl: './dienstplan-monatsliste.html',
   styleUrl: './dienstplan-monatsliste.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -68,6 +70,7 @@ export class DienstplanMonatsliste {
   readonly tagesschichtAnlegen = output<TSchichtplanTagesschichtauswahl>();
   readonly tagesschichtVerschieben = output<TSchichtplanTagesschichtVerschiebung>();
   readonly tagesschichtBearbeiten = output<ISchichtEintrag>();
+  readonly mehrfachbelegungAbgelehnt = output<TSchichtplanMehrfachbelegungAblehnung>();
 
   // ===== Öffentliche Ableitungen ==============
 
@@ -196,6 +199,20 @@ export class DienstplanMonatsliste {
   // ===== Öffentliche Aktionen =================
 
   /**
+   * Öffnet die Belegung einer Tagesschicht, sofern ihre Belegungsgrenze nicht erreicht ist.
+   *
+   * @param tagesschicht - Ausgewählte Tagesschicht.
+   * @param istBelegt - Gibt an, ob bereits mindestens eine Belegung vorhanden ist.
+   */
+  handleTagesschichtAnlegen(tagesschicht: ITagesschichtEintrag, istBelegt: boolean): void {
+    if (!tagesschicht.mehrfachbelegungErlaubt && istBelegt) return;
+    this.tagesschichtAnlegen.emit({
+      datum: tagesschicht.datum,
+      tagesschichtId: tagesschicht.id,
+    });
+  }
+
+  /**
    * Übernimmt eine Mitarbeiter- oder Schichtablage auf eine konkrete Tagesschicht.
    *
    * @param event - CDK-Ablageereignis mit dem Planungselement und der Zielschicht.
@@ -212,6 +229,9 @@ export class DienstplanMonatsliste {
         (schicht) => schicht.id !== (dragDaten.art === 'schicht' ? dragDaten.schicht.id : ''),
       )
     ) {
+      this.mehrfachbelegungAbgelehnt.emit({
+        schichtBezeichnung: ziel.tagesschicht.bezeichnung,
+      });
       return;
     }
     if (dragDaten.art === 'schicht') {
