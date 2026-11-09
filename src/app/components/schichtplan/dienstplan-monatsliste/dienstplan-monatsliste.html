@@ -6,23 +6,27 @@
     [style.--zeitachsenbreite]="zeitachsenbreite() + 'px'"
     [style.--zeitachsenraster]="zeitachse().rasterAnzahl"
   >
-    <div class="zeitachsenkopf">
-      <strong class="zeitachsenkopf__titel">Uhrzeit</strong>
-      <div class="zeitachse" aria-hidden="true">
-        @for (marke of zeitachse().marken; track marke.positionProzent) {
-          <span class="stundenmarke" [style.left.%]="marke.positionProzent">
-            {{ marke.bezeichnung }}
+    <div class="monatsliste__zeile monatsliste__zeile--kopf">
+      <span
+        class="monatsliste__zeilenkopf monatsliste__zeilenkopf--uhrzeit pur-text pur-text--label"
+      >
+        Uhrzeit
+      </span>
+      <div class="monatsliste__zeitachse" aria-hidden="true">
+        @for (zeitmarke of zeitachse().marken; track zeitmarke.positionProzent) {
+          <span class="monatsliste__zeitmarke" [style.left.%]="zeitmarke.positionProzent">
+            {{ zeitmarke.bezeichnung }}
           </span>
         }
       </div>
     </div>
     @for (tag of tage(); track tag.kalendertag.datum) {
-      <section class="listentag">
+      <section class="monatsliste__zeile monatsliste__zeile--tag">
         <header
-          class="listentag__kopf"
-          [class.listentag__kopf--sonntag]="tag.hervorhebung === 'sonntag'"
-          [class.listentag__kopf--feiertag]="tag.hervorhebung === 'feiertag'"
-          [class.listentag__kopf--sondertag]="tag.hervorhebung === 'sondertag'"
+          class="monatsliste__zeilenkopf monatsliste__zeilenkopf--tag"
+          [class.monatsliste__zeilenkopf--sonntag]="tag.hervorhebung === 'sonntag'"
+          [class.monatsliste__zeilenkopf--feiertag]="tag.hervorhebung === 'feiertag'"
+          [class.monatsliste__zeilenkopf--sondertag]="tag.hervorhebung === 'sondertag'"
         >
           <!-- Wochentag -->
           <span class="pur-text pur-text--label pur-text--ellipsis">
@@ -48,13 +52,13 @@
             </span>
           }
         </header>
-        <div class="listentag__schichten">
+        <div class="monatsliste__zeileninhalt">
           @for (bereich of tag.geschlosseneBereiche; track bereich.id) {
             <div
-              class="geschlossen"
+              class="monatsliste__zeitbereich monatsliste__zeitbereich--geschlossen"
               title="Geschlossen"
-              [class.zeitachsenkarte--am-anfang]="bereich.beginnRasterlinie === 1"
-              [class.zeitachsenkarte--am-ende]="
+              [class.monatsliste__zeitbereich--am-anfang]="bereich.beginnRasterlinie === 1"
+              [class.monatsliste__zeitbereich--am-ende]="
                 bereich.endeRasterlinie === zeitachse().rasterAnzahl + 1
               "
               [style.grid-column-start]="bereich.beginnRasterlinie"
@@ -67,22 +71,24 @@
           @for (zelle of tag.zellen; track zelle.tagesschicht.id) {
             <div
               cdkDropList
-              class="tagesschicht"
-              [class.zeitachsenkarte--am-anfang]="zelle.zeitachsenposition.beginnRasterlinie === 1"
-              [class.zeitachsenkarte--am-ende]="
+              class="monatsliste__zeitbereich monatsliste__zeitbereich--tagesschicht"
+              [class.monatsliste__zeitbereich--am-anfang]="
+                zelle.zeitachsenposition.beginnRasterlinie === 1
+              "
+              [class.monatsliste__zeitbereich--am-ende]="
                 zelle.zeitachsenposition.endeRasterlinie === zeitachse().rasterAnzahl + 1
               "
               [style.grid-column-start]="zelle.zeitachsenposition.beginnRasterlinie"
               [style.grid-column-end]="zelle.zeitachsenposition.endeRasterlinie"
               [style.grid-row]="zelle.zeitachsenposition.spur + 1"
-              [class.zelle--konflikt]="zelle.hatKonflikt"
+              [class.monatsliste__zeitbereich--konflikt]="zelle.hatKonflikt"
               [cdkDropListData]="zelle"
               [cdkDropListDisabled]="!kannSchichtenAblegen()"
               [cdkDropListSortingDisabled]="true"
               (cdkDropListDropped)="handleTagesschichtDrop($event)"
             >
-              <div class="zellenkopf">
-                <strong>{{ zelle.tagesschicht.bezeichnung }}</strong>
+              <div class="monatsliste__zeitbereich-header">
+                <span class="pur-text pur-text--label">{{ zelle.tagesschicht.bezeichnung }}</span>
                 <span>
                   {{ zelle.tagesschicht.kernbeginnLokalzeit }}–{{
                     zelle.tagesschicht.kernendeLokalzeit
@@ -130,12 +136,16 @@
               @for (schicht of zelle.schichten; track schicht.id) {
                 <div
                   cdkDrag
-                  class="schicht"
+                  class="schichtkarte"
                   [cdkDragData]="{ art: 'schicht', schicht }"
                   [cdkDragDisabled]="!kannSchichtenAblegen()"
                 >
-                  <strong>{{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}</strong>
-                  <span>Lohnzeit: {{ formatLohnzeit(schicht) }}</span>
+                  <span class="pur-text pur-text--label">
+                    {{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}
+                  </span>
+                  <span class="pur-text pur-text--secondary">
+                    Lohnzeit: {{ formatLohnzeit(schicht) }}
+                  </span>
                   @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                     <button matButton type="button" (click)="tagesschichtBearbeiten.emit(schicht)">
                       Bearbeiten

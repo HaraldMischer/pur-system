@@ -4,183 +4,167 @@
   width: max(100%, calc(var(--zeitachsenbreite) + 144px));
   display: grid;
   gap: 8px;
-}
 
-.zeitachsenkopf,
-.listentag {
-  display: grid;
-  grid-template-columns: 120px minmax(var(--zeitachsenbreite), 1fr);
-  gap: 8px;
-  padding-inline: 8px;
-}
-
-.zeitachsenkopf {
-  align-items: stretch;
-}
-
-.zeitachsenkopf__titel {
-  position: sticky;
-  left: 8px;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 10px;
-  background: var(--mat-sys-surface-container-low);
-  font: var(--mat-sys-title-small);
-}
-
-.zeitachse {
-  position: relative;
-  height: 48px;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 10px;
-  background: var(--mat-sys-surface-container-low);
-}
-
-.stundenmarke {
-  position: absolute;
-  bottom: 15px;
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-label-small);
-  transform: translateX(-50%);
-  white-space: nowrap;
-
-  &::after {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 50%;
-    width: 1px;
-    height: 6px;
-    background: var(--mat-sys-outline-variant);
-    content: '';
+  &__zeile {
+    display: grid;
+    grid-template-columns: 120px minmax(var(--zeitachsenbreite), 1fr);
+    gap: 8px;
+    padding-inline: 8px;
   }
 
-  &:first-child {
-    padding-left: 12px;
-    transform: none;
-
-    &::after {
-      left: 0;
-    }
-  }
-
-  &:last-child {
-    padding-right: 12px;
-    transform: translateX(-100%);
-
-    &::after {
-      left: 100%;
-    }
-  }
-}
-
-.listentag {
-  align-items: stretch;
-}
-
-.listentag__kopf {
-  position: sticky;
-  left: 8px;
-  z-index: 2;
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  //gap: 4px;
-  padding: 12px;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 10px;
-  background: var(--mat-sys-surface-container-low);
-  font: var(--mat-sys-title-small);
-  text-transform: capitalize;
-
-  &--sonntag {
-    background: var(--pur-sys-tag-sonntag);
-  }
-
-  &--feiertag {
-    background: var(--pur-sys-tag-feiertag);
-  }
-
-  &--sondertag {
-    background: var(--pur-sys-tag-sondertag);
-  }
-}
-
-.listentag__schichten {
-  display: grid;
-  grid-template-columns: repeat(var(--zeitachsenraster), minmax(0, 1fr));
-  grid-auto-rows: minmax(60px, auto);
-  gap: 8px 0;
-}
-
-.geschlossen {
-  min-width: 0;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 10px;
-  color: var(--mat-sys-on-surface-variant);
-  background: var(--mat-sys-surface-container-low);
-  font: var(--mat-sys-label-large);
-  overflow: hidden;
-  margin-inline: 4px;
-}
-
-.tagesschicht {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 10px;
-  padding: 12px;
-  background: var(--mat-sys-surface-container-lowest);
-  margin-inline: 4px;
-}
-
-.zeitachsenkarte--am-anfang {
-  margin-inline-start: 0;
-}
-
-.zeitachsenkarte--am-ende {
-  margin-inline-end: 0;
-}
-
-.zellenkopf {
-  display: flex;
-  min-width: 0;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-
-  strong,
-  span {
+  &__zeilenkopf {
+    position: sticky;
+    left: 8px;
+    display: flex;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 10px;
+    background: var(--mat-sys-surface-container-low);
+
+    &--uhrzeit {
+      z-index: 3;
+      align-items: center;
+      padding: 8px 12px;
+    }
+
+    &--tag {
+      z-index: 2;
+      flex-direction: column;
+      padding: 12px;
+      font: var(--mat-sys-title-small);
+      text-transform: capitalize;
+    }
+
+    &--sonntag {
+      background: var(--pur-sys-tag-sonntag);
+    }
+
+    &--feiertag {
+      background: var(--pur-sys-tag-feiertag);
+    }
+
+    &--sondertag {
+      background: var(--pur-sys-tag-sondertag);
+    }
+  }
+
+  &__zeitachse {
+    position: relative;
+    height: 48px;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 10px;
+    background: var(--mat-sys-surface-container-low);
+  }
+  &__zeitmarke {
+    position: absolute;
+    bottom: 15px;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-small);
+    transform: translateX(-50%);
     white-space: nowrap;
+
+    &::after {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      width: 1px;
+      height: 6px;
+      background: var(--mat-sys-outline-variant);
+      content: '';
+    }
+
+    &:first-child {
+      padding-left: 12px;
+      transform: none;
+
+      &::after {
+        left: 0;
+      }
+    }
+
+    &:last-child {
+      padding-right: 12px;
+      transform: translateX(-100%);
+
+      &::after {
+        left: 100%;
+      }
+    }
+  }
+
+  &__zeileninhalt {
+    display: grid;
+    grid-template-columns: repeat(var(--zeitachsenraster), minmax(0, 1fr));
+    grid-auto-rows: minmax(60px, auto);
+    gap: 8px 0;
+  }
+  &__zeitbereich {
+    min-width: 0;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 10px;
+    margin-inline: 4px;
+
+    &-header {
+      display: flex;
+      min-width: 0;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+
+      span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      > button {
+        display: flex;
+        width: auto;
+        height: auto;
+        padding: 0;
+      }
+
+    }
+
+    &--geschlossen {
+      display: grid;
+      place-items: center;
+      color: var(--mat-sys-on-surface-variant);
+      background: var(--mat-sys-surface-container-low);
+      font: var(--mat-sys-label-large);
+      overflow: hidden;
+    }
+
+    &--tagesschicht {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      background: var(--mat-sys-surface-container-lowest);
+    }
+
+    &--konflikt {
+      background: var(--mat-sys-error-container);
+    }
+
+    &--am-anfang {
+      margin-inline-start: 0;
+    }
+
+    &--am-ende {
+      margin-inline-end: 0;
+    }
   }
 }
 
-.schicht {
+.schichtkarte {
   display: grid;
   gap: 4px;
   padding: 10px;
   border-radius: 8px;
   background: var(--mat-sys-surface-container);
   overflow-wrap: anywhere;
-
-  .zellenkopf + &,
-  & + & {
-    margin-top: 8px;
-  }
-
-  span {
-    color: var(--mat-sys-on-surface-variant);
-    font: var(--mat-sys-body-medium);
-  }
 
   &.cdk-drag-disabled {
     cursor: default;
@@ -189,8 +173,4 @@
   &:not(.cdk-drag-disabled) {
     cursor: grab;
   }
-}
-
-.tagesschicht.zelle--konflikt {
-  background: var(--mat-sys-error-container);
 }
