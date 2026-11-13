@@ -10,7 +10,6 @@
 @use 'variables/cssVars';
 
 // Base
-@use 'base/helpers' as *;
 @use 'base/layout' as *;
 
 // Modules
@@ -27,3 +26,6 @@
 @use 'modules/table' as *;
 @use 'modules/text' as *;
 @use 'modules/toolbar' as *;
+
+// Helpers
+@use 'base/helpers' as *;

@@ -148,13 +148,16 @@ Hauptquellen.
 - In jeder Schichtmodellvorlage werden der Beginn der ersten und das Ende der letzten Schicht aus der wirksamen Tagesöffnung
   abgeleitet. Nur die erste Schicht besitzt Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; beim Hinzufügen oder
   Entfernen einer äußeren Schicht werden diese Randminuten entsprechend übertragen.
-- Beim Hinzufügen einer Modellschicht wird der verbleibende Zeitraum bis zum Schichtende automatisch halbiert. Die
-  vorbelegte innere Grenze bleibt auf beiden Seiten unabhängig bearbeitbar; Lücken und Überlappungen bleiben zulässig.
+- Beim Hinzufügen einer Modellschicht werden alle inneren Grenzen der betroffenen Vorlage auf dem 15-Minuten-Raster möglichst
+  gleichmäßig über die vollständige Öffnung neu verteilt. Die Grenzen bleiben anschließend unabhängig bearbeitbar; Lücken und
+  Überlappungen bleiben zulässig.
 - Das Schichtmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Geöffnete Feier- und
   Sondertage werden vor dem atomaren Schreiben frei konfiguriert, geschlossene Tage bleiben ohne Tagesschichten.
 - Nach der Rastermodell-Entfernung und der Umbenennung auf das einheitliche Schichtmodell wurden am 13.11.2026 die vollständige
   Unit-Test-Suite mit 944 Tests, alle 63 Firestore-Emulator-Tests, die vier Produktionsbuilds sowie die manuelle Prüfung vom
   Benutzer als erfolgreich bestätigt.
+- Die anschließend umgesetzte direkte Modellliste und die gleichmäßige Neuverteilung aller Schichtgrenzen beim Hinzufügen sind
+  statisch geprüft. Unit-Tests, betroffene Produktionsbuilds und die manuelle Prüfung stehen für diesen neueren Stand noch aus.
 - Beim Anlegen eines Monatsplans werden Schichtmodell, Kalendertage, wirksame Öffnungen und konkrete datumsgebundene
   Tagesschichten als unveränderliche Momentaufnahme gespeichert.
 - Mitarbeiter können per Drag-and-drop eingeplant, verschoben und entfernt werden. Mehrfachbelegung, Pausen und

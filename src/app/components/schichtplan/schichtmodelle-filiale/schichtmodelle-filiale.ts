@@ -3,19 +3,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  WritableSignal,
   computed,
   effect,
   inject,
   input,
-  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
@@ -29,7 +25,7 @@ import {
 
 @Component({
   selector: 'app-schichtmodelle-filiale',
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatSelectModule],
+  imports: [MatButtonModule, MatIconModule],
   templateUrl: './schichtmodelle-filiale.html',
   styleUrl: './schichtmodelle-filiale.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -46,10 +42,6 @@ export class SchichtmodelleFiliale {
   readonly filiale = input.required<IFilialeEintrag>();
   readonly pfad = input.required<IFilialPfad>();
 
-  // ===== Interner State =======================
-
-  private readonly selectedSchichtmodellId = signal<string | null>(null);
-
   // ===== Interne Ableitungen ==================
 
   private readonly loadSchichtmodelleEffect = effect(() => {
@@ -57,12 +49,6 @@ export class SchichtmodelleFiliale {
     untracked(() => {
       void this.loadSchichtmodelle(pfad);
     });
-  });
-  private readonly selectedSchichtmodellEffect = effect(() => {
-    this.updateSelectedModellId(
-      this.schichtmodellKontext()?.schichtmodelle ?? [],
-      this.selectedSchichtmodellId,
-    );
   });
 
   // ===== Öffentliche Ableitungen ==============
@@ -80,14 +66,6 @@ export class SchichtmodelleFiliale {
       this.filialeinstellungKontext()?.bestand !== null
     );
   });
-  readonly selectedSchichtmodell = computed(() => {
-    const selectedId = this.selectedSchichtmodellId();
-    return (
-      this.schichtmodellKontext()?.schichtmodelle.find((bestand) => {
-        return bestand.schichtmodell.id === selectedId;
-      }) ?? null
-    );
-  });
 
   // ===== Öffentliche Aktionen =================
 
@@ -96,15 +74,6 @@ export class SchichtmodelleFiliale {
    */
   retryLoad(): void {
     void this.loadSchichtmodelle(this.pfad());
-  }
-
-  /**
-   * Wählt das anzuzeigende Schichtmodell aus.
-   *
-   * @param schichtmodellId - ID des ausgewählten Schichtmodells.
-   */
-  selectSchichtmodell(schichtmodellId: string): void {
-    this.selectedSchichtmodellId.set(schichtmodellId);
   }
 
   /**
@@ -146,25 +115,5 @@ export class SchichtmodelleFiliale {
     } catch {
       // Der Store stellt die benutzerfreundliche Fehlermeldung im Filialkontext bereit.
     }
-  }
-
-  private updateSelectedModellId(
-    bestaende: readonly ISchichtmodellBestand[],
-    selectedId: WritableSignal<string | null>,
-  ): void {
-    const aktuelleId = selectedId();
-    if (
-      aktuelleId &&
-      bestaende.some((bestand) => {
-        return bestand.schichtmodell.id === aktuelleId;
-      })
-    ) {
-      return;
-    }
-    const vorauswahl =
-      bestaende.find((bestand) => {
-        return bestand.schichtmodell.aktiv;
-      }) ?? bestaende[0];
-    selectedId.set(vorauswahl?.schichtmodell.id ?? null);
   }
 }

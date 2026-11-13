@@ -61,18 +61,22 @@ aktiven Modell neu angelegt werden.
 Zeitspanne bleiben schreibgeschützt. Eine belegte Einfachschicht oder eine filialübergreifende zeitliche Überschneidung sperrt
 das Speichern.
 
-`SchichtmodellBearbeitenDialog` enthält getrennte Bereiche für die Wochentagsvorlage von Montag bis Samstag und die
+`SchichtmodellBearbeitenDialog` enthält getrennte Bereiche für die Wochentagsvorlage und die
 Sonntagsvorlage. Beide erlauben beliebig viele Vorlagenschichten mit stabiler ID, Bezeichnung, Reihenfolge,
 Mehrfachbelegung und unabhängigen inneren Grenzen. Der Beginn der ersten und das Ende der letzten Schicht werden aus der
-jeweiligen Öffnung abgeleitet. Vorbereitung ist nur an der ersten und Nachbereitung nur an der letzten Schicht zulässig.
+jeweiligen Öffnung abgeleitet. Vorlauf und Nachlauf werden im Kopf der Tagesvorlage erfasst, technisch aber weiterhin der
+ersten beziehungsweise letzten Schicht zugeordnet. Neue Vorlagenschichten erhalten direkt im editierbaren Bezeichnungsfeld
+eine fortlaufende Standardbezeichnung; eine zusätzliche Schichtüberschrift wird nicht dargestellt. Jede Tagesvorlage besitzt
+einen gemeinsamen Außenrahmen, in dem ihre Vorlagenschichten als getrennte Listenzeilen erscheinen.
 
-Beim Hinzufügen einer Schicht wird der verbleibende Zeitraum bis zum Schichtende halbiert und als bearbeitbare innere Grenze
-vorbelegt. Lücken und Überschneidungen bleiben zulässig; jede Kernschicht benötigt eine positive Dauer innerhalb der
-maßgeblichen Öffnung. Nur Randminuten dürfen die Öffnungsgrenzen erweitern.
+Beim Hinzufügen einer Schicht werden alle inneren Grenzen der betroffenen Vorlage auf dem 15-Minuten-Raster möglichst
+gleichmäßig über die vollständige Öffnung neu verteilt. Die Grenzen bleiben anschließend bearbeitbar. Lücken und
+Überschneidungen bleiben zulässig; jede Kernschicht benötigt eine positive Dauer innerhalb der maßgeblichen Öffnung. Nur
+Randminuten dürfen die Öffnungsgrenzen erweitern.
 
 Die routbare `SchichtmodellePage` rendert pro ausgewählter Filiale eine `SchichtmodelleFiliale`. Der Bereich lädt
-ausschließlich Modelle seines Filialpfads, zeigt das ausgewählte Modell und bietet die passende Aktion zum Hinzufügen.
-Inaktive Modelle bleiben auswählbar und werden gekennzeichnet.
+ausschließlich Modelle seines Filialpfads und zeigt alle Modelle als umrandete Liste mit direkter Bearbeitungsaktion. Inaktive
+Modelle bleiben sichtbar und werden gekennzeichnet.
 
 ## Veröffentlichte Dienstplanansicht
 

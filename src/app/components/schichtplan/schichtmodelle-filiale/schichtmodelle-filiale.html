@@ -5,7 +5,7 @@
     <h3 class="pur-page-section__title">{{ filiale().anzeigename }}</h3>
   </header>
 
-  <section class="pur-list pur-list--divided">
+  <section class="pur-list pur-list--outlined">
     <header class="pur-list__header pur-list__header--outlined">
       <h4 class="pur-text pur-text--title-medium">Schichtmodelle</h4>
       <button
@@ -37,26 +37,7 @@
           Für diese Filiale sind noch keine Schichtmodelle angelegt.
         </p>
       } @else if (tageskontext.isLoaded) {
-        <mat-form-field
-          class="pur-form__item pur-form__item--field modell-auswahl"
-          appearance="outline"
-          subscriptSizing="dynamic"
-        >
-          <mat-label>Schichtmodell</mat-label>
-          <mat-select
-            [value]="selectedSchichtmodell()?.schichtmodell?.id"
-            (selectionChange)="selectSchichtmodell($event.value)"
-          >
-            @for (bestand of tageskontext.schichtmodelle; track bestand.schichtmodell.id) {
-              <mat-option [value]="bestand.schichtmodell.id">
-                {{ bestand.schichtmodell.bezeichnung }}
-                {{ bestand.schichtmodell.aktiv ? '' : '(inaktiv)' }}
-              </mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        @if (selectedSchichtmodell(); as bestand) {
+        @for (bestand of tageskontext.schichtmodelle; track bestand.schichtmodell.id) {
           <div
             class="pur-list__row modell-details"
             [class.pur-list__row--inactive]="!bestand.schichtmodell.aktiv"

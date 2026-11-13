@@ -238,6 +238,9 @@
 - Damit Safe-Area-Werte auf iOS greifen, verwendet der Viewport-Meta-Tag `viewport-fit=cover`.
 - Globale, wiederverwendbare CSS-Klassen verwenden den Präfix `pur-` und folgen BEM: `block__element` für Elemente und
   `block__element--modifier` für Varianten oder Zustände. Zusammengesetzte Elementnamen verwenden einfache Bindestriche.
+- Vollständig definierte globale Layout-Modifier dürfen eigenständig mit Elementen anderer Blöcke kombiniert werden, z. B.
+  `pur-form__item pur-flex__item--fixed-115`. Die Basisklasse des Layout-Helper-Blocks muss dabei nicht zusätzlich verwendet
+  werden.
 - Lokale, durch Angulars Style-Kapselung begrenzte Helferklassen müssen nicht nach BEM benannt werden. Sie erhalten kurze
   fachliche Namen und enthalten keine vermeintlich global wiederverwendbaren Layoutregeln.
 - Wird eine lokale Helferklasse später wiederverwendet, wird sie als globale `pur-*`-Klasse nach BEM überführt.

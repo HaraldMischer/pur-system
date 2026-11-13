@@ -64,7 +64,7 @@ describe('SchichtmodelleFiliale', () => {
     }).compileComponents();
   });
 
-  it('should load the daily models and settings of its branch', async () => {
+  it('should load the shift models and settings of its branch', async () => {
     const fixture = createFixture();
     await fixture.whenStable();
 
@@ -72,21 +72,7 @@ describe('SchichtmodelleFiliale', () => {
     expect(loadFilialeinstellung).toHaveBeenCalledWith(PFAD);
   });
 
-  it('should initially select the first active daily model', async () => {
-    kontext.set(
-      createKontext([
-        createModell('inaktiv', 'Inaktives Modell', false),
-        createModell('aktiv', 'Aktives Modell', true),
-      ]),
-    );
-    const fixture = createFixture();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.selectedSchichtmodell()?.schichtmodell.id).toBe('aktiv');
-  });
-
-  it('should open the daily-model dialog with the selected branch settings', async () => {
+  it('should open the shift-model dialog with the selected branch settings', async () => {
     const fixture = createFixture();
     await fixture.whenStable();
 
@@ -96,6 +82,22 @@ describe('SchichtmodelleFiliale', () => {
       SchichtmodellBearbeitenDialog,
       expect.objectContaining({
         data: expect.objectContaining({ pfad: PFAD }),
+      }),
+    );
+  });
+
+  it('should open the shift-model dialog for an existing model', async () => {
+    const modell = createModell('modell-1', 'Modell 1', true);
+    kontext.set(createKontext([modell]));
+    const fixture = createFixture();
+    await fixture.whenStable();
+
+    fixture.componentInstance.openSchichtmodellDialog(modell);
+
+    expect(open).toHaveBeenCalledWith(
+      SchichtmodellBearbeitenDialog,
+      expect.objectContaining({
+        data: expect.objectContaining({ pfad: PFAD, bestand: modell }),
       }),
     );
   });

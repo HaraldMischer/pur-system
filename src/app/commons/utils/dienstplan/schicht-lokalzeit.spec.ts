@@ -8,6 +8,7 @@ import {
   createSchichtZeitstempelAusLokalzeiten,
   formatSchichtDatum,
   formatSchichtUhrzeit,
+  getGleichmaessigeLokalzeitGrenzen,
   getLokalzeitMinuten,
   getSchichtTagFuerLokalzeit,
   istLokalzeitImMinutenraster,
@@ -29,6 +30,21 @@ describe('Schicht-Lokalzeit', () => {
     expect(istLokalzeitImMinutenraster('08:15', 15)).toBe(true);
     expect(istLokalzeitImMinutenraster('08:07', 15)).toBe(false);
     expect(istLokalzeitImMinutenraster('ungültig', 15)).toBe(false);
+  });
+
+  it('should distribute inner boundaries evenly across an overnight opening', () => {
+    expect(
+      getGleichmaessigeLokalzeitGrenzen(
+        {
+          geoeffnet: true,
+          beginnLokalzeit: '08:00',
+          endeLokalzeit: '01:00',
+          endetAmFolgetag: true,
+        },
+        3,
+        15,
+      ),
+    ).toEqual(['13:45', '19:15']);
   });
 
   it('should derive the model-shift day from the standard opening rule', () => {

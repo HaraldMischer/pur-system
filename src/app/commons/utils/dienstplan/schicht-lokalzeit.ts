@@ -87,6 +87,49 @@ export function addLokalzeitMinuten(lokalzeit: string, versatzMinuten: number): 
 }
 
 /**
+ * Verteilt innere Schichtgrenzen möglichst gleichmäßig über eine geöffnete Zeitspanne.
+ *
+ * Nicht exakt teilbare Rasterabschnitte werden symmetrisch auf die Schichten verteilt.
+ *
+ * @param oeffnung - Wirksame Öffnung der Tagesvorlage.
+ * @param anzahlSchichten - Anzahl der zu bildenden Schichten.
+ * @param minutenschritt - Positiver ganzzahliger Abstand des Zeitrasters.
+ * @returns Innere Grenzen im Format `HH:mm` oder eine leere Liste bei ungültigen Eingaben.
+ */
+export function getGleichmaessigeLokalzeitGrenzen(
+  oeffnung: IGeoeffneteOeffnungsregel,
+  anzahlSchichten: number,
+  minutenschritt: number,
+): string[] {
+  const beginn = getLokalzeitMinuten(oeffnung.beginnLokalzeit);
+  const ende = getLokalzeitMinuten(oeffnung.endeLokalzeit);
+  if (
+    beginn === null ||
+    ende === null ||
+    !Number.isInteger(anzahlSchichten) ||
+    anzahlSchichten < 1 ||
+    !Number.isInteger(minutenschritt) ||
+    minutenschritt < 1
+  ) {
+    return [];
+  }
+  const absolutesEnde = ende + (oeffnung.endetAmFolgetag ? 24 * 60 : 0);
+  const dauer = absolutesEnde - beginn;
+  const rasterabschnitte = dauer / minutenschritt;
+  if (dauer <= 0 || !Number.isInteger(rasterabschnitte) || rasterabschnitte < anzahlSchichten) {
+    return [];
+  }
+  const grenzen: string[] = [];
+  for (let index = 1; index < anzahlSchichten; index += 1) {
+    const abschnitteBisGrenze = Math.round((index * rasterabschnitte) / anzahlSchichten);
+    const grenze = addLokalzeitMinuten('00:00', beginn + abschnitteBisGrenze * minutenschritt);
+    if (!grenze) return [];
+    grenzen.push(grenze);
+  }
+  return grenzen;
+}
+
+/**
  * Berechnet die Dauer zwischen zwei lokalen Schichtzeiten.
  *
  * Ein Ende vor dem Beginn wird als Ende am Folgetag behandelt.

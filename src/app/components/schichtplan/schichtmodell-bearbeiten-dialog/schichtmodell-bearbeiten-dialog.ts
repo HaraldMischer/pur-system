@@ -28,8 +28,7 @@ import type {
   TTagesvorlageTyp,
 } from '../../../commons/models/domain/schichtmodell';
 import {
-  addLokalzeitMinuten,
-  getLokalzeitMinuten,
+  getGleichmaessigeLokalzeitGrenzen,
   getSchichtTagFuerLokalzeit,
 } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
@@ -114,23 +113,24 @@ export class SchichtmodellBearbeitenDialog {
   /**
    * Fügt der ausgewählten Tagesvorlage eine frei konfigurierbare Schicht hinzu.
    *
-   * Die neue innere Grenze halbiert den verbleibenden Zeitraum bis zum Schichtende.
+   * Alle inneren Grenzen werden anschließend gleichmäßig auf dem 15-Minuten-Raster neu verteilt.
    */
   addSchicht(vorlage: TTagesvorlageTyp): void {
     const schichten = this.form.controls[vorlage];
     const bisherigeLetzteSchicht = schichten.at(-1);
-    const automatischeGrenze = this.getHalbierteLetzteSchichtgrenze(
-      vorlage,
-      bisherigeLetzteSchicht,
-    );
     const bisherigeNachbereitungsminuten =
       bisherigeLetzteSchicht?.controls.nachbereitungsminuten.value ?? 0;
     bisherigeLetzteSchicht?.controls.nachbereitungsminuten.setValue(0);
-    bisherigeLetzteSchicht?.controls.endeLokalzeit.setValue(automatischeGrenze);
-    const neueSchicht = this.createSchichtForm(vorlage, undefined, false, true);
-    neueSchicht.controls.beginnLokalzeit.setValue(automatischeGrenze);
+    const neueSchicht = this.createSchichtForm(
+      vorlage,
+      undefined,
+      false,
+      true,
+      this.getNaechsteSchichtbezeichnung(schichten),
+    );
     neueSchicht.controls.nachbereitungsminuten.setValue(bisherigeNachbereitungsminuten);
     schichten.push(neueSchicht);
+    this.verteileSchichtenGleichmaessig(vorlage);
   }
 
   /**
@@ -215,6 +215,7 @@ export class SchichtmodellBearbeitenDialog {
         schicht,
         index === 0,
         index === schichtdaten.length - 1,
+        `Schicht ${index + 1}`,
       );
     });
     const letzterIndex = formen.length - 1;
@@ -227,26 +228,19 @@ export class SchichtmodellBearbeitenDialog {
     return formen;
   }
 
-  private getHalbierteLetzteSchichtgrenze(
-    vorlage: TTagesvorlageTyp,
-    letzteSchicht: TSchichtForm | undefined,
-  ): string {
+  private verteileSchichtenGleichmaessig(vorlage: TTagesvorlageTyp): void {
+    const schichten = this.form.controls[vorlage];
     const oeffnung = this.daten.oeffnungen[vorlage];
-    const beginn = getLokalzeitMinuten(
-      letzteSchicht?.controls.beginnLokalzeit.value ?? oeffnung.beginnLokalzeit,
-    );
-    const ende = getLokalzeitMinuten(oeffnung.endeLokalzeit);
-    if (beginn === null || ende === null) return '';
-    const absoluterBeginn =
-      beginn + (letzteSchicht?.controls.beginnTag.value === 'folgetag' ? 24 * 60 : 0);
-    const absolutesEnde = ende + (oeffnung.endetAmFolgetag ? 24 * 60 : 0);
-    if (absolutesEnde <= absoluterBeginn) return '';
-    return (
-      addLokalzeitMinuten(
-        '00:00',
-        absoluterBeginn + Math.floor((absolutesEnde - absoluterBeginn) / 2),
-      ) ?? ''
-    );
+    const grenzen = getGleichmaessigeLokalzeitGrenzen(oeffnung, schichten.length, 15);
+    if (grenzen.length !== schichten.length - 1) return;
+    schichten.controls.forEach((schicht, index) => {
+      schicht.controls.beginnLokalzeit.setValue(
+        index === 0 ? oeffnung.beginnLokalzeit : grenzen[index - 1],
+      );
+      schicht.controls.endeLokalzeit.setValue(
+        index === schichten.length - 1 ? oeffnung.endeLokalzeit : grenzen[index],
+      );
+    });
   }
 
   private createSchichtForm(
@@ -254,6 +248,7 @@ export class SchichtmodellBearbeitenDialog {
     schicht?: ITagesvorlagenschichtEintrag,
     istErsteSchicht = false,
     istLetzteSchicht = false,
+    standardbezeichnung = '',
   ): TSchichtForm {
     const oeffnung = this.daten.oeffnungen[vorlage];
     const beginnLokalzeit = istErsteSchicht
@@ -276,7 +271,7 @@ export class SchichtmodellBearbeitenDialog {
         : 'starttag';
     const form = new FormGroup({
       id: new FormControl(schicht?.id ?? '', { nonNullable: true }),
-      bezeichnung: new FormControl(schicht?.bezeichnung ?? '', {
+      bezeichnung: new FormControl(schicht?.bezeichnung ?? standardbezeichnung, {
         nonNullable: true,
         validators: [Validators.required, nichtLeerValidator, Validators.maxLength(80)],
       }),
@@ -319,6 +314,15 @@ export class SchichtmodellBearbeitenDialog {
         if (tag) form.controls.endeTag.setValue(tag);
       });
     return form;
+  }
+
+  private getNaechsteSchichtbezeichnung(schichten: FormArray<TSchichtForm>): string {
+    let hoechsteNummer = 0;
+    schichten.controls.forEach((schicht) => {
+      const treffer = /^Schicht (\d+)$/.exec(schicht.controls.bezeichnung.value.trim());
+      if (treffer) hoechsteNummer = Math.max(hoechsteNummer, Number(treffer[1]));
+    });
+    return `Schicht ${hoechsteNummer + 1}`;
   }
 
   private mapVorlage(vorlage: TTagesvorlageTyp): ITagesvorlagenschichtSchreibdaten[] {

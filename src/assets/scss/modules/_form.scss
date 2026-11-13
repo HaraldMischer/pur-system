@@ -24,75 +24,6 @@
       align-items: center;
       min-height: 56px;
     }
-
-    // Anteilige Größenmodifier verteilen den verfügbaren Platz relativ zueinander.
-    &--20 {
-      flex: 20 1 0;
-    }
-
-    &--25 {
-      flex: 25 1 0;
-    }
-
-    &--33 {
-      flex: 33 1 0;
-    }
-
-    &--40 {
-      flex: 40 1 0;
-    }
-
-    &--50 {
-      flex: 50 1 0;
-    }
-
-    &--80 {
-      flex: 80 1 0;
-    }
-
-    // Flexible Basismodifier erlauben kompaktere Felder, die den verbleibenden Platz ausfüllen.
-    &--basis-sm {
-      flex: 1 1 140px;
-    }
-
-    // Feste Größenmodifier verwenden die jeweils benannte Pixelbreite.
-    &--fixed-100 {
-      width: 100px;
-      flex: 0 0 100px;
-    }
-
-    &--fixed-115 {
-      width: 115px;
-      flex: 0 0 115px;
-    }
-
-    &--fixed-150 {
-      width: 150px;
-      flex: 0 0 150px;
-    }
-
-    &--fixed-180 {
-      width: 180px;
-      flex: 0 0 180px;
-    }
-
-    // Adaptive Größenmodifier verwenden die Inhaltsbreite oder die vollständige Layoutbreite.
-    &--auto {
-      width: auto;
-      flex: 0 0 auto;
-      justify-self: start;
-    }
-
-    &--full {
-      width: 100%;
-      flex: 1 0 100%;
-    }
-
-    // Ausrichtungsmodifier positionieren ein Item innerhalb seines Layoutcontainers.
-    &--end {
-      justify-self: end;
-      margin-inline-start: auto;
-    }
   }
 
   // Ordnet direkte Items horizontal an und bricht sie bei Platzmangel um.
@@ -113,12 +44,12 @@
     }
 
     @media (max-width: breakpoints.$breakpoint-medium-device) {
-      > .pur-form__item--20,
-      > .pur-form__item--25,
-      > .pur-form__item--33,
-      > .pur-form__item--40,
-      > .pur-form__item--50,
-      > .pur-form__item--80 {
+      > .pur-flex__item--20,
+      > .pur-flex__item--25,
+      > .pur-flex__item--33,
+      > .pur-flex__item--40,
+      > .pur-flex__item--50,
+      > .pur-flex__item--80 {
         flex: 1 1 100%;
       }
     }

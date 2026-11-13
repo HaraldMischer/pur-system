@@ -1,18 +1,9 @@
 // pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.scss
 
-@media (max-width: 800px) {
-  .schicht-kerndaten > .schicht-bezeichnung {
-    flex: 1 0 100%;
-  }
-}
+.pur-list {
+  margin: 0;
 
-@media (max-width: 600px) {
-  .tagesvorlage-kopf {
-    align-items: flex-start;
-    flex-direction: column;
-
-    > .pur-form__group-actions {
-      width: 100%;
-    }
+  > .pur-list__row:last-child {
+    border-bottom: 0;
   }
 }

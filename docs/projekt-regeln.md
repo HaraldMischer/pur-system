@@ -21,6 +21,8 @@ Detaildokument keine ausdrücklich begründete Sonderregel beschreibt.
 - Angular Material und das bestehende globale `pur-*`-Stylesystem bilden die gemeinsame UI-Grundlage.
 - Globale, wiederverwendbare CSS-Strukturen folgen BEM. Lokale Helferklassen bleiben auf den jeweiligen fachlichen Kontext
   begrenzt.
+- Vollständig definierte globale Layout-Modifier dürfen eigenständig mit Elementen anderer Blöcke kombiniert werden, z. B.
+  `pur-form__item pur-flex__item--fixed-115`. Die Basisklasse des Layout-Helper-Blocks ist dafür nicht zusätzlich erforderlich.
 - Eigene Breiten, Höhen, Abstände und Breakpoints werden grundsätzlich in `px` angegeben. `rem` wird nur verwendet, wenn eine
   Größe ausdrücklich mit der Root-Schriftgröße skalieren soll.
 - Zustandsanzeigen dürfen bestehende Seiten-, Listen-, Karten- oder Dialoginhalte nicht unnötig verschieben.

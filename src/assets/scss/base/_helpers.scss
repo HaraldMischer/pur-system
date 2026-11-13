@@ -8,10 +8,85 @@
   &__item {
     min-width: 0;
 
+    // Feste Größenmodifier sind unabhängig von Formularen und Listen wiederverwendbar.
+    &--fixed-100 {
+      width: 100px;
+      flex: 0 0 100px;
+    }
+
+    &--fixed-115 {
+      width: 115px;
+      flex: 0 0 115px;
+    }
+
+    &--fixed-150 {
+      width: 150px;
+      flex: 0 0 150px;
+    }
+
+    &--fixed-180 {
+      width: 180px;
+      flex: 0 0 180px;
+    }
+
+    // Anteilige Größenmodifier verteilen den verfügbaren Platz relativ zueinander.
+    &--20 {
+      flex: 20 1 0;
+    }
+
+    &--25 {
+      flex: 25 1 0;
+    }
+
+    &--33 {
+      flex: 33 1 0;
+    }
+
+    &--40 {
+      flex: 40 1 0;
+    }
+
+    &--50 {
+      flex: 50 1 0;
+    }
+
+    &--80 {
+      flex: 80 1 0;
+    }
+
+    // Flexible Basismodifier erlauben kompaktere Elemente, die den verbleibenden Platz ausfüllen.
+    &--basis-sm {
+      flex: 1 1 140px;
+    }
+
+    // Adaptive Größenmodifier verwenden die Inhaltsbreite oder die vollständige Layoutbreite.
+    &--auto {
+      width: auto;
+      flex: 0 0 auto;
+      justify-self: start;
+    }
+
+    &--full {
+      width: 100%;
+      flex: 1 0 100%;
+    }
+
+    // Richtet ein Element am Ende seines Layoutcontainers aus.
+    &--end {
+      justify-self: end;
+      margin-inline-start: auto;
+    }
+
     // Reserviert Platz für eine Uhrzeit mit einem Uhren-Icon.
     &--time {
       width: 140px;
       flex: 0 0 140px;
     }
+  }
+}
+
+.pur-padding {
+  &--inline-end {
+    padding-inline-end: 16px;
   }
 }

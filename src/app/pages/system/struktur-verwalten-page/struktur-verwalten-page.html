@@ -61,7 +61,7 @@
             </mat-form-field>
             <!-- Firma bearbeiten -->
             <button
-              class="pur-form__item pur-form__item--field-button pur-form__item--end"
+              class="pur-form__item pur-form__item--field-button pur-flex__item--end"
               matButton="outlined"
               type="button"
               [disabled]="
@@ -97,7 +97,7 @@
             </mat-form-field>
             <!-- Filiale bearbeiten -->
             <button
-              class="pur-form__item pur-form__item--field-button pur-form__item--end"
+              class="pur-form__item pur-form__item--field-button pur-flex__item--end"
               matButton="outlined"
               type="button"
               [disabled]="
@@ -123,7 +123,7 @@
           @if (strukturBearbeitenStore.unternehmerListe().error; as error) {
             <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
             <button
-              class="pur-form__item pur-form__item--end"
+              class="pur-form__item pur-flex__item--end"
               matButton="tonal"
               type="button"
               (click)="strukturBearbeitenStore.loadUnternehmer()"
@@ -142,7 +142,7 @@
           @if (strukturBearbeitenStore.firmenListe().error; as error) {
             <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
             <button
-              class="pur-form__item pur-form__item--end"
+              class="pur-form__item pur-flex__item--end"
               matButton="tonal"
               type="button"
               (click)="strukturBearbeitenStore.loadFirmen()"
@@ -161,7 +161,7 @@
           @if (strukturBearbeitenStore.filialenListe().error; as error) {
             <p class="pur-message pur-message--error pur-message--full" role="alert">{{ error }}</p>
             <button
-              class="pur-form__item pur-form__item--end"
+              class="pur-form__item pur-flex__item--end"
               matButton="tonal"
               type="button"
               (click)="strukturBearbeitenStore.loadFilialen()"

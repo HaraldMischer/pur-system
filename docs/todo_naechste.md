@@ -130,8 +130,8 @@ Zu löschen:
 - [x] Je Vorlage beliebig viele Schichten mit stabiler ID, Bezeichnung, Reihenfolge, inneren Grenzen und optionaler
       Mehrfachbelegung konfigurieren; äußere Grenzen aus der wirksamen Tagesöffnung ableiten sowie Vorbereitung nur an der
       ersten und Nachbereitung nur an der letzten Schicht zulassen.
-- [x] Beim Hinzufügen einer Schicht den verbleibenden Zeitraum bis zum Schichtende halbieren und die berechnete innere Grenze
-      unabhängig bearbeitbar als Ende der bisherigen sowie Beginn der neuen Schicht vorbelegen.
+- [x] Beim Hinzufügen einer Schicht alle inneren Grenzen der betroffenen Vorlage auf dem 15-Minuten-Raster möglichst
+      gleichmäßig über die vollständige Öffnung neu verteilen und anschließend unabhängig bearbeitbar lassen.
 - [x] Unterschiedliche Schichtanzahlen, Längen, Lücken und Überschneidungen zwischen Wochentags- und Sonntagsvorlage zulassen.
 - [x] Kernzeiten gegen die für die Vorlage maßgebliche Öffnung validieren.
 - [ ] Die tatsächliche Arbeitszeit einschließlich Vor- und Nachbereitung im Modelldialog nachvollziehbar anzeigen.
@@ -184,7 +184,7 @@ Zu löschen:
 - [x] Nicht mehr benötigte Rastertests löschen und die verbleibenden Tests auf das Schichtmodell ausrichten.
 - [x] Aktuelle Fach-, Architektur-, Planungs-, Status- und Berechtigungsdokumentation auf das alleinige Schichtmodell ausrichten.
 
-### [x] Tests und Abschluss
+### [ ] Tests und Abschluss
 
 - [x] Modell-, Mapper-, Validator-, Service- und Store-Tests nach der Bereinigung auf den alleinigen Schichtmodellpfad ausrichten.
 - [x] Tageserzeugung für reguläre Wochentage, Sonntage, Feiertage mit `Standard` oder `Wie Sonntag`, geschlossene Tage sowie
@@ -192,14 +192,14 @@ Zu löschen:
 - [x] Übernachtöffnungen, Kernzeitgrenzen, Vor- und Nachbereitung, unterschiedliche Schichtanzahlen, Lücken und
       Überschneidungen testen.
 - [x] Component-Tests für Modellauswahl, beide Vorlagen, freie Sondertagserfassung und variable Tagesdarstellung ergänzen.
-- [x] Konflikt-, Pausen-, Versions- und Veröffentlichungstests nach der Bereinigung mit der vollständigen Unit-Test-Suite
+- [ ] Konflikt-, Pausen-, Versions- und Veröffentlichungstests nach der Bereinigung mit der vollständigen Unit-Test-Suite
       ausführen.
 - [x] Firestore-Emulator-Tests für alle neuen Pfade und CRUD-Aktionen ergänzen. Ihre erneute vollständige Ausführung bleibt Teil
       des Abschlusses.
-- [x] Einen realistischen Monatsplan mit Wochentagen, Sonntagen, Übernachtöffnungen und mehreren Sondertagen auf Desktop und
+- [ ] Einen realistischen Monatsplan mit Wochentagen, Sonntagen, Übernachtöffnungen und mehreren Sondertagen auf Desktop und
       kleinem Touch-Viewport prüfen.
 - [x] Fachkonzept, Architektur, Projektplan und Projektstand auf das alleinige Schichtmodell ausrichten.
-- [x] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office`, `npm run build:filiale`,
+- [ ] `npm test`, `npm run test:rules`, `npm run build:master`, `npm run build:office`, `npm run build:filiale`,
       `npm run build:mitarbeiter` und die manuelle Prüfung erfolgreich ausführen.
 
 ### [ ] Erledigt, wenn
@@ -216,7 +216,7 @@ Zu löschen:
 - [x] Mitarbeiter können anschließend ohne Änderung der Tagesstruktur auf konkrete Tagesschichten verteilt werden.
 - [x] Konfliktprüfung, Pausenberechnung, Versionierung und Veröffentlichung funktionieren für das Schichtmodell konsistent.
 - [ ] Der Modelldialog zeigt die tatsächliche Arbeitszeit einschließlich Vor- und Nachbereitung nachvollziehbar an.
-- [x] Automatisierte Tests, Rules-Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
+- [ ] Automatisierte Tests, Rules-Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
 
 ## 27. Feiertage, Gedenk- und Trauertage fachlich neu ordnen
 

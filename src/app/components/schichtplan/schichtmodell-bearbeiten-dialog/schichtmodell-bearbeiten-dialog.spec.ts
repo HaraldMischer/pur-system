@@ -114,6 +114,17 @@ describe('SchichtmodellBearbeitenDialog', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
+  it('should prefill editable names for newly added shifts', async () => {
+    const component = await createComponent();
+    const schichten = component.form.controls.wochentag;
+
+    expect(schichten.at(0).controls.bezeichnung.value).toBe('Schicht 1');
+
+    component.addSchicht('wochentag');
+
+    expect(schichten.at(1).controls.bezeichnung.value).toBe('Schicht 2');
+  });
+
   it('should keep preparation on the first and follow-up on the last shift', async () => {
     const component = await createComponent();
     const schichten = component.form.controls.wochentag;
@@ -143,7 +154,7 @@ describe('SchichtmodellBearbeitenDialog', () => {
     expect(zweiteSchicht.controls.nachbereitungsminuten.value).toBe(15);
   });
 
-  it('should split the remaining last shift when adding another shift', async () => {
+  it('should redistribute all shifts evenly when adding another shift', async () => {
     const component = await createComponent();
     const schichten = component.form.controls.wochentag;
     const ersteSchicht = schichten.at(0);
@@ -158,8 +169,10 @@ describe('SchichtmodellBearbeitenDialog', () => {
     expect(ersteSchicht.controls.endeLokalzeit.value).toBe('16:00');
 
     component.addSchicht('wochentag');
-    expect(zweiteSchicht.controls.endeLokalzeit.value).toBe('21:00');
-    expect(schichten.at(2).controls.beginnLokalzeit.value).toBe('21:00');
+    expect(ersteSchicht.controls.endeLokalzeit.value).toBe('13:00');
+    expect(zweiteSchicht.controls.beginnLokalzeit.value).toBe('13:00');
+    expect(zweiteSchicht.controls.endeLokalzeit.value).toBe('19:00');
+    expect(schichten.at(2).controls.beginnLokalzeit.value).toBe('19:00');
 
     component.removeSchicht('wochentag', 2);
     expect(zweiteSchicht.controls.endeLokalzeit.value).toBe('01:00');
