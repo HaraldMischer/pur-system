@@ -34,7 +34,7 @@
     column-gap: 16px;
     row-gap: 0;
 
-    > .pur-form__item--field {
+    > :where(.pur-form__item--field) {
       width: auto;
     }
 

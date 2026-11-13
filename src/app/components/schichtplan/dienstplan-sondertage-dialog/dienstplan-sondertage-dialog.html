@@ -1,108 +1,102 @@
 <!-- pur-system/src/app/components/schichtplan/dienstplan-sondertage-dialog/dienstplan-sondertage-dialog.html -->
 
 <h2 mat-dialog-title>Sondertage für den Monatsplan festlegen</h2>
-<mat-dialog-content>
+<mat-dialog-content class="pur-dialog__content">
   <form
     id="dienstplan-sondertage-form"
-    class="pur-form pur-form--flex"
+    class="pur-form pur-form--grid"
     [formGroup]="form"
     (ngSubmit)="save()"
   >
-    <div formArrayName="tage">
+    <div formArrayName="tage" class="pur-form__group pur-form__group-list">
       @for (tagForm of form.controls.tage.controls; track tagForm; let tagIndex = $index) {
-        <div class="pur-form__group" [formGroupName]="tagIndex">
-          <div class="zeilenkopf">
-            <h2 class="pur-form__group-titel">
-              {{ sondertage[tagIndex].bezeichnung || sondertage[tagIndex].datum }} ·
-              {{
-                sondertage[tagIndex].oeffnungsregel.geoeffnet
-                  ? sondertage[tagIndex].oeffnungsregel.beginnLokalzeit
-                  : ''
-              }}–
-              {{
-                sondertage[tagIndex].oeffnungsregel.geoeffnet
-                  ? sondertage[tagIndex].oeffnungsregel.endeLokalzeit
-                  : ''
-              }}
-              Uhr
+        <section class="pur-form__group pur-form__group--outlined" [formGroupName]="tagIndex">
+          <header class="pur-form__row">
+            <h2 class="pur-form__item pur-flex__item--basis-sm pur-form__group-titel">
+              {{ sondertage[tagIndex].bezeichnung || sondertage[tagIndex].datum }}
             </h2>
-            <button matButton type="button" (click)="addSchicht(tagIndex)">
-              <mat-icon>add</mat-icon>Schicht hinzufügen
+            <app-eingabe-minuten
+              class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+              label="Vorlauf"
+              subscriptSizing="dynamic"
+              [formControl]="tagForm.controls.schichten.at(0).controls.vorbereitungsminuten"
+              required
+            />
+            <app-eingabe-minuten
+              class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+              label="Nachlauf"
+              subscriptSizing="dynamic"
+              [formControl]="tagForm.controls.schichten.at(-1).controls.nachbereitungsminuten"
+              required
+            />
+            <button
+              matButton
+              class="pur-form__item pur-flex__item--fixed-180"
+              type="button"
+              (click)="addSchicht(tagIndex)"
+            >
+              <mat-icon>add</mat-icon>
+              Schicht hinzufügen
             </button>
-          </div>
-          <div formArrayName="schichten">
+          </header>
+
+          <div formArrayName="schichten" class="pur-list pur-list--divided">
             @for (
               schicht of tagForm.controls.schichten.controls;
               track schicht;
               let schichtIndex = $index
             ) {
-              <div class="pur-form__group pur-form__group--outlined" [formGroupName]="schichtIndex">
-                <div class="zeilenkopf">
-                  <h2 class="pur-form__group-titel">Schicht {{ schichtIndex + 1 }}</h2>
+              <section class="pur-list__row" [formGroupName]="schichtIndex">
+                <mat-form-field
+                  appearance="outline"
+                  class="pur-form__item pur-form__item--field pur-flex__item--basis-sm"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Bezeichnung</mat-label>
+                  <input matInput formControlName="bezeichnung" />
+                </mat-form-field>
+                <app-eingabe-zeit
+                  class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+                  label="Beginn"
+                  minutenschritt="15"
+                  subscriptSizing="dynamic"
+                  formControlName="beginnLokalzeit"
+                  required
+                />
+                <app-eingabe-zeit
+                  class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+                  label="Ende"
+                  minutenschritt="15"
+                  subscriptSizing="dynamic"
+                  formControlName="endeLokalzeit"
+                  required
+                />
+                <div class="pur-list__row-item pur-list__row-item--end pur-flex__item--fixed-180">
+                  <mat-checkbox
+                    aria-label="Mehrfachbelegung erlauben"
+                    formControlName="mehrfachbelegungErlaubt"
+                  >
+                    Mehrfach
+                  </mat-checkbox>
                   <button
                     matIconButton
                     type="button"
+                    aria-label="Schicht entfernen"
                     [disabled]="tagForm.controls.schichten.length === 1"
                     (click)="removeSchicht(tagIndex, schichtIndex)"
                   >
                     <mat-icon>delete</mat-icon>
                   </button>
                 </div>
-                <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field"
-                  ><mat-label>Bezeichnung</mat-label><input matInput formControlName="bezeichnung"
-                /></mat-form-field>
-                <div class="zeitzeile">
-                  <app-eingabe-zeit
-                    label="Kernbeginn"
-                    minutenschritt="15"
-                    formControlName="beginnLokalzeit"
-                    required
-                  />
-                  <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field"
-                    ><mat-label>Tag</mat-label
-                    ><mat-select formControlName="beginnTag"
-                      ><mat-option value="starttag">Starttag</mat-option
-                      ><mat-option value="folgetag">Folgetag</mat-option></mat-select
-                    ></mat-form-field
-                  >
-                  <app-eingabe-zeit
-                    label="Kernende"
-                    minutenschritt="15"
-                    formControlName="endeLokalzeit"
-                    required
-                  />
-                  <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field"
-                    ><mat-label>Tag</mat-label
-                    ><mat-select formControlName="endeTag"
-                      ><mat-option value="starttag">Starttag</mat-option
-                      ><mat-option value="folgetag">Folgetag</mat-option></mat-select
-                    ></mat-form-field
-                  >
-                </div>
-                <div class="zeitzeile">
-                  <app-eingabe-minuten
-                    label="Vorbereitung"
-                    formControlName="vorbereitungsminuten"
-                    required
-                  />
-                  <app-eingabe-minuten
-                    label="Nachbereitung"
-                    formControlName="nachbereitungsminuten"
-                    required
-                  />
-                  <mat-checkbox formControlName="mehrfachbelegungErlaubt"
-                    >Mehrfachbelegung</mat-checkbox
-                  >
-                </div>
-              </div>
+              </section>
             }
           </div>
-        </div>
+        </section>
       }
     </div>
   </form>
 </mat-dialog-content>
-<mat-dialog-actions align="end">
+<mat-dialog-actions class="pur-dialog__footer" align="end">
   <button matButton type="button" mat-dialog-close>Abbrechen</button>
   <button
     matButton="filled"

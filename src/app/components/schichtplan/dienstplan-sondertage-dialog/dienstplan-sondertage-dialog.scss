@@ -1,13 +1,9 @@
 // pur-system/src/app/components/schichtplan/dienstplan-sondertage-dialog/dienstplan-sondertage-dialog.scss
 
-.zeilenkopf,
-.zeitzeile {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
+.pur-list {
+  margin: 0;
 
-.zeilenkopf {
-  justify-content: space-between;
+  > .pur-list__row:last-child {
+    border-bottom: 0;
+  }
 }

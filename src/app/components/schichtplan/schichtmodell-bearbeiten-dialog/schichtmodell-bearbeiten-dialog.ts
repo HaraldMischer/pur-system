@@ -6,6 +6,7 @@ import {
   DestroyRef,
   effect,
   inject,
+  signal,
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -21,12 +22,15 @@ import { MAX_RANDMINUTEN } from '../../../commons/constants/schicht.constants';
 import type { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import type { IGeoeffneteOeffnungsregel } from '../../../commons/models/domain/filialeinstellung';
 import type {
+  ISchichtmodellAktualisierung,
+  ISchichtmodellAnlage,
   ISchichtmodellBestand,
   ITagesvorlagenschichtEintrag,
   ITagesvorlagenschichtSchreibdaten,
   TSchichtZeitgrenzeTag,
   TTagesvorlageTyp,
 } from '../../../commons/models/domain/schichtmodell';
+import { getNaechsteSchichtbezeichnung } from '../../../commons/utils/dienstplan/schicht-bezeichnung';
 import {
   getGleichmaessigeLokalzeitGrenzen,
   getSchichtTagFuerLokalzeit,
@@ -79,6 +83,10 @@ export class SchichtmodellBearbeitenDialog {
   readonly daten = inject<TSchichtmodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly store = inject(SchichtmodellStore);
 
+  // ===== Interner State =======================
+
+  private readonly urspruenglicherDatenwert: string;
+
   // ===== Öffentliche Werte ====================
 
   readonly istBearbeitung = Boolean(this.daten.bestand);
@@ -94,8 +102,13 @@ export class SchichtmodellBearbeitenDialog {
     wochentag: new FormArray<TSchichtForm>(this.createVorlage('wochentag')),
     sonntag: new FormArray<TSchichtForm>(this.createVorlage('sonntag')),
   });
+  readonly hatAenderungen = signal(!this.istBearbeitung);
 
   constructor() {
+    this.urspruenglicherDatenwert = JSON.stringify(this.getSchreibwert());
+    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.updateHatAenderungen();
+    });
     effect(() => {
       const inProgress = this.store.inProgress();
       untracked(() => {
@@ -126,7 +139,11 @@ export class SchichtmodellBearbeitenDialog {
       undefined,
       false,
       true,
-      this.getNaechsteSchichtbezeichnung(schichten),
+      getNaechsteSchichtbezeichnung(
+        schichten.controls.map((schicht) => {
+          return schicht.controls.bezeichnung.value;
+        }),
+      ),
     );
     neueSchicht.controls.nachbereitungsminuten.setValue(bisherigeNachbereitungsminuten);
     schichten.push(neueSchicht);
@@ -172,27 +189,19 @@ export class SchichtmodellBearbeitenDialog {
    * Speichert beide Vorlagen des Schichtmodells.
    */
   async save(): Promise<void> {
-    if (this.form.invalid || this.store.inProgress()) return;
-    const tagesvorlagenschichten = [...this.mapVorlage('wochentag'), ...this.mapVorlage('sonntag')];
+    if (this.form.invalid || this.store.inProgress() || !this.hatAenderungen()) return;
     try {
       if (this.daten.bestand) {
         await this.store.updateSchichtmodell(
           this.daten.pfad,
           this.daten.bestand.schichtmodell.id,
-          {
-            bezeichnung: this.form.controls.bezeichnung.value.trim(),
-            aktiv: this.form.controls.aktiv.value,
-            tagesvorlagenschichten,
-          },
+          this.getAktualisierung(),
           this.daten.oeffnungen,
         );
       } else {
         await this.store.createSchichtmodell(
           this.daten.pfad,
-          {
-            bezeichnung: this.form.controls.bezeichnung.value.trim(),
-            tagesvorlagenschichten,
-          },
+          this.getAnlage(),
           this.daten.oeffnungen,
         );
       }
@@ -316,13 +325,22 @@ export class SchichtmodellBearbeitenDialog {
     return form;
   }
 
-  private getNaechsteSchichtbezeichnung(schichten: FormArray<TSchichtForm>): string {
-    let hoechsteNummer = 0;
-    schichten.controls.forEach((schicht) => {
-      const treffer = /^Schicht (\d+)$/.exec(schicht.controls.bezeichnung.value.trim());
-      if (treffer) hoechsteNummer = Math.max(hoechsteNummer, Number(treffer[1]));
-    });
-    return `Schicht ${hoechsteNummer + 1}`;
+  private getAnlage(): ISchichtmodellAnlage {
+    return {
+      bezeichnung: this.form.controls.bezeichnung.value.trim(),
+      tagesvorlagenschichten: [...this.mapVorlage('wochentag'), ...this.mapVorlage('sonntag')],
+    };
+  }
+
+  private getAktualisierung(): ISchichtmodellAktualisierung {
+    return {
+      ...this.getAnlage(),
+      aktiv: this.form.controls.aktiv.value,
+    };
+  }
+
+  private getSchreibwert(): ISchichtmodellAnlage | ISchichtmodellAktualisierung {
+    return this.istBearbeitung ? this.getAktualisierung() : this.getAnlage();
   }
 
   private mapVorlage(vorlage: TTagesvorlageTyp): ITagesvorlagenschichtSchreibdaten[] {
@@ -346,5 +364,12 @@ export class SchichtmodellBearbeitenDialog {
         mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
       };
     });
+  }
+
+  private updateHatAenderungen(): void {
+    if (!this.istBearbeitung) return;
+    this.hatAenderungen.set(
+      JSON.stringify(this.getAktualisierung()) !== this.urspruenglicherDatenwert,
+    );
   }
 }

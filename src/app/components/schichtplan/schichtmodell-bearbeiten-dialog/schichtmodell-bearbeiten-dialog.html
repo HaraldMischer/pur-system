@@ -31,13 +31,13 @@
               {{ vorlage === 'wochentag' ? 'Wochentagsvorlage' : 'Sonntagsvorlage' }}
             </h2>
             <app-eingabe-minuten
-              class="pur-form__item pur-form__item--field pur-flex__item--fixed-115"
+              class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
               label="Vorlauf"
               subscriptSizing="dynamic"
               [formControl]="getVorlageForm($any(vorlage)).at(0).controls.vorbereitungsminuten"
             />
             <app-eingabe-minuten
-              class="pur-form__item pur-form__item--field pur-flex__item--fixed-115"
+              class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
               label="Nachlauf"
               subscriptSizing="dynamic"
               [formControl]="getVorlageForm($any(vorlage)).at(-1).controls.nachbereitungsminuten"
@@ -69,17 +69,18 @@
                   <input matInput formControlName="bezeichnung" />
                 </mat-form-field>
                 @if (index === 0) {
-                  <mat-form-field
-                    appearance="outline"
-                    class="pur-form__item pur-form__item--field pur-flex__item--fixed-115"
+                  <app-eingabe-zeit
+                    class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+                    label="Beginn"
+                    minutenschritt="15"
                     subscriptSizing="dynamic"
-                  >
-                    <mat-label>Beginn</mat-label>
-                    <input matInput readonly value="Öffnung" />
-                  </mat-form-field>
+                    formControlName="beginnLokalzeit"
+                    readonly
+                    required
+                  />
                 } @else {
                   <app-eingabe-zeit
-                    class="pur-form__item pur-form__item--field pur-flex__item--fixed-115"
+                    class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
                     label="Beginn"
                     minutenschritt="15"
                     subscriptSizing="dynamic"
@@ -88,17 +89,18 @@
                   />
                 }
                 @if (index === getVorlageForm($any(vorlage)).length - 1) {
-                  <mat-form-field
-                    appearance="outline"
-                    class="pur-form__item pur-form__item--field pur-flex__item--fixed-115"
+                  <app-eingabe-zeit
+                    class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+                    label="Ende"
+                    minutenschritt="15"
                     subscriptSizing="dynamic"
-                  >
-                    <mat-label>Ende</mat-label>
-                    <input matInput readonly value="Schließung" />
-                  </mat-form-field>
+                    formControlName="endeLokalzeit"
+                    readonly
+                    required
+                  />
                 } @else {
                   <app-eingabe-zeit
-                    class="pur-form__item pur-form__item--field pur-flex__item--fixed-115"
+                    class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
                     label="Ende"
                     minutenschritt="15"
                     subscriptSizing="dynamic"
@@ -145,7 +147,7 @@
     matButton="filled"
     type="submit"
     form="schichtmodell-form"
-    [disabled]="form.invalid || store.inProgress()"
+    [disabled]="form.invalid || store.inProgress() || !hatAenderungen()"
   >
     Speichern
   </button>

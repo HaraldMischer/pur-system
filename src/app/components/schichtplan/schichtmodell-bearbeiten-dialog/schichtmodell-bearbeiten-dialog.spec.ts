@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
+import type { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
   SchichtmodellBearbeitenDialog,
@@ -26,14 +27,58 @@ describe('SchichtmodellBearbeitenDialog', () => {
       endetAmFolgetag: false,
     },
   };
+  const bestand: ISchichtmodellBestand = {
+    schichtmodell: {
+      id: 'modell-1',
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      filialeId: 'b-1',
+      bezeichnung: 'Modell 1',
+      aktiv: true,
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    },
+    tagesvorlagenschichten: [
+      {
+        id: 'schicht-1',
+        schichtmodellId: 'modell-1',
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        filialeId: 'b-1',
+        vorlage: 'wochentag',
+        bezeichnung: 'Frühschicht',
+        reihenfolge: 0,
+        vorbereitungsminuten: 0,
+        nachbereitungsminuten: 0,
+        mehrfachbelegungErlaubt: false,
+      },
+      {
+        id: 'schicht-2',
+        schichtmodellId: 'modell-1',
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        filialeId: 'b-1',
+        vorlage: 'sonntag',
+        bezeichnung: 'Sonntagsschicht',
+        reihenfolge: 0,
+        vorbereitungsminuten: 0,
+        nachbereitungsminuten: 0,
+        mehrfachbelegungErlaubt: false,
+      },
+    ],
+  };
   const inProgress = signal(false);
   const error = signal<string | null>(null);
   const createSchichtmodell = vi.fn().mockResolvedValue(undefined);
   const updateSchichtmodell = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
 
-  async function createComponent() {
-    const daten: TSchichtmodellBearbeitenDialogDaten = { pfad, oeffnungen };
+  async function createComponent(schichtmodellBestand?: ISchichtmodellBestand) {
+    const daten: TSchichtmodellBearbeitenDialogDaten = {
+      pfad,
+      oeffnungen,
+      ...(schichtmodellBestand ? { bestand: schichtmodellBestand } : {}),
+    };
     await TestBed.configureTestingModule({
       imports: [SchichtmodellBearbeitenDialog],
       providers: [
@@ -123,6 +168,30 @@ describe('SchichtmodellBearbeitenDialog', () => {
     component.addSchicht('wochentag');
 
     expect(schichten.at(1).controls.bezeichnung.value).toBe('Schicht 2');
+  });
+
+  it('should only save an existing model after an actual change', async () => {
+    const component = await createComponent(bestand);
+
+    expect(component.hatAenderungen()).toBe(false);
+
+    await component.save();
+
+    expect(updateSchichtmodell).not.toHaveBeenCalled();
+
+    component.form.controls.bezeichnung.setValue(' Modell 1 ');
+    expect(component.hatAenderungen()).toBe(false);
+
+    component.form.controls.bezeichnung.setValue('Modell 2');
+    expect(component.hatAenderungen()).toBe(true);
+
+    component.form.controls.bezeichnung.setValue('Modell 1');
+    expect(component.hatAenderungen()).toBe(false);
+
+    component.form.controls.bezeichnung.setValue('Modell 2');
+    await component.save();
+
+    expect(updateSchichtmodell).toHaveBeenCalledTimes(1);
   });
 
   it('should keep preparation on the first and follow-up on the last shift', async () => {
