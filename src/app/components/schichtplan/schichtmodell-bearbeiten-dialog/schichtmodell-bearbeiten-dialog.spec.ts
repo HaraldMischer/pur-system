@@ -1,16 +1,16 @@
-// pur-system/src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog.spec.ts
+// pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.spec.ts
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
+import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
-  SchichtTagesmodellBearbeitenDialog,
-  TSchichtTagesmodellBearbeitenDialogDaten,
-} from './schicht-tagesmodell-bearbeiten-dialog';
+  SchichtmodellBearbeitenDialog,
+  TSchichtmodellBearbeitenDialogDaten,
+} from './schichtmodell-bearbeiten-dialog';
 
-describe('SchichtTagesmodellBearbeitenDialog', () => {
+describe('SchichtmodellBearbeitenDialog', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
   const oeffnungen = {
     wochentag: {
@@ -28,29 +28,29 @@ describe('SchichtTagesmodellBearbeitenDialog', () => {
   };
   const inProgress = signal(false);
   const error = signal<string | null>(null);
-  const createSchichtTagesmodell = vi.fn().mockResolvedValue(undefined);
-  const updateSchichtTagesmodell = vi.fn().mockResolvedValue(undefined);
+  const createSchichtmodell = vi.fn().mockResolvedValue(undefined);
+  const updateSchichtmodell = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
 
   async function createComponent() {
-    const daten: TSchichtTagesmodellBearbeitenDialogDaten = { pfad, oeffnungen };
+    const daten: TSchichtmodellBearbeitenDialogDaten = { pfad, oeffnungen };
     await TestBed.configureTestingModule({
-      imports: [SchichtTagesmodellBearbeitenDialog],
+      imports: [SchichtmodellBearbeitenDialog],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: daten },
         {
-          provide: SchichtTagesmodellStore,
+          provide: SchichtmodellStore,
           useValue: {
             inProgress,
             error,
-            createSchichtTagesmodell,
-            updateSchichtTagesmodell,
+            createSchichtmodell,
+            updateSchichtmodell,
           },
         },
         { provide: MatDialogRef, useValue: { close } },
       ],
     }).compileComponents();
-    return TestBed.createComponent(SchichtTagesmodellBearbeitenDialog).componentInstance;
+    return TestBed.createComponent(SchichtmodellBearbeitenDialog).componentInstance;
   }
 
   beforeEach(() => {
@@ -76,7 +76,7 @@ describe('SchichtTagesmodellBearbeitenDialog', () => {
 
     await component.save();
 
-    expect(createSchichtTagesmodell).toHaveBeenCalledWith(
+    expect(createSchichtmodell).toHaveBeenCalledWith(
       pfad,
       {
         bezeichnung: 'Standard',

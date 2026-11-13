@@ -1,133 +1,159 @@
 // pur-system/src/app/commons/validators/schichtmodell.validator.ts
 
-import { MAX_RANDMINUTEN } from '../constants/schichtmodell.constants';
+import { MAX_RANDMINUTEN } from '../constants/schicht.constants';
 import { ZEITRASTER_MINUTEN } from '../constants/zeit.constants';
-import {
-  IModellschichtSchreibdaten,
-  IModellschichtZeitgrenze,
+import type { IGeoeffneteOeffnungsregel } from '../models/domain/filialeinstellung';
+import type {
+  ITagesvorlagenschichtSchreibdaten,
+  ITagesvorlagenschichtZeitgrenze,
+  TTagesstrukturSchichtSchreibdaten,
+  TTagesvorlageTyp,
 } from '../models/domain/schichtmodell';
-import {
-  getLokalzeitMinuten,
-  istLokalzeitImMinutenraster,
-} from '../utils/dienstplan/schicht-lokalzeit';
+import { resolveTagesvorlagenschichten } from '../utils/dienstplan/tagesvorlagenschichten';
+import { getLokalzeitMinuten } from '../utils/dienstplan/schicht-lokalzeit';
 
 const MINUTEN_PRO_TAG = 24 * 60;
 
 /**
- * Prüft die vollständige Struktur geordneter Modellschichten.
+ * Prüft beide Vorlagen eines Schichtmodells einschließlich ihrer Öffnungsgrenzen.
  *
- * @param modellschichten - Zu prüfende Modellschichten in fachlicher Reihenfolge.
- * @throws Bei einer unvollständigen oder widersprüchlichen Modellstruktur.
+ * @param schichten - Sämtliche Schichten der Wochentags- und Sonntagsvorlage.
+ * @param oeffnungen - Maßgebliche Öffnung je Tagesvorlage.
  */
-export function assertGueltigeModellschichten(
-  modellschichten: readonly IModellschichtSchreibdaten[],
+export function assertGueltigeTagesvorlagenschichten(
+  schichten: readonly ITagesvorlagenschichtSchreibdaten[],
+  oeffnungen: Readonly<Record<TTagesvorlageTyp, IGeoeffneteOeffnungsregel>>,
 ): void {
-  if (modellschichten.length === 0) {
-    throw new Error('Ein Schichtmodell benötigt mindestens eine Modellschicht.');
-  }
-
-  const geordnet = modellschichten.slice().sort((a, b) => a.reihenfolge - b.reihenfolge);
-  const ids = new Set<string>();
-  const letzterIndex = geordnet.length - 1;
-  geordnet.forEach((modellschicht, index) => {
-    if (!Number.isInteger(modellschicht.reihenfolge) || modellschicht.reihenfolge !== index) {
-      throw new Error('Die Reihenfolge der Modellschichten ist nicht eindeutig oder lückenlos.');
-    }
-    if (modellschicht.id) {
-      if (ids.has(modellschicht.id)) {
-        throw new Error('Die Modellschicht-IDs müssen innerhalb eines Modells eindeutig sein.');
-      }
-      ids.add(modellschicht.id);
-    }
-    if (!modellschicht.bezeichnung.trim()) {
-      throw new Error('Die Modellschicht enthält keine gültige Bezeichnung.');
-    }
-    if (typeof modellschicht.mehrfachbelegungErlaubt !== 'boolean') {
-      throw new Error('Die Mehrfachbelegung der Modellschicht ist ungültig.');
-    }
-
-    const istErste = index === 0;
-    const istLetzte = index === letzterIndex;
-    if (istErste === Boolean(modellschicht.beginn)) {
+  (['wochentag', 'sonntag'] as const).forEach((vorlage) => {
+    const vorlagenschichten = schichten
+      .filter((schicht) => schicht.vorlage === vorlage)
+      .sort((a, b) => a.reihenfolge - b.reihenfolge);
+    if (vorlagenschichten.length === 0) {
       throw new Error(
-        istErste
-          ? 'Die erste Modellschicht darf keinen festen Beginn enthalten.'
-          : 'Die Modellschicht benötigt einen festen Beginn.',
+        vorlage === 'wochentag'
+          ? 'Die Wochentagsvorlage benötigt mindestens eine Schicht.'
+          : 'Die Sonntagsvorlage benötigt mindestens eine Schicht.',
       );
     }
-    if (istLetzte === Boolean(modellschicht.ende)) {
-      throw new Error(
-        istLetzte
-          ? 'Die letzte Modellschicht darf kein festes Ende enthalten.'
-          : 'Die Modellschicht benötigt ein festes Ende.',
-      );
-    }
-    if (modellschicht.beginn) assertZeitgrenze(modellschicht.beginn);
-    if (modellschicht.ende) assertZeitgrenze(modellschicht.ende);
-    if (
-      modellschicht.beginn &&
-      modellschicht.ende &&
-      getZeitgrenzeMinuten(modellschicht.ende) <= getZeitgrenzeMinuten(modellschicht.beginn)
-    ) {
-      throw new Error('Die Modellschicht benötigt eine positive Dauer.');
-    }
-
-    const vorbereitungsminuten = assertRandminuten(
-      modellschicht.vorbereitungsminuten,
-      'Vorbereitungsminuten',
+    assertVorlagengrenzen(vorlagenschichten);
+    const aufgeloesteSchichten = resolveTagesvorlagenschichten(
+      vorlagenschichten,
+      oeffnungen[vorlage],
     );
-    const nachbereitungsminuten = assertRandminuten(
-      modellschicht.nachbereitungsminuten,
-      'Nachbereitungsminuten',
-    );
-    if ((!istErste && vorbereitungsminuten !== 0) || (!istLetzte && nachbereitungsminuten !== 0)) {
-      throw new Error(
-        'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Modellschicht erlaubt.',
-      );
-    }
+    assertTagesstruktur(aufgeloesteSchichten, oeffnungen[vorlage]);
+    assertRandminutenPositionen(vorlagenschichten);
   });
 }
 
 /**
- * Ermittelt, ob zwischen zwei aufeinanderfolgenden Modellschichten eine zeitliche Lücke besteht.
+ * Prüft eine konkrete Tagesstruktur gegen ihre wirksame Öffnung.
  *
- * @param modellschichten - Gültige Modellschichten in beliebiger Eingabereihenfolge.
- * @returns true, wenn mindestens eine innere Schichtgrenze eine Lücke bildet.
+ * @param schichten - Schichten des konkreten Tages.
+ * @param oeffnung - Wirksame Öffnung des konkreten Tages.
  */
-export function hatModellschichtLuecken(
-  modellschichten: readonly IModellschichtSchreibdaten[],
-): boolean {
-  const geordnet = modellschichten.slice().sort((a, b) => a.reihenfolge - b.reihenfolge);
-  return geordnet.slice(0, -1).some((modellschicht, index) => {
-    const naechsteModellschicht = geordnet[index + 1];
-    if (!modellschicht.ende || !naechsteModellschicht.beginn) return false;
-    return (
-      getZeitgrenzeMinuten(modellschicht.ende) < getZeitgrenzeMinuten(naechsteModellschicht.beginn)
-    );
+export function assertGueltigeTagesstruktur(
+  schichten: readonly TTagesstrukturSchichtSchreibdaten[],
+  oeffnung: IGeoeffneteOeffnungsregel,
+): void {
+  if (schichten.length === 0) {
+    throw new Error('Ein geöffneter Tag benötigt mindestens eine Schicht.');
+  }
+  assertTagesstruktur(schichten, oeffnung);
+}
+
+function assertTagesstruktur(
+  schichten: readonly TTagesstrukturSchichtSchreibdaten[],
+  oeffnung: IGeoeffneteOeffnungsregel,
+): void {
+  const oeffnungsbeginn = parseLokalzeit(oeffnung.beginnLokalzeit);
+  const oeffnungsende =
+    parseLokalzeit(oeffnung.endeLokalzeit) + (oeffnung.endetAmFolgetag ? MINUTEN_PRO_TAG : 0);
+  const ids = new Set<string>();
+  schichten.forEach((schicht, index) => {
+    if (schicht.reihenfolge !== index) {
+      throw new Error('Die Reihenfolge der Tagesschichten muss lückenlos sein.');
+    }
+    if (schicht.id && ids.has(schicht.id)) {
+      throw new Error('Die IDs der Tagesschichten müssen eindeutig sein.');
+    }
+    if (schicht.id) ids.add(schicht.id);
+    if (!schicht.bezeichnung.trim()) {
+      throw new Error('Die Tagesschicht benötigt eine Bezeichnung.');
+    }
+    const beginn = parseZeitgrenze(schicht.beginn);
+    const ende = parseZeitgrenze(schicht.ende);
+    if (beginn < oeffnungsbeginn || ende > oeffnungsende || ende <= beginn) {
+      throw new Error('Die Kernzeit der Tagesschicht muss innerhalb der Öffnung liegen.');
+    }
+    assertRandminuten(schicht.vorbereitungsminuten);
+    assertRandminuten(schicht.nachbereitungsminuten);
+    if (typeof schicht.mehrfachbelegungErlaubt !== 'boolean') {
+      throw new Error('Die Mehrfachbelegung der Tagesschicht ist ungültig.');
+    }
   });
 }
 
-function assertZeitgrenze(zeitgrenze: IModellschichtZeitgrenze): void {
-  if (
-    getLokalzeitMinuten(zeitgrenze.lokalzeit) === null ||
-    (zeitgrenze.tag !== 'starttag' && zeitgrenze.tag !== 'folgetag')
-  ) {
-    throw new Error('Die Modellschicht enthält keine gültige Zeitgrenze.');
-  }
-  if (!istLokalzeitImMinutenraster(zeitgrenze.lokalzeit, ZEITRASTER_MINUTEN)) {
-    throw new Error('Die Zeitgrenze der Modellschicht muss im 15-Minuten-Raster liegen.');
-  }
+function assertVorlagengrenzen(schichten: readonly ITagesvorlagenschichtSchreibdaten[]): void {
+  const letzterIndex = schichten.length - 1;
+  schichten.forEach((schicht, index) => {
+    const istErsteSchicht = index === 0;
+    const istLetzteSchicht = index === letzterIndex;
+    if (istErsteSchicht === Boolean(schicht.beginn)) {
+      throw new Error(
+        istErsteSchicht
+          ? 'Die erste Tagesschicht darf keinen festen Beginn enthalten.'
+          : 'Die Tagesschicht benötigt einen festen Beginn.',
+      );
+    }
+    if (istLetzteSchicht === Boolean(schicht.ende)) {
+      throw new Error(
+        istLetzteSchicht
+          ? 'Die letzte Tagesschicht darf kein festes Ende enthalten.'
+          : 'Die Tagesschicht benötigt ein festes Ende.',
+      );
+    }
+  });
 }
 
-function assertRandminuten(wert: number | undefined, bezeichnung: string): number {
-  const minuten = wert ?? 0;
-  if (!Number.isInteger(minuten) || minuten < 0 || minuten > MAX_RANDMINUTEN) {
-    throw new Error(bezeichnung + ' müssen als ganze Zahl von 0 bis 999 angegeben werden.');
+function assertRandminutenPositionen(
+  schichten: readonly ITagesvorlagenschichtSchreibdaten[],
+): void {
+  schichten.forEach((schicht, index) => {
+    const istErsteSchicht = index === 0;
+    const istLetzteSchicht = index === schichten.length - 1;
+    if (
+      (!istErsteSchicht && schicht.vorbereitungsminuten !== 0) ||
+      (!istLetzteSchicht && schicht.nachbereitungsminuten !== 0)
+    ) {
+      throw new Error(
+        'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
+      );
+    }
+  });
+}
+
+function parseZeitgrenze(zeitgrenze: ITagesvorlagenschichtZeitgrenze): number {
+  if (zeitgrenze.tag !== 'starttag' && zeitgrenze.tag !== 'folgetag') {
+    throw new Error('Die Tagesschicht enthält eine ungültige Tageszuordnung.');
+  }
+  return (
+    parseLokalzeit(zeitgrenze.lokalzeit) + (zeitgrenze.tag === 'folgetag' ? MINUTEN_PRO_TAG : 0)
+  );
+}
+
+function parseLokalzeit(lokalzeit: string): number {
+  const minuten = getLokalzeitMinuten(lokalzeit);
+  if (minuten === null) {
+    throw new Error('Die Tagesschicht enthält eine ungültige Lokalzeit.');
+  }
+  if (minuten % ZEITRASTER_MINUTEN !== 0) {
+    throw new Error('Die Lokalzeit der Tagesschicht muss im 15-Minuten-Raster liegen.');
   }
   return minuten;
 }
 
-function getZeitgrenzeMinuten(zeitgrenze: IModellschichtZeitgrenze): number {
-  const [stunden, minuten] = zeitgrenze.lokalzeit.split(':').map(Number);
-  return stunden * 60 + minuten + (zeitgrenze.tag === 'folgetag' ? MINUTEN_PRO_TAG : 0);
+function assertRandminuten(minuten: number): void {
+  if (!Number.isInteger(minuten) || minuten < 0 || minuten > MAX_RANDMINUTEN) {
+    throw new Error('Vor- und Nachbereitungsminuten müssen ganze Zahlen von 0 bis 999 sein.');
+  }
 }

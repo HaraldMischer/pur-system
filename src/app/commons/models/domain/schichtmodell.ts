@@ -2,19 +2,11 @@
 
 import type { Timestamp } from 'firebase/firestore';
 
-import type {
-  ISchichtrastermodellDokument,
-  ISchichtrastermodellEintrag,
-} from './schicht-rastermodell';
-import type {
-  ISchichttagesmodellDokument,
-  ISchichttagesmodellEintrag,
-} from './schicht-tagesmodell';
+export type TTagesvorlageTyp = 'wochentag' | 'sonntag';
+export type TTagesschichtHerkunft = TTagesvorlageTyp | 'sondertag';
+export type TSchichtZeitgrenzeTag = 'starttag' | 'folgetag';
 
-export type TPlanungsart = 'schichtrastermodell' | 'schichttagesmodell';
-export type TModellschichtTag = 'starttag' | 'folgetag';
-
-export interface ISchichtmodellDokumentBasis {
+export interface ISchichtmodellDokument {
   bezeichnung: string;
   aktiv: boolean;
   erstelltAm?: Timestamp;
@@ -23,30 +15,94 @@ export interface ISchichtmodellDokumentBasis {
   aktualisiertVonUid: string;
 }
 
-export interface ISchichtmodellEintragBasis extends ISchichtmodellDokumentBasis {
+export interface ISchichtmodellEintrag extends ISchichtmodellDokument {
   id: string;
   unternehmerId: string;
   firmaId: string;
   filialeId: string;
 }
 
-export type TSchichtmodellEintrag = ISchichtrastermodellEintrag | ISchichttagesmodellEintrag;
-export type TSchichtmodellDokument = ISchichtrastermodellDokument | ISchichttagesmodellDokument;
-
-export interface IAltesSchichtrastermodellDokument extends ISchichtmodellDokumentBasis {
-  planungsart: 'schichtraster';
+export interface ITagesvorlagenschichtZeitgrenze {
+  lokalzeit: string;
+  tag: TSchichtZeitgrenzeTag;
 }
 
-export * from './schicht-rastermodell';
-export * from './schicht-tagesmodell';
+export interface ITagesvorlagenschichtDaten {
+  vorlage: TTagesvorlageTyp;
+  bezeichnung: string;
+  reihenfolge: number;
+  beginn?: ITagesvorlagenschichtZeitgrenze;
+  ende?: ITagesvorlagenschichtZeitgrenze;
+  mehrfachbelegungErlaubt: boolean;
+  vorbereitungsminuten: number;
+  nachbereitungsminuten: number;
+}
 
-// Übergangsaliase für bestehende Rastermodell-Verbraucher.
-export type {
-  IRastermodellschichtDaten as IModellschichtDaten,
-  IRastermodellschichtDokument as IModellschichtDokument,
-  IRastermodellschichtEintrag as IModellschichtEintrag,
-  IRastermodellschichtMomentaufnahmeDokument as IModellschichtMomentaufnahmeDokument,
-  IRastermodellschichtMomentaufnahmeEintrag as IModellschichtMomentaufnahmeEintrag,
-  IRastermodellschichtSchreibdaten as IModellschichtSchreibdaten,
-  IRastermodellschichtZeitgrenze as IModellschichtZeitgrenze,
-} from './schicht-rastermodell';
+export interface ITagesvorlagenschichtSchreibdaten extends ITagesvorlagenschichtDaten {
+  id?: string;
+}
+
+export interface ITagesvorlagenschichtEintrag extends ITagesvorlagenschichtDaten {
+  id: string;
+  schichtmodellId: string;
+  unternehmerId: string;
+  firmaId: string;
+  filialeId: string;
+}
+
+export interface ISchichtmodellAnlage {
+  bezeichnung: string;
+  tagesvorlagenschichten: readonly ITagesvorlagenschichtSchreibdaten[];
+}
+
+export interface ISchichtmodellAktualisierung extends ISchichtmodellAnlage {
+  aktiv: boolean;
+}
+
+export interface ISchichtmodellBestand {
+  schichtmodell: ISchichtmodellEintrag;
+  tagesvorlagenschichten: readonly ITagesvorlagenschichtEintrag[];
+}
+
+export interface ITagesschichtDaten {
+  datum: string;
+  herkunft: TTagesschichtHerkunft;
+  vorlagenschichtId?: string;
+  bezeichnung: string;
+  reihenfolge: number;
+  kernbeginnLokalzeit: string;
+  kernendeLokalzeit: string;
+  kernbeginnAmFolgetag: boolean;
+  kernendeAmFolgetag: boolean;
+  beginn: Timestamp;
+  ende: Timestamp;
+  mehrfachbelegungErlaubt: boolean;
+  vorbereitungsminuten: number;
+  nachbereitungsminuten: number;
+}
+
+export interface ITagesschichtEintrag extends ITagesschichtDaten {
+  id: string;
+  dienstplanId: string;
+  unternehmerId: string;
+  firmaId: string;
+  filialeId: string;
+}
+
+export interface IFreieTagesschichtSchreibdaten {
+  id?: string;
+  datum: string;
+  bezeichnung: string;
+  reihenfolge: number;
+  beginn: ITagesvorlagenschichtZeitgrenze;
+  ende: ITagesvorlagenschichtZeitgrenze;
+  mehrfachbelegungErlaubt: boolean;
+  vorbereitungsminuten: number;
+  nachbereitungsminuten: number;
+}
+
+export type TTagesstrukturSchichtSchreibdaten = Omit<IFreieTagesschichtSchreibdaten, 'datum'>;
+
+export interface ITagesvorlagenschichtDokument extends ITagesvorlagenschichtDaten {}
+
+export interface ITagesschichtDokument extends ITagesschichtDaten {}

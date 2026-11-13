@@ -59,4 +59,15 @@
     );
   }
 
+  // Kompakter Icon-Button
+  &--icon-sm {
+    &.mat-mdc-icon-button {
+      --mat-icon-button-touch-target-size: 24px;
+      display: flex;
+      width: auto;
+      height: auto;
+      padding: 0;
+    }
+  }
+
 }

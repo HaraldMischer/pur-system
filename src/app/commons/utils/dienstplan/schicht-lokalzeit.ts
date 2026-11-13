@@ -3,7 +3,10 @@
 import { Timestamp } from 'firebase/firestore';
 
 import { IGeoeffneteOeffnungsregel } from '../../models/domain/filialeinstellung';
-import { IModellschichtZeitgrenze, TModellschichtTag } from '../../models/domain/schichtmodell';
+import {
+  ITagesvorlagenschichtZeitgrenze,
+  TSchichtZeitgrenzeTag,
+} from '../../models/domain/schichtmodell';
 
 type TSchichtLokalzeiten = {
   readonly beginnLokalzeit: string;
@@ -49,16 +52,16 @@ export function istLokalzeitImMinutenraster(lokalzeit: string, minutenschritt: n
 }
 
 /**
- * Ordnet eine innere Modellschichtgrenze anhand der Standardöffnung dem Start- oder Folgetag zu.
+ * Ordnet eine innere Schichtgrenze anhand der Standardöffnung dem Start- oder Folgetag zu.
  *
  * @param lokalzeit - Lokale Uhrzeit im Format `HH:mm`.
  * @param standardoeffnungsregel - Standardöffnung der Filiale.
  * @returns Tageszuordnung oder `null` bei einer ungültigen Uhrzeit.
  */
-export function getModellschichtTagFuerLokalzeit(
+export function getSchichtTagFuerLokalzeit(
   lokalzeit: string,
   standardoeffnungsregel: IGeoeffneteOeffnungsregel,
-): TModellschichtTag | null {
+): TSchichtZeitgrenzeTag | null {
   const minuten = getLokalzeitMinuten(lokalzeit);
   if (minuten === null) return null;
   if (!standardoeffnungsregel.endetAmFolgetag) return 'starttag';
@@ -100,15 +103,15 @@ export function calculateSchichtdauerMinuten(beginn: string, ende: string): numb
 }
 
 /**
- * Berechnet die Dauer zwischen zwei ausdrücklich einem Tag zugeordneten Modellschichtgrenzen.
+ * Berechnet die Dauer zwischen zwei ausdrücklich einem Tag zugeordneten Schichtgrenzen.
  *
  * @param beginn - Feste Beginnzeit mit Zuordnung zum Start- oder Folgetag.
  * @param ende - Feste Endzeit mit Zuordnung zum Start- oder Folgetag.
  * @returns Positive Dauer in Minuten oder `null` bei ungültigen beziehungsweise widersprüchlichen Grenzen.
  */
-export function calculateModellschichtdauerMinuten(
-  beginn: IModellschichtZeitgrenze,
-  ende: IModellschichtZeitgrenze,
+export function calculateSchichtgrenzendauerMinuten(
+  beginn: ITagesvorlagenschichtZeitgrenze,
+  ende: ITagesvorlagenschichtZeitgrenze,
 ): number | null {
   const beginnMinuten = getLokalzeitMinuten(beginn.lokalzeit);
   const endeMinuten = getLokalzeitMinuten(ende.lokalzeit);

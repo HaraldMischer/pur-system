@@ -1,21 +1,15 @@
 // pur-system/src/app/commons/constants/firebase.constants.ts
 
 import type {
-  IDienstplanModellschichtPfad,
   IDienstplanPfad,
-  IDienstplanRastermodellschichtPfad,
   IDienstplanTagesschichtPfad,
   IDienstplanVersionPfad,
   IFilialPfad,
   IFilialeinstellungPfad,
   IFilialeinstellungSondertagPfad,
-  IModellschichtPfad,
   IMitarbeiterbelegungPfad,
   ISchichtPfad,
   ISchichtmodellPfad,
-  IRastermodellschichtPfad,
-  ISchichtrastermodellPfad,
-  ISchichttagesmodellPfad,
   ITagesvorlagenschichtPfad,
 } from '../models/app/firestore-pfad.types';
 import type {
@@ -69,29 +63,11 @@ export const FIRESTORE_COLLECTION_PATHS = {
   schichtmodelle(pfad: IFilialPfad): string {
     return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/schichtmodell`;
   },
-  modellschichten(pfad: ISchichtmodellPfad): string {
-    return `${FIRESTORE_DOCUMENT_PATHS.schichtmodell(pfad)}/modellschicht`;
-  },
-  schichtrastermodelle(pfad: IFilialPfad): string {
-    return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/schichtrastermodell`;
-  },
-  rastermodellschichten(pfad: ISchichtrastermodellPfad): string {
-    return `${FIRESTORE_DOCUMENT_PATHS.schichtrastermodell(pfad)}/rastermodellschicht`;
-  },
-  schichttagesmodelle(pfad: IFilialPfad): string {
-    return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/schichttagesmodell`;
-  },
-  tagesvorlagenschichten(pfad: ISchichttagesmodellPfad): string {
-    return `${FIRESTORE_DOCUMENT_PATHS.schichttagesmodell(pfad)}/tagesvorlagenschicht`;
+  tagesvorlagenschichten(pfad: ISchichtmodellPfad): string {
+    return `${FIRESTORE_DOCUMENT_PATHS.schichtmodell(pfad)}/tagesvorlagenschicht`;
   },
   dienstplaene(pfad: IFilialPfad): string {
     return `${FIRESTORE_DOCUMENT_PATHS.filiale(pfad)}/dienstplan`;
-  },
-  dienstplanModellschichten(pfad: IDienstplanPfad): string {
-    return `${FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad)}/modellschicht`;
-  },
-  dienstplanRastermodellschichten(pfad: IDienstplanPfad): string {
-    return `${FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad)}/rastermodellschicht`;
   },
   dienstplanTagesschichten(pfad: IDienstplanPfad): string {
     return `${FIRESTORE_DOCUMENT_PATHS.dienstplan(pfad)}/tagesschicht`;
@@ -156,29 +132,11 @@ export const FIRESTORE_DOCUMENT_PATHS = {
   schichtmodell(pfad: ISchichtmodellPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad)}/${pfad.schichtmodellId}`;
   },
-  modellschicht(pfad: IModellschichtPfad): string {
-    return `${FIRESTORE_COLLECTION_PATHS.modellschichten(pfad)}/${pfad.modellschichtId}`;
-  },
-  schichtrastermodell(pfad: ISchichtrastermodellPfad): string {
-    return `${FIRESTORE_COLLECTION_PATHS.schichtrastermodelle(pfad)}/${pfad.schichtrastermodellId}`;
-  },
-  rastermodellschicht(pfad: IRastermodellschichtPfad): string {
-    return `${FIRESTORE_COLLECTION_PATHS.rastermodellschichten(pfad)}/${pfad.rastermodellschichtId}`;
-  },
-  schichttagesmodell(pfad: ISchichttagesmodellPfad): string {
-    return `${FIRESTORE_COLLECTION_PATHS.schichttagesmodelle(pfad)}/${pfad.schichttagesmodellId}`;
-  },
   tagesvorlagenschicht(pfad: ITagesvorlagenschichtPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.tagesvorlagenschichten(pfad)}/${pfad.tagesvorlagenschichtId}`;
   },
   dienstplan(pfad: IDienstplanPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.dienstplaene(pfad)}/${pfad.dienstplanId}`;
-  },
-  dienstplanModellschicht(pfad: IDienstplanModellschichtPfad): string {
-    return `${FIRESTORE_COLLECTION_PATHS.dienstplanModellschichten(pfad)}/${pfad.modellschichtId}`;
-  },
-  dienstplanRastermodellschicht(pfad: IDienstplanRastermodellschichtPfad): string {
-    return `${FIRESTORE_COLLECTION_PATHS.dienstplanRastermodellschichten(pfad)}/${pfad.rastermodellschichtId}`;
   },
   dienstplanTagesschicht(pfad: IDienstplanTagesschichtPfad): string {
     return `${FIRESTORE_COLLECTION_PATHS.dienstplanTagesschichten(pfad)}/${pfad.tagesschichtId}`;

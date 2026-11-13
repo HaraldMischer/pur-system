@@ -22,13 +22,11 @@ import {
   ISchichtEintrag,
   ISchichtPausenaktualisierung,
 } from '../../commons/models/domain/schicht';
-import type { ITagesschichtEintrag } from '../../commons/models/domain/schicht-tagesmodell';
+import type { ITagesschichtEintrag } from '../../commons/models/domain/schichtmodell';
 import {
   IFreieTagesschichtSchreibdaten,
-  ISchichtrastermodellBestand,
-  ISchichttagesmodellBestand,
+  ISchichtmodellBestand,
 } from '../../commons/models/domain/schichtmodell';
-import { compareModellschichtenNachReihenfolge } from '../../commons/utils/dienstplan/modellschicht-sortierung';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { BenutzerStore } from '../app/benutzer.store';
 import { StammdatenStore } from '../app/stammdaten.store';
@@ -89,7 +87,6 @@ function createLeerenKontext(pfad: IFilialPfad): TDienstplanKontextBestand {
     dienstplaene: [],
     versionen: [],
     schichten: [],
-    modellschichten: [],
     tagesschichten: [],
     monatsmodi: {},
     vollstaendigGeladen: false,
@@ -243,64 +240,17 @@ export const DienstplanStore = signalStore(
       // ===== Methoden: Schreiben ==================
 
       /**
-       * Legt einen initialen Monatsplan im vollständig geladenen Filialkontext an.
+       * Legt einen initialen Monatsplan aus einem Schichtmodell an.
        *
        * @param pfad - Vollständiger Filialpfad.
        * @param monat - Monat im Format `YYYY-MM`.
        * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
+       * @param freieSondertagsschichten - Vollständige freie Strukturen geöffneter Sondertage.
        */
       async function createDienstplan(
         pfad: IFilialPfad,
         monat: string,
-        schichtmodell: ISchichtrastermodellBestand,
-      ): Promise<void> {
-        await executeWrite(async () => {
-          let kontext: TDienstplanKontextBestand;
-          let benutzerUid: string;
-          try {
-            kontext = requireSchreibkontext(pfad, monat, false);
-            if (kontext.dienstplaene.some((dienstplan) => dienstplan.id === monat)) {
-              throw new Error('Für diesen Monat ist bereits ein Dienstplan vorhanden.');
-            }
-            validateSchichtmodell(pfad, schichtmodell);
-            benutzerUid = requireBenutzerUid();
-          } catch (error: unknown) {
-            if (error instanceof DienstplanFachfehler) throw error;
-            if (error instanceof Error) {
-              throw createDienstplanAnlageFehler(error.message);
-            }
-            throw error;
-          }
-          const ergebnis = await dienstplanService.createDienstplan(
-            pfad,
-            monat,
-            schichtmodell,
-            benutzerUid,
-          );
-          setKontext(pfad, {
-            ...kontext,
-            dienstplaene: [...kontext.dienstplaene, ergebnis.dienstplan].sort((a, b) => {
-              return a.id.localeCompare(b.id);
-            }),
-            versionen: [...kontext.versionen, ergebnis.version].sort(sortVersionen),
-            modellschichten: [...kontext.modellschichten, ...ergebnis.modellschichten],
-            monatsmodi: { ...kontext.monatsmodi, [monat]: 'vollstaendig' },
-          });
-        });
-      }
-
-      /**
-       * Legt einen initialen Monatsplan aus einem Schicht-Tagesmodell an.
-       *
-       * @param pfad - Vollständiger Filialpfad.
-       * @param monat - Monat im Format `YYYY-MM`.
-       * @param schichtmodell - Aktives Schicht-Tagesmodell derselben Filiale.
-       * @param freieSondertagsschichten - Vollständige freie Strukturen geöffneter Sondertage.
-       */
-      async function createDienstplanAusTagesmodell(
-        pfad: IFilialPfad,
-        monat: string,
-        schichtmodell: ISchichttagesmodellBestand,
+        schichtmodell: ISchichtmodellBestand,
         freieSondertagsschichten: readonly IFreieTagesschichtSchreibdaten[],
       ): Promise<void> {
         await executeWrite(async () => {
@@ -310,7 +260,7 @@ export const DienstplanStore = signalStore(
               'Für diesen Monat ist bereits ein Dienstplan vorhanden.',
             );
           }
-          const ergebnis = await dienstplanService.createDienstplanAusTagesmodell(
+          const ergebnis = await dienstplanService.createDienstplan(
             pfad,
             monat,
             schichtmodell,
@@ -362,9 +312,6 @@ export const DienstplanStore = signalStore(
               return eintrag.dienstplanId !== pfad.dienstplanId;
             }),
             schichten: kontext.schichten.filter((eintrag) => {
-              return eintrag.dienstplanId !== pfad.dienstplanId;
-            }),
-            modellschichten: kontext.modellschichten.filter((eintrag) => {
               return eintrag.dienstplanId !== pfad.dienstplanId;
             }),
             tagesschichten: kontext.tagesschichten.filter((eintrag) => {
@@ -876,7 +823,6 @@ export const DienstplanStore = signalStore(
         loadDienstplanMonat,
         loadDienstplanBestand,
         createDienstplan,
-        createDienstplanAusTagesmodell,
         deleteDienstplan,
         publishDienstplan,
         createEntwurfAusVeroeffentlichung,
@@ -930,38 +876,13 @@ function mergeMonatBestand(
       ...kontext.schichten.filter((schicht) => !bisherigeVersionIds.has(schicht.versionId)),
       ...bestand.schichten,
     ].sort(sortSchichten),
-    modellschichten: [
-      ...kontext.modellschichten.filter((modellschicht) => modellschicht.dienstplanId !== monat),
-      ...bestand.modellschichten,
-    ].sort((a, b) => {
-      return (
-        a.dienstplanId.localeCompare(b.dienstplanId) || compareModellschichtenNachReihenfolge(a, b)
-      );
-    }),
     tagesschichten: [
       ...kontext.tagesschichten.filter((tagesschicht) => tagesschicht.dienstplanId !== monat),
-      ...(bestand.tagesschichten ?? []),
+      ...bestand.tagesschichten,
     ].sort((a, b) => {
       return a.datum.localeCompare(b.datum) || a.reihenfolge - b.reihenfolge;
     }),
   };
-}
-
-function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtrastermodellBestand): void {
-  const schichtmodell = bestand.schichtmodell;
-  if (
-    schichtmodell.unternehmerId !== pfad.unternehmerId ||
-    schichtmodell.firmaId !== pfad.firmaId ||
-    schichtmodell.filialeId !== pfad.filialeId
-  ) {
-    throw createDienstplanAnlageFehler('Das Schichtmodell gehört nicht zu dieser Filiale.');
-  }
-  if (!schichtmodell.aktiv) {
-    throw createDienstplanAnlageFehler('Das gewählte Schichtmodell ist nicht mehr aktiv.');
-  }
-  if (bestand.modellschichten.length === 0) {
-    throw createDienstplanAnlageFehler('Das gewählte Schichtmodell enthält keine Schichten.');
-  }
 }
 
 function updateVersionRevision(

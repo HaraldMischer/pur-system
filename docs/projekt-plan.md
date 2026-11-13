@@ -176,11 +176,9 @@ Die Dienstplanung ist eine filialbezogene, versionierte Monatsplanung. Berechtig
 Stände bleiben als nachvollziehbare Version erhalten. Mitarbeiterzugänge lesen ausschließlich veröffentlichte Pläne ihrer
 fachlich zugeordneten Filialen.
 
-Schichtmodelle und Monatsdienstpläne besitzen eine unveränderlich übernommene Planungsart. Die beiden Planungsarten heißen
-verbindlich `schichtrastermodell` und `schichttagesmodell`. Schicht-Rastermodell und Schicht-Tagesmodell besitzen getrennte
-fachliche Typen, Speicherpfade und Planungslogiken; gemeinsam bleiben nur allgemeine Metadaten und die Auswahl der
-Planungsart. Der bisherige Wert `schichtraster` wird kontrolliert zu `schichtrastermodell` migriert. Der nur vorbereitete Wert
-`schichtbausteine` entfällt.
+Das Schichtmodell ist das einzige Modell der Dienstplanung. Eine zusätzliche Planungsart oder ein Planungsart-Kennzeichen wird
+nicht gespeichert. Modelle liegen unter `schichtmodell`; Monatspläne speichern ihre
+konkreten, datumsgebundenen Tagesschichten als unveränderliche Momentaufnahme.
 
 Filialeinstellungen bestimmen Standardöffnungszeiten, abweichende Wochentage, geschlossene Tage sowie gesetzliche Feiertage
 und jährliche Sondertage. Gesetzliche Feiertage können unabhängig vom tatsächlichen Wochentag die allgemeine Standardöffnung,
@@ -188,20 +186,17 @@ dynamisch die wirksame Sonntagsöffnung, eine eigene abweichende Öffnung oder e
 jährliche Sondertage überschreiben systemdefinierte Sondertage. Für jeden Kalendertag wird die wirksame Öffnungsregel
 aufgelöst und bei der Monatsplananlage zusammen mit seinen unabhängigen Kalendereigenschaften als Momentaufnahme gespeichert.
 
-Beim Schicht-Rastermodell bleiben Modellschichten, Reihenfolge und Mehrfachbelegung über alle Kalendertage stabil. Die äußeren
-Rastergrenzen werden aus der wirksamen Tagesöffnung einschließlich Vor- und Nachbereitung abgeleitet; innere Übergänge bleiben
-Modellbestandteil. Geschlossene oder zeitlich zu kurze Tage können keine ungültigen Schichten erzeugen.
-
-Das Schicht-Tagesmodell enthält eine Wochentagsvorlage für Montag bis Samstag und eine davon unabhängige Sonntagsvorlage.
+Das Schichtmodell enthält eine Wochentagsvorlage für Montag bis Samstag und eine davon unabhängige Sonntagsvorlage.
 Anzahl, Identität und innere Grenzen ihrer Schichten dürfen sich unterscheiden. Der Beginn der ersten und das Ende der letzten
 Schicht werden nicht fest gespeichert. Beim initialen Erstellen eines Monatsplans erhält jeder Kalendertag eine eigene
-Tagesstruktur, deren Außengrenzen aus seiner wirksamen Öffnung abgeleitet werden. Reguläre Tage übernehmen die passende Vorlage.
-Feiertage mit `Wie Sonntag` übernehmen die wirksame Sonntagsöffnung und die Sonntagsvorlage, ohne bei der Monatsplananlage erneut
-konfiguriert zu werden. Nur abweichend geöffnete Feier- und Sondertage werden vor dem Anlegen des Plans frei konfiguriert.
+Tagesstruktur, deren Außengrenzen aus seiner wirksamen Öffnung abgeleitet werden. Reguläre Tage übernehmen die passende
+Vorlage. Feiertage mit `Wie Sonntag` übernehmen die wirksame Sonntagsöffnung und die Sonntagsvorlage, ohne bei der
+Monatsplananlage erneut konfiguriert zu werden. Nur abweichend geöffnete Feier- und Sondertage werden vor dem Anlegen des Plans
+frei konfiguriert.
 Geschlossene Tage enthalten keine Tagesschichten.
 
-Die aufgelösten Grenzen jeder Kernschicht des Schicht-Tagesmodells müssen innerhalb der wirksamen Öffnung liegen. Innerhalb jeder
-Modellvorlage besitzt nur die erste Schicht Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; bei einer einzelnen
+Die aufgelösten Grenzen jeder Kernschicht des Schichtmodells müssen innerhalb der wirksamen Öffnung liegen. Innerhalb
+jeder Modellvorlage besitzt nur die erste Schicht Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; bei einer
 Schicht gelten beide Werte. Ausschließlich konfigurierte Randzeiten dürfen über die Öffnungsgrenzen hinausreichen. Monatsplan,
 Kalender-Momentaufnahme und alle Tagesschichten werden erst nach vollständiger Tageskonfiguration atomar angelegt. Spätere
 Änderungen am Modell oder an den Öffnungszeiten verändern bestehende Monatspläne nicht.
@@ -210,8 +205,8 @@ Schichten eines Mitarbeiters werden filialübergreifend auf zeitliche Konflikte 
 Arbeitsblöcken eines Tages berechnet und in der Planungsmomentaufnahme erhalten. Veröffentlichungen, parallele Änderungen und
 Belegungsindizes werden so verarbeitet, dass veraltete oder widersprüchliche Schreibzugriffe erkennbar scheitern.
 
-Öffnungszeiten erzeugen keine Mitarbeiterschichten automatisch. Kalendermerkmale bleiben unabhängig von Öffnung und Raster
-erhalten, damit spätere Zeiterfassung sowie Nacht-, Sonntags- und Feiertagsauswertungen auf der gespeicherten Momentaufnahme
+Öffnungszeiten erzeugen keine Mitarbeiterschichten automatisch. Kalendermerkmale bleiben unabhängig von Öffnung und
+Tagesstruktur erhalten, damit spätere Zeiterfassung sowie Nacht-, Sonntags- und Feiertagsauswertungen auf der gespeicherten
 aufbauen können.
 
 Das vollständige fachliche und architektonische Zielbild steht im

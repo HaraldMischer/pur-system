@@ -116,16 +116,10 @@ const nichtZugeordneteFilialePath = `${firmaPath}/filiale/b-2`;
 const filialeinstellungAllgemeinPath = `${filialePath}/einstellung/allgemein`;
 const filialeinstellungOeffnungszeitenPath = `${filialePath}/einstellung/oeffnungszeiten`;
 const filialeinstellungSondertagPath = `${filialeinstellungOeffnungszeitenPath}/sondertag`;
-const schichtmodellPath = `${filialePath}/schichtmodell/sommer`;
-const modellschichtPath = `${schichtmodellPath}/modellschicht/frueh`;
-const fremdesSchichtmodellPath = `${nichtZugeordneteFilialePath}/schichtmodell/sommer`;
-const schichtrastermodellPath = `${filialePath}/schichtrastermodell/sommer`;
-const rastermodellschichtPath = `${schichtrastermodellPath}/rastermodellschicht/frueh`;
-const schichttagesmodellPath = `${filialePath}/schichttagesmodell/standard`;
-const tagesvorlagenschichtPath = `${schichttagesmodellPath}/tagesvorlagenschicht/sonntag-frueh`;
+const schichtmodellPath = `${filialePath}/schichtmodell/standard`;
+const tagesvorlagenschichtPath = `${schichtmodellPath}/tagesvorlagenschicht/sonntag-frueh`;
+const fremdesSchichtmodellPath = `${nichtZugeordneteFilialePath}/schichtmodell/standard`;
 const dienstplanPath = `${filialePath}/dienstplan/2026-10`;
-const dienstplanModellschichtPath = `${dienstplanPath}/modellschicht/frueh`;
-const dienstplanRastermodellschichtPath = `${dienstplanPath}/rastermodellschicht/frueh-neu`;
 const dienstplanTagesschichtPath = `${dienstplanPath}/tagesschicht/2026-10-05-frueh`;
 const veroeffentlichteVersionPath = `${dienstplanPath}/version/v1`;
 const entwurfVersionPath = `${dienstplanPath}/version/v2`;
@@ -245,8 +239,6 @@ async function seedDienstplan() {
       aktualisiertAm: zeitpunkt,
       aktualisiertVonUid: 'scoped',
     });
-    await setDoc(doc(db, dienstplanModellschichtPath), modellschichtDaten());
-    await setDoc(doc(db, dienstplanRastermodellschichtPath), modellschichtDaten());
     await setDoc(doc(db, dienstplanTagesschichtPath), {
       datum: '2026-10-05',
       bezeichnung: 'Früh',
@@ -255,7 +247,7 @@ async function seedDienstplan() {
       await setDoc(doc(db, path), {
         datum: '2026-10-05',
         mitarbeiterId: 'm-1',
-        modellschichtId: 'frueh',
+        tagesschichtId: '2026-10-05-frueh',
         beginn: new Date('2026-10-05T08:00:00.000Z'),
         ende: new Date('2026-10-05T16:00:00.000Z'),
         erstelltAm: zeitpunkt,
@@ -265,17 +257,6 @@ async function seedDienstplan() {
       });
     }
   });
-}
-
-function modellschichtDaten(overrides = {}) {
-  return {
-    bezeichnung: 'Frühschicht',
-    beginnLokalzeit: '07:00',
-    endeLokalzeit: '12:00',
-    endetAmFolgetag: false,
-    mehrfachbelegungErlaubt: false,
-    ...overrides,
-  };
 }
 
 function filialeinstellungMetadaten() {
@@ -363,18 +344,13 @@ for (const role of ['master', 'office', 'filiale']) {
 }
 
 for (const role of ['master', 'office', 'filiale']) {
-  test(role + ' manages separate raster and daily shift model paths', async () => {
+  test(role + ' manages shift model paths', async () => {
     const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
-    for (const [modellPath, schichtPath] of [
-      [schichtrastermodellPath, rastermodellschichtPath],
-      [schichttagesmodellPath, tagesvorlagenschichtPath],
-    ]) {
-      await assertSucceeds(setDoc(doc(db, modellPath), { aktiv: true }));
-      await assertSucceeds(setDoc(doc(db, schichtPath), { bezeichnung: 'Schicht' }));
-      await assertSucceeds(updateDoc(doc(db, schichtPath), { bezeichnung: 'Neu' }));
-      await assertSucceeds(deleteDoc(doc(db, schichtPath)));
-      await assertFails(deleteDoc(doc(db, modellPath)));
-    }
+    await assertSucceeds(setDoc(doc(db, schichtmodellPath), { aktiv: true }));
+    await assertSucceeds(setDoc(doc(db, tagesvorlagenschichtPath), { bezeichnung: 'Schicht' }));
+    await assertSucceeds(updateDoc(doc(db, tagesvorlagenschichtPath), { bezeichnung: 'Neu' }));
+    await assertSucceeds(deleteDoc(doc(db, tagesvorlagenschichtPath)));
+    await assertFails(deleteDoc(doc(db, schichtmodellPath)));
   });
 }
 
@@ -395,24 +371,6 @@ test('company-wide employee occupancy requires company access and an authorized 
   await assertFails(getDoc(doc(mitarbeiterDb, mitarbeiterbelegungPath)));
   await assertFails(setDoc(doc(mitarbeiterDb, mitarbeiterbelegungPath), { datum: '2026-10-05' }));
 });
-
-for (const role of ['master', 'office', 'filiale']) {
-  test(role + ' follows the CRUD matrix for shift models and model shifts', async () => {
-    const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
-    const modell = doc(db, schichtmodellPath);
-    const schicht = doc(db, modellschichtPath);
-
-    await assertSucceeds(setDoc(modell, { frei: 'Schichtmodell' }));
-    await assertSucceeds(getDoc(modell));
-    await assertSucceeds(updateDoc(modell, { frei: 1 }));
-    await assertFails(deleteDoc(modell));
-
-    await assertSucceeds(setDoc(schicht, { frei: 'Modellschicht' }));
-    await assertSucceeds(getDoc(schicht));
-    await assertSucceeds(updateDoc(schicht, { frei: 2 }));
-    await assertSucceeds(deleteDoc(schicht));
-  });
-}
 
 test('shift-model paths require an allowed branch and an authorized role', async () => {
   const officeDb = await seedProfile('office');
@@ -548,8 +506,6 @@ for (const role of ['master', 'office', 'filiale']) {
   test(role + ' follows the CRUD matrix for service-plan paths', async () => {
     const db = await seedProfile(role, role === 'master' ? { zugriffe: {} } : {});
     const plan = doc(db, dienstplanPath);
-    const modellschicht = doc(db, dienstplanModellschichtPath);
-    const rastermodellschicht = doc(db, dienstplanRastermodellschichtPath);
     const tagesschicht = doc(db, dienstplanTagesschichtPath);
     const version = doc(db, entwurfVersionPath);
     const schicht = doc(db, entwurfSchichtPath);
@@ -558,17 +514,10 @@ for (const role of ['master', 'office', 'filiale']) {
     await assertSucceeds(getDoc(plan));
     await assertSucceeds(updateDoc(plan, { frei: 1 }));
 
-    await assertSucceeds(setDoc(modellschicht, { frei: 'Momentaufnahme' }));
-    await assertSucceeds(getDoc(modellschicht));
-    await assertFails(updateDoc(modellschicht, { frei: 2 }));
-    await assertSucceeds(deleteDoc(modellschicht));
-
-    for (const momentaufnahme of [rastermodellschicht, tagesschicht]) {
-      await assertSucceeds(setDoc(momentaufnahme, { frei: 'Momentaufnahme' }));
-      await assertSucceeds(getDoc(momentaufnahme));
-      await assertFails(updateDoc(momentaufnahme, { frei: 2 }));
-      await assertSucceeds(deleteDoc(momentaufnahme));
-    }
+    await assertSucceeds(setDoc(tagesschicht, { frei: 'Momentaufnahme' }));
+    await assertSucceeds(getDoc(tagesschicht));
+    await assertFails(updateDoc(tagesschicht, { frei: 2 }));
+    await assertSucceeds(deleteDoc(tagesschicht));
 
     await assertSucceeds(setDoc(version, { frei: 'Version' }));
     await assertSucceeds(getDoc(version));
@@ -584,7 +533,7 @@ for (const role of ['master', 'office', 'filiale']) {
   });
 }
 
-test('allows an authorized atomic monthly snapshot with model-shift references', async () => {
+test('allows an authorized atomic monthly snapshot with daily-shift references', async () => {
   const db = await seedProfile('office');
   const batch = writeBatch(db);
   const zeitpunkt = new Date('2026-10-01T08:00:00.000Z');
@@ -594,7 +543,6 @@ test('allows an authorized atomic monthly snapshot with model-shift references',
     zeitzone: 'Europe/Berlin',
     schichtmodellId: 'standard',
     schichtmodellBezeichnung: 'Standard',
-    planungsart: 'schichtraster',
     kalendertage: [
       {
         datum: '2026-10-05',
@@ -608,14 +556,6 @@ test('allows an authorized atomic monthly snapshot with model-shift references',
           endeLokalzeit: '18:00',
           endetAmFolgetag: false,
         },
-        rasterzeiten: [
-          {
-            modellschichtId: 'frueh',
-            beginnLokalzeit: '08:00',
-            endeLokalzeit: '16:30',
-            endetAmFolgetag: false,
-          },
-        ],
       },
     ],
     entwurfVersionId: 'v2',
@@ -625,10 +565,13 @@ test('allows an authorized atomic monthly snapshot with model-shift references',
     aktualisiertAm: zeitpunkt,
     aktualisiertVonUid: 'scoped',
   });
-  batch.set(doc(db, dienstplanModellschichtPath), {
-    ...modellschichtDaten({ beginnLokalzeit: '08:00', endeLokalzeit: '16:30' }),
-    vorbereitungsminuten: 0,
-    nachbereitungsminuten: 0,
+  batch.set(doc(db, dienstplanTagesschichtPath), {
+    datum: '2026-10-05',
+    bezeichnung: 'Frühschicht',
+    beginnLokalzeit: '08:00',
+    endeLokalzeit: '16:30',
+    endetAmFolgetag: false,
+    mehrfachbelegungErlaubt: false,
   });
   batch.set(doc(db, entwurfVersionPath), {
     nummer: 1,
@@ -642,7 +585,7 @@ test('allows an authorized atomic monthly snapshot with model-shift references',
   batch.set(doc(db, entwurfSchichtPath), {
     datum: '2026-10-05',
     mitarbeiterId: 'm-1',
-    modellschichtId: 'frueh',
+    tagesschichtId: '2026-10-05-frueh',
     beginn: new Date('2026-10-05T06:00:00.000Z'),
     ende: new Date('2026-10-05T14:30:00.000Z'),
     erstelltAm: zeitpunkt,
@@ -655,8 +598,8 @@ test('allows an authorized atomic monthly snapshot with model-shift references',
   const plan = await assertSucceeds(getDoc(doc(db, dienstplanPath)));
   const schicht = await assertSucceeds(getDoc(doc(db, entwurfSchichtPath)));
 
-  assert.equal(plan.data()?.['kalendertage'][0].rasterzeiten[0].modellschichtId, 'frueh');
-  assert.equal(schicht.data()?.['modellschichtId'], 'frueh');
+  assert.equal(plan.data()?.['kalendertage'][0].datum, '2026-10-05');
+  assert.equal(schicht.data()?.['tagesschichtId'], '2026-10-05-frueh');
 });
 
 test('allows a realistic maximal atomic service-plan and occupancy write', async () => {
@@ -688,7 +631,7 @@ test('allows a realistic maximal atomic service-plan and occupancy write', async
     batch.set(doc(db, `${versionPath}/schicht/${schichtId}`), {
       datum,
       mitarbeiterId: 'm-1',
-      modellschichtId: 'frueh',
+      tagesschichtId: `${datum}-frueh`,
       beginn,
       ende,
       pauseMinuten: 30,
@@ -758,8 +701,6 @@ test('employee accounts read every service-plan path in an assigned branch', asy
     entwurfVersionPath,
     veroeffentlichteSchichtPath,
     entwurfSchichtPath,
-    dienstplanModellschichtPath,
-    dienstplanRastermodellschichtPath,
     dienstplanTagesschichtPath,
   ]) {
     await assertSucceeds(getDoc(doc(db, path)));

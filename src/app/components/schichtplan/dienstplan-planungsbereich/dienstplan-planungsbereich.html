@@ -76,46 +76,25 @@
           }
         </header>
 
-        @if (geladenerDienstplan.planungsart === 'schichttagesmodell') {
-          <app-dienstplan-monatsliste
-            [dienstplan]="geladenerDienstplan"
-            [aktiveVersion]="aktiveVersion()"
-            [schichten]="schichten()"
-            [tagesschichten]="tagesschichten()"
-            [konfliktSchichtIds]="konfliktSchichtIds()"
-            [konfliktMeldungenNachSchichtId]="konfliktMeldungenNachSchichtId()"
-            [mitarbeiter]="schichtMitarbeiter()"
-            [erlaubteMitarbeiterIds]="mitarbeiterIds()"
-            [darfSchreiben]="darfSchreiben()"
-            [schreibvorgang]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
-            (tagesschichtAblegen)="createTagesschichtAusAblage($event)"
-            (tagesschichtAnlegen)="openTagesschichtDialog($event)"
-            (tagesschichtVerschieben)="moveTagesschichtAusAblage($event)"
-            (tagesschichtBearbeiten)="openTagesschichtBearbeitenDialog($event)"
-            (mehrfachbelegungAbgelehnt)="openMehrfachbelegungHinweis($event)"
-            (mitarbeiterBereitsEingeplant)="openMitarbeiterBereitsEingeplantHinweis()"
-          />
-        } @else {
-          <app-dienstplan-monatstabelle
-            [dienstplan]="geladenerDienstplan"
-            [aktiveVersion]="aktiveVersion()"
-            [schichten]="schichten()"
-            [modellschichten]="modellschichten()"
-            [konfliktSchichtIds]="konfliktSchichtIds()"
-            [konfliktMeldungenNachSchichtId]="konfliktMeldungenNachSchichtId()"
-            [mitarbeiter]="schichtMitarbeiter()"
-            [erlaubteMitarbeiterIds]="mitarbeiterIds()"
-            [schichtVerschiebungErlaubt]="darfSchichtVerschieben"
-            [darfSchreiben]="darfSchreiben()"
-            [schreibvorgang]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
-            (schichtAnlegen)="openSchichtDialog($event)"
-            (schichtAblegen)="createSchichtAusAblage($event)"
-            (schichtVerschieben)="moveSchichtAusAblage($event)"
-            (schichtBearbeiten)="openSchichtBearbeitenDialog($event)"
-            (mehrfachbelegungAbgelehnt)="openMehrfachbelegungHinweis($event)"
-            (mitarbeiterBereitsEingeplant)="openMitarbeiterBereitsEingeplantHinweis()"
-          />
-        }
+        <app-dienstplan-monatsliste
+          [dienstplan]="geladenerDienstplan"
+          [aktiveVersion]="aktiveVersion()"
+          [schichten]="schichten()"
+          [tagesschichten]="tagesschichten()"
+          [konfliktSchichtIds]="konfliktSchichtIds()"
+          [konfliktMeldungenNachSchichtId]="konfliktMeldungenNachSchichtId()"
+          [mitarbeiter]="schichtMitarbeiter()"
+          [erlaubteMitarbeiterIds]="mitarbeiterIds()"
+          [darfSchreiben]="darfSchreiben()"
+          [schreibvorgang]="dienstplanStore.inProgress() || !belegungsstandVerfuegbar()"
+          (tagesschichtAblegen)="createTagesschichtAusAblage($event)"
+          (tagesschichtAnlegen)="openTagesschichtDialog($event)"
+          (tagesschichtVerschieben)="moveTagesschichtAusAblage($event)"
+          (tagesschichtBearbeiten)="openTagesschichtBearbeitenDialog($event)"
+          (mehrfachbelegungAbgelehnt)="openMehrfachbelegungHinweis($event)"
+          (mitarbeiterNichtZugelassen)="openMitarbeiterNichtZugelassenHinweis()"
+          (mitarbeiterBereitsEingeplant)="openMitarbeiterBereitsEingeplantHinweis()"
+        />
       </section>
     } @else {
       <div

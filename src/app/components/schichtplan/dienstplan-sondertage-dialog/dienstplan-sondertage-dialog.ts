@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/dienstplan-tagesstruktur-bearbeiten-dialog/dienstplan-tagesstruktur-bearbeiten-dialog.ts
+// pur-system/src/app/components/schichtplan/dienstplan-sondertage-dialog/dienstplan-sondertage-dialog.ts
 
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,7 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import type { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
 import type {
   IFreieTagesschichtSchreibdaten,
-  TModellschichtTag,
+  TSchichtZeitgrenzeTag,
 } from '../../../commons/models/domain/schichtmodell';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { EingabeMinuten } from '../../shared/eingabe-minuten/eingabe-minuten';
@@ -22,9 +22,9 @@ import { EingabeZeit } from '../../shared/eingabe-zeit/eingabe-zeit';
 type TSchichtForm = FormGroup<{
   bezeichnung: FormControl<string>;
   beginnLokalzeit: FormControl<string>;
-  beginnTag: FormControl<TModellschichtTag>;
+  beginnTag: FormControl<TSchichtZeitgrenzeTag>;
   endeLokalzeit: FormControl<string>;
-  endeTag: FormControl<TModellschichtTag>;
+  endeTag: FormControl<TSchichtZeitgrenzeTag>;
   vorbereitungsminuten: FormControl<number>;
   nachbereitungsminuten: FormControl<number>;
   mehrfachbelegungErlaubt: FormControl<boolean>;
@@ -35,12 +35,12 @@ type TTagForm = FormGroup<{
   schichten: FormArray<TSchichtForm>;
 }>;
 
-export type TDienstplanTagesstrukturBearbeitenDialogDaten = {
+export type TDienstplanSondertageDialogDaten = {
   readonly kalendertage: readonly IDienstplanKalendertag[];
 };
 
 @Component({
-  selector: 'app-dienstplan-tagesstruktur-bearbeiten-dialog',
+  selector: 'app-dienstplan-sondertage-dialog',
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -53,20 +53,17 @@ export type TDienstplanTagesstrukturBearbeitenDialogDaten = {
     EingabeMinuten,
     EingabeZeit,
   ],
-  templateUrl: './dienstplan-tagesstruktur-bearbeiten-dialog.html',
-  styleUrl: './dienstplan-tagesstruktur-bearbeiten-dialog.scss',
+  templateUrl: './dienstplan-sondertage-dialog.html',
+  styleUrl: './dienstplan-sondertage-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DienstplanTagesstrukturBearbeitenDialog {
+export class DienstplanSondertageDialog {
   // ===== Interne Dependency Injection =========
 
   private readonly dialogRef = inject(
-    MatDialogRef<
-      DienstplanTagesstrukturBearbeitenDialog,
-      readonly IFreieTagesschichtSchreibdaten[]
-    >,
+    MatDialogRef<DienstplanSondertageDialog, readonly IFreieTagesschichtSchreibdaten[]>,
   );
-  readonly daten = inject<TDienstplanTagesstrukturBearbeitenDialogDaten>(MAT_DIALOG_DATA);
+  readonly daten = inject<TDienstplanSondertageDialogDaten>(MAT_DIALOG_DATA);
 
   // ===== Öffentliche Werte ====================
 
@@ -139,12 +136,12 @@ export class DienstplanTagesstrukturBearbeitenDialog {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      beginnTag: new FormControl<TModellschichtTag>('starttag', { nonNullable: true }),
+      beginnTag: new FormControl<TSchichtZeitgrenzeTag>('starttag', { nonNullable: true }),
       endeLokalzeit: new FormControl(geoeffnet?.endeLokalzeit ?? '', {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      endeTag: new FormControl<TModellschichtTag>(
+      endeTag: new FormControl<TSchichtZeitgrenzeTag>(
         geoeffnet?.endetAmFolgetag ? 'folgetag' : 'starttag',
         { nonNullable: true },
       ),

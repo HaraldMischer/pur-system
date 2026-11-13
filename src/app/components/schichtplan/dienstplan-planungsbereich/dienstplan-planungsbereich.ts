@@ -18,47 +18,30 @@ import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { ISchichtEintrag } from '../../../commons/models/domain/schicht';
-import {
-  IModellschichtMomentaufnahmeEintrag,
-  ISchichtrastermodellBestand,
-  ISchichttagesmodellBestand,
-} from '../../../commons/models/domain/schichtmodell';
-import {
-  createDienstplanKalendertage,
-  getDienstplanRasterzeit,
-} from '../../../commons/utils/dienstplan/dienstplan-kalendertage';
+import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
+import { createDienstplanKalendertage } from '../../../commons/utils/dienstplan/dienstplan-kalendertage';
 import { createMitarbeiterbelegungReferenzSchluessel } from '../../../commons/utils/dienstplan/mitarbeiterbelegung';
-import { createSchichtZeitstempelAusLokalzeiten } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
-import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
 import { HinweisDialog } from '../../shared/hinweis-dialog/hinweis-dialog';
 import {
-  TSchichtplanMitarbeiterAblage,
   TSchichtplanMehrfachbelegungAblehnung,
-  TSchichtplanRasterauswahl,
   TSchichtplanTagesschichtMitarbeiterAblage,
   TSchichtplanTagesschichtauswahl,
   TSchichtplanTagesschichtVerschiebung,
-  TSchichtplanVerschiebung,
 } from '../dienstplan-planung.types';
 import { DienstplanAnlegenDialog } from '../dienstplan-anlegen-dialog/dienstplan-anlegen-dialog';
 import { DienstplanMonatsliste } from '../dienstplan-monatsliste/dienstplan-monatsliste';
-import { DienstplanMonatstabelle } from '../dienstplan-monatstabelle/dienstplan-monatstabelle';
-import {
-  SchichtBearbeitenDialog,
-  TSchichtVerschiebeziel,
-} from '../schicht-bearbeiten-dialog/schicht-bearbeiten-dialog';
-import { TagesschichtBelegenDialog } from '../tagesschicht-belegen-dialog/tagesschicht-belegen-dialog';
+import { SchichtBelegenDialog } from '../schicht-belegen-dialog/schicht-belegen-dialog';
 
 @Component({
   selector: 'app-dienstplan-planungsbereich',
-  imports: [MatButtonModule, DienstplanMonatsliste, DienstplanMonatstabelle],
+  imports: [MatButtonModule, DienstplanMonatsliste],
   templateUrl: './dienstplan-planungsbereich.html',
   styleUrl: './dienstplan-planungsbereich.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -72,7 +55,6 @@ export class DienstplanPlanungsbereich {
   readonly mitarbeiterbelegungStore = inject(MitarbeiterbelegungStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
   readonly schichtmodellStore = inject(SchichtmodellStore);
-  readonly schichtTagesmodellStore = inject(SchichtTagesmodellStore);
   private readonly dialog = inject(MatDialog);
 
   // ===== Öffentliche API ======================
@@ -121,14 +103,6 @@ export class DienstplanPlanungsbereich {
     const versionIds = new Set(this.versionen().map((version) => version.id));
     return this.kontext()?.schichten.filter((schicht) => versionIds.has(schicht.versionId)) ?? [];
   });
-  readonly modellschichten = computed(() => {
-    const dienstplanId = this.dienstplan()?.id;
-    return dienstplanId
-      ? (this.kontext()?.modellschichten.filter((modellschicht) => {
-          return modellschicht.dienstplanId === dienstplanId;
-        }) ?? [])
-      : [];
-  });
   readonly tagesschichten = computed(() => {
     const dienstplanId = this.dienstplan()?.id;
     return dienstplanId
@@ -168,33 +142,11 @@ export class DienstplanPlanungsbereich {
       : [];
   });
   readonly unbesetzteSchichtplaetze = computed(() => {
-    const dienstplan = this.dienstplan();
-    if (!dienstplan || !this.entwurfVersion()) return 0;
-    if (dienstplan.planungsart === 'schichttagesmodell') {
-      const belegteIds = new Set(
-        this.entwurfSchichten()
-          .map((schicht) => schicht.tagesschichtId)
-          .filter((id): id is string => Boolean(id)),
-      );
-      return this.tagesschichten().filter((tagesschicht) => {
-        return !belegteIds.has(tagesschicht.id);
-      }).length;
-    }
-    const belegteSchichtplaetze = new Set(
-      this.entwurfSchichten().map((schicht) => {
-        return JSON.stringify([schicht.datum, schicht.modellschichtId]);
-      }),
-    );
-    return dienstplan.kalendertage.reduce((anzahl, kalendertag) => {
-      return (
-        anzahl +
-        kalendertag.rasterzeiten.filter((rasterzeit) => {
-          return !belegteSchichtplaetze.has(
-            JSON.stringify([kalendertag.datum, rasterzeit.modellschichtId]),
-          );
-        }).length
-      );
-    }, 0);
+    if (!this.dienstplan() || !this.entwurfVersion()) return 0;
+    const belegteIds = new Set(this.entwurfSchichten().map((schicht) => schicht.tagesschichtId));
+    return this.tagesschichten().filter((tagesschicht) => {
+      return !belegteIds.has(tagesschicht.id);
+    }).length;
   });
   readonly konfliktMeldungenNachSchichtId = computed(() => {
     const dienstplanId = this.dienstplan()?.id;
@@ -326,39 +278,6 @@ export class DienstplanPlanungsbereich {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Prüft eine Verschiebung gegen den firmenweiten Belegungsstand.
-   */
-  readonly darfSchichtVerschieben = (
-    schicht: ISchichtEintrag,
-    ziel: TSchichtplanRasterauswahl,
-  ): boolean => {
-    const dienstplan = this.dienstplan();
-    const modellschicht = this.modellschichten().find((eintrag) => {
-      return eintrag.id === ziel.modellschichtId;
-    });
-    if (!dienstplan || !modellschicht) return false;
-    try {
-      const zeitraum = createSchichtZeitstempelAusLokalzeiten(
-        ziel.datum,
-        this.getRasterzeit(ziel.datum, modellschicht),
-        dienstplan.zeitzone,
-      );
-      return !this.mitarbeiterbelegungStore.hatMitarbeiterZeitkonflikt(
-        schicht.mitarbeiterId,
-        zeitraum,
-        createMitarbeiterbelegungReferenzSchluessel({
-          ...this.pfad(),
-          dienstplanId: schicht.dienstplanId,
-          versionId: schicht.versionId,
-          schichtId: schicht.id,
-        }),
-      );
-    } catch {
-      return false;
-    }
-  };
-
-  /**
    * Wiederholt das Laden des Monatsplans dieser Filiale.
    */
   retryLoad(): void {
@@ -381,8 +300,7 @@ export class DienstplanPlanungsbereich {
       data: {
         pfad: this.pfad(),
         monat: this.monat(),
-        schichtmodelle: modelle.rastermodelle,
-        schichttagesmodelle: modelle.tagesmodelle,
+        schichtmodelle: modelle.schichtmodelle,
         kalendertage: modelle.kalendertage,
       },
     });
@@ -399,6 +317,19 @@ export class DienstplanPlanungsbereich {
       data: {
         titel: 'Mehrfachbelegung nicht erlaubt',
         nachricht: 'Diese Schicht kann nur einmal belegt werden.',
+      },
+    });
+  }
+
+  /**
+   * Informiert über die fehlende Zulassung eines Mitarbeiters für diese Filiale.
+   */
+  openMitarbeiterNichtZugelassenHinweis(): void {
+    this.dialog.open(HinweisDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: {
+        titel: 'Mitarbeiter nicht zugelassen',
+        nachricht: 'Dieser Mitarbeiter ist für diese Filiale nicht zugelassen.',
       },
     });
   }
@@ -543,133 +474,6 @@ export class DienstplanPlanungsbereich {
   }
 
   /**
-   * Öffnet den Dialog zum Besetzen einer Rasterzelle.
-   *
-   * @param auswahl - Festgelegtes Datum und festgelegte Modellschicht.
-   */
-  openSchichtDialog(auswahl: TSchichtplanRasterauswahl): void {
-    this.openSchichtDialogIntern(auswahl, undefined);
-  }
-
-  /**
-   * Öffnet den Dialog zum Ändern einer vorhandenen Mitarbeiterschicht.
-   *
-   * @param schicht - Zu bearbeitende Mitarbeiterschicht.
-   */
-  openSchichtBearbeitenDialog(schicht: ISchichtEintrag): void {
-    if (!schicht.modellschichtId) {
-      this.aktionsfehler.set(
-        'Die Bearbeitung einer Tagesmodellbelegung ist in dieser Ansicht noch nicht verfügbar.',
-      );
-      return;
-    }
-    this.openSchichtDialogIntern({ datum: '', modellschichtId: schicht.modellschichtId }, schicht);
-  }
-
-  /**
-   * Legt nach einer gültigen Mitarbeiterablage unmittelbar eine Schicht an.
-   *
-   * @param ablage - Mitarbeiter, Datum und Modellschicht des Ablageziels.
-   */
-  async createSchichtAusAblage(ablage: TSchichtplanMitarbeiterAblage): Promise<void> {
-    const dienstplan = this.dienstplan();
-    const version = this.entwurfVersion();
-    if (
-      !dienstplan ||
-      !version ||
-      !this.darfSchreiben() ||
-      this.dienstplanStore.inProgress() ||
-      !this.mitarbeiterIds().includes(ablage.mitarbeiterId)
-    ) {
-      return;
-    }
-    const modellschicht = this.modellschichten().find((eintrag) => {
-      return eintrag.id === ablage.modellschichtId;
-    });
-    if (!modellschicht) {
-      this.aktionsfehler.set('Die Modellschicht wurde im Monatsplan nicht gefunden.');
-      return;
-    }
-
-    this.aktionsfehler.set(null);
-    try {
-      const { beginn, ende } = createSchichtZeitstempelAusLokalzeiten(
-        ablage.datum,
-        this.getRasterzeit(ablage.datum, modellschicht),
-        dienstplan.zeitzone,
-      );
-      const hatZeitkonflikt = this.mitarbeiterbelegungStore.hatMitarbeiterZeitkonflikt(
-        ablage.mitarbeiterId,
-        { beginn, ende },
-      );
-      if (hatZeitkonflikt) {
-        this.aktionsfehler.set(
-          'Der Mitarbeiter ist in diesem Entwurf im gewählten Zeitraum bereits eingeplant.',
-        );
-        return;
-      }
-      await this.dienstplanStore.createSchicht(
-        { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
-        {
-          datum: ablage.datum,
-          mitarbeiterId: ablage.mitarbeiterId,
-          modellschichtId: modellschicht.id,
-        },
-      );
-    } catch (error) {
-      this.aktionsfehler.set(
-        error instanceof Error ? error.message : 'Die Schicht konnte nicht gespeichert werden.',
-      );
-    }
-  }
-
-  /**
-   * Verschiebt eine bestehende Entwurfsschicht in eine andere Rasterzelle.
-   *
-   * @param verschiebung - Bestehende Schicht und ausgewähltes Rasterziel.
-   */
-  async moveSchichtAusAblage(verschiebung: TSchichtplanVerschiebung): Promise<void> {
-    const dienstplan = this.dienstplan();
-    const version = this.entwurfVersion();
-    const { schicht } = verschiebung;
-    if (
-      !dienstplan ||
-      !version ||
-      !this.darfSchreiben() ||
-      this.dienstplanStore.inProgress() ||
-      schicht.versionId !== version.id ||
-      !this.mitarbeiterIds().includes(schicht.mitarbeiterId) ||
-      (schicht.datum === verschiebung.datum &&
-        schicht.modellschichtId === verschiebung.modellschichtId)
-    ) {
-      return;
-    }
-    if (!this.darfSchichtVerschieben(schicht, verschiebung)) {
-      this.aktionsfehler.set(
-        'Die Schicht kann wegen einer bestehenden Mitarbeiterbelegung nicht dorthin verschoben werden.',
-      );
-      return;
-    }
-
-    this.aktionsfehler.set(null);
-    try {
-      await this.dienstplanStore.updateSchicht(
-        { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
-        schicht.id,
-        {
-          datum: verschiebung.datum,
-          mitarbeiterId: schicht.mitarbeiterId,
-          modellschichtId: verschiebung.modellschichtId,
-        },
-      );
-    } catch (error) {
-      this.aktionsfehler.set(
-        error instanceof Error ? error.message : 'Die Schicht konnte nicht verschoben werden.',
-      );
-    }
-  }
-
-  /**
    * Belegt eine konkrete Tagesschicht unmittelbar per Drag-and-drop.
    */
   async createTagesschichtAusAblage(
@@ -735,7 +539,7 @@ export class DienstplanPlanungsbereich {
       return eintrag.id === auswahl.tagesschichtId && eintrag.datum === auswahl.datum;
     });
     if (!dienstplan || !version || !tagesschicht || !this.darfSchreiben()) return;
-    this.dialog.open(TagesschichtBelegenDialog, {
+    this.dialog.open(SchichtBelegenDialog, {
       data: {
         pfad: { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
         tagesschicht,
@@ -747,7 +551,7 @@ export class DienstplanPlanungsbereich {
   }
 
   /**
-   * Öffnet eine vorhandene Tagesmodellbelegung zur Änderung oder Löschung.
+   * Öffnet eine vorhandene Schichtbelegung zur Änderung oder Löschung.
    */
   openTagesschichtBearbeitenDialog(schicht: ISchichtEintrag): void {
     if (!schicht.tagesschichtId) return;
@@ -758,87 +562,6 @@ export class DienstplanPlanungsbereich {
   }
 
   // ===== Interne Helfer =======================
-
-  private openSchichtDialogIntern(
-    auswahl: TSchichtplanRasterauswahl,
-    schicht: ISchichtEintrag | undefined,
-  ): void {
-    const dienstplan = this.dienstplan();
-    const version = this.entwurfVersion();
-    if (!dienstplan || !version || !this.darfSchreiben()) return;
-    this.aktionsfehler.set(null);
-    const modellschicht = this.modellschichten().find((eintrag) => {
-      return eintrag.id === auswahl.modellschichtId;
-    });
-    if (!modellschicht) {
-      this.aktionsfehler.set('Die Modellschicht wurde im Monatsplan nicht gefunden.');
-      return;
-    }
-    const datum = schicht?.datum ?? auswahl.datum;
-    let rasterzeit;
-    try {
-      rasterzeit = this.getRasterzeit(datum, modellschicht);
-    } catch (error) {
-      this.aktionsfehler.set(
-        error instanceof Error ? error.message : 'Die Rasterzeit wurde nicht gefunden.',
-      );
-      return;
-    }
-
-    this.dialog.open(SchichtBearbeitenDialog, {
-      panelClass: ['pur-dialog__panel'],
-      data: {
-        pfad: { ...this.pfad(), dienstplanId: dienstplan.id, versionId: version.id },
-        zeitzone: dienstplan.zeitzone,
-        datum,
-        mitarbeiter: this.mitarbeiter(),
-        modellschicht,
-        rasterzeit,
-        verschiebeziele: this.createVerschiebeziele(),
-        ...(schicht ? { schicht } : {}),
-      },
-    });
-  }
-
-  private getRasterzeit(datum: string, modellschicht: IModellschichtMomentaufnahmeEintrag) {
-    const kalendertag = this.dienstplan()?.kalendertage.find((eintrag) => {
-      return eintrag.datum === datum;
-    });
-    if (!kalendertag) {
-      throw new Error('Der Kalendertag wurde im Monatsplan nicht gefunden.');
-    }
-    return getDienstplanRasterzeit(kalendertag, modellschicht.id);
-  }
-
-  private createVerschiebeziele(): readonly TSchichtVerschiebeziel[] {
-    const dienstplan = this.dienstplan();
-    const versionId = this.entwurfVersion()?.id;
-    if (!dienstplan || !versionId) return [];
-    const schichten = this.schichten().filter((schicht) => schicht.versionId === versionId);
-    return dienstplan.kalendertage.flatMap((kalendertag) => {
-      return this.modellschichten().flatMap((modellschicht) => {
-        const rasterzeit = kalendertag.rasterzeiten.find((eintrag) => {
-          return eintrag.modellschichtId === modellschicht.id;
-        });
-        if (!rasterzeit) return [];
-        return [
-          {
-            datum: kalendertag.datum,
-            modellschicht,
-            rasterzeit,
-            schichtIds: schichten
-              .filter((schicht) => {
-                return (
-                  schicht.datum === kalendertag.datum &&
-                  schicht.modellschichtId === modellschicht.id
-                );
-              })
-              .map((schicht) => schicht.id),
-          },
-        ];
-      });
-    });
-  }
 
   private async loadDienstplan(
     pfad: IFilialPfad,
@@ -853,15 +576,13 @@ export class DienstplanPlanungsbereich {
   }
 
   private async loadAktiveSchichtmodelle(): Promise<{
-    rastermodelle: readonly ISchichtrastermodellBestand[];
-    tagesmodelle: readonly ISchichttagesmodellBestand[];
+    schichtmodelle: readonly ISchichtmodellBestand[];
     kalendertage: ReturnType<typeof createDienstplanKalendertage>;
   } | null> {
     this.aktionsfehler.set(null);
     try {
       await Promise.all([
         this.schichtmodellStore.loadSchichtmodelle(this.pfad()),
-        this.schichtTagesmodellStore.loadSchichtTagesmodelle(this.pfad()),
         this.filialeinstellungStore.loadFilialeinstellung(this.pfad()),
       ]);
     } catch {
@@ -872,16 +593,10 @@ export class DienstplanPlanungsbereich {
       );
       return null;
     }
-    const rastermodelle =
+    const schichtmodelle =
       this.schichtmodellStore
         .getSchichtmodellKontext(this.pfad())
         ?.schichtmodelle.filter((bestand) => {
-          return bestand.schichtmodell.aktiv && bestand.modellschichten.length > 0;
-        }) ?? [];
-    const tagesmodelle =
-      this.schichtTagesmodellStore
-        .getSchichtTagesmodellKontext(this.pfad())
-        ?.schichttagesmodelle.filter((bestand) => {
           return bestand.schichtmodell.aktiv && bestand.tagesvorlagenschichten.length > 0;
         }) ?? [];
     const einstellungen = this.filialeinstellungStore.getFilialeinstellungKontext(
@@ -891,7 +606,7 @@ export class DienstplanPlanungsbereich {
       this.aktionsfehler.set('Die Öffnungszeiten konnten nicht geladen werden.');
       return null;
     }
-    if (rastermodelle.length === 0 && tagesmodelle.length === 0) {
+    if (schichtmodelle.length === 0) {
       this.aktionsfehler.set(
         'Lege zuerst ein aktives Schichtmodell mit mindestens einer Schicht an.',
       );
@@ -903,6 +618,6 @@ export class DienstplanPlanungsbereich {
       wochenregeln: einstellungen.oeffnungszeiten.wochenregeln,
       sondertage: einstellungen.sondertage,
     });
-    return { rastermodelle, tagesmodelle, kalendertage };
+    return { schichtmodelle, kalendertage };
   }
 }

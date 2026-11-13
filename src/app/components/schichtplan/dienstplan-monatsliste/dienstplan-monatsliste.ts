@@ -75,6 +75,7 @@ export class DienstplanMonatsliste {
   readonly tagesschichtVerschieben = output<TSchichtplanTagesschichtVerschiebung>();
   readonly tagesschichtBearbeiten = output<ISchichtEintrag>();
   readonly mehrfachbelegungAbgelehnt = output<TSchichtplanMehrfachbelegungAblehnung>();
+  readonly mitarbeiterNichtZugelassen = output<void>();
   readonly mitarbeiterBereitsEingeplant = output<void>();
 
   // ===== Öffentliche Ableitungen ==============
@@ -234,6 +235,12 @@ export class DienstplanMonatsliste {
     const ziel = event.container.data;
     const dragDaten = event.item.data;
     if (!this.kannSchichtenAblegen()) return;
+    const mitarbeiterId =
+      dragDaten.art === 'schicht' ? dragDaten.schicht.mitarbeiterId : dragDaten.mitarbeiterId;
+    if (!this.erlaubteMitarbeiterIds().includes(mitarbeiterId)) {
+      this.mitarbeiterNichtZugelassen.emit();
+      return;
+    }
     if (
       !ziel.tagesschicht.mehrfachbelegungErlaubt &&
       ziel.schichten.some(
@@ -246,7 +253,6 @@ export class DienstplanMonatsliste {
       return;
     }
     if (dragDaten.art === 'schicht') {
-      if (!this.erlaubteMitarbeiterIds().includes(dragDaten.schicht.mitarbeiterId)) return;
       if (dragDaten.schicht.tagesschichtId === ziel.tagesschicht.id) return;
       if (ziel.mitarbeiterIds.includes(dragDaten.schicht.mitarbeiterId)) {
         this.mitarbeiterBereitsEingeplant.emit();
@@ -259,7 +265,6 @@ export class DienstplanMonatsliste {
       });
       return;
     }
-    if (!this.erlaubteMitarbeiterIds().includes(dragDaten.mitarbeiterId)) return;
     if (ziel.mitarbeiterIds.includes(dragDaten.mitarbeiterId)) {
       this.mitarbeiterBereitsEingeplant.emit();
       return;

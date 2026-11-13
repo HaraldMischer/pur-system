@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog.ts
+// pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.ts
 
 import {
   ChangeDetectionStrategy,
@@ -17,23 +17,23 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
-import { MAX_RANDMINUTEN } from '../../../commons/constants/schichtmodell.constants';
+import { MAX_RANDMINUTEN } from '../../../commons/constants/schicht.constants';
 import type { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import type { IGeoeffneteOeffnungsregel } from '../../../commons/models/domain/filialeinstellung';
 import type {
-  ISchichttagesmodellBestand,
+  ISchichtmodellBestand,
   ITagesvorlagenschichtEintrag,
   ITagesvorlagenschichtSchreibdaten,
-  TModellschichtTag,
+  TSchichtZeitgrenzeTag,
   TTagesvorlageTyp,
 } from '../../../commons/models/domain/schichtmodell';
 import {
   addLokalzeitMinuten,
   getLokalzeitMinuten,
-  getModellschichtTagFuerLokalzeit,
+  getSchichtTagFuerLokalzeit,
 } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
-import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
+import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { EingabeMinuten } from '../../shared/eingabe-minuten/eingabe-minuten';
 import { EingabeZeit } from '../../shared/eingabe-zeit/eingabe-zeit';
 
@@ -41,22 +41,22 @@ type TSchichtForm = FormGroup<{
   id: FormControl<string>;
   bezeichnung: FormControl<string>;
   beginnLokalzeit: FormControl<string>;
-  beginnTag: FormControl<TModellschichtTag>;
+  beginnTag: FormControl<TSchichtZeitgrenzeTag>;
   endeLokalzeit: FormControl<string>;
-  endeTag: FormControl<TModellschichtTag>;
+  endeTag: FormControl<TSchichtZeitgrenzeTag>;
   vorbereitungsminuten: FormControl<number>;
   nachbereitungsminuten: FormControl<number>;
   mehrfachbelegungErlaubt: FormControl<boolean>;
 }>;
 
-export type TSchichtTagesmodellBearbeitenDialogDaten = {
+export type TSchichtmodellBearbeitenDialogDaten = {
   readonly pfad: IFilialPfad;
   readonly oeffnungen: Readonly<Record<TTagesvorlageTyp, IGeoeffneteOeffnungsregel>>;
-  readonly bestand?: ISchichttagesmodellBestand;
+  readonly bestand?: ISchichtmodellBestand;
 };
 
 @Component({
-  selector: 'app-schicht-tagesmodell-bearbeiten-dialog',
+  selector: 'app-schichtmodell-bearbeiten-dialog',
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -68,17 +68,17 @@ export type TSchichtTagesmodellBearbeitenDialogDaten = {
     EingabeMinuten,
     EingabeZeit,
   ],
-  templateUrl: './schicht-tagesmodell-bearbeiten-dialog.html',
-  styleUrl: './schicht-tagesmodell-bearbeiten-dialog.scss',
+  templateUrl: './schichtmodell-bearbeiten-dialog.html',
+  styleUrl: './schichtmodell-bearbeiten-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SchichtTagesmodellBearbeitenDialog {
+export class SchichtmodellBearbeitenDialog {
   // ===== Interne Dependency Injection =========
 
   private readonly destroyRef = inject(DestroyRef);
-  private readonly dialogRef = inject(MatDialogRef<SchichtTagesmodellBearbeitenDialog, boolean>);
-  readonly daten = inject<TSchichtTagesmodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
-  readonly store = inject(SchichtTagesmodellStore);
+  private readonly dialogRef = inject(MatDialogRef<SchichtmodellBearbeitenDialog, boolean>);
+  readonly daten = inject<TSchichtmodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
+  readonly store = inject(SchichtmodellStore);
 
   // ===== Öffentliche Werte ====================
 
@@ -169,14 +169,14 @@ export class SchichtTagesmodellBearbeitenDialog {
   }
 
   /**
-   * Speichert beide Vorlagen des Schicht-Tagesmodells.
+   * Speichert beide Vorlagen des Schichtmodells.
    */
   async save(): Promise<void> {
     if (this.form.invalid || this.store.inProgress()) return;
     const tagesvorlagenschichten = [...this.mapVorlage('wochentag'), ...this.mapVorlage('sonntag')];
     try {
       if (this.daten.bestand) {
-        await this.store.updateSchichtTagesmodell(
+        await this.store.updateSchichtmodell(
           this.daten.pfad,
           this.daten.bestand.schichtmodell.id,
           {
@@ -187,7 +187,7 @@ export class SchichtTagesmodellBearbeitenDialog {
           this.daten.oeffnungen,
         );
       } else {
-        await this.store.createSchichtTagesmodell(
+        await this.store.createSchichtmodell(
           this.daten.pfad,
           {
             bezeichnung: this.form.controls.bezeichnung.value.trim(),
@@ -265,15 +265,14 @@ export class SchichtTagesmodellBearbeitenDialog {
     const beginnTag = istErsteSchicht
       ? 'starttag'
       : schicht?.beginn
-        ? (getModellschichtTagFuerLokalzeit(schicht.beginn.lokalzeit, oeffnung) ??
-          schicht.beginn.tag)
+        ? (getSchichtTagFuerLokalzeit(schicht.beginn.lokalzeit, oeffnung) ?? schicht.beginn.tag)
         : 'starttag';
     const endeTag = istLetzteSchicht
       ? oeffnung.endetAmFolgetag
         ? 'folgetag'
         : 'starttag'
       : schicht?.ende
-        ? (getModellschichtTagFuerLokalzeit(schicht.ende.lokalzeit, oeffnung) ?? schicht.ende.tag)
+        ? (getSchichtTagFuerLokalzeit(schicht.ende.lokalzeit, oeffnung) ?? schicht.ende.tag)
         : 'starttag';
     const form = new FormGroup({
       id: new FormControl(schicht?.id ?? '', { nonNullable: true }),
@@ -285,14 +284,14 @@ export class SchichtTagesmodellBearbeitenDialog {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      beginnTag: new FormControl<TModellschichtTag>(beginnTag, {
+      beginnTag: new FormControl<TSchichtZeitgrenzeTag>(beginnTag, {
         nonNullable: true,
       }),
       endeLokalzeit: new FormControl(endeLokalzeit, {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      endeTag: new FormControl<TModellschichtTag>(endeTag, {
+      endeTag: new FormControl<TSchichtZeitgrenzeTag>(endeTag, {
         nonNullable: true,
       }),
       vorbereitungsminuten: new FormControl(schicht?.vorbereitungsminuten ?? 0, {
@@ -310,13 +309,13 @@ export class SchichtTagesmodellBearbeitenDialog {
     form.controls.beginnLokalzeit.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((lokalzeit) => {
-        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, oeffnung);
+        const tag = getSchichtTagFuerLokalzeit(lokalzeit, oeffnung);
         if (tag) form.controls.beginnTag.setValue(tag);
       });
     form.controls.endeLokalzeit.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((lokalzeit) => {
-        const tag = getModellschichtTagFuerLokalzeit(lokalzeit, oeffnung);
+        const tag = getSchichtTagFuerLokalzeit(lokalzeit, oeffnung);
         if (tag) form.controls.endeTag.setValue(tag);
       });
     return form;

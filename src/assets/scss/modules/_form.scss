@@ -50,7 +50,22 @@
       flex: 80 1 0;
     }
 
+    // Flexible Basismodifier erlauben kompaktere Felder, die den verbleibenden Platz ausfüllen.
+    &--basis-sm {
+      flex: 1 1 140px;
+    }
+
     // Feste Größenmodifier verwenden die jeweils benannte Pixelbreite.
+    &--fixed-100 {
+      width: 100px;
+      flex: 0 0 100px;
+    }
+
+    &--fixed-115 {
+      width: 115px;
+      flex: 0 0 115px;
+    }
+
     &--fixed-150 {
       width: 150px;
       flex: 0 0 150px;

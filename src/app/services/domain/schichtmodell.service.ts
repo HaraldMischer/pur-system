@@ -7,92 +7,59 @@ import {
   FIRESTORE_COLLECTION_PATHS,
   FIRESTORE_DOCUMENT_PATHS,
 } from '../../commons/constants/firebase.constants';
-import { MAX_RANDMINUTEN } from '../../commons/constants/schichtmodell.constants';
-import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
-import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
-import {
-  IModellschichtDaten,
-  IModellschichtDokument,
-  IModellschichtEintrag,
-  IModellschichtSchreibdaten,
-  IAltesSchichtrastermodellDokument,
-  ISchichtrastermodellAktualisierung,
-  ISchichtrastermodellAnlage,
-  ISchichtrastermodellBestand,
-  ISchichtrastermodellDokument,
-  ISchichtrastermodellEintrag,
-  TSchichtmodellDokument,
+import type { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
+import type { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
+import type { IGeoeffneteOeffnungsregel } from '../../commons/models/domain/filialeinstellung';
+import type {
+  ISchichtmodellAktualisierung,
+  ISchichtmodellAnlage,
+  ISchichtmodellBestand,
+  ISchichtmodellDokument,
+  ISchichtmodellEintrag,
+  ITagesvorlagenschichtDokument,
+  ITagesvorlagenschichtEintrag,
+  ITagesvorlagenschichtSchreibdaten,
+  TTagesvorlageTyp,
 } from '../../commons/models/domain/schichtmodell';
-import { compareModellschichtenNachReihenfolge } from '../../commons/utils/dienstplan/modellschicht-sortierung';
-import { assertGueltigeModellschichten } from '../../commons/validators/schichtmodell.validator';
-import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
+import { assertGueltigeTagesvorlagenschichten } from '../../commons/validators/schichtmodell.validator';
+import {
+  FirestoreDbService,
+  type TFirestoreBatchOperation,
+} from '../firebase/firestore-db.service';
 
-// ===== Top-Level Helper =====================
+type TOeffnungen = Readonly<Record<TTagesvorlageTyp, IGeoeffneteOeffnungsregel>>;
 
-function sortSchichtmodelle(
-  a: ISchichtrastermodellBestand,
-  b: ISchichtrastermodellBestand,
-): number {
-  return a.schichtmodell.bezeichnung.localeCompare(b.schichtmodell.bezeichnung, 'de');
+function sortSchichten(a: ITagesvorlagenschichtEintrag, b: ITagesvorlagenschichtEintrag): number {
+  return a.vorlage.localeCompare(b.vorlage) || a.reihenfolge - b.reihenfolge;
 }
 
-function sortModellschichten(a: IModellschichtEintrag, b: IModellschichtEintrag): number {
-  return compareModellschichtenNachReihenfolge(a, b);
-}
-
-function normalizeSchichtrastermodellDokument(
-  dokument: TSchichtmodellDokument | IAltesSchichtrastermodellDokument,
-): ISchichtrastermodellDokument {
-  if (dokument.planungsart !== 'schichtrastermodell' && dokument.planungsart !== 'schichtraster') {
-    throw new Error('Die Planungsart des Schichtmodells wird noch nicht unterstützt.');
-  }
-  return { ...dokument, planungsart: 'schichtrastermodell' };
-}
-
-function normalizeModellschicht(
-  modellschicht: IModellschichtSchreibdaten,
-): IModellschichtSchreibdaten {
-  if (!modellschicht.bezeichnung.trim()) {
-    throw new Error('Die Modellschicht enthält keine gültige Bezeichnung.');
-  }
+function normalizeSchicht(
+  schicht: ITagesvorlagenschichtSchreibdaten,
+): ITagesvorlagenschichtSchreibdaten {
   return {
-    ...(modellschicht.id ? { id: modellschicht.id } : {}),
-    bezeichnung: modellschicht.bezeichnung.trim(),
-    reihenfolge: modellschicht.reihenfolge,
-    ...(modellschicht.beginn ? { beginn: { ...modellschicht.beginn } } : {}),
-    ...(modellschicht.ende ? { ende: { ...modellschicht.ende } } : {}),
-    mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
-    vorbereitungsminuten: normalizeRandminuten(modellschicht.vorbereitungsminuten),
-    nachbereitungsminuten: normalizeRandminuten(modellschicht.nachbereitungsminuten),
+    ...(schicht.id ? { id: schicht.id } : {}),
+    vorlage: schicht.vorlage,
+    bezeichnung: schicht.bezeichnung.trim(),
+    reihenfolge: schicht.reihenfolge,
+    ...(schicht.beginn ? { beginn: { ...schicht.beginn } } : {}),
+    ...(schicht.ende ? { ende: { ...schicht.ende } } : {}),
+    mehrfachbelegungErlaubt: schicht.mehrfachbelegungErlaubt,
+    vorbereitungsminuten: schicht.vorbereitungsminuten,
+    nachbereitungsminuten: schicht.nachbereitungsminuten,
   };
 }
 
-function mapModellschichtDokument(daten: IModellschichtDaten): IModellschichtDokument {
+function mapDokument(schicht: ITagesvorlagenschichtSchreibdaten): ITagesvorlagenschichtDokument {
   return {
-    bezeichnung: daten.bezeichnung,
-    reihenfolge: daten.reihenfolge,
-    ...(daten.beginn ? { beginn: { ...daten.beginn } } : {}),
-    ...(daten.ende ? { ende: { ...daten.ende } } : {}),
-    mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt,
-    vorbereitungsminuten: daten.vorbereitungsminuten ?? 0,
-    nachbereitungsminuten: daten.nachbereitungsminuten ?? 0,
+    vorlage: schicht.vorlage,
+    bezeichnung: schicht.bezeichnung,
+    reihenfolge: schicht.reihenfolge,
+    ...(schicht.beginn ? { beginn: { ...schicht.beginn } } : {}),
+    ...(schicht.ende ? { ende: { ...schicht.ende } } : {}),
+    mehrfachbelegungErlaubt: schicht.mehrfachbelegungErlaubt,
+    vorbereitungsminuten: schicht.vorbereitungsminuten,
+    nachbereitungsminuten: schicht.nachbereitungsminuten,
   };
-}
-
-function normalizeModellschichten(
-  modellschichten: readonly IModellschichtSchreibdaten[],
-): IModellschichtSchreibdaten[] {
-  return modellschichten
-    .map((modellschicht) => normalizeModellschicht(modellschicht))
-    .sort(compareModellschichtenNachReihenfolge);
-}
-
-function normalizeRandminuten(wert: number | undefined): number {
-  const minuten = wert ?? 0;
-  if (!Number.isInteger(minuten) || minuten < 0 || minuten > MAX_RANDMINUTEN) {
-    throw new Error('Vor- und Nachbereitungsminuten müssen ganze Zahlen von 0 bis 999 sein.');
-  }
-  return minuten;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -104,217 +71,167 @@ export class SchichtmodellService {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Lädt alle Schichtmodelle einschließlich ihrer Modellschichten für eine Filiale.
-   *
-   * @param pfad - Vollständiger Filialpfad.
-   * @param strategie - Datenquellenstrategie für den Ladevorgang.
-   * @returns Nach Bezeichnung sortierte Schichtmodelle mit fachlich geordneten Modellschichten.
+   * Lädt alle Schichtmodelle einer Filiale mit ihren beiden Vorlagen.
    */
   async loadSchichtmodelle(
     pfad: IFilialPfad,
     strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.dienstplaene,
-  ): Promise<ISchichtrastermodellBestand[]> {
-    const [aktuelleDokumente, alteDokumente] = await Promise.all([
-      this.firestoreDbService.loadCollection<TSchichtmodellDokument>(
-        FIRESTORE_COLLECTION_PATHS.schichtrastermodelle(pfad),
-        strategie,
-      ),
-      this.firestoreDbService.loadCollection<IAltesSchichtrastermodellDokument>(
-        FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
-        strategie,
-      ),
-    ]);
-    const aktuelleIds = new Set(aktuelleDokumente.map((dokument) => dokument.id));
-    const dokumente = [
-      ...aktuelleDokumente.map((dokument) => ({ ...dokument, alt: false })),
-      ...alteDokumente
-        .filter((dokument) => !aktuelleIds.has(dokument.id))
-        .map((dokument) => ({ ...dokument, alt: true })),
-    ];
+  ): Promise<ISchichtmodellBestand[]> {
+    const dokumente = await this.firestoreDbService.loadCollection<ISchichtmodellDokument>(
+      FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
+      strategie,
+    );
     const bestaende = await Promise.all(
       dokumente.map(async (dokument) => {
-        const daten = normalizeSchichtrastermodellDokument(dokument.daten);
-        const schichtmodell: ISchichtrastermodellEintrag = {
-          ...daten,
+        const schichtmodell: ISchichtmodellEintrag = {
+          ...dokument.daten,
           ...pfad,
           id: dokument.id,
         };
-        const modellschichtDokumente =
-          await this.firestoreDbService.loadCollection<IModellschichtDokument>(
-            dokument.alt
-              ? FIRESTORE_COLLECTION_PATHS.modellschichten({
-                  ...pfad,
-                  schichtmodellId: dokument.id,
-                })
-              : FIRESTORE_COLLECTION_PATHS.rastermodellschichten({
-                  ...pfad,
-                  schichtrastermodellId: dokument.id,
-                }),
+        const schichten =
+          await this.firestoreDbService.loadCollection<ITagesvorlagenschichtDokument>(
+            FIRESTORE_COLLECTION_PATHS.tagesvorlagenschichten({
+              ...pfad,
+              schichtmodellId: dokument.id,
+            }),
             strategie,
           );
-        const modellschichten = modellschichtDokumente
-          .map((modellschicht) => {
+        const tagesvorlagenschichten = schichten
+          .map((schicht): ITagesvorlagenschichtEintrag => {
             return {
+              ...schicht.daten,
               ...pfad,
-              id: modellschicht.id,
+              id: schicht.id,
               schichtmodellId: dokument.id,
-              ...mapModellschichtDokument(modellschicht.daten),
             };
           })
-          .sort(sortModellschichten);
-        return { schichtmodell, modellschichten };
+          .sort(sortSchichten);
+        return { schichtmodell, tagesvorlagenschichten };
       }),
     );
-    return bestaende.sort(sortSchichtmodelle);
+    return bestaende.sort((a, b) => {
+      return a.schichtmodell.bezeichnung.localeCompare(b.schichtmodell.bezeichnung, 'de');
+    });
   }
 
   /**
-   * Legt ein aktives Schichtmodell mit mindestens einer Modellschicht atomar an.
-   *
-   * @param pfad - Vollständiger Filialpfad.
-   * @param anlage - Bezeichnung und fachliche Modellschichten.
-   * @param benutzerUid - UID des anlegenden Benutzers.
-   * @returns Lokal abbildbarer Bestand des neuen Schichtmodells.
+   * Legt ein aktives Schichtmodell mit Wochentags- und Sonntagsvorlage an.
    */
   async createSchichtmodell(
     pfad: IFilialPfad,
-    anlage: ISchichtrastermodellAnlage,
+    anlage: ISchichtmodellAnlage,
+    oeffnungen: TOeffnungen,
     benutzerUid: string,
-  ): Promise<ISchichtrastermodellBestand> {
-    this.assertSchichtmodell(anlage);
+  ): Promise<ISchichtmodellBestand> {
+    this.assertModell(anlage, oeffnungen);
     const schichtmodellId = this.firestoreDbService.createDocumentId(
-      FIRESTORE_COLLECTION_PATHS.schichtrastermodelle(pfad),
+      FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
     );
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
-    const schichtmodell: ISchichtrastermodellEintrag = {
+    const schichtmodell: ISchichtmodellEintrag = {
       ...pfad,
       id: schichtmodellId,
       bezeichnung: anlage.bezeichnung.trim(),
       aktiv: true,
-      planungsart: 'schichtrastermodell',
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
-    const modellschichten = normalizeModellschichten(anlage.modellschichten).map(
-      (modellschicht) => {
-        const id = this.firestoreDbService.createDocumentId(
-          FIRESTORE_COLLECTION_PATHS.rastermodellschichten({
-            ...pfad,
-            schichtrastermodellId: schichtmodellId,
-          }),
-        );
-        return {
-          ...modellschicht,
-          ...pfad,
-          id,
-          schichtmodellId,
-        };
-      },
-    );
+    const tagesvorlagenschichten = anlage.tagesvorlagenschichten.map((schicht) => {
+      const normalisiert = normalizeSchicht(schicht);
+      const id = this.firestoreDbService.createDocumentId(
+        FIRESTORE_COLLECTION_PATHS.tagesvorlagenschichten({ ...pfad, schichtmodellId }),
+      );
+      return { ...normalisiert, ...pfad, id, schichtmodellId };
+    });
     const operationen: TFirestoreBatchOperation[] = [
       {
-        documentPath: FIRESTORE_DOCUMENT_PATHS.schichtrastermodell({
+        documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({
           ...pfad,
-          schichtrastermodellId: schichtmodellId,
+          schichtmodellId,
         }),
         daten: {
           bezeichnung: schichtmodell.bezeichnung,
           aktiv: true,
-          planungsart: 'schichtrastermodell',
           erstelltAm: zeitstempel,
           erstelltVonUid: benutzerUid,
           aktualisiertAm: zeitstempel,
           aktualisiertVonUid: benutzerUid,
         },
       },
-      ...modellschichten.map((modellschicht) => {
+      ...tagesvorlagenschichten.map((schicht) => {
         return {
-          documentPath: FIRESTORE_DOCUMENT_PATHS.rastermodellschicht({
+          documentPath: FIRESTORE_DOCUMENT_PATHS.tagesvorlagenschicht({
             ...pfad,
-            schichtrastermodellId: schichtmodellId,
-            rastermodellschichtId: modellschicht.id,
+            schichtmodellId,
+            tagesvorlagenschichtId: schicht.id,
           }),
-          daten: mapModellschichtDokument(modellschicht),
+          daten: mapDokument(schicht),
         };
       }),
     ];
     await this.firestoreDbService.updateDocumentsAtomically(operationen);
-    return { schichtmodell, modellschichten };
+    return { schichtmodell, tagesvorlagenschichten: tagesvorlagenschichten.sort(sortSchichten) };
   }
 
   /**
-   * Aktualisiert ein Schichtmodell und ersetzt seine Modellschichten atomar.
-   *
-   * @param pfad - Vollständiger Filialpfad.
-   * @param bestand - Bisher vollständig geladener Modellbestand.
-   * @param aktualisierung - Vollständige bearbeitbare Modelldaten.
-   * @param benutzerUid - UID des ändernden Benutzers.
-   * @returns Aktualisierter lokal abbildbarer Modellbestand.
+   * Aktualisiert ein Schichtmodell und ersetzt seine Vorlagenschichten atomar.
    */
   async updateSchichtmodell(
     pfad: IFilialPfad,
-    bestand: ISchichtrastermodellBestand,
-    aktualisierung: ISchichtrastermodellAktualisierung,
+    bestand: ISchichtmodellBestand,
+    aktualisierung: ISchichtmodellAktualisierung,
+    oeffnungen: TOeffnungen,
     benutzerUid: string,
-  ): Promise<ISchichtrastermodellBestand> {
-    this.assertSchichtmodell(aktualisierung);
+  ): Promise<ISchichtmodellBestand> {
+    this.assertModell(aktualisierung, oeffnungen);
     const schichtmodellId = bestand.schichtmodell.id;
-    const bekannteIds = new Set(bestand.modellschichten.map((modellschicht) => modellschicht.id));
+    const bekannteIds = new Set(bestand.tagesvorlagenschichten.map((schicht) => schicht.id));
     const verwendeteIds = new Set<string>();
-    const modellschichten = normalizeModellschichten(aktualisierung.modellschichten).map(
-      (modellschicht) => {
-        const id =
-          modellschicht.id &&
-          bekannteIds.has(modellschicht.id) &&
-          !verwendeteIds.has(modellschicht.id)
-            ? modellschicht.id
-            : this.firestoreDbService.createDocumentId(
-                FIRESTORE_COLLECTION_PATHS.rastermodellschichten({
-                  ...pfad,
-                  schichtrastermodellId: schichtmodellId,
-                }),
-              );
-        verwendeteIds.add(id);
-        return {
-          ...modellschicht,
-          ...pfad,
-          id,
-          schichtmodellId,
-        };
-      },
-    );
+    const tagesvorlagenschichten = aktualisierung.tagesvorlagenschichten.map((schicht) => {
+      const id =
+        schicht.id && bekannteIds.has(schicht.id) && !verwendeteIds.has(schicht.id)
+          ? schicht.id
+          : this.firestoreDbService.createDocumentId(
+              FIRESTORE_COLLECTION_PATHS.tagesvorlagenschichten({
+                ...pfad,
+                schichtmodellId,
+              }),
+            );
+      verwendeteIds.add(id);
+      return { ...normalizeSchicht(schicht), ...pfad, id, schichtmodellId };
+    });
+    const zeitstempel = this.firestoreDbService.createServerTimestamp();
     const operationen: TFirestoreBatchOperation[] = [
       {
-        documentPath: FIRESTORE_DOCUMENT_PATHS.schichtrastermodell({
+        documentPath: FIRESTORE_DOCUMENT_PATHS.schichtmodell({
           ...pfad,
-          schichtrastermodellId: schichtmodellId,
+          schichtmodellId,
         }),
         daten: {
           bezeichnung: aktualisierung.bezeichnung.trim(),
           aktiv: aktualisierung.aktiv,
-          planungsart: 'schichtrastermodell',
-          aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
+          aktualisiertAm: zeitstempel,
           aktualisiertVonUid: benutzerUid,
         },
       },
-      ...modellschichten.map((modellschicht) => {
+      ...tagesvorlagenschichten.map((schicht) => {
         return {
-          documentPath: FIRESTORE_DOCUMENT_PATHS.rastermodellschicht({
+          documentPath: FIRESTORE_DOCUMENT_PATHS.tagesvorlagenschicht({
             ...pfad,
-            schichtrastermodellId: schichtmodellId,
-            rastermodellschichtId: modellschicht.id,
+            schichtmodellId,
+            tagesvorlagenschichtId: schicht.id,
           }),
-          daten: mapModellschichtDokument(modellschicht),
+          daten: mapDokument(schicht),
         };
       }),
-      ...bestand.modellschichten
-        .filter((modellschicht) => !verwendeteIds.has(modellschicht.id))
-        .map((modellschicht) => {
+      ...bestand.tagesvorlagenschichten
+        .filter((schicht) => !verwendeteIds.has(schicht.id))
+        .map((schicht) => {
           return {
-            documentPath: FIRESTORE_DOCUMENT_PATHS.rastermodellschicht({
+            documentPath: FIRESTORE_DOCUMENT_PATHS.tagesvorlagenschicht({
               ...pfad,
-              schichtrastermodellId: schichtmodellId,
-              rastermodellschichtId: modellschicht.id,
+              schichtmodellId,
+              tagesvorlagenschichtId: schicht.id,
             }),
             delete: true as const,
           };
@@ -328,16 +245,12 @@ export class SchichtmodellService {
         aktiv: aktualisierung.aktiv,
         aktualisiertVonUid: benutzerUid,
       },
-      modellschichten,
+      tagesvorlagenschichten: tagesvorlagenschichten.sort(sortSchichten),
     };
   }
 
   /**
-   * Deaktiviert ein Schichtmodell, ohne es oder seine Modellschichten zu löschen.
-   *
-   * @param pfad - Vollständiger Filialpfad.
-   * @param schichtmodellId - Dokument-ID des Schichtmodells.
-   * @param benutzerUid - UID des ändernden Benutzers.
+   * Deaktiviert ein Schichtmodell, ohne Vorlagen oder historische Pläne zu löschen.
    */
   async deactivateSchichtmodell(
     pfad: IFilialPfad,
@@ -345,10 +258,7 @@ export class SchichtmodellService {
     benutzerUid: string,
   ): Promise<void> {
     await this.firestoreDbService.updateDocument(
-      FIRESTORE_DOCUMENT_PATHS.schichtrastermodell({
-        ...pfad,
-        schichtrastermodellId: schichtmodellId,
-      }),
+      FIRESTORE_DOCUMENT_PATHS.schichtmodell({ ...pfad, schichtmodellId }),
       {
         aktiv: false,
         aktualisiertAm: this.firestoreDbService.createServerTimestamp(),
@@ -359,10 +269,10 @@ export class SchichtmodellService {
 
   // ===== Interne Helfer =======================
 
-  private assertSchichtmodell(anlage: ISchichtrastermodellAnlage): void {
+  private assertModell(anlage: ISchichtmodellAnlage, oeffnungen: TOeffnungen): void {
     if (!anlage.bezeichnung.trim()) {
       throw new Error('Ein Schichtmodell benötigt eine Bezeichnung.');
     }
-    assertGueltigeModellschichten(anlage.modellschichten);
+    assertGueltigeTagesvorlagenschichten(anlage.tagesvorlagenschichten, oeffnungen);
   }
 }

@@ -140,28 +140,26 @@ Hauptquellen.
 ## Dienst- und Schichtplanung
 
 - Die versionierte, filialbezogene Monatsplanung mit Entwurf, Veröffentlichung und Archivierung ist umgesetzt.
-- Schicht-Rastermodell und Schicht-Tagesmodell sind als getrennte Planungsarten mit den Werten `schichtrastermodell` und
-  `schichttagesmodell` modelliert. Der alte Rasterwert `schichtraster` wird ausschließlich beim Lesen historischer Daten
-  normalisiert; `schichtbausteine` ist aus dem Anwendungscode entfernt.
-- Beide Planungsarten besitzen getrennte Modell-, Vorlagen- und Momentaufnahmepfade. Der vorhandene Rasterablauf bleibt
-  fachlich erhalten; das Tagesmodell besitzt unabhängige Wochentags- und Sonntagsvorlagen.
-- In jeder Tagesmodellvorlage werden der Beginn der ersten und das Ende der letzten Schicht aus der wirksamen Tagesöffnung
+- Das Schichtmodell ist das einzige Modell. Das frühere Schicht-Rastermodell und das Feld `planungsart` sind aus
+  Anwendung, Firestore Rules und Tests entfernt.
+- Die früheren Rasterdaten wurden ohne Migration kontrolliert aus Firestore gelöscht.
+- Das Schichtmodell besitzt unabhängige Wochentags- und Sonntagsvorlagen sowie konkrete Tagesschichten als
+  Monatsmomentaufnahme.
+- In jeder Schichtmodellvorlage werden der Beginn der ersten und das Ende der letzten Schicht aus der wirksamen Tagesöffnung
   abgeleitet. Nur die erste Schicht besitzt Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; beim Hinzufügen oder
   Entfernen einer äußeren Schicht werden diese Randminuten entsprechend übertragen.
-- Beim Hinzufügen einer Tagesmodellschicht wird der verbleibende Zeitraum bis zum Schichtende automatisch halbiert. Die
+- Beim Hinzufügen einer Modellschicht wird der verbleibende Zeitraum bis zum Schichtende automatisch halbiert. Die
   vorbelegte innere Grenze bleibt auf beiden Seiten unabhängig bearbeitbar; Lücken und Überlappungen bleiben zulässig.
-- Das Schicht-Tagesmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Geöffnete Feier- und
+- Das Schichtmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Geöffnete Feier- und
   Sondertage werden vor dem atomaren Schreiben frei konfiguriert, geschlossene Tage bleiben ohne Tagesschichten.
-- Die vollständige Unit-Test-Suite wurde nach den Änderungen am Tagesmodelldialog am 07.11.2026 vom Benutzer als erfolgreich
-  gemeldet. Rules-Tests, die noch ausstehenden App-Builds und die vollständige manuelle Prüfung von Todo 26 bleiben offen.
-- Beim Anlegen eines Monatsplans werden Schichtmodell, Planungsart, Kalendertage und wirksame Öffnungen als unveränderliche
-  Momentaufnahme gespeichert. Rasterpläne ergänzen tagesabhängige Rasterzeiten; Tagesmodellpläne speichern stattdessen
-  konkrete datumsgebundene Tagesschichten.
-- Die erste und letzte Rastergrenze folgen der Tagesöffnung einschließlich Vor- und Nachbereitung. Innere Übergänge bleiben
-  Modellbestandteil; bestätigte Lücken und Überlappungen sind möglich. Geschlossene oder zu kurze Tage bleiben unbelegbar.
+- Nach der Rastermodell-Entfernung und der Umbenennung auf das einheitliche Schichtmodell wurden am 13.11.2026 die vollständige
+  Unit-Test-Suite mit 944 Tests, alle 63 Firestore-Emulator-Tests, die vier Produktionsbuilds sowie die manuelle Prüfung vom
+  Benutzer als erfolgreich bestätigt.
+- Beim Anlegen eines Monatsplans werden Schichtmodell, Kalendertage, wirksame Öffnungen und konkrete datumsgebundene
+  Tagesschichten als unveränderliche Momentaufnahme gespeichert.
 - Mitarbeiter können per Drag-and-drop eingeplant, verschoben und entfernt werden. Mehrfachbelegung, Pausen und
   filialübergreifende Zeitkonflikte werden fachlich geprüft.
-- Die Monatsdarstellung des Tagesmodells ordnet konkrete Tagesschichten in einem verbindlichen 15-Minuten-Raster auf einer
+- Die Monatsdarstellung des Schichtmodells ordnet konkrete Tagesschichten in einem verbindlichen 15-Minuten-Raster auf einer
   gemeinsamen Zeitachse an. Geschlossene Außenbereiche werden als eigene Karten dargestellt, offene Lücken bleiben frei und
   zeitliche Überschneidungen verwenden getrennte Spuren. Tagesköpfe zeigen gesetzliche Feiertage und aktive Sondertage mit
   ihrer Bezeichnung.
@@ -197,16 +195,19 @@ Hauptquellen.
 - Legacy-Konten ohne Pur-System-Profil behalten ausschließlich den dokumentierten Zugriff auf `purCustomers` und `purUser`.
 - Die Rules für Rollen, Zugriffs-Map, Mitarbeiterzugänge, Filialeinstellungen und die aktuelle Unternehmensstruktur sind laut
   Benutzer produktiv veröffentlicht. Die zugehörigen Functions einschließlich sicherer Kontoaktivierung sind deployed.
-- Das Hosting der vier PWA-Grundstände ist veröffentlicht. Ein Hosting-Deployment der zuletzt lokal angepassten
-  Einstellungsoberfläche wurde für diesen Stand nicht bestätigt.
+- Die aktuellen Firestore Rules und die Hostings aller vier PWA-Varianten wurden nach der Schichtmodell-Bereinigung am
+  13.11.2026 erfolgreich veröffentlicht.
 - Ein Git-Push führt kein Firebase-Deployment aus. Hosting, Rules und Functions werden getrennt und kontrolliert veröffentlicht.
 
 ## Bestätigter Prüfstand
 
-Am 03.11.2026 wurden folgende aktuelle Prüfungen vom Benutzer bestätigt:
+Am 13.11.2026 wurden folgende aktuelle Prüfungen und Veröffentlichungen vom Benutzer bestätigt:
 
-- `npm run build:office` erfolgreich
+- `npm test` mit 944 von 944 Frontend-Tests erfolgreich
 - `npm run test:rules` mit 63 von 63 Firestore-Emulator-Tests erfolgreich
+- Produktionsbuilds für Master, Office, Filiale und Mitarbeiter erfolgreich
+- Firestore Rules und Hostings aller vier PWA-Varianten erfolgreich veröffentlicht
+- manuelle Prüfung der Schichtmodell-Bereinigung erfolgreich
 
 Der umfassende, ausdrücklich auf den 23.10.2026 datierte Prüfstand umfasst:
 

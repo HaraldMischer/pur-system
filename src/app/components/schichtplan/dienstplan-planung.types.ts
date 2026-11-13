@@ -2,19 +2,6 @@
 
 import { ISchichtEintrag } from '../../commons/models/domain/schicht';
 
-export type TSchichtplanRasterauswahl = {
-  readonly datum: string;
-  readonly modellschichtId: string;
-};
-
-export type TSchichtplanMitarbeiterAblage = TSchichtplanRasterauswahl & {
-  readonly mitarbeiterId: string;
-};
-
-export type TSchichtplanVerschiebung = TSchichtplanRasterauswahl & {
-  readonly schicht: ISchichtEintrag;
-};
-
 export type TSchichtplanTagesschichtauswahl = {
   readonly datum: string;
   readonly tagesschichtId: string;

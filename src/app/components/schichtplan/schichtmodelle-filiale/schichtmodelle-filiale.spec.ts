@@ -8,14 +8,10 @@ import { STANDARD_OEFFNUNGSREGEL } from '../../../commons/constants/filialeinste
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import {
-  SchichtTagesmodellStore,
-  TSchichtTagesmodellKontext,
-} from '../../../stores/domain/schicht-tagesmodell.store';
-import {
   SchichtmodellStore,
   TSchichtmodellKontext,
 } from '../../../stores/domain/schichtmodell.store';
-import { SchichtRastermodellBearbeitenDialog } from '../schicht-rastermodell-bearbeiten-dialog/schicht-rastermodell-bearbeiten-dialog';
+import { SchichtmodellBearbeitenDialog } from '../schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog';
 import { SchichtmodelleFiliale } from './schichtmodelle-filiale';
 
 const PFAD = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' } as const;
@@ -29,41 +25,14 @@ const FILIALE: IFilialeEintrag = {
 };
 
 describe('SchichtmodelleFiliale', () => {
-  const kontext = signal<TSchichtmodellKontext>({
-    ...PFAD,
-    schichtmodelle: [],
-    download: false,
-    isLoaded: true,
-    error: null,
-  });
-  const tagesmodellKontext = signal<TSchichtTagesmodellKontext>({
-    ...PFAD,
-    schichttagesmodelle: [],
-    download: false,
-    isLoaded: true,
-    error: null,
-  });
+  const kontext = signal<TSchichtmodellKontext>(createKontext());
   const loadSchichtmodelle = vi.fn().mockResolvedValue(undefined);
-  const loadSchichtTagesmodelle = vi.fn().mockResolvedValue(undefined);
   const loadFilialeinstellung = vi.fn().mockResolvedValue(undefined);
   const open = vi.fn();
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    kontext.set({
-      ...PFAD,
-      schichtmodelle: [],
-      download: false,
-      isLoaded: true,
-      error: null,
-    });
-    tagesmodellKontext.set({
-      ...PFAD,
-      schichttagesmodelle: [],
-      download: false,
-      isLoaded: true,
-      error: null,
-    });
+    kontext.set(createKontext());
     await TestBed.configureTestingModule({
       imports: [SchichtmodelleFiliale],
       providers: [
@@ -76,21 +45,16 @@ describe('SchichtmodelleFiliale', () => {
           },
         },
         {
-          provide: SchichtTagesmodellStore,
-          useValue: {
-            getSchichtTagesmodellKontext: vi.fn(() => tagesmodellKontext()),
-            loadSchichtTagesmodelle,
-            inProgress: signal(false),
-          },
-        },
-        {
           provide: FilialeinstellungStore,
           useValue: {
             loadFilialeinstellung,
             getFilialeinstellungKontext: vi.fn().mockReturnValue({
               isLoaded: true,
               bestand: {
-                oeffnungszeiten: { standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL },
+                oeffnungszeiten: {
+                  standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL,
+                  wochenregeln: { sonntag: { modus: 'standard' } },
+                },
               },
             }),
           },
@@ -100,159 +64,73 @@ describe('SchichtmodelleFiliale', () => {
     }).compileComponents();
   });
 
-  it('should load only its branch', async () => {
-    const fixture = TestBed.createComponent(SchichtmodelleFiliale);
-    fixture.componentRef.setInput('filiale', FILIALE);
-    fixture.componentRef.setInput('pfad', PFAD);
-    fixture.detectChanges();
+  it('should load the daily models and settings of its branch', async () => {
+    const fixture = createFixture();
     await fixture.whenStable();
 
     expect(loadSchichtmodelle).toHaveBeenCalledWith(PFAD);
     expect(loadFilialeinstellung).toHaveBeenCalledWith(PFAD);
   });
 
-  it('should show only the action belonging to the selected planning type', async () => {
-    const fixture = TestBed.createComponent(SchichtmodelleFiliale);
-    fixture.componentRef.setInput('filiale', FILIALE);
-    fixture.componentRef.setInput('pfad', PFAD);
+  it('should initially select the first active daily model', async () => {
+    kontext.set(
+      createKontext([
+        createModell('inaktiv', 'Inaktives Modell', false),
+        createModell('aktiv', 'Aktives Modell', true),
+      ]),
+    );
+    const fixture = createFixture();
+    await fixture.whenStable();
     fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedSchichtmodell()?.schichtmodell.id).toBe('aktiv');
+  });
+
+  it('should open the daily-model dialog with the selected branch settings', async () => {
+    const fixture = createFixture();
     await fixture.whenStable();
 
-    const compiled = fixture.nativeElement as HTMLElement;
-    let aktionen = Array.from(compiled.querySelectorAll<HTMLButtonElement>('button'));
-    let rastermodellHinzufuegen = aktionen.find((aktion) => {
-      return aktion.textContent?.includes('Rastermodell hinzufügen');
-    });
-    let tagesmodellHinzufuegen = aktionen.find((aktion) => {
-      return aktion.textContent?.includes('Tagesmodell hinzufügen');
-    });
+    fixture.componentInstance.openSchichtmodellDialog();
 
-    expect(rastermodellHinzufuegen?.disabled).toBe(false);
-    expect(tagesmodellHinzufuegen).toBeUndefined();
-    rastermodellHinzufuegen?.click();
     expect(open).toHaveBeenCalledWith(
-      SchichtRastermodellBearbeitenDialog,
+      SchichtmodellBearbeitenDialog,
       expect.objectContaining({
-        data: { pfad: PFAD, standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL },
+        data: expect.objectContaining({ pfad: PFAD }),
       }),
     );
-
-    fixture.componentInstance.selectPlanungsart('schichttagesmodell');
-    fixture.detectChanges();
-    aktionen = Array.from(compiled.querySelectorAll<HTMLButtonElement>('button'));
-    rastermodellHinzufuegen = aktionen.find((aktion) => {
-      return aktion.textContent?.includes('Rastermodell hinzufügen');
-    });
-    tagesmodellHinzufuegen = aktionen.find((aktion) => {
-      return aktion.textContent?.includes('Tagesmodell hinzufügen');
-    });
-
-    expect(rastermodellHinzufuegen).toBeUndefined();
-    expect(tagesmodellHinzufuegen?.disabled).toBe(false);
   });
 
-  it('should initially show the first active raster model and change the visible selection', async () => {
-    kontext.update((wert) => ({
-      ...wert,
-      schichtmodelle: [
-        {
-          schichtmodell: {
-            id: 'modell-inaktiv',
-            unternehmerId: PFAD.unternehmerId,
-            firmaId: PFAD.firmaId,
-            filialeId: PFAD.filialeId,
-            bezeichnung: 'Inaktives Modell',
-            aktiv: false,
-            planungsart: 'schichtrastermodell',
-            erstelltVonUid: 'admin-1',
-            aktualisiertVonUid: 'admin-1',
-          },
-          modellschichten: [],
-        },
-        {
-          schichtmodell: {
-            id: 'modell-aktiv',
-            unternehmerId: PFAD.unternehmerId,
-            firmaId: PFAD.firmaId,
-            filialeId: PFAD.filialeId,
-            bezeichnung: 'Aktives Modell',
-            aktiv: true,
-            planungsart: 'schichtrastermodell',
-            erstelltVonUid: 'admin-1',
-            aktualisiertVonUid: 'admin-1',
-          },
-          modellschichten: [],
-        },
-      ],
-    }));
+  function createFixture() {
     const fixture = TestBed.createComponent(SchichtmodelleFiliale);
     fixture.componentRef.setInput('filiale', FILIALE);
     fixture.componentRef.setInput('pfad', PFAD);
     fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    let sichtbareModelltitel = Array.from(compiled.querySelectorAll<HTMLHeadingElement>('h5'));
-    expect(sichtbareModelltitel[0].textContent).toContain('Aktives Modell');
-
-    fixture.componentInstance.selectSchichtrastermodell('modell-inaktiv');
-    fixture.detectChanges();
-
-    sichtbareModelltitel = Array.from(compiled.querySelectorAll<HTMLHeadingElement>('h5'));
-    expect(sichtbareModelltitel[0].textContent).toContain('Inaktives Modell');
-  });
-
-  it('should distinguish day-dependent boundaries and following-day boundaries', async () => {
-    kontext.update((wert) => ({
-      ...wert,
-      schichtmodelle: [
-        {
-          schichtmodell: {
-            id: 'modell-1',
-            unternehmerId: PFAD.unternehmerId,
-            firmaId: PFAD.firmaId,
-            filialeId: PFAD.filialeId,
-            bezeichnung: 'Standard',
-            aktiv: true,
-            planungsart: 'schichtrastermodell',
-            erstelltVonUid: 'admin-1',
-            aktualisiertVonUid: 'admin-1',
-          },
-          modellschichten: [
-            {
-              id: 'frueh',
-              schichtmodellId: 'modell-1',
-              unternehmerId: PFAD.unternehmerId,
-              firmaId: PFAD.firmaId,
-              filialeId: PFAD.filialeId,
-              bezeichnung: 'Früh',
-              reihenfolge: 0,
-              ende: { lokalzeit: '00:30', tag: 'folgetag' },
-              mehrfachbelegungErlaubt: false,
-            },
-            {
-              id: 'spaet',
-              schichtmodellId: 'modell-1',
-              unternehmerId: PFAD.unternehmerId,
-              firmaId: PFAD.firmaId,
-              filialeId: PFAD.filialeId,
-              bezeichnung: 'Spät',
-              reihenfolge: 1,
-              beginn: { lokalzeit: '00:30', tag: 'folgetag' },
-              mehrfachbelegungErlaubt: false,
-            },
-          ],
-        },
-      ],
-    }));
-    const fixture = TestBed.createComponent(SchichtmodelleFiliale);
-    fixture.componentRef.setInput('filiale', FILIALE);
-    fixture.componentRef.setInput('pfad', PFAD);
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    expect(fixture.nativeElement.textContent).toContain('Tagesabhängig–00:30 Uhr (Folgetag)');
-    expect(fixture.nativeElement.textContent).toContain('00:30 Uhr (Folgetag)–Tagesabhängig');
-  });
+    return fixture;
+  }
 });
+
+function createKontext(
+  schichtmodelle: TSchichtmodellKontext['schichtmodelle'] = [],
+): TSchichtmodellKontext {
+  return {
+    ...PFAD,
+    schichtmodelle,
+    download: false,
+    isLoaded: true,
+    error: null,
+  };
+}
+
+function createModell(id: string, bezeichnung: string, aktiv: boolean) {
+  return {
+    schichtmodell: {
+      ...PFAD,
+      id,
+      bezeichnung,
+      aktiv,
+      erstelltVonUid: 'uid-1',
+      aktualisiertVonUid: 'uid-1',
+    },
+    tagesvorlagenschichten: [],
+  };
+}

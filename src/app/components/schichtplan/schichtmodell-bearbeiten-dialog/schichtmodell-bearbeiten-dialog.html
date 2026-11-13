@@ -1,9 +1,9 @@
-<!-- pur-system/src/app/components/schichtplan/schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog.html -->
+<!-- pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.html -->
 
-<h2 mat-dialog-title>Schicht-Tagesmodell {{ istBearbeitung ? 'bearbeiten' : 'anlegen' }}</h2>
+<h2 mat-dialog-title>Schichtmodell {{ istBearbeitung ? 'bearbeiten' : 'anlegen' }}</h2>
 <mat-dialog-content class="pur-dialog__content">
   <form
-    id="schicht-tagesmodell-form"
+    id="schichtmodell-form"
     class="pur-form pur-form--grid"
     [formGroup]="form"
     (ngSubmit)="save()"
@@ -65,7 +65,7 @@
               <div class="pur-form__row schicht-kerndaten">
                 <mat-form-field
                   appearance="outline"
-                  class="pur-form__item pur-form__item--field pur-form__item--40"
+                  class="pur-form__item pur-form__item--field pur-form__item--basis-sm schicht-bezeichnung"
                 >
                   <mat-label>Bezeichnung</mat-label>
                   <input matInput formControlName="bezeichnung" />
@@ -73,14 +73,14 @@
                 @if (index === 0) {
                   <mat-form-field
                     appearance="outline"
-                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                    class="pur-form__item pur-form__item--field pur-form__item--fixed-115"
                   >
                     <mat-label>Beginn</mat-label>
-                    <input matInput readonly value="Schichtstart" />
+                    <input matInput readonly value="Öffnung" />
                   </mat-form-field>
                 } @else {
                   <app-eingabe-zeit
-                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                    class="pur-form__item pur-form__item--field pur-form__item--fixed-115"
                     label="Beginn"
                     minutenschritt="15"
                     formControlName="beginnLokalzeit"
@@ -90,14 +90,14 @@
                 @if (index === getVorlageForm($any(vorlage)).length - 1) {
                   <mat-form-field
                     appearance="outline"
-                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                    class="pur-form__item pur-form__item--field pur-form__item--fixed-115"
                   >
                     <mat-label>Ende</mat-label>
-                    <input matInput readonly value="Schichtende" />
+                    <input matInput readonly value="Schließung" />
                   </mat-form-field>
                 } @else {
                   <app-eingabe-zeit
-                    class="pur-form__item pur-form__item--field pur-form__item--20"
+                    class="pur-form__item pur-form__item--field pur-form__item--fixed-115"
                     label="Ende"
                     minutenschritt="15"
                     formControlName="endeLokalzeit"
@@ -106,15 +106,15 @@
                 }
                 @if (index === 0) {
                   <app-eingabe-minuten
-                    class="pur-form__item pur-form__item--field pur-form__item--20"
-                    label="Vorbereitung"
+                    class="pur-form__item pur-form__item--field pur-form__item--fixed-100"
+                    label="Vorlauf"
                     formControlName="vorbereitungsminuten"
                   />
                 }
                 @if (index === getVorlageForm($any(vorlage)).length - 1) {
                   <app-eingabe-minuten
-                    class="pur-form__item pur-form__item--field pur-form__item--20"
-                    label="Nachbereitung"
+                    class="pur-form__item pur-form__item--field pur-form__item--fixed-100"
+                    label="Nachlauf"
                     formControlName="nachbereitungsminuten"
                   />
                 }
@@ -139,7 +139,7 @@
   <button
     matButton="filled"
     type="submit"
-    form="schicht-tagesmodell-form"
+    form="schichtmodell-form"
     [disabled]="form.invalid || store.inProgress()"
   >
     Speichern

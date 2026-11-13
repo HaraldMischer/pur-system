@@ -2,14 +2,14 @@
 
 import {
   addLokalzeitMinuten,
-  calculateModellschichtdauerMinuten,
+  calculateSchichtgrenzendauerMinuten,
   calculateSchichtdauerMinuten,
   createSchichtZeitstempel,
   createSchichtZeitstempelAusLokalzeiten,
   formatSchichtDatum,
   formatSchichtUhrzeit,
   getLokalzeitMinuten,
-  getModellschichtTagFuerLokalzeit,
+  getSchichtTagFuerLokalzeit,
   istLokalzeitImMinutenraster,
 } from './schicht-lokalzeit';
 
@@ -39,11 +39,11 @@ describe('Schicht-Lokalzeit', () => {
       endetAmFolgetag: true,
     } as const;
 
-    expect(getModellschichtTagFuerLokalzeit('16:00', standardoeffnungsregel)).toBe('starttag');
-    expect(getModellschichtTagFuerLokalzeit('00:30', standardoeffnungsregel)).toBe('folgetag');
-    expect(getModellschichtTagFuerLokalzeit('ungültig', standardoeffnungsregel)).toBeNull();
+    expect(getSchichtTagFuerLokalzeit('16:00', standardoeffnungsregel)).toBe('starttag');
+    expect(getSchichtTagFuerLokalzeit('00:30', standardoeffnungsregel)).toBe('folgetag');
+    expect(getSchichtTagFuerLokalzeit('ungültig', standardoeffnungsregel)).toBeNull();
     expect(
-      getModellschichtTagFuerLokalzeit('20:00', {
+      getSchichtTagFuerLokalzeit('20:00', {
         geoeffnet: true,
         beginnLokalzeit: '06:00',
         endeLokalzeit: '22:00',
@@ -64,19 +64,19 @@ describe('Schicht-Lokalzeit', () => {
 
   it('should calculate model shift durations from explicit day assignments', () => {
     expect(
-      calculateModellschichtdauerMinuten(
+      calculateSchichtgrenzendauerMinuten(
         { lokalzeit: '20:00', tag: 'starttag' },
         { lokalzeit: '01:00', tag: 'folgetag' },
       ),
     ).toBe(300);
     expect(
-      calculateModellschichtdauerMinuten(
+      calculateSchichtgrenzendauerMinuten(
         { lokalzeit: '00:30', tag: 'folgetag' },
         { lokalzeit: '01:00', tag: 'folgetag' },
       ),
     ).toBe(30);
     expect(
-      calculateModellschichtdauerMinuten(
+      calculateSchichtgrenzendauerMinuten(
         { lokalzeit: '20:00', tag: 'starttag' },
         { lokalzeit: '01:00', tag: 'starttag' },
       ),

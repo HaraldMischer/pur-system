@@ -19,23 +19,13 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
-import {
-  IModellschichtZeitgrenze,
-  ISchichtrastermodellBestand,
-  ISchichttagesmodellBestand,
-  TPlanungsart,
-} from '../../../commons/models/domain/schichtmodell';
+import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
-import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import {
-  SchichtTagesmodellBearbeitenDialog,
-  TSchichtTagesmodellBearbeitenDialogDaten,
-} from '../schicht-tagesmodell-bearbeiten-dialog/schicht-tagesmodell-bearbeiten-dialog';
-import {
-  SchichtRastermodellBearbeitenDialog,
-  TSchichtRastermodellBearbeitenDialogDaten,
-} from '../schicht-rastermodell-bearbeiten-dialog/schicht-rastermodell-bearbeiten-dialog';
+  SchichtmodellBearbeitenDialog,
+  TSchichtmodellBearbeitenDialogDaten,
+} from '../schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog';
 
 @Component({
   selector: 'app-schichtmodelle-filiale',
@@ -48,7 +38,6 @@ export class SchichtmodelleFiliale {
   // ===== Interne Dependency Injection =========
 
   readonly schichtmodellStore = inject(SchichtmodellStore);
-  readonly schichtTagesmodellStore = inject(SchichtTagesmodellStore);
   readonly filialeinstellungStore = inject(FilialeinstellungStore);
   private readonly dialog = inject(MatDialog);
 
@@ -59,8 +48,7 @@ export class SchichtmodelleFiliale {
 
   // ===== Interner State =======================
 
-  private readonly selectedSchichtrastermodellId = signal<string | null>(null);
-  private readonly selectedSchichtTagesmodellId = signal<string | null>(null);
+  private readonly selectedSchichtmodellId = signal<string | null>(null);
 
   // ===== Interne Ableitungen ==================
 
@@ -70,60 +58,32 @@ export class SchichtmodelleFiliale {
       void this.loadSchichtmodelle(pfad);
     });
   });
-  private readonly selectedSchichtrastermodellEffect = effect(() => {
+  private readonly selectedSchichtmodellEffect = effect(() => {
     this.updateSelectedModellId(
-      this.kontext()?.schichtmodelle ?? [],
-      this.selectedSchichtrastermodellId,
+      this.schichtmodellKontext()?.schichtmodelle ?? [],
+      this.selectedSchichtmodellId,
     );
   });
-  private readonly selectedSchichtTagesmodellEffect = effect(() => {
-    this.updateSelectedModellId(
-      this.tagesmodellKontext()?.schichttagesmodelle ?? [],
-      this.selectedSchichtTagesmodellId,
-    );
-  });
-
-  // ===== Öffentliche Werte ====================
-
-  readonly selectedPlanungsart = signal<TPlanungsart>('schichtrastermodell');
 
   // ===== Öffentliche Ableitungen ==============
 
-  readonly kontext = computed(() => {
+  readonly schichtmodellKontext = computed(() => {
     return this.schichtmodellStore.getSchichtmodellKontext(this.pfad());
-  });
-  readonly tagesmodellKontext = computed(() => {
-    return this.schichtTagesmodellStore.getSchichtTagesmodellKontext(this.pfad());
   });
   readonly filialeinstellungKontext = computed(() => {
     return this.filialeinstellungStore.getFilialeinstellungKontext(this.pfad());
   });
-  readonly istSchichtrastermodellBereit = computed(() => {
+  readonly istSchichtmodellBereit = computed(() => {
     return (
-      this.kontext()?.isLoaded === true &&
+      this.schichtmodellKontext()?.isLoaded === true &&
       this.filialeinstellungKontext()?.isLoaded === true &&
       this.filialeinstellungKontext()?.bestand !== null
     );
   });
-  readonly istSchichtTagesmodellBereit = computed(() => {
+  readonly selectedSchichtmodell = computed(() => {
+    const selectedId = this.selectedSchichtmodellId();
     return (
-      this.tagesmodellKontext()?.isLoaded === true &&
-      this.filialeinstellungKontext()?.isLoaded === true &&
-      this.filialeinstellungKontext()?.bestand !== null
-    );
-  });
-  readonly selectedSchichtrastermodell = computed(() => {
-    const selectedId = this.selectedSchichtrastermodellId();
-    return (
-      this.kontext()?.schichtmodelle.find((bestand) => {
-        return bestand.schichtmodell.id === selectedId;
-      }) ?? null
-    );
-  });
-  readonly selectedSchichtTagesmodell = computed(() => {
-    const selectedId = this.selectedSchichtTagesmodellId();
-    return (
-      this.tagesmodellKontext()?.schichttagesmodelle.find((bestand) => {
+      this.schichtmodellKontext()?.schichtmodelle.find((bestand) => {
         return bestand.schichtmodell.id === selectedId;
       }) ?? null
     );
@@ -139,69 +99,20 @@ export class SchichtmodelleFiliale {
   }
 
   /**
-   * Wählt die anzuzeigende Modellart aus.
+   * Wählt das anzuzeigende Schichtmodell aus.
    *
-   * @param planungsart - Ausgewählte Planungsart.
+   * @param schichtmodellId - ID des ausgewählten Schichtmodells.
    */
-  selectPlanungsart(planungsart: TPlanungsart): void {
-    this.selectedPlanungsart.set(planungsart);
-  }
-
-  /**
-   * Wählt das anzuzeigende Schicht-Rastermodell aus.
-   *
-   * @param schichtmodellId - ID des ausgewählten Schicht-Rastermodells.
-   */
-  selectSchichtrastermodell(schichtmodellId: string): void {
-    this.selectedSchichtrastermodellId.set(schichtmodellId);
-  }
-
-  /**
-   * Wählt das anzuzeigende Schicht-Tagesmodell aus.
-   *
-   * @param schichtmodellId - ID des ausgewählten Schicht-Tagesmodells.
-   */
-  selectSchichtTagesmodell(schichtmodellId: string): void {
-    this.selectedSchichtTagesmodellId.set(schichtmodellId);
-  }
-
-  /**
-   * Formatiert eine feste Modellschichtgrenze oder kennzeichnet eine tagesabhängige Außengrenze.
-   *
-   * @param zeitgrenze - Optional gespeicherte feste Zeitgrenze.
-   * @returns Verständliche Darstellung der Zeitgrenze.
-   */
-  formatZeitgrenze(zeitgrenze?: IModellschichtZeitgrenze): string {
-    if (!zeitgrenze) return 'Tagesabhängig';
-    return `${zeitgrenze.lokalzeit} Uhr${zeitgrenze.tag === 'folgetag' ? ' (Folgetag)' : ''}`;
+  selectSchichtmodell(schichtmodellId: string): void {
+    this.selectedSchichtmodellId.set(schichtmodellId);
   }
 
   /**
    * Öffnet den Dialog zum Anlegen oder Bearbeiten eines Schichtmodells.
    *
-   * @param bestand - Optional ausgewählter Modellbestand.
+   * @param bestand - Optional ausgewählter Schichtmodellbestand.
    */
-  openSchichtrastermodellDialog(bestand?: ISchichtrastermodellBestand): void {
-    const standardoeffnungsregel =
-      this.filialeinstellungKontext()?.bestand?.oeffnungszeiten.standardoeffnungsregel;
-    if (!standardoeffnungsregel) return;
-    const daten: TSchichtRastermodellBearbeitenDialogDaten = {
-      pfad: this.pfad(),
-      standardoeffnungsregel,
-      ...(bestand ? { bestand } : {}),
-    };
-    this.dialog.open(SchichtRastermodellBearbeitenDialog, {
-      data: daten,
-      panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
-    });
-  }
-
-  /**
-   * Öffnet den Dialog zum Anlegen oder Bearbeiten eines Schicht-Tagesmodells.
-   *
-   * @param bestand - Optional ausgewählter Tagesmodellbestand.
-   */
-  openSchichtTagesmodellDialog(bestand?: ISchichttagesmodellBestand): void {
+  openSchichtmodellDialog(bestand?: ISchichtmodellBestand): void {
     const oeffnungszeiten = this.filialeinstellungKontext()?.bestand?.oeffnungszeiten;
     if (!oeffnungszeiten) return;
     const sonntagsregel = oeffnungszeiten.wochenregeln.sonntag;
@@ -210,7 +121,7 @@ export class SchichtmodelleFiliale {
       sonntagsregel.modus === 'abweichend'
         ? sonntagsregel.oeffnungsregel
         : oeffnungszeiten.standardoeffnungsregel;
-    const daten: TSchichtTagesmodellBearbeitenDialogDaten = {
+    const daten: TSchichtmodellBearbeitenDialogDaten = {
       pfad: this.pfad(),
       oeffnungen: {
         wochentag: oeffnungszeiten.standardoeffnungsregel,
@@ -218,7 +129,7 @@ export class SchichtmodelleFiliale {
       },
       ...(bestand ? { bestand } : {}),
     };
-    this.dialog.open(SchichtTagesmodellBearbeitenDialog, {
+    this.dialog.open(SchichtmodellBearbeitenDialog, {
       data: daten,
       panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
     });
@@ -230,7 +141,6 @@ export class SchichtmodelleFiliale {
     try {
       await Promise.all([
         this.schichtmodellStore.loadSchichtmodelle(pfad),
-        this.schichtTagesmodellStore.loadSchichtTagesmodelle(pfad),
         this.filialeinstellungStore.loadFilialeinstellung(pfad),
       ]);
     } catch {
@@ -239,7 +149,7 @@ export class SchichtmodelleFiliale {
   }
 
   private updateSelectedModellId(
-    bestaende: readonly (ISchichtrastermodellBestand | ISchichttagesmodellBestand)[],
+    bestaende: readonly ISchichtmodellBestand[],
     selectedId: WritableSignal<string | null>,
   ): void {
     const aktuelleId = selectedId();

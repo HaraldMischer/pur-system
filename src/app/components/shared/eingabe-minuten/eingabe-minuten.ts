@@ -23,7 +23,7 @@ import {
 import { MatFormFieldModule, SubscriptSizing } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
-import { MAX_RANDMINUTEN } from '../../../commons/constants/schichtmodell.constants';
+import { MAX_RANDMINUTEN } from '../../../commons/constants/schicht.constants';
 
 // ===== Top-Level Helper =====================
 

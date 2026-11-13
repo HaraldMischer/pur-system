@@ -14,11 +14,9 @@ interface ISchichtAnlageBasis {
   mitarbeiterId: string;
 }
 
-export type TSchichtZielReferenz =
-  | { modellschichtId: string; tagesschichtId?: never }
-  | { modellschichtId?: never; tagesschichtId: string };
-
-export type ISchichtAnlage = ISchichtAnlageBasis & TSchichtZielReferenz;
+export interface ISchichtAnlage extends ISchichtAnlageBasis {
+  tagesschichtId: string;
+}
 export type ISchichtAktualisierung = ISchichtAnlage;
 
 export type ISchichtDaten = ISchichtAnlage &
@@ -58,7 +56,8 @@ export interface ISchichtSchreibergebnis {
 // ===== Firestore-Dokumente ==================
 
 export type ISchichtDokument = ISchichtZeitdaten &
-  TSchichtZielReferenz & {
+  {
+    tagesschichtId: string;
     datum: string;
     mitarbeiterId: string;
     erstelltAm?: Timestamp;

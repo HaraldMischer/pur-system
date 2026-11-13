@@ -76,6 +76,27 @@ describe('DienstplanMonatsliste', () => {
     expect(anlegen).not.toHaveBeenCalled();
   });
 
+  it('should explain when the employee is not allowed for the branch', () => {
+    const fixture = createFixture();
+    const nichtZugelassen = vi.fn();
+    const mehrfachbelegung = vi.fn();
+    const anlegen = vi.fn();
+    fixture.componentRef.setInput('schichten', [createSchicht()]);
+    fixture.componentInstance.mitarbeiterNichtZugelassen.subscribe(nichtZugelassen);
+    fixture.componentInstance.mehrfachbelegungAbgelehnt.subscribe(mehrfachbelegung);
+    fixture.componentInstance.tagesschichtAblegen.subscribe(anlegen);
+    fixture.detectChanges();
+
+    fixture.componentInstance.handleTagesschichtDrop({
+      item: { data: { art: 'mitarbeiter', mitarbeiterId: 'm-fremd' } },
+      container: { data: fixture.componentInstance.tage()[0].zellen[0] },
+    } as unknown as Parameters<DienstplanMonatsliste['handleTagesschichtDrop']>[0]);
+
+    expect(nichtZugelassen).toHaveBeenCalledOnce();
+    expect(mehrfachbelegung).not.toHaveBeenCalled();
+    expect(anlegen).not.toHaveBeenCalled();
+  });
+
   it('should keep the add action clickable but not open it for an occupied single shift', () => {
     const fixture = createFixture();
     const anlegen = vi.fn();
@@ -145,7 +166,6 @@ describe('DienstplanMonatsliste', () => {
       zeitraumStart: '2026-11-01',
       zeitraumEnde: '2026-11-30',
       zeitzone: 'Europe/Berlin',
-      planungsart: 'schichttagesmodell',
       kalendertage: [
         {
           datum: '2026-11-01',
@@ -164,11 +184,10 @@ describe('DienstplanMonatsliste', () => {
             endeLokalzeit: '01:00',
             endetAmFolgetag: true,
           },
-          rasterzeiten: [],
         },
       ],
       schichtmodellId: 'modell-1',
-      schichtmodellBezeichnung: 'Tagesmodell',
+      schichtmodellBezeichnung: 'Standardmodell',
       entwurfVersionId: 'v-1',
       naechsteVersionsnummer: 2,
       erstelltVonUid: 'uid-1',

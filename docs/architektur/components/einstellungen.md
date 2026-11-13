@@ -59,12 +59,12 @@ Löschvorgänge werden über den gemeinsamen Bestätigungsdialog abgesichert.
 
 Die Oberfläche stellt die Standardöffnungszeit als responsiv angeordnete Zeitfelder dar. Standardöffnungszeit, abweichende
 Wochenregeln und Sondertage müssen jeweils eine gültige positive Zeitspanne besitzen. Der Service wiederholt
-diese fachliche Prüfung vor jedem Schreibzugriff. Vor- und Nachbereitungszeiten eines Schichtrasters dürfen außerhalb der
+diese fachliche Prüfung vor jedem Schreibzugriff. Vor- und Nachbereitungszeiten einer Tagesschicht dürfen außerhalb der
 Kundenöffnung liegen.
 
 Die Oberfläche erläutert die Priorität als `benutzerdefinierter jährlicher Sondertag → gesetzlicher Feiertag oder
 systemdefinierter Sondertag → Wochentag`. Beim Speichern oder Aktivieren eines jährlich festen Sondertags verhindert die
 Verwaltung eine direkte Kollision mit einem anderen aktiven festen Sondertag derselben Herkunft und benennt beide Einträge.
 Ein benutzerdefinierter Sondertag darf einen systemdefinierten Tag überschreiben. Öffnungszeiten bleiben Kundenbetriebszeiten;
-in einem Schichtraster bestimmen sie zugleich die
-automatisch abgeleiteten äußeren Rastergrenzen. Vor- und Nachbereitungsminuten können diese Grenzen ausdrücklich erweitern.
+im Schichtmodell bestimmen sie zugleich die automatisch abgeleiteten äußeren Grenzen der Tagesstruktur. Vor- und
+Nachbereitungsminuten können diese Grenzen ausdrücklich erweitern.

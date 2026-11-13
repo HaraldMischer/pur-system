@@ -31,7 +31,6 @@
       z-index: 2;
       flex-direction: column;
       padding: 12px;
-      font: var(--mat-sys-title-small);
       text-transform: capitalize;
     }
 
@@ -55,6 +54,7 @@
     border-radius: 10px;
     background: var(--mat-sys-surface-container-low);
   }
+
   &__zeitmarke {
     position: absolute;
     bottom: 15px;
@@ -98,6 +98,7 @@
     grid-auto-rows: minmax(60px, auto);
     gap: 8px 0;
   }
+
   &__zeitbereich {
     min-width: 0;
     border: 1px solid var(--mat-sys-outline-variant);
@@ -110,20 +111,6 @@
       gap: 8px;
       align-items: center;
       justify-content: space-between;
-
-      span {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      > button {
-        display: flex;
-        width: auto;
-        height: auto;
-        padding: 0;
-      }
     }
 
     &--geschlossen {

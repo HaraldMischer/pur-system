@@ -188,7 +188,7 @@ describe('Mitarbeiterbelegung', () => {
     return createMitarbeiterbelegungReferenz(pfad, schichtId, 'entwurf', {
       datum: '2026-10-05',
       mitarbeiterId: 'm-1',
-      modellschichtId: 'frueh',
+      tagesschichtId: 'frueh',
       beginn: timestamp(`2026-10-05T${beginn}:00+02:00`),
       ende: timestamp(`2026-10-05T${ende}:00+02:00`),
     });

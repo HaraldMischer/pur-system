@@ -3,12 +3,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
-  IDienstplanModellschichtPfad,
-  IDienstplanRastermodellschichtPfad,
   IDienstplanTagesschichtPfad,
   IFilialeinstellungSondertagPfad,
-  IModellschichtPfad,
-  IRastermodellschichtPfad,
   ITagesvorlagenschichtPfad,
   ISchichtPfad,
 } from '../models/app/firestore-pfad.types';
@@ -82,63 +78,13 @@ describe('Firebase-Konstanten', () => {
     );
   });
 
-  it('bildet die Schichtmodellpfade und die Dienstplan-Momentaufnahme', () => {
-    const modellschichtPfad: IModellschichtPfad = {
-      unternehmerId: 'unternehmer-1',
-      firmaId: 'firma-1',
-      filialeId: 'filiale-1',
-      schichtmodellId: 'sommer',
-      modellschichtId: 'frueh',
-    };
-    const momentaufnahmePfad: IDienstplanModellschichtPfad = {
-      unternehmerId: 'unternehmer-1',
-      firmaId: 'firma-1',
-      filialeId: 'filiale-1',
-      dienstplanId: '2026-10',
-      modellschichtId: 'frueh',
-    };
-
-    expect(FIRESTORE_COLLECTION_PATHS.schichtmodelle(modellschichtPfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtmodell',
-    );
-    expect(FIRESTORE_DOCUMENT_PATHS.schichtmodell(modellschichtPfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtmodell/sommer',
-    );
-    expect(FIRESTORE_COLLECTION_PATHS.modellschichten(modellschichtPfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtmodell/sommer/modellschicht',
-    );
-    expect(FIRESTORE_DOCUMENT_PATHS.modellschicht(modellschichtPfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/schichtmodell/sommer/modellschicht/frueh',
-    );
-    expect(FIRESTORE_COLLECTION_PATHS.dienstplanModellschichten(momentaufnahmePfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/modellschicht',
-    );
-    expect(FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht(momentaufnahmePfad)).toBe(
-      'unternehmer/unternehmer-1/firma/firma-1/filiale/filiale-1/dienstplan/2026-10/modellschicht/frueh',
-    );
-  });
-
-  it('trennt Rastermodell-, Tagesmodell- und Monatsmomentaufnahmepfade', () => {
-    const rasterpfad: IRastermodellschichtPfad = {
-      unternehmerId: 'unternehmer-1',
-      firmaId: 'firma-1',
-      filialeId: 'filiale-1',
-      schichtrastermodellId: 'raster-1',
-      rastermodellschichtId: 'frueh',
-    };
+  it('bildet Schichtmodell- und Monatsmomentaufnahmepfade', () => {
     const tagespfad: ITagesvorlagenschichtPfad = {
       unternehmerId: 'unternehmer-1',
       firmaId: 'firma-1',
       filialeId: 'filiale-1',
-      schichttagesmodellId: 'tage-1',
+      schichtmodellId: 'tage-1',
       tagesvorlagenschichtId: 'sonntag-spaet',
-    };
-    const rastermoment: IDienstplanRastermodellschichtPfad = {
-      unternehmerId: 'unternehmer-1',
-      firmaId: 'firma-1',
-      filialeId: 'filiale-1',
-      dienstplanId: '2026-12',
-      rastermodellschichtId: 'frueh',
     };
     const tagesmoment: IDienstplanTagesschichtPfad = {
       unternehmerId: 'unternehmer-1',
@@ -148,14 +94,8 @@ describe('Firebase-Konstanten', () => {
       tagesschichtId: '2026-12-24-frueh',
     };
 
-    expect(FIRESTORE_DOCUMENT_PATHS.rastermodellschicht(rasterpfad)).toContain(
-      '/schichtrastermodell/raster-1/rastermodellschicht/frueh',
-    );
     expect(FIRESTORE_DOCUMENT_PATHS.tagesvorlagenschicht(tagespfad)).toContain(
-      '/schichttagesmodell/tage-1/tagesvorlagenschicht/sonntag-spaet',
-    );
-    expect(FIRESTORE_DOCUMENT_PATHS.dienstplanRastermodellschicht(rastermoment)).toContain(
-      '/dienstplan/2026-12/rastermodellschicht/frueh',
+      '/schichtmodell/tage-1/tagesvorlagenschicht/sonntag-spaet',
     );
     expect(FIRESTORE_DOCUMENT_PATHS.dienstplanTagesschicht(tagesmoment)).toContain(
       '/dienstplan/2026-12/tagesschicht/2026-12-24-frueh',

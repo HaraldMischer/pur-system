@@ -20,21 +20,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
-import {
-  ISchichtrastermodellBestand,
-  ISchichttagesmodellBestand,
-  TPlanungsart,
-} from '../../../commons/models/domain/schichtmodell';
+import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { firstValueFrom } from 'rxjs';
-import { DienstplanTagesstrukturBearbeitenDialog } from '../dienstplan-tagesstruktur-bearbeiten-dialog/dienstplan-tagesstruktur-bearbeiten-dialog';
+import { DienstplanSondertageDialog } from '../dienstplan-sondertage-dialog/dienstplan-sondertage-dialog';
 
 export type TDienstplanAnlegenDialogDaten = {
   readonly pfad: IFilialPfad;
   readonly monat: string;
-  readonly schichtmodelle: readonly ISchichtrastermodellBestand[];
-  readonly schichttagesmodelle?: readonly ISchichttagesmodellBestand[];
+  readonly schichtmodelle: readonly ISchichtmodellBestand[];
   readonly kalendertage?: readonly IDienstplanKalendertag[];
 };
 
@@ -62,10 +57,6 @@ export class DienstplanAnlegenDialog {
   // ===== Öffentliche Werte ====================
 
   readonly dienstplanForm = new FormGroup({
-    planungsart: new FormControl<TPlanungsart>('schichtrastermodell', {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
     schichtmodellId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   readonly error = signal<string | null>(null);
@@ -90,37 +81,25 @@ export class DienstplanAnlegenDialog {
     const schichtmodellId = this.dienstplanForm.controls.schichtmodellId.value;
     this.error.set(null);
     try {
-      if (this.dienstplanForm.controls.planungsart.value === 'schichtrastermodell') {
-        const schichtmodell = this.daten.schichtmodelle.find((bestand) => {
-          return bestand.schichtmodell.id === schichtmodellId;
-        });
-        if (!schichtmodell) throw new Error('Schicht-Rastermodell ungültig.');
-        await this.dienstplanStore.createDienstplan(
-          this.daten.pfad,
-          this.daten.monat,
-          schichtmodell,
-        );
-      } else {
-        const schichtmodell = this.daten.schichttagesmodelle?.find((bestand) => {
-          return bestand.schichtmodell.id === schichtmodellId;
-        });
-        if (!schichtmodell) throw new Error('Schicht-Tagesmodell ungültig.');
-        const freieSondertagsschichten = await firstValueFrom(
-          this.dialog
-            .open(DienstplanTagesstrukturBearbeitenDialog, {
-              data: { kalendertage: this.daten.kalendertage ?? [] },
-              panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
-            })
-            .afterClosed(),
-        );
-        if (!freieSondertagsschichten) return;
-        await this.dienstplanStore.createDienstplanAusTagesmodell(
-          this.daten.pfad,
-          this.daten.monat,
-          schichtmodell,
-          freieSondertagsschichten,
-        );
-      }
+      const schichtmodell = this.daten.schichtmodelle.find((bestand) => {
+        return bestand.schichtmodell.id === schichtmodellId;
+      });
+      if (!schichtmodell) throw new Error('Schichtmodell ungültig.');
+      const freieSondertagsschichten = await firstValueFrom(
+        this.dialog
+          .open(DienstplanSondertageDialog, {
+            data: { kalendertage: this.daten.kalendertage ?? [] },
+            panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
+          })
+          .afterClosed(),
+      );
+      if (!freieSondertagsschichten) return;
+      await this.dienstplanStore.createDienstplan(
+        this.daten.pfad,
+        this.daten.monat,
+        schichtmodell,
+        freieSondertagsschichten,
+      );
       this.dialogRef.close(true);
     } catch (error: unknown) {
       this.error.set(

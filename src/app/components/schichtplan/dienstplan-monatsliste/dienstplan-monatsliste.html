@@ -6,7 +6,7 @@
     [style.--zeitachsenbreite]="zeitachsenbreite() + 'px'"
     [style.--zeitachsenraster]="zeitachse().rasterAnzahl"
   >
-    <div class="monatsliste__zeile monatsliste__zeile--kopf">
+    <div class="monatsliste__zeile">
       <span
         class="monatsliste__zeilenkopf monatsliste__zeilenkopf--uhrzeit pur-text pur-text--label"
       >
@@ -21,7 +21,7 @@
       </div>
     </div>
     @for (tag of tage(); track tag.kalendertag.datum) {
-      <section class="monatsliste__zeile monatsliste__zeile--tag">
+      <section class="monatsliste__zeile">
         <header
           class="monatsliste__zeilenkopf monatsliste__zeilenkopf--tag"
           [class.monatsliste__zeilenkopf--sonntag]="tag.hervorhebung === 'sonntag'"
@@ -88,8 +88,10 @@
               (cdkDropListDropped)="handleTagesschichtDrop($event)"
             >
               <div class="monatsliste__zeitbereich-header">
-                <span class="pur-text pur-text--label">{{ zelle.tagesschicht.bezeichnung }}</span>
-                <span>
+                <span class="pur-text pur-text--label pur-text--ellipsis">
+                  {{ zelle.tagesschicht.bezeichnung }}
+                </span>
+                <span class="pur-text pur-text--ellipsis">
                   {{ zelle.tagesschicht.kernbeginnLokalzeit }}–{{
                     zelle.tagesschicht.kernendeLokalzeit
                   }}
@@ -99,7 +101,9 @@
                   zelle.tagesschicht.vorbereitungsminuten > 0 ||
                   zelle.tagesschicht.nachbereitungsminuten > 0
                 ) {
-                  <span class="pur-text pur-text--small pur-text--secondary">
+                  <span
+                    class="pur-text pur-text--small pur-text--secondary pur-text--ellipsis"
+                  >
                     @if (zelle.tagesschicht.vorbereitungsminuten > 0) {
                       +{{ zelle.tagesschicht.vorbereitungsminuten }} Min. Vorbereitung
                     }
@@ -116,6 +120,7 @@
                 }
                 @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
                   <button
+                    class="pur-button pur-button--icon-sm"
                     matIconButton
                     type="button"
                     [disabled]="schreibvorgang()"

@@ -1,9 +1,9 @@
-<!-- pur-system/src/app/components/schichtplan/dienstplan-tagesstruktur-bearbeiten-dialog/dienstplan-tagesstruktur-bearbeiten-dialog.html -->
+<!-- pur-system/src/app/components/schichtplan/dienstplan-sondertage-dialog/dienstplan-sondertage-dialog.html -->
 
 <h2 mat-dialog-title>Sondertage für den Monatsplan festlegen</h2>
 <mat-dialog-content>
   <form
-    id="dienstplan-tagesstruktur-form"
+    id="dienstplan-sondertage-form"
     class="pur-form pur-form--flex"
     [formGroup]="form"
     (ngSubmit)="save()"
@@ -107,7 +107,7 @@
   <button
     matButton="filled"
     type="submit"
-    form="dienstplan-tagesstruktur-form"
+    form="dienstplan-sondertage-form"
     [disabled]="form.invalid"
   >
     Monatsplan anlegen

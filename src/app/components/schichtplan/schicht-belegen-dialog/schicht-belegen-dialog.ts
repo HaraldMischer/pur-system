@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/tagesschicht-belegen-dialog/tagesschicht-belegen-dialog.ts
+// pur-system/src/app/components/schichtplan/schicht-belegen-dialog/schicht-belegen-dialog.ts
 
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -10,10 +10,10 @@ import { MatSelectModule } from '@angular/material/select';
 import type { IDienstplanVersionPfad } from '../../../commons/models/app/firestore-pfad.types';
 import type { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import type { ISchichtEintrag } from '../../../commons/models/domain/schicht';
-import type { ITagesschichtEintrag } from '../../../commons/models/domain/schicht-tagesmodell';
+import type { ITagesschichtEintrag } from '../../../commons/models/domain/schichtmodell';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 
-export type TTagesschichtBelegenDialogDaten = {
+export type TSchichtBelegenDialogDaten = {
   readonly pfad: IDienstplanVersionPfad;
   readonly tagesschicht: ITagesschichtEintrag;
   readonly mitarbeiter: readonly IMitarbeiterEintrag[];
@@ -21,7 +21,7 @@ export type TTagesschichtBelegenDialogDaten = {
 };
 
 @Component({
-  selector: 'app-tagesschicht-belegen-dialog',
+  selector: 'app-schicht-belegen-dialog',
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -29,15 +29,15 @@ export type TTagesschichtBelegenDialogDaten = {
     MatFormFieldModule,
     MatSelectModule,
   ],
-  templateUrl: './tagesschicht-belegen-dialog.html',
-  styleUrl: './tagesschicht-belegen-dialog.scss',
+  templateUrl: './schicht-belegen-dialog.html',
+  styleUrl: './schicht-belegen-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TagesschichtBelegenDialog {
+export class SchichtBelegenDialog {
   // ===== Interne Dependency Injection =========
 
-  private readonly dialogRef = inject(MatDialogRef<TagesschichtBelegenDialog, boolean>);
-  readonly daten = inject<TTagesschichtBelegenDialogDaten>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject(MatDialogRef<SchichtBelegenDialog, boolean>);
+  readonly daten = inject<TSchichtBelegenDialogDaten>(MAT_DIALOG_DATA);
   readonly store = inject(DienstplanStore);
 
   // ===== Öffentliche Werte ====================

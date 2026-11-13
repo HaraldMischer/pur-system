@@ -18,14 +18,6 @@ export interface IDienstplanKalenderSondertag {
   bezeichnung: string;
 }
 
-export interface IDienstplanRasterzeit {
-  modellschichtId: string;
-  beginnLokalzeit: string;
-  endeLokalzeit: string;
-  beginntAmFolgetag: boolean;
-  endetAmFolgetag: boolean;
-}
-
 export interface IDienstplanKalendertag {
   datum: string;
   wochentag: TWochentag;
@@ -36,5 +28,4 @@ export interface IDienstplanKalendertag {
   bezeichnung?: string;
   sondertagId?: string;
   gesetzlicherFeiertag?: IDienstplanGesetzlicherFeiertag;
-  rasterzeiten: readonly IDienstplanRasterzeit[];
 }

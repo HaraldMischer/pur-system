@@ -4,10 +4,10 @@ import type { IGeoeffneteOeffnungsregel } from '../../models/domain/filialeinste
 import type {
   ITagesvorlagenschichtSchreibdaten,
   TTagesstrukturSchichtSchreibdaten,
-} from '../../models/domain/schicht-tagesmodell';
+} from '../../models/domain/schichtmodell';
 
 /**
- * Löst die dynamischen Außengrenzen einer Tagesmodellvorlage gegen eine konkrete Öffnung auf.
+ * Löst die dynamischen Außengrenzen einer Schichtmodellvorlage gegen eine konkrete Öffnung auf.
  *
  * @param schichten - Geordnete oder ungeordnete Schichten der ausgewählten Vorlage.
  * @param oeffnung - Wirksame Öffnung des konkreten Kalendertags.

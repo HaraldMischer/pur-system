@@ -69,7 +69,7 @@ Feiertage mit dem Sonntagsprofil noch nicht vollständig abbildet, erfolgt die U
 
 Gesetzliche Feiertage bieten vier betriebliche Öffnungsarten:
 
-| Öffnungsart   | Wirksame Öffnung                             | Tagesstruktur im Schicht-Tagesmodell                                    |
+| Öffnungsart   | Wirksame Öffnung                             | Tagesstruktur im Schichtmodell                                          |
 | ------------- | -------------------------------------------- | ----------------------------------------------------------------------- |
 | `Standard`    | Allgemeine Standardöffnungsregel der Filiale | Wochentagsvorlage von Montag bis Samstag, Sonntagsvorlage am Sonntag    |
 | `Wie Sonntag` | Aktuell wirksame Sonntagsöffnung             | Sonntagsvorlage ohne zusätzliche Konfiguration bei der Monatsplananlage |

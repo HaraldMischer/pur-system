@@ -5,13 +5,13 @@ import { Timestamp } from 'firebase/firestore';
 import type { IDienstplanKalendertag } from '../../models/domain/dienstplan-kalendertag';
 import type {
   IFreieTagesschichtSchreibdaten,
-  ISchichttagesmodellBestand,
+  ISchichtmodellBestand,
   ITagesschichtDaten,
   TTagesschichtHerkunft,
   TTagesstrukturSchichtSchreibdaten,
   TTagesvorlageTyp,
-} from '../../models/domain/schicht-tagesmodell';
-import { assertGueltigeTagesstruktur } from '../../validators/schicht-tagesmodell.validator';
+} from '../../models/domain/schichtmodell';
+import { assertGueltigeTagesstruktur } from '../../validators/schichtmodell.validator';
 import { createSchichtZeitstempelAusLokalzeiten } from './schicht-lokalzeit';
 import { resolveTagesvorlagenschichten } from './tagesvorlagenschichten';
 
@@ -21,7 +21,7 @@ export type TTagesschichtAnlage = ITagesschichtDaten & {
 
 export interface IDienstplanTagesschichtenAnfrage {
   kalendertage: readonly IDienstplanKalendertag[];
-  schichttagesmodell: ISchichttagesmodellBestand;
+  schichtmodell: ISchichtmodellBestand;
   freieSondertagsschichten: readonly IFreieTagesschichtSchreibdaten[];
   zeitzone: string;
 }
@@ -50,7 +50,7 @@ export function createDienstplanTagesschichten(
           return daten;
         })
       : resolveTagesvorlagenschichten(
-          anfrage.schichttagesmodell.tagesvorlagenschichten.filter((schicht) => {
+          anfrage.schichtmodell.tagesvorlagenschichten.filter((schicht) => {
             return schicht.vorlage === vorlage;
           }),
           kalendertag.oeffnungsregel,

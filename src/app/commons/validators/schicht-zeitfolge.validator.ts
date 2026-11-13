@@ -2,8 +2,8 @@
 
 import { AbstractControl, ValidationErrors } from '@angular/forms';
 
-import { TModellschichtTag } from '../models/domain/schichtmodell';
-import { calculateModellschichtdauerMinuten } from '../utils/dienstplan/schicht-lokalzeit';
+import { TSchichtZeitgrenzeTag } from '../models/domain/schichtmodell';
+import { calculateSchichtgrenzendauerMinuten } from '../utils/dienstplan/schicht-lokalzeit';
 
 /**
  * Prüft Beginn und Ende einer lokalen Schichtzeitfolge.
@@ -16,11 +16,11 @@ import { calculateModellschichtdauerMinuten } from '../utils/dienstplan/schicht-
 export function schichtZeitfolgeValidator(control: AbstractControl): ValidationErrors | null {
   const beginn = control.get('beginnLokalzeit')?.value as string | undefined;
   const ende = control.get('endeLokalzeit')?.value as string | undefined;
-  const beginnTag = control.get('beginnTag')?.value as TModellschichtTag | undefined;
-  const endeTag = control.get('endeTag')?.value as TModellschichtTag | undefined;
+  const beginnTag = control.get('beginnTag')?.value as TSchichtZeitgrenzeTag | undefined;
+  const endeTag = control.get('endeTag')?.value as TSchichtZeitgrenzeTag | undefined;
   if (!beginn || !ende) return null;
   if (!beginnTag || !endeTag) return { ungueltigeZeitfolge: true };
-  return calculateModellschichtdauerMinuten(
+  return calculateSchichtgrenzendauerMinuten(
     { lokalzeit: beginn, tag: beginnTag },
     { lokalzeit: ende, tag: endeTag },
   ) === null

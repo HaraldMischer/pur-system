@@ -39,27 +39,16 @@ import {
   ISchichtPausenaktualisierung,
   ISchichtSchreibergebnis,
   ISchichtZeitdaten,
-  TSchichtZielReferenz,
 } from '../../commons/models/domain/schicht';
 import {
-  IModellschichtMomentaufnahmeDokument,
-  IModellschichtMomentaufnahmeEintrag,
-  ISchichtrastermodellBestand,
-} from '../../commons/models/domain/schichtmodell';
-import {
   IFreieTagesschichtSchreibdaten,
-  ISchichttagesmodellBestand,
+  ISchichtmodellBestand,
   ITagesschichtDokument,
   ITagesschichtEintrag,
-} from '../../commons/models/domain/schicht-tagesmodell';
+} from '../../commons/models/domain/schichtmodell';
 import { createDienstplanZeitraum } from '../../commons/utils/dienstplan/dienstplan-zeitraum';
 import { createDienstplanTagesschichten } from '../../commons/utils/dienstplan/dienstplan-tagesschichten';
-import {
-  createDienstplanKalendertage,
-  getDienstplanRasterzeit,
-} from '../../commons/utils/dienstplan/dienstplan-kalendertage';
-import { createSchichtZeitstempelAusLokalzeiten } from '../../commons/utils/dienstplan/schicht-lokalzeit';
-import { compareModellschichtenNachReihenfolge } from '../../commons/utils/dienstplan/modellschicht-sortierung';
+import { createDienstplanKalendertage } from '../../commons/utils/dienstplan/dienstplan-kalendertage';
 import { calculateSchichtLohnzeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
 import {
   createMitarbeiterbelegungId,
@@ -77,21 +66,9 @@ import {
   TFirestoreBatchOperation,
   TFirestoreTransaktionsDokumente,
 } from '../firebase/firestore-db.service';
-import {
-  FilialeinstellungFachfehler,
-  FilialeinstellungService,
-  IFilialeinstellungBestand,
-} from './filialeinstellung.service';
+import { FilialeinstellungService } from './filialeinstellung.service';
 
 // ===== Top-Level Helper =====================
-
-function normalizePlanungsart(planungsart: unknown): 'schichtrastermodell' | 'schichttagesmodell' {
-  if (planungsart === 'schichtraster') return 'schichtrastermodell';
-  if (planungsart !== 'schichtrastermodell' && planungsart !== 'schichttagesmodell') {
-    throw new Error('Die Planungsart des Dienstplans wird noch nicht unterstützt.');
-  }
-  return planungsart;
-}
 
 export function createDienstplanAnlageFehler(ursache: string): DienstplanFachfehler {
   const prefix = 'Der Dienstplan konnte nicht angelegt werden.';
@@ -213,7 +190,6 @@ export class DienstplanService {
         dienstplaene: [],
         versionen: [],
         schichten: [],
-        modellschichten: [],
         tagesschichten: [],
       };
     }
@@ -222,20 +198,18 @@ export class DienstplanService {
     const versionIds = nurVeroeffentlicht
       ? [dienstplan.veroeffentlichteVersionId]
       : [dienstplan.entwurfVersionId, dienstplan.veroeffentlichteVersionId];
-    const [versionenMitSchichten, modellschichten, tagesschichten] = await Promise.all([
+    const [versionenMitSchichten, tagesschichten] = await Promise.all([
       Promise.all(
         [...new Set(versionIds.filter((id): id is string => Boolean(id)))].map((versionId) => {
           return this.loadVersionMitSchichten({ ...pfad, versionId }, strategie);
         }),
       ),
-      this.loadModellschichten(pfad, strategie),
       this.loadTagesschichten(pfad, strategie),
     ]);
     return {
       dienstplaene: [dienstplan],
       versionen: versionenMitSchichten.flatMap((bestand) => bestand.versionen).sort(sortVersionen),
       schichten: versionenMitSchichten.flatMap((bestand) => bestand.schichten).sort(sortSchichten),
-      modellschichten,
       tagesschichten,
     };
   }
@@ -265,7 +239,6 @@ export class DienstplanService {
         const dienstplanPfad = { ...pfad, dienstplanId: dienstplan.id };
         return Promise.all([
           this.loadAlleVersionenMitSchichten(dienstplanPfad, strategie),
-          this.loadModellschichten(dienstplanPfad, strategie),
           this.loadTagesschichten(dienstplanPfad, strategie),
         ]);
       }),
@@ -275,163 +248,27 @@ export class DienstplanService {
       dienstplaene,
       versionen: versionenMitSchichten.flatMap((bestand) => bestand.versionen).sort(sortVersionen),
       schichten: versionenMitSchichten.flatMap((bestand) => bestand.schichten).sort(sortSchichten),
-      modellschichten: bestaende.flatMap(([, modellschichten]) => modellschichten),
-      tagesschichten: bestaende.flatMap(([, , tagesschichten]) => tagesschichten),
+      tagesschichten: bestaende.flatMap(([, tagesschichten]) => tagesschichten),
     };
   }
 
   /**
-   * Legt einen Monatsplan, seine erste Entwurfsversion und die Modell-Momentaufnahme atomar an.
+   * Legt einen Monatsplan aus einem Schichtmodell und vollständig erfassten Sondertagen an.
    *
    * @param pfad - Vollständiger Filialpfad.
-   * @param monat - Monat im Format `YYYY-MM` und Dokument-ID des Dienstplans.
+   * @param monat - Monat im Format `YYYY-MM`.
    * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
-   * @param benutzerUid - UID des ändernden Benutzers.
-   * @returns Die lokal abbildbaren Einträge des neuen Dienstplans und seiner Version.
+   * @param freieSondertagsschichten - Frei konfigurierte Schichten aller geöffneten Sondertage.
+   * @param benutzerUid - UID des anlegenden Benutzers.
    */
   async createDienstplan(
     pfad: IFilialPfad,
     monat: string,
-    schichtmodell: ISchichtrastermodellBestand,
-    benutzerUid: string,
-  ): Promise<IDienstplanAnlageErgebnis> {
-    validateSchichtmodell(pfad, schichtmodell);
-    let filialeinstellungen: IFilialeinstellungBestand | null;
-    try {
-      filialeinstellungen = await this.filialeinstellungService.loadFilialeinstellung(
-        pfad,
-        'networkOnly',
-      );
-    } catch (error: unknown) {
-      if (error instanceof FilialeinstellungFachfehler) {
-        throw createDienstplanAnlageFehler(error.message);
-      }
-      throw error;
-    }
-    if (!filialeinstellungen) {
-      throw createDienstplanAnlageFehler(
-        'Die Öffnungszeiten der Filiale müssen zuerst initialisiert werden.',
-      );
-    }
-    const dienstplanPfad: IDienstplanPfad = { ...pfad, dienstplanId: monat };
-    const versionId = this.firestoreDbService.createDocumentId(
-      FIRESTORE_COLLECTION_PATHS.dienstplanVersionen(dienstplanPfad),
-    );
-    const zeitstempel = this.firestoreDbService.createServerTimestamp();
-    let zeitraum: ReturnType<typeof createDienstplanZeitraum>;
-    let kalendertage: ReturnType<typeof createDienstplanKalendertage>;
-    try {
-      zeitraum = createDienstplanZeitraum(monat);
-      kalendertage = createDienstplanKalendertage({
-        monat,
-        standardoeffnungsregel: filialeinstellungen.oeffnungszeiten.standardoeffnungsregel,
-        wochenregeln: filialeinstellungen.oeffnungszeiten.wochenregeln,
-        sondertage: filialeinstellungen.sondertage,
-        modellschichten: schichtmodell.modellschichten,
-      });
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw createDienstplanAnlageFehler(error.message);
-      }
-      throw error;
-    }
-    const dienstplanDaten: IDienstplanDokument = {
-      ...zeitraum,
-      kalendertage,
-      schichtmodellId: schichtmodell.schichtmodell.id,
-      schichtmodellBezeichnung: schichtmodell.schichtmodell.bezeichnung,
-      planungsart: schichtmodell.schichtmodell.planungsart,
-      entwurfVersionId: versionId,
-      naechsteVersionsnummer: 2,
-      erstelltVonUid: benutzerUid,
-      aktualisiertVonUid: benutzerUid,
-    };
-    const versionDaten: IDienstplanVersionDokument = {
-      nummer: 1,
-      revision: 0,
-      status: 'entwurf',
-      erstelltVonUid: benutzerUid,
-      aktualisiertVonUid: benutzerUid,
-    };
-    const modellschichten = schichtmodell.modellschichten
-      .slice()
-      .sort(compareModellschichtenNachReihenfolge)
-      .map((modellschicht) => {
-        return mapModellschichtMomentaufnahme(dienstplanPfad, modellschicht.id, modellschicht);
-      });
-    await this.firestoreDbService.executeDocumentTransaction<IDienstplanDokument, void>(
-      FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
-      (vorhandenerDienstplan) => {
-        if (vorhandenerDienstplan) {
-          throw createDienstplanAnlageFehler(
-            'Für diesen Monat ist bereits ein Dienstplan vorhanden. Bitte lade den Monat erneut.',
-          );
-        }
-        return {
-          ergebnis: undefined,
-          operationen: [
-            {
-              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
-              daten: {
-                ...dienstplanDaten,
-                erstelltAm: zeitstempel,
-                aktualisiertAm: zeitstempel,
-              },
-            },
-            {
-              documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanVersion({
-                ...dienstplanPfad,
-                versionId,
-              }),
-              daten: { ...versionDaten, erstelltAm: zeitstempel, aktualisiertAm: zeitstempel },
-            },
-            ...modellschichten.map((modellschicht) => {
-              return {
-                documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanRastermodellschicht({
-                  ...dienstplanPfad,
-                  rastermodellschichtId: modellschicht.id,
-                }),
-                daten: {
-                  bezeichnung: modellschicht.bezeichnung,
-                  reihenfolge: modellschicht.reihenfolge,
-                  ...(modellschicht.beginn ? { beginn: { ...modellschicht.beginn } } : {}),
-                  ...(modellschicht.ende ? { ende: { ...modellschicht.ende } } : {}),
-                  mehrfachbelegungErlaubt: modellschicht.mehrfachbelegungErlaubt,
-                  vorbereitungsminuten: modellschicht.vorbereitungsminuten ?? 0,
-                  nachbereitungsminuten: modellschicht.nachbereitungsminuten ?? 0,
-                },
-              };
-            }),
-          ],
-        };
-      },
-    );
-
-    return {
-      dienstplan: mapDienstplan(dienstplanPfad, monat, dienstplanDaten),
-      version: mapVersion({ ...dienstplanPfad, versionId }, versionId, versionDaten),
-      modellschichten,
-      tagesschichten: [],
-    };
-  }
-
-  /**
-   * Legt einen Monatsplan aus einem Schicht-Tagesmodell und vollständig erfassten Sondertagen an.
-   *
-   * @param pfad - Vollständiger Filialpfad.
-   * @param monat - Monat im Format `YYYY-MM`.
-   * @param schichtmodell - Aktives Schicht-Tagesmodell derselben Filiale.
-   * @param freieSondertagsschichten - Frei konfigurierte Schichten aller geöffneten Sondertage.
-   * @param benutzerUid - UID des anlegenden Benutzers.
-   */
-  async createDienstplanAusTagesmodell(
-    pfad: IFilialPfad,
-    monat: string,
-    schichtmodell: ISchichttagesmodellBestand,
+    schichtmodell: ISchichtmodellBestand,
     freieSondertagsschichten: readonly IFreieTagesschichtSchreibdaten[],
     benutzerUid: string,
   ): Promise<IDienstplanAnlageErgebnis> {
-    validateSchichtTagesmodell(pfad, schichtmodell);
+    validateSchichtmodell(pfad, schichtmodell);
     const filialeinstellungen = await this.filialeinstellungService.loadFilialeinstellung(
       pfad,
       'networkOnly',
@@ -459,7 +296,7 @@ export class DienstplanService {
       });
       tagesschichtAnlagen = createDienstplanTagesschichten({
         kalendertage,
-        schichttagesmodell: schichtmodell,
+        schichtmodell,
         freieSondertagsschichten,
         zeitzone: zeitraum.zeitzone,
       });
@@ -480,7 +317,6 @@ export class DienstplanService {
       kalendertage,
       schichtmodellId: schichtmodell.schichtmodell.id,
       schichtmodellBezeichnung: schichtmodell.schichtmodell.bezeichnung,
-      planungsart: 'schichttagesmodell',
       entwurfVersionId: versionId,
       naechsteVersionsnummer: 2,
       erstelltVonUid: benutzerUid,
@@ -531,7 +367,6 @@ export class DienstplanService {
     return {
       dienstplan: mapDienstplan(dienstplanPfad, monat, dienstplanDaten),
       version: mapVersion({ ...dienstplanPfad, versionId }, versionId, versionDaten),
-      modellschichten: [],
       tagesschichten,
     };
   }
@@ -549,13 +384,12 @@ export class DienstplanService {
       filialeId: pfad.filialeId,
       dienstplanId: pfad.dienstplanId,
     };
-    const [dienstplanDokument, schichten, modellschichten, tagesschichten] = await Promise.all([
+    const [dienstplanDokument, schichten, tagesschichten] = await Promise.all([
       this.firestoreDbService.loadDocument<IDienstplanDokument>(
         FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
         'networkOnly',
       ),
       this.loadSchichten(pfad, 'networkOnly'),
-      this.loadModellschichten(dienstplanPfad, 'networkOnly'),
       this.loadTagesschichten(dienstplanPfad, 'networkOnly'),
     ]);
     if (!dienstplanDokument) {
@@ -586,24 +420,6 @@ export class DienstplanService {
         return {
           ergebnis: undefined,
           operationen: [
-            ...modellschichten.map((modellschicht) => {
-              return {
-                documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanRastermodellschicht({
-                  ...dienstplanPfad,
-                  rastermodellschichtId: modellschicht.id,
-                }),
-                delete: true as const,
-              };
-            }),
-            ...modellschichten.map((modellschicht) => {
-              return {
-                documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
-                  ...dienstplanPfad,
-                  modellschichtId: modellschicht.id,
-                }),
-                delete: true as const,
-              };
-            }),
             ...tagesschichten.map((tagesschicht) => {
               return {
                 documentPath: FIRESTORE_DOCUMENT_PATHS.dienstplanTagesschicht({
@@ -876,9 +692,7 @@ export class DienstplanService {
           const schichtDaten: ISchichtDokument = {
             datum: schicht.datum,
             mitarbeiterId: schicht.mitarbeiterId,
-            ...(schicht.modellschichtId
-              ? { modellschichtId: schicht.modellschichtId }
-              : { tagesschichtId: schicht.tagesschichtId as string }),
+            tagesschichtId: schicht.tagesschichtId,
             beginn: schicht.beginn,
             ende: schicht.ende,
             pauseMinuten: schicht.pauseMinuten,
@@ -932,9 +746,7 @@ export class DienstplanService {
                 daten: {
                   datum: schicht.datum,
                   mitarbeiterId: schicht.mitarbeiterId,
-                  ...(schicht.modellschichtId
-                    ? { modellschichtId: schicht.modellschichtId }
-                    : { tagesschichtId: schicht.tagesschichtId as string }),
+                  tagesschichtId: schicht.tagesschichtId,
                   beginn: schicht.beginn,
                   ende: schicht.ende,
                   pauseMinuten: schicht.pauseMinuten,
@@ -1015,11 +827,7 @@ export class DienstplanService {
     const { schichtDaten, zeitzone } = await this.createSchichtDaten(pfad, aktualisierung);
     calculateSchichtLohnzeitMinuten(schichtDaten);
     await this.assertWeitereBelegungErlaubt(pfad, schichtDaten, schicht.id);
-    const {
-      modellschichtId: _bisherigeModellschichtId,
-      tagesschichtId: _bisherigeTagesschichtId,
-      ...schichtOhneZielreferenz
-    } = schicht;
+    const { tagesschichtId: _bisherigeTagesschichtId, ...schichtOhneZielreferenz } = schicht;
     const aktualisierteSchicht: ISchichtEintrag = {
       ...schichtOhneZielreferenz,
       ...schichtDaten,
@@ -1164,31 +972,6 @@ export class DienstplanService {
     });
   }
 
-  private async loadModellschichten(
-    pfad: IDienstplanPfad,
-    strategie: TFirestoreLesestrategie,
-  ): Promise<IModellschichtMomentaufnahmeEintrag[]> {
-    const [aktuelleDokumente, alteDokumente] = await Promise.all([
-      this.firestoreDbService.loadCollection<IModellschichtMomentaufnahmeDokument>(
-        FIRESTORE_COLLECTION_PATHS.dienstplanRastermodellschichten(pfad),
-        strategie,
-      ),
-      this.firestoreDbService.loadCollection<IModellschichtMomentaufnahmeDokument>(
-        FIRESTORE_COLLECTION_PATHS.dienstplanModellschichten(pfad),
-        strategie,
-      ),
-    ]);
-    const aktuelleIds = new Set(aktuelleDokumente.map((dokument) => dokument.id));
-    return [
-      ...aktuelleDokumente,
-      ...alteDokumente.filter((dokument) => !aktuelleIds.has(dokument.id)),
-    ]
-      .map((dokument) => {
-        return mapModellschichtMomentaufnahme(pfad, dokument.id, dokument.daten);
-      })
-      .sort(compareModellschichtenNachReihenfolge);
-  }
-
   private async loadTagesschichten(
     pfad: IDienstplanPfad,
     strategie: TFirestoreLesestrategie,
@@ -1303,11 +1086,6 @@ export class DienstplanService {
     anlage: ISchichtAnlage,
   ): Promise<TSchichtDatenMitZeitzone> {
     const dienstplanPfad: IDienstplanPfad = pfad;
-    const hatRasterreferenz = Boolean(anlage.modellschichtId);
-    const hatTagesreferenz = Boolean(anlage.tagesschichtId);
-    if (hatRasterreferenz === hatTagesreferenz) {
-      throw new Error('Die Schicht benötigt genau eine Raster- oder Tagesschichtreferenz.');
-    }
     const dienstplanDokument = await this.firestoreDbService.loadDocument<IDienstplanDokument>(
       FIRESTORE_DOCUMENT_PATHS.dienstplan(dienstplanPfad),
       'networkOnly',
@@ -1324,39 +1102,20 @@ export class DienstplanService {
     if (!kalendertag) {
       throw new Error('Der Kalendertag wurde im Monatsplan nicht gefunden.');
     }
-    let zeitdaten: ISchichtZeitdaten;
-    if (anlage.modellschichtId) {
-      const modellschichtDokument = await this.loadRastermodellschicht(
-        dienstplanPfad,
-        anlage.modellschichtId,
-        'networkOnly',
-      );
-      if (!modellschichtDokument) {
-        throw new Error('Die Rastermodellschicht wurde im Monatsplan nicht gefunden.');
-      }
-      const rasterzeit = getDienstplanRasterzeit(kalendertag, anlage.modellschichtId);
-      zeitdaten = createSchichtZeitstempelAusLokalzeiten(
-        anlage.datum,
-        rasterzeit,
-        dienstplan.zeitzone,
-      );
-    } else {
-      const tagesschichtDokument =
-        await this.firestoreDbService.loadDocument<ITagesschichtDokument>(
-          FIRESTORE_DOCUMENT_PATHS.dienstplanTagesschicht({
-            ...dienstplanPfad,
-            tagesschichtId: anlage.tagesschichtId as string,
-          }),
-          'networkOnly',
-        );
-      if (!tagesschichtDokument || tagesschichtDokument.daten.datum !== anlage.datum) {
-        throw new Error('Die Tagesschicht wurde an diesem Kalendertag nicht gefunden.');
-      }
-      zeitdaten = {
-        beginn: tagesschichtDokument.daten.beginn,
-        ende: tagesschichtDokument.daten.ende,
-      };
+    const tagesschichtDokument = await this.firestoreDbService.loadDocument<ITagesschichtDokument>(
+      FIRESTORE_DOCUMENT_PATHS.dienstplanTagesschicht({
+        ...dienstplanPfad,
+        tagesschichtId: anlage.tagesschichtId,
+      }),
+      'networkOnly',
+    );
+    if (!tagesschichtDokument || tagesschichtDokument.daten.datum !== anlage.datum) {
+      throw new Error('Die Tagesschicht wurde an diesem Kalendertag nicht gefunden.');
     }
+    const zeitdaten: ISchichtZeitdaten = {
+      beginn: tagesschichtDokument.daten.beginn,
+      ende: tagesschichtDokument.daten.ende,
+    };
     return { schichtDaten: { ...anlage, ...zeitdaten }, zeitzone: dienstplan.zeitzone };
   }
 
@@ -1369,29 +1128,6 @@ export class DienstplanService {
       throw new Error('Der Dienstplan wurde nicht gefunden.');
     }
     return dokument.daten.zeitzone;
-  }
-
-  private async loadRastermodellschicht(
-    pfad: IDienstplanPfad,
-    rastermodellschichtId: string,
-    strategie: TFirestoreLesestrategie,
-  ): Promise<IFirestoreDokument<IModellschichtMomentaufnahmeDokument> | null> {
-    const aktuell =
-      await this.firestoreDbService.loadDocument<IModellschichtMomentaufnahmeDokument>(
-        FIRESTORE_DOCUMENT_PATHS.dienstplanRastermodellschicht({
-          ...pfad,
-          rastermodellschichtId,
-        }),
-        strategie,
-      );
-    if (aktuell) return aktuell;
-    return this.firestoreDbService.loadDocument<IModellschichtMomentaufnahmeDokument>(
-      FIRESTORE_DOCUMENT_PATHS.dienstplanModellschicht({
-        ...pfad,
-        modellschichtId: rastermodellschichtId,
-      }),
-      strategie,
-    );
   }
 
   private getMitarbeiterbelegungstage(
@@ -1710,7 +1446,7 @@ export class DienstplanService {
   }
 
   /**
-   * Verhindert eine weitere Belegung derselben Rasterzelle, wenn die Modellschicht sie nicht erlaubt.
+   * Verhindert eine weitere Belegung derselben Tagesschicht, wenn diese sie nicht erlaubt.
    */
   private async assertWeitereBelegungErlaubt(
     pfad: IDienstplanVersionPfad,
@@ -1722,33 +1458,19 @@ export class DienstplanService {
       pfad,
       environment.firestoreLesestrategien.dienstplaene,
     );
-    let mehrfachbelegungErlaubt: boolean;
-    if (schicht.modellschichtId) {
-      const dokument = await this.loadRastermodellschicht(
-        dienstplanPfad,
-        schicht.modellschichtId,
-        environment.firestoreLesestrategien.dienstplaene,
-      );
-      if (!dokument) throw new Error('Die Rastermodellschicht wurde nicht gefunden.');
-      mehrfachbelegungErlaubt = dokument.daten.mehrfachbelegungErlaubt;
-    } else if (schicht.tagesschichtId) {
-      const dokument = await this.firestoreDbService.loadDocument<ITagesschichtDokument>(
-        FIRESTORE_DOCUMENT_PATHS.dienstplanTagesschicht({
-          ...dienstplanPfad,
-          tagesschichtId: schicht.tagesschichtId,
-        }),
-        environment.firestoreLesestrategien.dienstplaene,
-      );
-      if (!dokument) throw new Error('Die Tagesschicht wurde nicht gefunden.');
-      mehrfachbelegungErlaubt = dokument.daten.mehrfachbelegungErlaubt;
-    } else {
-      throw new Error('Die Schicht enthält keine gültige Zielreferenz.');
-    }
+    const dokument = await this.firestoreDbService.loadDocument<ITagesschichtDokument>(
+      FIRESTORE_DOCUMENT_PATHS.dienstplanTagesschicht({
+        ...dienstplanPfad,
+        tagesschichtId: schicht.tagesschichtId,
+      }),
+      environment.firestoreLesestrategien.dienstplaene,
+    );
+    if (!dokument) throw new Error('Die Tagesschicht wurde nicht gefunden.');
+    const mehrfachbelegungErlaubt = dokument.daten.mehrfachbelegungErlaubt;
     if (mehrfachbelegungErlaubt) return;
     const istBereitsBelegt = schichten.some((eintrag) => {
       return (
         eintrag.id !== ausgenommeneSchichtId &&
-        eintrag.modellschichtId === schicht.modellschichtId &&
         eintrag.tagesschichtId === schicht.tagesschichtId &&
         eintrag.datum === schicht.datum
       );
@@ -1766,7 +1488,6 @@ function mapDienstplan(
 ): IDienstplanEintrag {
   return {
     ...daten,
-    planungsart: normalizePlanungsart(daten.planungsart),
     ...pfad,
     id,
   };
@@ -1804,18 +1525,12 @@ function mapSchicht(
   id: string,
   daten: ISchichtDokument,
 ): ISchichtEintrag {
-  if (Boolean(daten.modellschichtId) === Boolean(daten.tagesschichtId)) {
-    throw new Error('Die gespeicherte Schicht enthält keine eindeutige Zielreferenz.');
-  }
-  const zielreferenz: TSchichtZielReferenz = daten.modellschichtId
-    ? { modellschichtId: daten.modellschichtId }
-    : { tagesschichtId: daten.tagesschichtId as string };
   return {
     ...pfad,
     id,
     datum: daten.datum,
     mitarbeiterId: daten.mitarbeiterId,
-    ...zielreferenz,
+    tagesschichtId: daten.tagesschichtId,
     beginn: daten.beginn,
     ende: daten.ende,
     pauseMinuten: daten.pauseMinuten ?? 0,
@@ -1826,65 +1541,24 @@ function mapSchicht(
   };
 }
 
-function mapModellschichtMomentaufnahme(
-  pfad: IDienstplanPfad,
-  id: string,
-  daten: IModellschichtMomentaufnahmeDokument,
-): IModellschichtMomentaufnahmeEintrag {
-  return {
-    ...pfad,
-    id,
-    bezeichnung: daten.bezeichnung,
-    reihenfolge: daten.reihenfolge,
-    ...(daten.beginn ? { beginn: { ...daten.beginn } } : {}),
-    ...(daten.ende ? { ende: { ...daten.ende } } : {}),
-    mehrfachbelegungErlaubt: daten.mehrfachbelegungErlaubt,
-    vorbereitungsminuten: daten.vorbereitungsminuten ?? 0,
-    nachbereitungsminuten: daten.nachbereitungsminuten ?? 0,
-  };
-}
-
-function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtrastermodellBestand): void {
-  const schichtmodell = bestand.schichtmodell;
-  if (schichtmodell.planungsart !== 'schichtrastermodell') {
-    throw createDienstplanAnlageFehler(
-      'Die Planungsart des Schichtmodells wird noch nicht unterstützt.',
-    );
-  }
-  const gleicherPfad =
-    schichtmodell.unternehmerId === pfad.unternehmerId &&
-    schichtmodell.firmaId === pfad.firmaId &&
-    schichtmodell.filialeId === pfad.filialeId;
-  if (!gleicherPfad) {
-    throw createDienstplanAnlageFehler('Das Schichtmodell gehört nicht zu dieser Filiale.');
-  }
-  if (!schichtmodell.aktiv) {
-    throw createDienstplanAnlageFehler('Das gewählte Schichtmodell ist nicht mehr aktiv.');
-  }
-  if (bestand.modellschichten.length === 0) {
-    throw createDienstplanAnlageFehler('Das gewählte Schichtmodell enthält keine Schichten.');
-  }
-}
-
-function validateSchichtTagesmodell(pfad: IFilialPfad, bestand: ISchichttagesmodellBestand): void {
+function validateSchichtmodell(pfad: IFilialPfad, bestand: ISchichtmodellBestand): void {
   const modell = bestand.schichtmodell;
   if (
-    modell.planungsart !== 'schichttagesmodell' ||
     modell.unternehmerId !== pfad.unternehmerId ||
     modell.firmaId !== pfad.firmaId ||
     modell.filialeId !== pfad.filialeId
   ) {
-    throw createDienstplanAnlageFehler('Das Schicht-Tagesmodell gehört nicht zu dieser Filiale.');
+    throw createDienstplanAnlageFehler('Das Schichtmodell gehört nicht zu dieser Filiale.');
   }
   if (!modell.aktiv) {
-    throw createDienstplanAnlageFehler('Das gewählte Schicht-Tagesmodell ist nicht mehr aktiv.');
+    throw createDienstplanAnlageFehler('Das gewählte Schichtmodell ist nicht mehr aktiv.');
   }
   if (
     !bestand.tagesvorlagenschichten.some((schicht) => schicht.vorlage === 'wochentag') ||
     !bestand.tagesvorlagenschichten.some((schicht) => schicht.vorlage === 'sonntag')
   ) {
     throw createDienstplanAnlageFehler(
-      'Das Schicht-Tagesmodell benötigt eine Wochentags- und eine Sonntagsvorlage.',
+      'Das Schichtmodell benötigt eine Wochentags- und eine Sonntagsvorlage.',
     );
   }
 }

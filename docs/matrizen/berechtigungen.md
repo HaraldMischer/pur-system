@@ -40,15 +40,9 @@ Die Pfadkürzel bauen aufeinander auf:
 | `{filialPfad}`                                                            | R/C/U/D  | R        | R         | R             | –            |
 | `{filialPfad}/einstellung/{dokumentId}`                                   | R/C/U    | R/C/U    | R/C/U     | –             | –            |
 | `{filialPfad}/einstellung/oeffnungszeiten/sondertag/{sondertagId}`        | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
-| `{filialPfad}/schichtmodell/{schichtmodellId}`                            | R/C/U    | R/C/U    | R/C/U     | –             | –            |
-| `{filialPfad}/schichtmodell/{schichtmodellId}/modellschicht/{id}`         | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
-| `{filialPfad}/schichtrastermodell/{modellId}`                             | R/C/U    | R/C/U    | R/C/U     | –             | –            |
-| `{filialPfad}/schichtrastermodell/{modellId}/rastermodellschicht/{id}`    | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
-| `{filialPfad}/schichttagesmodell/{modellId}`                              | R/C/U    | R/C/U    | R/C/U     | –             | –            |
-| `{filialPfad}/schichttagesmodell/{modellId}/tagesvorlagenschicht/{id}`    | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
+| `{filialPfad}/schichtmodell/{modellId}`                                   | R/C/U    | R/C/U    | R/C/U     | –             | –            |
+| `{filialPfad}/schichtmodell/{modellId}/tagesvorlagenschicht/{id}`         | R/C/U/D  | R/C/U/D  | R/C/U/D   | –             | –            |
 | `{filialPfad}/dienstplan/{monat}`                                         | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
-| `{filialPfad}/dienstplan/{monat}/modellschicht/{modellschichtId}`         | R/C/D    | R/C/D    | R/C/D     | R             | –            |
-| `{filialPfad}/dienstplan/{monat}/rastermodellschicht/{id}`                | R/C/D    | R/C/D    | R/C/D     | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/tagesschicht/{tagesschichtId}`           | R/C/D    | R/C/D    | R/C/D     | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/version/{versionId}`                     | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
 | `{filialPfad}/dienstplan/{monat}/version/{versionId}/schicht/{schichtId}` | R/C/U/D  | R/C/U/D  | R/C/U/D   | R             | –            |
@@ -128,8 +122,8 @@ der TypeScript-Code.
   Weil Mitarbeiterprofile keine direkten Filialzugriffe enthalten, wird die Filialzuordnung als ausdrückliche Ausnahme über den
   aktiven verknüpften Mitarbeiter und dessen `filialIds` bestimmt. Welche Planstände die Oberfläche lädt und anzeigt, steuert
   das Frontend.
-- Schichtmodelle selbst besitzen gemäß Matrix kein Löschrecht. Modellschicht-Momentaufnahmen eines Dienstplans besitzen kein
-  Aktualisierungsrecht. Diese Einschränkungen sind Pfad-/CRUD-Rechte und keine fachliche Feldvalidierung.
+- Schichtmodelle selbst besitzen gemäß Matrix kein Löschrecht. Tagesschicht-Momentaufnahmen eines Dienstplans besitzen
+  kein Aktualisierungsrecht. Diese Einschränkungen sind Pfad-/CRUD-Rechte und keine fachliche Feldvalidierung.
 
 #### Datenmigration und Legacy-Konten
 

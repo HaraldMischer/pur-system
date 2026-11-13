@@ -1,7 +1,7 @@
 // pur-system/src/app/commons/utils/dienstplan/dienstplan-tagesschichten.spec.ts
 
 import type { IDienstplanKalendertag } from '../../models/domain/dienstplan-kalendertag';
-import type { ISchichttagesmodellBestand } from '../../models/domain/schicht-tagesmodell';
+import type { ISchichtmodellBestand } from '../../models/domain/schichtmodell';
 import { createDienstplanTagesschichten } from './dienstplan-tagesschichten';
 
 describe('Dienstplan-Tagesschichten', () => {
@@ -19,7 +19,7 @@ describe('Dienstplan-Tagesschichten', () => {
     ];
     const ergebnis = createDienstplanTagesschichten({
       kalendertage,
-      schichttagesmodell: createModell(),
+      schichtmodell: createModell(),
       freieSondertagsschichten: [
         {
           datum: '2026-12-24',
@@ -61,11 +61,10 @@ function createKalendertag(
     aktiveSondertage: [],
     oeffnungsregelQuelle: istSondertag ? 'sondertag' : 'wochentag',
     oeffnungsregel: { geoeffnet: true, beginnLokalzeit, endeLokalzeit, endetAmFolgetag },
-    rasterzeiten: [],
   };
 }
 
-function createModell(): ISchichttagesmodellBestand {
+function createModell(): ISchichtmodellBestand {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
   return {
     schichtmodell: {
@@ -73,7 +72,6 @@ function createModell(): ISchichttagesmodellBestand {
       id: 'tage-1',
       bezeichnung: 'Standard',
       aktiv: true,
-      planungsart: 'schichttagesmodell',
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },
@@ -95,7 +93,7 @@ function createVorlage(
     return {
       ...pfad,
       id: `${vorlage}-${reihenfolge}`,
-      schichttagesmodellId: 'tage-1',
+      schichtmodellId: 'tage-1',
       vorlage,
       bezeichnung: `Schicht ${reihenfolge + 1}`,
       reihenfolge,

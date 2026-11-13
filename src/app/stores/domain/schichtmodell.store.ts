@@ -1,105 +1,119 @@
 // pur-system/src/app/stores/domain/schichtmodell.store.ts
 
-import { DestroyRef, inject, untracked } from '@angular/core';
+import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
-import { environment } from '../../../environments/environment';
-import { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
-import { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
-import {
-  ISchichtrastermodellAktualisierung,
-  ISchichtrastermodellAnlage,
-  ISchichtrastermodellBestand,
+import type { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
+import type { IGeoeffneteOeffnungsregel } from '../../commons/models/domain/filialeinstellung';
+import type {
+  ISchichtmodellAktualisierung,
+  ISchichtmodellAnlage,
+  ISchichtmodellBestand,
+  TTagesvorlageTyp,
 } from '../../commons/models/domain/schichtmodell';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
-import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
-import { SchichtRastermodellService } from '../../services/domain/schicht-rastermodell.service';
+import { SchichtmodellService } from '../../services/domain/schichtmodell.service';
 import { BenutzerStore } from '../app/benutzer.store';
 
-// ===== Top-Level Helper =====================
+type TOeffnungen = Readonly<Record<TTagesvorlageTyp, IGeoeffneteOeffnungsregel>>;
 
 export type TSchichtmodellKontext = IFilialPfad & {
-  readonly schichtmodelle: readonly ISchichtrastermodellBestand[];
+  readonly schichtmodelle: readonly ISchichtmodellBestand[];
   readonly download: boolean;
   readonly isLoaded: boolean;
   readonly error: string | null;
 };
 
-export type TSchichtmodellSnapshot = {
+type TSchichtmodellState = {
   readonly kontexte: Readonly<Record<string, TSchichtmodellKontext>>;
   readonly inProgress: boolean;
   readonly error: string | null;
 };
 
-type TSchichtmodellState = TSchichtmodellSnapshot;
+const initialState: TSchichtmodellState = {
+  kontexte: {},
+  inProgress: false,
+  error: null,
+};
 
-const initialState: TSchichtmodellState = { kontexte: {}, inProgress: false, error: null };
-
-function getKontextSchluessel(pfad: IFilialPfad): string {
+function getSchluessel(pfad: IFilialPfad): string {
   return JSON.stringify([pfad.unternehmerId, pfad.firmaId, pfad.filialeId]);
-}
-
-function createLeerenKontext(pfad: IFilialPfad): TSchichtmodellKontext {
-  return { ...pfad, schichtmodelle: [], download: false, isLoaded: false, error: null };
-}
-
-function sortSchichtmodelle(
-  a: ISchichtrastermodellBestand,
-  b: ISchichtrastermodellBestand,
-): number {
-  return a.schichtmodell.bezeichnung.localeCompare(b.schichtmodell.bezeichnung, 'de');
 }
 
 export const SchichtmodellStore = signalStore(
   { providedIn: 'root', protectedState: true } as const,
   withState<TSchichtmodellState>(initialState),
   withMethods(
-    (
-      store,
-      schichtmodellService = inject(SchichtRastermodellService),
-      benutzerStore = inject(BenutzerStore),
-      destroyRef = inject(DestroyRef),
-      storeSnapshotService = inject(StoreSnapshotService),
-    ) => {
-      let generation = 0;
-      const kontextGenerationen = new Map<string, number>();
-      const ladeauftraege = new Map<string, Promise<void>>();
+    (store, service = inject(SchichtmodellService), benutzerStore = inject(BenutzerStore)) => {
+      function setKontext(pfad: IFilialPfad, kontext: TSchichtmodellKontext): void {
+        patchState(store, {
+          kontexte: { ...store.kontexte(), [getSchluessel(pfad)]: kontext },
+        });
+      }
+
+      function requireKontext(pfad: IFilialPfad): TSchichtmodellKontext {
+        const kontext = getSchichtmodellKontext(pfad);
+        if (!kontext?.isLoaded) {
+          throw new Error('Die Schichtmodelle müssen vor dem Schreiben geladen werden.');
+        }
+        return kontext;
+      }
+
+      function requireUid(): string {
+        const uid = benutzerStore.benutzerId();
+        if (!uid) throw new Error('Für den Schreibvorgang fehlt die Benutzeridentität.');
+        return uid;
+      }
+
+      async function executeWrite(aktion: () => Promise<void>): Promise<void> {
+        if (store.inProgress()) {
+          throw new Error('Ein Schichtmodell-Schreibvorgang läuft bereits.');
+        }
+        patchState(store, { inProgress: true, error: null });
+        try {
+          await aktion();
+        } catch (error: unknown) {
+          patchState(store, { error: getFirebaseErrorMessage(error) });
+          throw error;
+        } finally {
+          patchState(store, { inProgress: false });
+        }
+      }
 
       // ===== Methoden: Laden ======================
 
       /**
-       * Lädt alle Schichtmodelle einer Filiale.
+       * Lädt die Schichtmodelle einer Filiale.
        */
-      function loadSchichtmodelle(
-        pfad: IFilialPfad,
-        strategie: TFirestoreLesestrategie = environment.firestoreLesestrategien.dienstplaene,
-      ): Promise<void> {
-        const kontext = getSchichtmodellKontext(pfad);
-        if (kontext?.isLoaded) return Promise.resolve();
-        const kontextSchluessel = getKontextSchluessel(pfad);
-        const auftragSchluessel = `${kontextSchluessel}:${strategie}`;
-        const laufenderAuftrag = ladeauftraege.get(auftragSchluessel);
-        if (laufenderAuftrag) return laufenderAuftrag;
-        const aktuelleGeneration = generation;
-        const kontextGeneration = (kontextGenerationen.get(kontextSchluessel) ?? 0) + 1;
-        kontextGenerationen.set(kontextSchluessel, kontextGeneration);
+      async function loadSchichtmodelle(pfad: IFilialPfad): Promise<void> {
+        const vorhanden = getSchichtmodellKontext(pfad);
+        if (vorhanden?.isLoaded || vorhanden?.download) return;
         setKontext(pfad, {
-          ...(kontext ?? createLeerenKontext(pfad)),
+          ...pfad,
+          schichtmodelle: vorhanden?.schichtmodelle ?? [],
           download: true,
           isLoaded: false,
           error: null,
         });
-        const promise = executeLoad(pfad, strategie, aktuelleGeneration, kontextGeneration);
-        ladeauftraege.set(auftragSchluessel, promise);
-        void promise.then(
-          () => {
-            removeLadeauftrag(auftragSchluessel, promise);
-          },
-          () => {
-            removeLadeauftrag(auftragSchluessel, promise);
-          },
-        );
-        return promise;
+        try {
+          const schichtmodelle = await service.loadSchichtmodelle(pfad);
+          setKontext(pfad, {
+            ...pfad,
+            schichtmodelle,
+            download: false,
+            isLoaded: true,
+            error: null,
+          });
+        } catch (error: unknown) {
+          setKontext(pfad, {
+            ...pfad,
+            schichtmodelle: vorhanden?.schichtmodelle ?? [],
+            download: false,
+            isLoaded: false,
+            error: getFirebaseErrorMessage(error),
+          });
+          throw error;
+        }
       }
 
       // ===== Methoden: Schreiben ==================
@@ -109,17 +123,15 @@ export const SchichtmodellStore = signalStore(
        */
       async function createSchichtmodell(
         pfad: IFilialPfad,
-        anlage: ISchichtrastermodellAnlage,
+        anlage: ISchichtmodellAnlage,
+        oeffnungen: TOeffnungen,
       ): Promise<void> {
-        const kontext = requireSchreibkontext(pfad);
-        const benutzerUid = requireBenutzerUid();
+        const kontext = requireKontext(pfad);
         await executeWrite(async () => {
-          const bestand = await schichtmodellService.createSchichtmodell(pfad, anlage, benutzerUid);
-          const aktuellerKontext = getSchichtmodellKontext(pfad);
-          if (!aktuellerKontext || aktuellerKontext !== kontext) return;
+          const bestand = await service.createSchichtmodell(pfad, anlage, oeffnungen, requireUid());
           setKontext(pfad, {
-            ...aktuellerKontext,
-            schichtmodelle: [...aktuellerKontext.schichtmodelle, bestand].sort(sortSchichtmodelle),
+            ...kontext,
+            schichtmodelle: [...kontext.schichtmodelle, bestand],
           });
         });
       }
@@ -130,28 +142,27 @@ export const SchichtmodellStore = signalStore(
       async function updateSchichtmodell(
         pfad: IFilialPfad,
         schichtmodellId: string,
-        aktualisierung: ISchichtrastermodellAktualisierung,
+        aktualisierung: ISchichtmodellAktualisierung,
+        oeffnungen: TOeffnungen,
       ): Promise<void> {
-        const { kontext, bestand } = requireSchichtmodell(pfad, schichtmodellId);
-        const benutzerUid = requireBenutzerUid();
+        const kontext = requireKontext(pfad);
+        const bestand = kontext.schichtmodelle.find((eintrag) => {
+          return eintrag.schichtmodell.id === schichtmodellId;
+        });
+        if (!bestand) throw new Error('Das Schichtmodell wurde nicht gefunden.');
         await executeWrite(async () => {
-          const aktualisierterBestand = await schichtmodellService.updateSchichtmodell(
+          const aktualisiert = await service.updateSchichtmodell(
             pfad,
             bestand,
             aktualisierung,
-            benutzerUid,
+            oeffnungen,
+            requireUid(),
           );
-          const aktuellerKontext = getSchichtmodellKontext(pfad);
-          if (!aktuellerKontext || aktuellerKontext !== kontext) return;
           setKontext(pfad, {
-            ...aktuellerKontext,
-            schichtmodelle: aktuellerKontext.schichtmodelle
-              .map((eintrag) => {
-                return eintrag.schichtmodell.id === schichtmodellId
-                  ? aktualisierterBestand
-                  : eintrag;
-              })
-              .sort(sortSchichtmodelle),
+            ...kontext,
+            schichtmodelle: kontext.schichtmodelle.map((eintrag) => {
+              return eintrag.schichtmodell.id === schichtmodellId ? aktualisiert : eintrag;
+            }),
           });
         });
       }
@@ -163,25 +174,23 @@ export const SchichtmodellStore = signalStore(
         pfad: IFilialPfad,
         schichtmodellId: string,
       ): Promise<void> {
-        const { kontext } = requireSchichtmodell(pfad, schichtmodellId);
-        const benutzerUid = requireBenutzerUid();
+        const kontext = requireKontext(pfad);
         await executeWrite(async () => {
-          await schichtmodellService.deactivateSchichtmodell(pfad, schichtmodellId, benutzerUid);
-          const aktuellerKontext = getSchichtmodellKontext(pfad);
-          if (!aktuellerKontext || aktuellerKontext !== kontext) return;
+          const uid = requireUid();
+          await service.deactivateSchichtmodell(pfad, schichtmodellId, uid);
           setKontext(pfad, {
-            ...aktuellerKontext,
-            schichtmodelle: aktuellerKontext.schichtmodelle.map((bestand) => {
-              return bestand.schichtmodell.id === schichtmodellId
+            ...kontext,
+            schichtmodelle: kontext.schichtmodelle.map((eintrag) => {
+              return eintrag.schichtmodell.id === schichtmodellId
                 ? {
-                    ...bestand,
+                    ...eintrag,
                     schichtmodell: {
-                      ...bestand.schichtmodell,
+                      ...eintrag.schichtmodell,
                       aktiv: false,
-                      aktualisiertVonUid: benutzerUid,
+                      aktualisiertVonUid: uid,
                     },
                   }
-                : bestand;
+                : eintrag;
             }),
           });
         });
@@ -193,139 +202,15 @@ export const SchichtmodellStore = signalStore(
        * Liefert den geladenen Schichtmodellkontext einer Filiale.
        */
       function getSchichtmodellKontext(pfad: IFilialPfad): TSchichtmodellKontext | null {
-        return store.kontexte()[getKontextSchluessel(pfad)] ?? null;
+        return store.kontexte()[getSchluessel(pfad)] ?? null;
       }
 
       /**
-       * Setzt alle sitzungsbezogenen Schichtmodelldaten zurück.
+       * Setzt alle Schichtmodellkontexte und Fehlermeldungen zurück.
        */
       function resetSchichtmodelle(): void {
-        generation += 1;
-        kontextGenerationen.clear();
-        ladeauftraege.clear();
         patchState(store, initialState);
       }
-
-      /**
-       * Entfernt die aktuelle Fehlermeldung des Schichtmodell-Stores.
-       */
-      function clearError(): void {
-        patchState(store, { error: null });
-      }
-
-      /**
-       * Liefert eine nicht reaktiv verfolgte Momentaufnahme des Stores.
-       */
-      function snapshot(): TSchichtmodellSnapshot {
-        return untracked(() => ({
-          kontexte: store.kontexte(),
-          inProgress: store.inProgress(),
-          error: store.error(),
-        }));
-      }
-
-      // ===== Interne Helfer =======================
-
-      async function executeLoad(
-        pfad: IFilialPfad,
-        strategie: TFirestoreLesestrategie,
-        aktuelleGeneration: number,
-        kontextGeneration: number,
-      ): Promise<void> {
-        const schluessel = getKontextSchluessel(pfad);
-        try {
-          const schichtmodelle = await schichtmodellService.loadSchichtmodelle(pfad, strategie);
-          if (!istAktuellerLadeauftrag(schluessel, aktuelleGeneration, kontextGeneration)) return;
-          setKontext(pfad, {
-            ...pfad,
-            schichtmodelle,
-            download: false,
-            isLoaded: true,
-            error: null,
-          });
-        } catch (error: unknown) {
-          if (istAktuellerLadeauftrag(schluessel, aktuelleGeneration, kontextGeneration)) {
-            setKontext(pfad, {
-              ...(getSchichtmodellKontext(pfad) ?? createLeerenKontext(pfad)),
-              download: false,
-              isLoaded: false,
-              error: getFirebaseErrorMessage(error),
-            });
-          }
-          throw error;
-        }
-      }
-
-      async function executeWrite(aktion: () => Promise<void>): Promise<void> {
-        if (store.inProgress()) throw new Error('Ein Schichtmodell-Schreibvorgang läuft bereits.');
-        const aktuelleGeneration = generation;
-        patchState(store, { inProgress: true, error: null });
-        try {
-          await aktion();
-        } catch (error: unknown) {
-          if (aktuelleGeneration === generation) {
-            patchState(store, { error: getFirebaseErrorMessage(error) });
-          }
-          throw error;
-        } finally {
-          if (aktuelleGeneration === generation) patchState(store, { inProgress: false });
-        }
-      }
-
-      function istAktuellerLadeauftrag(
-        schluessel: string,
-        aktuelleGeneration: number,
-        kontextGeneration: number,
-      ): boolean {
-        return (
-          aktuelleGeneration === generation &&
-          kontextGenerationen.get(schluessel) === kontextGeneration
-        );
-      }
-
-      function removeLadeauftrag(schluessel: string, promise: Promise<void>): void {
-        if (ladeauftraege.get(schluessel) === promise) ladeauftraege.delete(schluessel);
-      }
-
-      function setKontext(pfad: IFilialPfad, kontext: TSchichtmodellKontext): void {
-        patchState(store, {
-          kontexte: { ...store.kontexte(), [getKontextSchluessel(pfad)]: kontext },
-        });
-      }
-
-      function requireSchreibkontext(pfad: IFilialPfad): TSchichtmodellKontext {
-        const kontext = getSchichtmodellKontext(pfad);
-        if (!kontext?.isLoaded) {
-          throw new Error(
-            'Die Schichtmodelle der Filiale müssen vor dem Schreiben geladen werden.',
-          );
-        }
-        return kontext;
-      }
-
-      function requireSchichtmodell(
-        pfad: IFilialPfad,
-        schichtmodellId: string,
-      ): { kontext: TSchichtmodellKontext; bestand: ISchichtrastermodellBestand } {
-        const kontext = requireSchreibkontext(pfad);
-        const bestand = kontext.schichtmodelle.find((eintrag) => {
-          return eintrag.schichtmodell.id === schichtmodellId;
-        });
-        if (!bestand) throw new Error('Das Schichtmodell wurde im Filialkontext nicht gefunden.');
-        return { kontext, bestand };
-      }
-
-      function requireBenutzerUid(): string {
-        const benutzerUid = benutzerStore.benutzerId();
-        if (!benutzerUid) throw new Error('Für den Schreibvorgang fehlt die Benutzeridentität.');
-        return benutzerUid;
-      }
-
-      const unregisterSnapshot = storeSnapshotService.registerStoreSnapshot(
-        'SchichtmodellStore',
-        snapshot,
-      );
-      destroyRef.onDestroy(unregisterSnapshot);
 
       return {
         loadSchichtmodelle,
@@ -334,8 +219,6 @@ export const SchichtmodellStore = signalStore(
         deactivateSchichtmodell,
         getSchichtmodellKontext,
         resetSchichtmodelle,
-        clearError,
-        snapshot,
       };
     },
   ),

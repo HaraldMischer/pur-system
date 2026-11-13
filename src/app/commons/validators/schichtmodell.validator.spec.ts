@@ -1,124 +1,120 @@
 // pur-system/src/app/commons/validators/schichtmodell.validator.spec.ts
 
-import { IModellschichtSchreibdaten } from '../models/domain/schichtmodell';
-import { assertGueltigeModellschichten, hatModellschichtLuecken } from './schichtmodell.validator';
+import type { ITagesvorlagenschichtSchreibdaten } from '../models/domain/schichtmodell';
+import { assertGueltigeTagesvorlagenschichten } from './schichtmodell.validator';
 
-describe('Schichtmodellvalidierung', () => {
-  it('should accept consecutive and overlapping model shifts', () => {
-    expect(() => assertGueltigeModellschichten(createModellschichten())).not.toThrow();
+describe('Schichtmodell-Validierung', () => {
+  const oeffnungen = {
+    wochentag: {
+      geoeffnet: true as const,
+      beginnLokalzeit: '07:00',
+      endeLokalzeit: '01:00',
+      endetAmFolgetag: true,
+    },
+    sonntag: {
+      geoeffnet: true as const,
+      beginnLokalzeit: '10:00',
+      endeLokalzeit: '01:00',
+      endetAmFolgetag: true,
+    },
+  };
 
-    const ueberlappend = createModellschichtenMitDreiSchichten();
-    ueberlappend[0].ende = { lokalzeit: '18:00', tag: 'starttag' };
-    ueberlappend[1].ende = { lokalzeit: '18:00', tag: 'starttag' };
-    ueberlappend[2].beginn = { lokalzeit: '13:00', tag: 'starttag' };
+  it('akzeptiert unabhängige Vorlagen mit Überlappungen', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, '17:00'),
+      createSchicht('wochentag', 1, '15:00', undefined),
+      createSchicht('sonntag', 0, undefined, '18:00'),
+      createSchicht('sonntag', 1, '17:00', undefined),
+    ];
 
-    expect(() => assertGueltigeModellschichten(ueberlappend)).not.toThrow();
-    expect(hatModellschichtLuecken(ueberlappend)).toBe(false);
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).not.toThrow();
   });
 
-  it('should detect a gap without rejecting the model', () => {
-    const modellschichten = createModellschichten();
-    modellschichten[1].beginn = { lokalzeit: '16:30', tag: 'starttag' };
+  it('weist Kernzeiten außerhalb der Öffnung zurück', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, '16:00'),
+      createSchicht('wochentag', 1, '06:00', undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
+    ];
 
-    expect(() => assertGueltigeModellschichten(modellschichten)).not.toThrow();
-    expect(hatModellschichtLuecken(modellschichten)).toBe(true);
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Die Kernzeit der Tagesschicht muss innerhalb der Öffnung liegen.',
+    );
   });
 
-  it('should require a unique consecutive order and unique existing ids', () => {
-    const falscheReihenfolge = createModellschichten();
-    falscheReihenfolge[1].reihenfolge = 2;
-    expect(() => assertGueltigeModellschichten(falscheReihenfolge)).toThrow('Reihenfolge');
+  it('erlaubt Randminuten nur an der ersten und letzten Schicht jeder Vorlage', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, '17:00', 'starttag', 15, 0),
+      createSchicht('wochentag', 1, '15:00', undefined, 'starttag', 5, 15),
+      createSchicht('sonntag', 0, undefined, undefined, 'starttag', 15, 15),
+    ];
 
-    const doppelteIds = createModellschichten();
-    doppelteIds[1].id = doppelteIds[0].id;
-    expect(() => assertGueltigeModellschichten(doppelteIds)).toThrow('IDs');
-  });
-
-  it('should require only the inner boundaries with valid day assignments', () => {
-    const ersterBeginn = createModellschichten();
-    ersterBeginn[0].beginn = { lokalzeit: '07:00', tag: 'starttag' };
-    expect(() => assertGueltigeModellschichten(ersterBeginn)).toThrow('keinen festen Beginn');
-
-    const fehlenderInnererBeginn = createModellschichten();
-    delete fehlenderInnererBeginn[1].beginn;
-    expect(() => assertGueltigeModellschichten(fehlenderInnererBeginn)).toThrow('festen Beginn');
-
-    const ungueltigerTag = createModellschichten();
-    ungueltigerTag[1].beginn = {
-      lokalzeit: '16:00',
-      tag: 'ungueltig' as 'starttag',
-    };
-    expect(() => assertGueltigeModellschichten(ungueltigerTag)).toThrow('Zeitgrenze');
-
-    const ausserhalbZeitraster = createModellschichten();
-    ausserhalbZeitraster[1].beginn = { lokalzeit: '16:07', tag: 'starttag' };
-    expect(() => {
-      assertGueltigeModellschichten(ausserhalbZeitraster);
-    }).toThrow('15-Minuten-Raster');
-  });
-
-  it('should reject nonpositive inner durations and misplaced edge minutes', () => {
-    const ohneDauer = createModellschichtenMitDreiSchichten();
-    ohneDauer[1].beginn = { lokalzeit: '16:00', tag: 'starttag' };
-    ohneDauer[1].ende = { lokalzeit: '16:00', tag: 'starttag' };
-    expect(() => assertGueltigeModellschichten(ohneDauer)).toThrow('positive Dauer');
-
-    const falscheVorbereitung = createModellschichten();
-    falscheVorbereitung[1].vorbereitungsminuten = 15;
-    expect(() => assertGueltigeModellschichten(falscheVorbereitung)).toThrow(
-      'Vorbereitungsminuten',
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
     );
 
-    const zuLangeVorbereitung = createModellschichten();
-    zuLangeVorbereitung[0].vorbereitungsminuten = 1000;
-    expect(() => assertGueltigeModellschichten(zuLangeVorbereitung)).toThrow('0 bis 999');
+    schichten[1].vorbereitungsminuten = 0;
+    schichten[0].nachbereitungsminuten = 5;
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
+    );
+
+    schichten[0].nachbereitungsminuten = 0;
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).not.toThrow();
+  });
+
+  it('verlangt dynamische Außengrenzen und feste innere Grenzen', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, '17:00'),
+      createSchicht('wochentag', 1, '15:00', undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
+    ];
+    schichten[0].beginn = { lokalzeit: '07:00', tag: 'starttag' };
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Die erste Tagesschicht darf keinen festen Beginn enthalten.',
+    );
+
+    delete schichten[0].beginn;
+    delete schichten[1].beginn;
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+      'Die Tagesschicht benötigt einen festen Beginn.',
+    );
+  });
+
+  it('weist Schichtgrenzen außerhalb des 15-Minuten-Rasters zurück', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, '17:07'),
+      createSchicht('wochentag', 1, '15:00', undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
+    ];
+
+    expect(() => {
+      assertGueltigeTagesvorlagenschichten(schichten, oeffnungen);
+    }).toThrow('15-Minuten-Raster');
   });
 });
 
-function createModellschichten(): IModellschichtSchreibdaten[] {
-  return [
-    {
-      id: 'frueh',
-      bezeichnung: 'Früh',
-      reihenfolge: 0,
-      ende: { lokalzeit: '16:00', tag: 'starttag' },
-      mehrfachbelegungErlaubt: false,
-      vorbereitungsminuten: 30,
-    },
-    {
-      id: 'spaet',
-      bezeichnung: 'Spät',
-      reihenfolge: 1,
-      beginn: { lokalzeit: '16:00', tag: 'starttag' },
-      mehrfachbelegungErlaubt: false,
-      nachbereitungsminuten: 15,
-    },
-  ];
-}
-
-function createModellschichtenMitDreiSchichten(): IModellschichtSchreibdaten[] {
-  return [
-    {
-      id: 'frueh',
-      bezeichnung: 'Früh',
-      reihenfolge: 0,
-      ende: { lokalzeit: '12:00', tag: 'starttag' },
-      mehrfachbelegungErlaubt: false,
-    },
-    {
-      id: 'mittel',
-      bezeichnung: 'Mittel',
-      reihenfolge: 1,
-      beginn: { lokalzeit: '12:00', tag: 'starttag' },
-      ende: { lokalzeit: '16:00', tag: 'starttag' },
-      mehrfachbelegungErlaubt: false,
-    },
-    {
-      id: 'spaet',
-      bezeichnung: 'Spät',
-      reihenfolge: 2,
-      beginn: { lokalzeit: '16:00', tag: 'starttag' },
-      mehrfachbelegungErlaubt: false,
-    },
-  ];
+function createSchicht(
+  vorlage: 'wochentag' | 'sonntag',
+  reihenfolge: number,
+  beginn: string | undefined,
+  ende: string | undefined,
+  endeTag: 'starttag' | 'folgetag' = 'starttag',
+  vorbereitungsminuten = 0,
+  nachbereitungsminuten = 0,
+): ITagesvorlagenschichtSchreibdaten {
+  return {
+    vorlage,
+    bezeichnung: `Schicht ${reihenfolge + 1}`,
+    reihenfolge,
+    ...(beginn ? { beginn: { lokalzeit: beginn, tag: 'starttag' as const } } : {}),
+    ...(ende ? { ende: { lokalzeit: ende, tag: endeTag } } : {}),
+    vorbereitungsminuten,
+    nachbereitungsminuten,
+    mehrfachbelegungErlaubt: false,
+  };
 }

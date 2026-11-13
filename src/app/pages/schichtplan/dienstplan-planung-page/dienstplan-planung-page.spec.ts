@@ -23,7 +23,6 @@ import {
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { MitarbeiterbelegungStore } from '../../../stores/domain/mitarbeiterbelegung.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
-import { SchichtTagesmodellStore } from '../../../stores/domain/schicht-tagesmodell.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { MonatSelector } from '../../../components/date-selectors/monat-selector/monat-selector';
 import { DienstplanPlanungPage } from './dienstplan-planung-page';
@@ -117,17 +116,9 @@ describe('DienstplanPlanungPage', () => {
         {
           provide: SchichtmodellStore,
           useValue: {
-            loadSchichtmodelle: vi.fn(),
-            getSchichtmodellKontext: vi.fn().mockReturnValue(null),
-            error: signal(null),
-          },
-        },
-        {
-          provide: SchichtTagesmodellStore,
-          useValue: {
-            loadSchichtTagesmodelle: vi.fn().mockResolvedValue(undefined),
-            getSchichtTagesmodellKontext: vi.fn().mockReturnValue({
-              schichttagesmodelle: [],
+            loadSchichtmodelle: vi.fn().mockResolvedValue(undefined),
+            getSchichtmodellKontext: vi.fn().mockReturnValue({
+              schichtmodelle: [],
               download: false,
               isLoaded: true,
               error: null,
@@ -358,7 +349,6 @@ describe('DienstplanPlanungPage', () => {
           zeitzone: 'Europe/Berlin',
           schichtmodellId: 'modell-1',
           schichtmodellBezeichnung: 'Standard',
-          planungsart: 'schichtrastermodell',
           naechsteVersionsnummer: 3,
           erstelltVonUid: 'uid-1',
           aktualisiertVonUid: 'uid-1',
@@ -401,7 +391,6 @@ describe('DienstplanPlanungPage', () => {
           : []),
       ],
       schichten,
-      modellschichten: [],
       tagesschichten: [],
       monatsmodi: { '2026-10': 'vollstaendig' },
       vollstaendigGeladen: false,
@@ -425,7 +414,6 @@ describe('DienstplanPlanungPage', () => {
           endeLokalzeit: '18:00',
           endetAmFolgetag: false,
         },
-        rasterzeiten: [],
       };
     });
   }
@@ -447,7 +435,7 @@ describe('DienstplanPlanungPage', () => {
       filialeId,
       datum: '2026-10-05',
       mitarbeiterId,
-      modellschichtId: 'modellschicht-1',
+      tagesschichtId: 'tagesschicht-1',
       beginn: Timestamp.fromDate(new Date(`2026-10-05T${beginn}:00+02:00`)),
       ende: Timestamp.fromDate(new Date(`2026-10-05T${ende}:00+02:00`)),
       erstelltVonUid: 'uid-1',
