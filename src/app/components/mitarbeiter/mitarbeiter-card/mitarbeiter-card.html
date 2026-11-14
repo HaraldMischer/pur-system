@@ -7,14 +7,16 @@
   [style.--pur-farbkennung-farbe]="farbe()"
 >
   <mat-card-header>
-    <mat-icon mat-card-avatar aria-hidden="true">person</mat-icon>
-    <mat-card-title class="pur-text pur-text--title-large pur-text--primary">{{
+    <mat-icon class="pur-card__avatar" mat-card-avatar aria-hidden="true">person</mat-icon>
+    <mat-card-title class="pur-text pur-text--title-large pur-text--primary pur-text--ellipsis">{{
       name()
     }}</mat-card-title>
   </mat-card-header>
   <mat-card-content>
-    <p class="pur-text pur-text--secondary">{{ rollenText() }}</p>
-    <p class="pur-text pur-text--secondary">{{ filialenText() }}</p>
+    <div class="pur-card__content-text">
+      <span class="pur-text pur-text--secondary">{{ rollenText() }}</span>
+      <span class="pur-text pur-text--secondary">{{ filialenText() }}</span>
+    </div>
   </mat-card-content>
   <mat-card-actions align="end">
     @if (darfZusammenfuehren()) {

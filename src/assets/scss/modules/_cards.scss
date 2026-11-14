@@ -1,48 +1,45 @@
 // pur-system/src/assets/scss/modules/_cards.scss
 
 .pur-card {
+  // Allgemeine Material-Anpassung
   .mat-mdc-card-header-text {
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
+  // Allgemeine Card-Elemente
+  .pur-card__avatar {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+
+    &.mat-icon {
+      color: var(--mat-sys-primary);
+      font-size: 40px;
+      line-height: 40px;
+    }
+
+    &:is(img) {
+      display: block;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+  }
+
+  &__content-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  // Card-Varianten
   &--user {
     .mat-mdc-card-content {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 16px;
-    }
-
-    .pur-card__avatar {
-      display: flex;
-      flex: 0 0 32px;
-      color: var(--mat-sys-primary);
-
-      mat-icon {
-        width: 32px;
-        height: 32px;
-        font-size: 32px;
-      }
-    }
-
-    .pur-card__text {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-      overflow-wrap: anywhere;
-
-      span {
-        font: var(--mat-sys-title-small);
-      }
-
-      small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        color: var(--mat-sys-on-surface-variant);
-        font: var(--mat-sys-body-small);
-      }
     }
   }
 
@@ -54,16 +51,7 @@
       margin-bottom: 8px;
     }
 
-    mat-icon[mat-card-avatar] {
-      display: grid;
-      place-items: center;
-      color: var(--mat-sys-primary);
-      font-size: 40px;
-      margin: 0;
-    }
-
     mat-card-actions {
-      flex-wrap: wrap;
       margin-top: auto;
     }
   }

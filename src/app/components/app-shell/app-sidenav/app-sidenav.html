@@ -12,17 +12,19 @@
       <!-- Benutzerkarte -->
       <mat-card class="pur-card pur-card--user" appearance="outlined">
         <mat-card-content>
-          <div class="pur-card__avatar" aria-hidden="true">
-            <mat-icon>account_circle</mat-icon>
-          </div>
-          <div class="pur-card__text">
-            <span>{{
+          <!-- Avatar Icon -->
+          <mat-icon class="pur-card__avatar" aria-hidden="true">account_circle</mat-icon>
+          <!-- Benutzer -->
+          <div class="pur-card__content-text">
+            <span class="pur-text pur-text--title-small">{{
               benutzerProfil()?.anzeigename || (benutzerProfil() ? 'Benutzer' : 'Nicht angemeldet')
             }}</span>
             @if (benutzerProfil()?.anmeldename) {
-              <small [matTooltip]="benutzerProfil()?.anmeldename ?? ''">{{
-                benutzerProfil()?.anmeldename
-              }}</small>
+              <span
+                class="pur-text pur-text--small pur-text--secondary pur-text--ellipsis"
+                [matTooltip]="benutzerProfil()?.anmeldename ?? ''"
+                >{{ benutzerProfil()?.anmeldename }}</span
+              >
             }
           </div>
         </mat-card-content>
