@@ -7,16 +7,20 @@
     [style.--zeitachsenraster]="zeitachse().rasterAnzahl"
   >
     <div class="monatsliste__zeile">
-      <span
-        class="monatsliste__zeilenkopf monatsliste__zeilenkopf--uhrzeit pur-text pur-text--label"
-      >
-        Uhrzeit
+      <span class="monatsliste__zeilenkopf monatsliste__zeilenkopf--uhrzeit">
+        <span class="pur-text pur-text--label">Öffnungszeit</span>
       </span>
       <div class="monatsliste__zeitachse" aria-hidden="true">
-        @for (zeitmarke of zeitachse().marken; track zeitmarke.positionProzent) {
-          <span class="monatsliste__zeitmarke" [style.left.%]="zeitmarke.positionProzent">
-            {{ zeitmarke.bezeichnung }}
-          </span>
+        @for (
+          zeitmarke of zeitachse().marken;
+          track zeitmarke.positionProzent;
+          let erste = $first, letzte = $last
+        ) {
+          @if (!erste && !letzte) {
+            <span class="monatsliste__zeitmarke" [style.left.%]="zeitmarke.positionProzent">
+              {{ zeitmarke.bezeichnung }}
+            </span>
+          }
         }
       </div>
     </div>
@@ -65,7 +69,11 @@
               [style.grid-column-end]="bereich.endeRasterlinie"
               [style.grid-row]="bereich.spur + 1"
             >
-              Geschlossen
+              <span
+                class="monatsliste__zeitbereich-text pur-text pur-text--label pur-text--secondary pur-text--ellipsis"
+              >
+                Geschlossen
+              </span>
             </div>
           }
           @for (zelle of tag.zellen; track zelle.tagesschicht.id) {

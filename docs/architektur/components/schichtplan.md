@@ -36,10 +36,16 @@ zeigt Wochentag, Datum, wirksame Öffnung und Feiertags- oder Sondertagsbezeichn
 Tagesschichten. Reguläre Tage verwenden die aus dem Modell erzeugten Instanzen; abweichend geöffnete Feier- und Sondertage
 verwenden ihre bei der Monatsanlage frei konfigurierten Instanzen.
 
-Die Zeitachse reicht von der frühesten Öffnung bis zum spätesten Öffnungsende. Volle Stunden erscheinen in der Kopfzeile;
-Öffnungen und Tagesschichten liegen auf dem verbindlichen 15-Minuten-Schritt. Bereiche vor oder nach der wirksamen Öffnung
-erscheinen als `Geschlossen`, offene Lücken bleiben frei und zeitlich überschneidende Tagesschichten verwenden getrennte
-Spuren. Auf kleinen Viewports bleibt die Zeitachse horizontal scrollbar; die Tagesangaben bleiben am linken Rand sichtbar.
+Die Zeitachse reicht ohne Stundenrundung von der exakten frühesten Öffnung bis zum exakten spätesten Öffnungsende. Die
+Berechnung verwendet den verbindlichen 15-Minuten-Schritt; die Kopfzeile beschriftet nur die dazwischenliegenden vollen
+Stunden. Bereiche vor oder nach der wirksamen Öffnung erscheinen als `Geschlossen`, offene Lücken bleiben frei und zeitlich
+überschneidende Tagesschichten verwenden getrennte Spuren. Auf kleinen Viewports bleibt die Zeitachse horizontal scrollbar;
+die Tagesangaben bleiben am linken Rand sichtbar.
+
+Position und Breite einer Tagesschichtfläche verwenden deren Kernbeginn und Kernende. Vor- und Nachbereitungsminuten werden als
+Zusatztext angezeigt, verändern die Fläche aber nicht. Zugeordnete Mitarbeiterschichten übernehmen stattdessen den tatsächlichen
+Beginn einschließlich Vorbereitung und das tatsächliche Ende einschließlich Nachbereitung. Schichtkarte und
+Mitarbeiter-Zusammenfassung berechnen daraus die vollständige Lohnzeit.
 
 Jede konkrete Tagesschicht ist bei einem bearbeitbaren Entwurf ein Ablageziel und bietet zusätzlich eine gleichwertige
 Anlageaktion für Tastatur und Touch. Mehrere Mitarbeiterschichten sind nur bei aktivierter Mehrfachbelegung zulässig. Derselbe

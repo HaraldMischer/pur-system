@@ -166,9 +166,11 @@ Hauptquellen.
 - Mitarbeiter können per Drag-and-drop eingeplant, verschoben und entfernt werden. Mehrfachbelegung, Pausen und
   filialübergreifende Zeitkonflikte werden fachlich geprüft.
 - Die Monatsdarstellung des Schichtmodells ordnet konkrete Tagesschichten in einem verbindlichen 15-Minuten-Raster auf einer
-  gemeinsamen Zeitachse an. Geschlossene Außenbereiche werden als eigene Karten dargestellt, offene Lücken bleiben frei und
-  zeitliche Überschneidungen verwenden getrennte Spuren. Tagesköpfe zeigen gesetzliche Feiertage und aktive Sondertage mit
-  ihrer Bezeichnung.
+  gemeinsamen Zeitachse mit exakten Öffnungsgrenzen an. Die sichtbaren Tagesschichtflächen bilden ausschließlich ihre Kernzeit
+  ab; Vor- und Nachbereitung erscheinen als Zusatzangabe. Mitarbeiterschichten und ihre Lohnzeit verwenden die vollständige
+  tatsächliche Arbeitszeit aus Kerndauer, Vorbereitung und Nachbereitung. Geschlossene Außenbereiche werden als eigene Karten
+  dargestellt, offene Lücken bleiben frei und zeitliche Überschneidungen verwenden getrennte Spuren. Tagesköpfe zeigen
+  gesetzliche Feiertage und aktive Sondertage mit ihrer Bezeichnung.
 - Der firmenweite Belegungsindex wird live angezeigt und vor jedem Schreibzugriff innerhalb einer Firestore-Transaktion erneut
   geprüft. Veraltete Revisionen und parallele Konflikte brechen den Vorgang nachvollziehbar ab.
 - Ein leerer Erstentwurf kann gelöscht und neu angelegt werden. Veröffentlichungen archivieren einen vorherigen Stand und

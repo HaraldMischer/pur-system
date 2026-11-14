@@ -46,10 +46,10 @@ export interface IDienstplanZeitachsenPosition {
 // ===== Öffentliche Aktionen =================
 
 /**
- * Erstellt eine auf volle Stunden gerundete gemeinsame Zeitachse für mehrere Zeitfenster.
+ * Erstellt eine gemeinsame Zeitachse mit den exakten Grenzen mehrerer Zeitfenster.
  *
  * @param zeitfenster - Geöffnete Tagesfenster mit eindeutiger Folgetagszuordnung.
- * @returns Gemeinsame Zeitachse mit stündlichen Marken.
+ * @returns Gemeinsame Zeitachse mit Randmarken und dazwischenliegenden vollen Stunden.
  */
 export function createDienstplanZeitachse(
   zeitfenster: readonly IDienstplanZeitfenster[],
@@ -64,19 +64,29 @@ export function createDienstplanZeitachse(
     return fenster.ende > fenster.beginn;
   });
   const beginnMinuten = gueltigeZeitfenster.length
-    ? Math.floor(Math.min(...gueltigeZeitfenster.map((fenster) => fenster.beginn)) / 60) * 60
+    ? Math.min(...gueltigeZeitfenster.map((fenster) => fenster.beginn))
     : 0;
   const endeMinuten = gueltigeZeitfenster.length
-    ? Math.ceil(Math.max(...gueltigeZeitfenster.map((fenster) => fenster.ende)) / 60) * 60
+    ? Math.max(...gueltigeZeitfenster.map((fenster) => fenster.ende))
     : MINUTEN_PRO_TAG;
   const dauerMinuten = endeMinuten - beginnMinuten;
-  const marken: IDienstplanZeitachsenMarke[] = [];
-  for (let minuten = beginnMinuten; minuten <= endeMinuten; minuten += MINUTEN_PRO_STUNDE) {
-    marken.push({
+  const markenMinuten = [beginnMinuten];
+  const ersteVolleStundeMinuten =
+    Math.ceil(beginnMinuten / MINUTEN_PRO_STUNDE) * MINUTEN_PRO_STUNDE;
+  for (
+    let minuten = ersteVolleStundeMinuten;
+    minuten < endeMinuten;
+    minuten += MINUTEN_PRO_STUNDE
+  ) {
+    if (minuten > beginnMinuten) markenMinuten.push(minuten);
+  }
+  if (endeMinuten > beginnMinuten) markenMinuten.push(endeMinuten);
+  const marken = markenMinuten.map<IDienstplanZeitachsenMarke>((minuten) => {
+    return {
       bezeichnung: formatAbsoluteMinuten(minuten),
       positionProzent: ((minuten - beginnMinuten) / dauerMinuten) * 100,
-    });
-  }
+    };
+  });
   return {
     beginnMinuten,
     endeMinuten,
@@ -210,5 +220,6 @@ function getAbsoluteMinuten(zeitgrenze: IDienstplanZeitgrenze): number {
 function formatAbsoluteMinuten(minuten: number): string {
   const minutenImTag = minuten % MINUTEN_PRO_TAG;
   const stunden = Math.floor(minutenImTag / MINUTEN_PRO_STUNDE);
-  return `${String(stunden).padStart(2, '0')}:00`;
+  const restMinuten = minutenImTag % MINUTEN_PRO_STUNDE;
+  return `${String(stunden).padStart(2, '0')}:${String(restMinuten).padStart(2, '0')}`;
 }

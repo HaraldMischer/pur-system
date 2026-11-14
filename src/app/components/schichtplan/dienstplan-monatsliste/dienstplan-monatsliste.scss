@@ -1,13 +1,13 @@
 // pur-system/src/app/components/schichtplan/dienstplan-monatsliste/dienstplan-monatsliste.scss
 
 .monatsliste {
-  width: max(100%, calc(var(--zeitachsenbreite) + 144px));
+  width: max(100%, calc(var(--zeitachsenbreite) + 134px));
   display: grid;
   gap: 8px;
 
   &__zeile {
     display: grid;
-    grid-template-columns: 120px minmax(var(--zeitachsenbreite), 1fr);
+    grid-template-columns: 110px minmax(var(--zeitachsenbreite), 1fr);
     gap: 8px;
     padding-inline: 8px;
   }
@@ -25,6 +25,7 @@
       z-index: 3;
       align-items: center;
       padding: 8px 12px;
+      white-space: nowrap;
     }
 
     &--tag {
@@ -72,24 +73,6 @@
       background: var(--mat-sys-outline-variant);
       content: '';
     }
-
-    &:first-child {
-      padding-left: 12px;
-      transform: none;
-
-      &::after {
-        left: 0;
-      }
-    }
-
-    &:last-child {
-      padding-right: 12px;
-      transform: translateX(-100%);
-
-      &::after {
-        left: 100%;
-      }
-    }
   }
 
   &__zeileninhalt {
@@ -113,12 +96,15 @@
       justify-content: space-between;
     }
 
+    &-text {
+      width: 100%;
+    }
+
     &--geschlossen {
-      display: grid;
-      place-items: center;
-      color: var(--mat-sys-on-surface-variant);
+      display: flex;
+      align-items: center;
+      padding: 12px;
       background: var(--mat-sys-surface-container-low);
-      font: var(--mat-sys-label-large);
       overflow: hidden;
     }
 

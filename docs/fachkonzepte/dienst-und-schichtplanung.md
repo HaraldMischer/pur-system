@@ -76,11 +76,19 @@ Jede Tagesschicht speichert eine stabile Tagesinstanz-ID, Datum, Herkunft, Reihe
 Mehrfachbelegung. Monatsplan, erste Entwurfsversion, Kalender-Momentaufnahme und Tagesschichten werden erst nach vollständiger
 Validierung atomar angelegt. Die Tagesstruktur bleibt anschließend für alle Versionen des Monatsplans unverändert.
 
+Die tatsächliche Arbeitszeit beginnt um die Vorbereitungsminuten vor dem Kernbeginn und endet um die Nachbereitungsminuten nach
+dem Kernende. Vor- und Nachbereitung sind damit vollständig bezahlte Zeit. Für eine Mitarbeiterschicht gilt entsprechend
+`Lohnzeit = Kerndauer + Vorbereitungszeit + Nachbereitungszeit`.
+
 ## Planung und konkrete Mitarbeiterschichten
 
 Die Monatsdarstellung verwendet keine monatsweit identischen Schichtspalten. Jede Tageszeile zeigt ausschließlich ihre eigenen
 Tagesschichten auf einer gemeinsamen Zeitachse. Geschlossene Außenbereiche werden gekennzeichnet, offene Lücken bleiben frei
 und zeitlich überschneidende Tagesschichten verwenden getrennte Spuren.
+
+Position und Breite einer sichtbaren Tagesschichtfläche richten sich ausschließlich nach ihrer Kernzeit. Vor- und
+Nachbereitungsminuten erweitern die Fläche nicht, sondern erscheinen als zusätzliche Zeitangabe. Die zugeordnete
+Mitarbeiterschicht und ihre Lohnzeit verwenden dagegen die vollständige tatsächliche Arbeitszeit.
 
 Ein Planer ordnet einer konkreten Tagesschicht einen aktiven, der Filiale zugewiesenen Mitarbeiter per Drag-and-drop oder über
 eine gleichwertige Aktion zu. Der Dienstplan prüft die Filialzuordnung beim Schreiben erneut. Ist sie nicht vorhanden, lautet
@@ -103,7 +111,7 @@ einer Firestore-Transaktion aktualisiert. Schichten über Mitternacht werden unt
 Lücken unter 30 Minuten verbinden Schichten zu einem Arbeitsblock; ab 30 Minuten beginnt ein neuer Block. Überschneidungen sind
 ungültig. Die Schichtdauern ergeben je Block 0, 30 oder 45 Minuten bezahlte Pause. Ausschließlich die chronologisch letzte
 Schicht des Blocks speichert dessen `pauseMinuten`; alle übrigen speichern `0`. Die Lohnzeit bleibt die vollständige Zeitspanne
-von Beginn bis Ende und wird nicht redundant gespeichert.
+von tatsächlichem Beginn bis tatsächlichem Ende einschließlich Vor- und Nachbereitung und wird nicht redundant gespeichert.
 
 Die verbindliche Schreibprüfung liest die betroffenen Indexdokumente innerhalb derselben Transaktion erneut. Eine abweichende
 Revision oder inzwischen entstandene Überschneidung bricht den Vorgang kontrolliert ab. Kann der vollständige Belegungsstand
