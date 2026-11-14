@@ -118,7 +118,15 @@
               }
             </mat-select-trigger>
             @for (rolle of rollen; track rolle.value) {
-              <mat-option [value]="rolle.value">{{ rolle.label }}</mat-option>
+              <mat-option
+                [value]="rolle.value"
+                [disabled]="
+                  rolle.value === 'servicekraft' &&
+                  mitarbeiterForm.controls.rollen.value.includes('filialkasse')
+                "
+              >
+                {{ rolle.label }}
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>

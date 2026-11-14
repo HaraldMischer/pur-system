@@ -44,6 +44,10 @@
     font: var(--mat-sys-title-medium);
   }
 
+  &--title-large {
+    font: var(--mat-sys-title-large);
+  }
+
   &--error {
     color: var(--mat-sys-error);
   }

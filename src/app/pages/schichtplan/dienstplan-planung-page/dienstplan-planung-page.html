@@ -29,7 +29,6 @@
 
       <section class="pur-page-section">
         <div cdkDropListGroup class="pur-page-section__grid pur-scroll">
-
           <div class="firmen-dienstplaene pur-scroll">
             @if (filialauswahl().length === 0) {
               <p class="pur-message pur-message--surface pur-message--full" role="status">
@@ -65,15 +64,11 @@
                 @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
                   <li
                     cdkDrag
-                    class="mitarbeiter-karte"
+                    class="mitarbeiter-karte pur-farbkennung"
                     [cdkDragData]="{ art: 'mitarbeiter', mitarbeiterId: mitarbeiter.id }"
                     [cdkDragDisabled]="!mitarbeiterbelegungStore.istVerfuegbar()"
+                    [style.--pur-farbkennung-farbe]="mitarbeiter.farbe"
                   >
-                    <span
-                      class="mitarbeiter-farbe"
-                      [style.background-color]="mitarbeiter.farbe ?? null"
-                      aria-hidden="true"
-                    ></span>
                     <span class="mitarbeiter-daten">
                       <strong>{{ mitarbeiter.anzeigename }}</strong>
                       <span class="mitarbeiter-monatswerte">

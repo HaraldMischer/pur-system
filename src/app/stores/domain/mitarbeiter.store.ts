@@ -12,6 +12,7 @@ import {
   IMitarbeiterEintrag,
 } from '../../commons/models/domain/mitarbeiter';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
+import { ergaenzeServicekraftFuerFilialkasse } from '../../commons/utils/mitarbeiter/mitarbeiter-rollen';
 import { StoreSnapshotService } from '../../services/core/store-snapshot.service';
 import { MitarbeiterService } from '../../services/domain/mitarbeiter.service';
 
@@ -229,19 +230,21 @@ export const MitarbeiterStore = signalStore(
       ): Promise<IMitarbeiterAnlageErgebnis> {
         const [schluessel, kontext] = getEindeutigenFirmenkontext(unternehmerId, firmaId);
         const aktuelleGeneration = generation;
+        const rollen = ergaenzeServicekraftFuerFilialkasse(anlage.rollen);
+        const normalisierteAnlage = rollen === anlage.rollen ? anlage : { ...anlage, rollen };
 
         patchState(store, { inProgress: true, error: null });
         try {
           const ergebnis = await mitarbeiterService.createMitarbeiter(
             unternehmerId,
             firmaId,
-            anlage,
+            normalisierteAnlage,
           );
           if (aktuelleGeneration !== generation) {
             return ergebnis;
           }
           const mitarbeiter: IMitarbeiterEintrag = {
-            ...anlage,
+            ...normalisierteAnlage,
             id: ergebnis.id,
             unternehmerId,
             firmaId,
@@ -286,6 +289,9 @@ export const MitarbeiterStore = signalStore(
           throw new Error('Der Mitarbeiter ist nicht im geladenen Firmenkontext enthalten.');
         }
         const aktuelleGeneration = generation;
+        const rollen = ergaenzeServicekraftFuerFilialkasse(aktualisierung.rollen);
+        const normalisierteAktualisierung =
+          rollen === aktualisierung.rollen ? aktualisierung : { ...aktualisierung, rollen };
 
         patchState(store, { inProgress: true, error: null });
         try {
@@ -293,7 +299,7 @@ export const MitarbeiterStore = signalStore(
             unternehmerId,
             firmaId,
             mitarbeiterId,
-            aktualisierung,
+            normalisierteAktualisierung,
           );
           if (aktuelleGeneration !== generation) {
             return;
@@ -301,7 +307,7 @@ export const MitarbeiterStore = signalStore(
           const mitarbeiter = kontext.mitarbeiter
             .map((eintrag) => {
               return eintrag.id === mitarbeiterId
-                ? applyMitarbeiterAktualisierung(eintrag, aktualisierung)
+                ? applyMitarbeiterAktualisierung(eintrag, normalisierteAktualisierung)
                 : eintrag;
             })
             .filter((eintrag) => {
@@ -375,9 +381,9 @@ export const MitarbeiterStore = signalStore(
           const filialIds = [
             ...new Set([...ziel.filialIds, ...quellen.flatMap((quelle) => quelle.filialIds)]),
           ];
-          const rollen = [
+          const rollen = ergaenzeServicekraftFuerFilialkasse([
             ...new Set([...ziel.rollen, ...quellen.flatMap((quelle) => quelle.rollen)]),
-          ];
+          ]);
           const mitarbeiter = kontext.mitarbeiter
             .filter((eintrag) => !quellIds.has(eintrag.id))
             .map((eintrag) => {

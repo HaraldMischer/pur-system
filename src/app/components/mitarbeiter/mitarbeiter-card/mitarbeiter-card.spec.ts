@@ -33,7 +33,7 @@ describe('MitarbeiterCard', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent;
 
     expect(text).toContain('Mia Muster');
-    expect(text).toContain('Service');
+    expect(text).toContain('Eine Rolle zugeordnet');
     expect(text).toContain('2 Filialen zugeordnet');
   });
 
@@ -50,16 +50,27 @@ describe('MitarbeiterCard', () => {
     );
   });
 
-  it('should render the employee planner role', () => {
+  it('should render the number of assigned roles', () => {
     const fixture = TestBed.createComponent(MitarbeiterCard);
     fixture.componentRef.setInput('mitarbeiter', {
       ...mitarbeiter,
-      rollen: ['servicekraft', 'dienstplaner'],
+      rollen: ['filialkasse', 'servicekraft', 'administrator', 'kassierer'],
+    });
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('4 Rollen zugeordnet');
+  });
+
+  it('should identify an employee without roles', () => {
+    const fixture = TestBed.createComponent(MitarbeiterCard);
+    fixture.componentRef.setInput('mitarbeiter', {
+      ...mitarbeiter,
+      rollen: [],
     });
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'Servicekraft · Dienstplaner',
+      'Noch keine Rolle zugeordnet',
     );
   });
 

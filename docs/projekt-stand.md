@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 03.11.2026. Dieses Dokument fasst den aktuell umgesetzten, geprüften und veröffentlichten Stand zusammen. Das
+Stand: 14.11.2026. Dieses Dokument fasst den aktuell umgesetzten, geprüften und veröffentlichten Stand zusammen. Das
 langfristige Zielbild steht im [Projektplan](./projekt-plan.md), fachliche und technische Details in den dort verlinkten
 Hauptquellen.
 
@@ -13,7 +13,7 @@ Hauptquellen.
   Hosting-Ziele, Manifeste, Produktkennungen und Icon-Sätze.
 - Alle Varianten sind als installierbare PWAs mit Angular Service Worker konfiguriert. Master, Office, Filiale und Mitarbeiter
   wurden erstmals am 26.09.2026 auf ihre jeweiligen Firebase-Hosting-Sites veröffentlicht.
-- Die Anwendungsversion wird zentral gepflegt und in der Sidebar angezeigt. Der dokumentierte Stand ist `1.0.0`.
+- Die Anwendungsversion wird zentral gepflegt und in der Sidebar angezeigt. Der dokumentierte Stand ist `1.0.6`.
 - Build-, Hosting- und Service-Worker-Konfigurationen stehen in der
   [PWA-Konfigurationsmatrix](./matrizen/pwa-konfigurationen.md).
 
@@ -99,6 +99,8 @@ Hauptquellen.
 
 - Mitarbeiter werden firmenbezogen mit Stammdaten, Aktivstatus, mindestens einer betrieblichen Rolle und mindestens einer
   Filialzuordnung verwaltet.
+- `filialkasse` setzt immer auch `servicekraft` voraus. Formulare, Mapper, Migration, Store und Service normalisieren diese
+  Rollenabhängigkeit einheitlich.
 - Master, Office und Filiale besitzen die laut Berechtigungsmatrix erlaubten Lese-, Anlage- und Aktualisierungsrechte.
   Filialkonten begrenzen ihre tatsächliche Abfrage und Bearbeitung auf die eigene Filiale.
 - Mitarbeiter können angelegt, bearbeitet, deaktiviert, reaktiviert und durch Master kontrolliert zusammengeführt werden. Eine
@@ -108,7 +110,8 @@ Hauptquellen.
 - Mitarbeiterzugänge erhalten ihre App-Bereiche durch Master und lesen die zugeordnete Firmenstruktur sowie veröffentlichte
   Dienstpläne ihrer fachlichen `filialIds`. Sie besitzen keine fachlichen Mitarbeiter-Schreibrechte.
 - Die betriebliche Rolle `dienstplaner` ist im Mitarbeiterdatenmodell und in der Verwaltung enthalten. Der dafür benötigte
-  betriebliche Sitzungszustand der Filial-App ist noch nicht umgesetzt; Filialkonten bleiben in der Planungsoberfläche lesend.
+  betriebliche Sitzungszustand der Filial-App ist noch nicht umgesetzt. Filialkonten können die veröffentlichte
+  Dienstplanansicht lesen, aber weder die Planungsseite noch die Schichtmodellverwaltung öffnen.
 - Mitarbeiterlisten, Cards, Anlage-, Bearbeitungs- und Zusammenführungsdialoge sowie filialbezogene Filterung sind umgesetzt.
 
 ## Filialeinstellungen und Öffnungszeiten
@@ -203,6 +206,13 @@ Hauptquellen.
 - Ein Git-Push führt kein Firebase-Deployment aus. Hosting, Rules und Functions werden getrennt und kontrolliert veröffentlicht.
 
 ## Bestätigter Prüfstand
+
+Am 14.11.2026 wurden nach den Anpassungen an Mitarbeiterformularen, Mitarbeiterkarten und Farbkennzeichnungen folgende
+Prüfungen vom Benutzer bestätigt:
+
+- `npm test` erfolgreich
+- Produktionsbuilds für Master, Office, Filiale und Mitarbeiter erfolgreich
+- manuelle Prüfung der Mitarbeiterverwaltung und Farbkennzeichnungen erfolgreich
 
 Am 13.11.2026 wurden folgende aktuelle Prüfungen und Veröffentlichungen vom Benutzer bestätigt:
 

@@ -22,6 +22,7 @@ import {
   mapMitarbeiterEintrag,
   sortMitarbeiter,
 } from '../../commons/utils/mitarbeiter/mitarbeiter-dokument';
+import { ergaenzeServicekraftFuerFilialkasse } from '../../commons/utils/mitarbeiter/mitarbeiter-rollen';
 import { FirestoreDbService, TFirestoreBatchOperation } from '../firebase/firestore-db.service';
 
 @Injectable({ providedIn: 'root' })
@@ -146,10 +147,12 @@ export class MitarbeiterService {
     anlage: IMitarbeiterAnlage,
   ): Promise<IMitarbeiterAnlageErgebnis> {
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
+    const rollen = ergaenzeServicekraftFuerFilialkasse(anlage.rollen);
     const id = await this.firestoreDbService.createDocument(
       FIRESTORE_COLLECTION_PATHS.mitarbeiter(unternehmerId, firmaId),
       {
         ...anlage,
+        rollen,
         person: createMitarbeiterPerson(anlage.person),
         anzeigename: createAnzeigename(anlage.person),
         erstelltAm: zeitstempel,
@@ -177,10 +180,12 @@ export class MitarbeiterService {
     aktualisierung: IMitarbeiterAktualisierung,
   ): Promise<void> {
     const { farbkennung, ...aktualisierungsdaten } = aktualisierung;
+    const rollen = ergaenzeServicekraftFuerFilialkasse(aktualisierung.rollen);
     await this.firestoreDbService.updateDocument(
       FIRESTORE_DOCUMENT_PATHS.mitarbeiter(unternehmerId, firmaId, mitarbeiterId),
       {
         ...aktualisierungsdaten,
+        rollen,
         ...(farbkennung !== undefined
           ? { farbkennung: farbkennung ?? this.firestoreDbService.createDeleteField() }
           : {}),
@@ -258,9 +263,9 @@ export class MitarbeiterService {
         ...quellEintraege.flatMap((quelle) => quelle.filialIds),
       ]),
     ];
-    const rollen = [
+    const rollen = ergaenzeServicekraftFuerFilialkasse([
       ...new Set([...zielEintrag.rollen, ...quellEintraege.flatMap((quelle) => quelle.rollen)]),
-    ];
+    ]);
     const zeitstempel = this.firestoreDbService.createServerTimestamp();
     const operationen: TFirestoreBatchOperation[] = [
       {

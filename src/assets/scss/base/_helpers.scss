@@ -95,3 +95,38 @@
     padding-inline-end: 16px;
   }
 }
+
+.pur-farbkennung {
+  position: relative;
+
+  &::before {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 8px;
+    border-start-start-radius: inherit;
+    border-end-start-radius: inherit;
+    background-color: var(--pur-farbkennung-farbe, transparent);
+    content: '';
+    pointer-events: none;
+    // opacity: 0.75;
+  }
+
+  &--rechts::before {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    border-start-start-radius: 0;
+    border-start-end-radius: inherit;
+    border-end-start-radius: 0;
+    border-end-end-radius: inherit;
+  }
+
+  &--oben::before {
+    inset-block-end: auto;
+    inset-inline-end: 0;
+    width: auto;
+    height: 8px;
+    border-start-end-radius: inherit;
+    border-end-start-radius: 0;
+  }
+}

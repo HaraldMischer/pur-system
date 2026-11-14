@@ -3,6 +3,7 @@
 import { IMitarbeiterEintrag, TMitarbeiterRolle } from '../../models/domain/mitarbeiter';
 import { EGender, IPerson } from '../../models/domain/person';
 import { asRecord, getOptionalString, getString } from '../firestore/firestore-dokumentwerte';
+import { ergaenzeServicekraftFuerFilialkasse } from './mitarbeiter-rollen';
 
 const MITARBEITER_ROLLEN: readonly TMitarbeiterRolle[] = [
   'filialkasse',
@@ -131,15 +132,17 @@ function mapRollen(rollen: unknown, legacyRolle: unknown): TMitarbeiterRolle[] {
     const gueltigeRollen = rollen.filter((rolle): rolle is TMitarbeiterRolle => {
       return typeof rolle === 'string' && MITARBEITER_ROLLEN.includes(rolle as TMitarbeiterRolle);
     });
-    if (gueltigeRollen.length > 0) return [...new Set(gueltigeRollen)];
+    if (gueltigeRollen.length > 0) {
+      return ergaenzeServicekraftFuerFilialkasse([...new Set(gueltigeRollen)]);
+    }
   }
 
   if (typeof legacyRolle === 'string') {
     if (MITARBEITER_ROLLEN.includes(legacyRolle as TMitarbeiterRolle)) {
-      return [legacyRolle as TMitarbeiterRolle];
+      return ergaenzeServicekraftFuerFilialkasse([legacyRolle as TMitarbeiterRolle]);
     }
     const rolle = LEGACY_ROLLEN[legacyRolle];
-    if (rolle) return [rolle];
+    if (rolle) return ergaenzeServicekraftFuerFilialkasse([rolle]);
   }
 
   return ['servicekraft'];

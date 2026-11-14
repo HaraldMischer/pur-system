@@ -100,7 +100,7 @@ describe('MitarbeiterService', () => {
         unternehmerId: 'unternehmer-1',
         firmaId: 'firma-1',
         person: { ...anlage.person, vorname: 'Anton', nachname: 'Albrecht' },
-        rollen: ['filialkasse'],
+        rollen: ['filialkasse', 'servicekraft'],
         filialIds: [],
         aktiv: false,
       },
@@ -251,7 +251,11 @@ describe('MitarbeiterService', () => {
 
   it('should create an employee with the selected status and server timestamps', async () => {
     const service = TestBed.inject(MitarbeiterService);
-    const inaktiveAnlage = { ...anlage, aktiv: false };
+    const inaktiveAnlage: IMitarbeiterAnlage = {
+      ...anlage,
+      rollen: ['filialkasse'],
+      aktiv: false,
+    };
 
     await expect(service.createMitarbeiter('u', 'f', inaktiveAnlage)).resolves.toEqual({
       id: 'mitarbeiter-123',
@@ -260,6 +264,7 @@ describe('MitarbeiterService', () => {
       'unternehmer/u/firma/f/mitarbeiter',
       {
         ...inaktiveAnlage,
+        rollen: ['filialkasse', 'servicekraft'],
         anzeigename: 'Mia Muster',
         erstelltAm: 'server-zeitstempel',
         aktualisiertAm: 'server-zeitstempel',
@@ -270,6 +275,7 @@ describe('MitarbeiterService', () => {
   it('should update editable employee data without overwriting the user reference', async () => {
     const aktualisierung: IMitarbeiterAktualisierung = {
       ...anlage,
+      rollen: ['filialkasse'],
       aktiv: false,
     };
     const service = TestBed.inject(MitarbeiterService);
@@ -280,6 +286,7 @@ describe('MitarbeiterService', () => {
       'unternehmer/u/firma/f/mitarbeiter/m-1',
       {
         ...aktualisierung,
+        rollen: ['filialkasse', 'servicekraft'],
         anzeigename: 'Mia Muster',
         aktualisiertAm: 'server-zeitstempel',
       },
@@ -323,7 +330,7 @@ describe('MitarbeiterService', () => {
       })
       .mockResolvedValueOnce({
         id: 'm-ziel',
-        daten: { ...anlage, filialIds: ['b-2'], aktiv: true },
+        daten: { ...anlage, rollen: ['filialkasse'], filialIds: ['b-2'], aktiv: true },
       });
     firestoreDbServiceMock.loadCollection.mockResolvedValue([
       {
@@ -352,7 +359,7 @@ describe('MitarbeiterService', () => {
         documentPath: 'unternehmer/u/firma/f/mitarbeiter/m-ziel',
         daten: {
           filialIds: ['b-2', 'b-1', 'b-3'],
-          rollen: ['servicekraft', 'techniker', 'kassierer'],
+          rollen: ['filialkasse', 'servicekraft', 'techniker', 'kassierer'],
           aktualisiertAm: 'server-zeitstempel',
         },
       },

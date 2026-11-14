@@ -5,18 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 
-import { IMitarbeiterEintrag, TMitarbeiterRolle } from '../../../commons/models/domain/mitarbeiter';
-
-// ===== Konstanten & Typen ===================
-
-const ROLLEN_LABEL: Readonly<Record<TMitarbeiterRolle, string>> = {
-  filialkasse: 'Filialkasse',
-  servicekraft: 'Servicekraft',
-  administrator: 'Administrator',
-  kassierer: 'Kassierer',
-  techniker: 'Techniker',
-  dienstplaner: 'Dienstplaner',
-};
+import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
+import { getMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
 
 @Component({
   selector: 'app-mitarbeiter-card',
@@ -39,10 +29,14 @@ export class MitarbeiterCard {
     const person = this.mitarbeiter().person;
     return `${person.vorname} ${person.nachname}`.trim();
   });
-  readonly rollenLabel: Signal<string> = computed(() => {
-    return this.mitarbeiter()
-      .rollen.map((rolle) => ROLLEN_LABEL[rolle])
-      .join(' · ');
+  readonly farbe: Signal<string | null> = computed(() => {
+    return getMitarbeiterFarbe(this.mitarbeiter().farbkennung);
+  });
+  readonly rollenText: Signal<string> = computed(() => {
+    const anzahl = this.mitarbeiter().rollen.length;
+    if (anzahl === 0) return 'Noch keine Rolle zugeordnet';
+    if (anzahl === 1) return 'Eine Rolle zugeordnet';
+    return `${anzahl} Rollen zugeordnet`;
   });
   readonly filialenText: Signal<string> = computed(() => {
     const anzahl = this.mitarbeiter().filialIds.length;

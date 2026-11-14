@@ -71,6 +71,17 @@ describe('PurEmployee-Mitarbeiter-Mapper', () => {
         ),
       ).toEqual({ daten: expect.objectContaining({ rollen: [zielRolle] }), probleme: [] });
     }
+
+    expect(
+      mapPurEmployeeToMitarbeiter(
+        'kunde-1',
+        { ...purEmployee, daten: { ...purEmployee.daten, role: 'Filialkasse' } },
+        'filiale-ziel',
+      ),
+    ).toEqual({
+      daten: expect.objectContaining({ rollen: ['filialkasse', 'servicekraft'] }),
+      probleme: [],
+    });
   });
 
   it('vereinigt die Legacy-Rolle mit bekannten Berechtigungen', () => {

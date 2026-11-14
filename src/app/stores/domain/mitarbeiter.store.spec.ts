@@ -236,14 +236,21 @@ describe('MitarbeiterStore', () => {
   it('should create an employee in the uniquely loaded company context', async () => {
     const store = TestBed.inject(MitarbeiterStore);
     await store.loadMitarbeiter('u', 'f');
+    const filialkassenAnlage: IMitarbeiterAnlage = { ...anlage, rollen: ['filialkasse'] };
 
-    await expect(store.createMitarbeiter('u', 'f', anlage)).resolves.toEqual({ id: 'm-neu' });
+    await expect(store.createMitarbeiter('u', 'f', filialkassenAnlage)).resolves.toEqual({
+      id: 'm-neu',
+    });
 
-    expect(mitarbeiterServiceMock.createMitarbeiter).toHaveBeenCalledWith('u', 'f', anlage);
+    expect(mitarbeiterServiceMock.createMitarbeiter).toHaveBeenCalledWith('u', 'f', {
+      ...filialkassenAnlage,
+      rollen: ['filialkasse', 'servicekraft'],
+    });
     expect(store.getMitarbeiter('u', 'f')).toEqual([
       alpha,
       {
-        ...anlage,
+        ...filialkassenAnlage,
+        rollen: ['filialkasse', 'servicekraft'],
         id: 'm-neu',
         unternehmerId: 'u',
         firmaId: 'f',
@@ -282,20 +289,21 @@ describe('MitarbeiterStore', () => {
     const aktualisierung: IMitarbeiterAktualisierung = {
       ...anlage,
       person: { ...anlage.person, vorname: 'Berta', nachname: 'Beta' },
-      rollen: ['administrator'],
+      rollen: ['filialkasse'],
       filialIds: ['filiale-1'],
       aktiv: false,
     };
 
     await store.updateMitarbeiter('u', 'f', 'z', aktualisierung);
 
-    expect(mitarbeiterServiceMock.updateMitarbeiter).toHaveBeenCalledWith(
-      'u',
-      'f',
-      'z',
-      aktualisierung,
-    );
-    expect(store.getMitarbeiter('u', 'f')).toEqual([alpha, { ...zulu, ...aktualisierung }]);
+    expect(mitarbeiterServiceMock.updateMitarbeiter).toHaveBeenCalledWith('u', 'f', 'z', {
+      ...aktualisierung,
+      rollen: ['filialkasse', 'servicekraft'],
+    });
+    expect(store.getMitarbeiter('u', 'f')).toEqual([
+      alpha,
+      { ...zulu, ...aktualisierung, rollen: ['filialkasse', 'servicekraft'] },
+    ]);
   });
 
   it('should add and remove the employee color identifier', async () => {
@@ -342,7 +350,7 @@ describe('MitarbeiterStore', () => {
       person: { ...zulu.person, vorname: 'Berta', nachname: 'Beta' },
     };
     mitarbeiterServiceMock.loadMitarbeiter.mockResolvedValueOnce([
-      { ...alpha, filialIds: ['b-1'] },
+      { ...alpha, rollen: ['filialkasse'], filialIds: ['b-1'] },
       { ...zulu, rollen: ['techniker'], filialIds: ['b-2'] },
       beta,
     ]);
@@ -355,7 +363,7 @@ describe('MitarbeiterStore', () => {
     expect(store.getMitarbeiter('u', 'f')).toEqual([
       {
         ...alpha,
-        rollen: ['servicekraft', 'techniker', 'kassierer'],
+        rollen: ['filialkasse', 'servicekraft', 'techniker', 'kassierer'],
         filialIds: ['b-1', 'b-2', 'b-3'],
       },
     ]);

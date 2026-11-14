@@ -104,6 +104,19 @@ describe('MitarbeiterAnlegenDialog', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('2 Filialen zugeordnet');
   });
 
+  it('should keep the service role selected while the branch checkout role is selected', () => {
+    const component = TestBed.createComponent(MitarbeiterAnlegenDialog).componentInstance;
+    const rollenControl = component.mitarbeiterForm.controls.rollen;
+
+    rollenControl.setValue(['filialkasse']);
+
+    expect(rollenControl.value).toEqual(['filialkasse', 'servicekraft']);
+
+    rollenControl.setValue(['servicekraft']);
+
+    expect(rollenControl.value).toEqual(['servicekraft']);
+  });
+
   it('should normalize and create an employee with a required branch assignment', async () => {
     const component = TestBed.createComponent(MitarbeiterAnlegenDialog).componentInstance;
     component.mitarbeiterForm.patchValue({
@@ -133,7 +146,7 @@ describe('MitarbeiterAnlegenDialog', () => {
         adresse: { strasse: 'Weg', hausnummer: '1', postleitzahl: '12345', ort: 'Ort' },
         kontakt: { email: 'mia@example.com' },
       },
-      rollen: ['filialkasse'],
+      rollen: ['filialkasse', 'servicekraft'],
       filialIds: ['b-1'],
       aktiv: false,
       farbkennung: 'blau',

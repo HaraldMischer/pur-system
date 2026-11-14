@@ -8,6 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -23,6 +24,7 @@ import {
   TMitarbeiterRolle,
 } from '../../../commons/models/domain/mitarbeiter';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
+import { ergaenzeServicekraftFuerFilialkasse } from '../../../commons/utils/mitarbeiter/mitarbeiter-rollen';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
@@ -112,6 +114,13 @@ export class MitarbeiterAnlegenDialog {
   });
 
   constructor() {
+    const rollenControl = this.mitarbeiterForm.controls.rollen;
+    rollenControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((rollen) => {
+      const ergaenzteRollen = ergaenzeServicekraftFuerFilialkasse(rollen);
+      if (ergaenzteRollen === rollen) return;
+      rollenControl.setValue(ergaenzteRollen);
+    });
+
     effect(() => {
       const inProgress = this.mitarbeiterStore.inProgress();
       untracked(() => {

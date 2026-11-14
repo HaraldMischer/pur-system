@@ -1,27 +1,8 @@
 // pur-system/src/assets/scss/modules/_cards.scss
 
 .pur-card {
-  .mat-mdc-card-header {
-    padding: 24px 24px 0;
-  }
-
   .mat-mdc-card-header-text {
     width: 100%;
-  }
-
-  .mat-mdc-card-title {
-    color: var(--mat-sys-primary);
-    font: var(--mat-sys-display-small);
-  }
-
-  .mat-mdc-card-subtitle {
-    margin-top: 8px;
-    color: var(--mat-sys-on-surface-variant);
-    font: var(--mat-sys-body-large);
-  }
-
-  .mat-mdc-card-content {
-    padding: 24px;
   }
 
   &--user {
@@ -69,12 +50,8 @@
     height: 100%;
 
     .mat-mdc-card-header {
-      padding: 16px 16px 0;
       align-items: center;
-    }
-
-    .mat-mdc-card-title {
-      font: var(--mat-sys-title-large);
+      margin-bottom: 8px;
     }
 
     mat-icon[mat-card-avatar] {
@@ -85,21 +62,9 @@
       margin: 0;
     }
 
-    .mat-mdc-card-content {
-      display: grid;
-      gap: 4px;
-      padding: 16px;
-    }
-
     mat-card-actions {
       flex-wrap: wrap;
       margin-top: auto;
-    }
-
-    p {
-      margin: 0;
-      color: var(--mat-sys-on-surface-variant);
-      font: var(--mat-sys-body-medium);
     }
   }
 

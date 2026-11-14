@@ -41,6 +41,10 @@ Diese Rollen beschreiben Tätigkeiten im Betrieb und gewähren keine Auth- oder 
 eine spätere clientseitige Bedienbegrenzung von Planungsaktionen in der Filial-App vorgesehen. Der dafür benötigte betriebliche
 Sitzungszustand ist noch nicht umgesetzt; die Rolle erweitert keine Datenrechte.
 
+`servicekraft` kann eigenständig zugeordnet werden. `filialkasse` setzt dagegen immer auch `servicekraft` voraus. Die
+Mitarbeiterformulare ergänzen `servicekraft` bei Auswahl von `filialkasse` automatisch und verhindern deren Abwahl, solange
+`filialkasse` ausgewählt ist.
+
 ## Benutzerrollen
 
 | Auth-Rolle    | Aufgabe                                            | Datenzuordnung                                              |

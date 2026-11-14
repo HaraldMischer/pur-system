@@ -139,6 +139,19 @@ describe('MitarbeiterBearbeitenDialog', () => {
     expect(submit?.disabled).toBe(true);
   });
 
+  it('should keep the service role selected while the branch checkout role is selected', () => {
+    const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
+    const rollenControl = component.mitarbeiterForm.controls.rollen;
+
+    rollenControl.setValue(['filialkasse']);
+
+    expect(rollenControl.value).toEqual(['filialkasse', 'servicekraft']);
+
+    rollenControl.setValue(['servicekraft']);
+
+    expect(rollenControl.value).toEqual(['servicekraft']);
+  });
+
   it('should save the selected employee color identifier', async () => {
     const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
 

@@ -4,6 +4,7 @@ import { FIRESTORE_DOCUMENT_PATHS } from '../../constants/firebase.constants';
 import { IDatenmigrationsproblem } from '../../models/domain/datenmigration';
 import { IMitarbeiterDokument, TMitarbeiterRolle } from '../../models/domain/mitarbeiter';
 import { IPurEmployeeEintrag } from '../../models/legacy/pur-employee';
+import { ergaenzeServicekraftFuerFilialkasse } from '../../utils/mitarbeiter/mitarbeiter-rollen';
 
 // ===== Konstanten & Typen ===================
 
@@ -100,7 +101,7 @@ function mapRollen(rolle: unknown, berechtigungen: unknown): TMitarbeiterRolle[]
   const rollen = werte
     .map((wert) => mapRollenwert(wert))
     .filter((wert): wert is TMitarbeiterRolle => wert !== null);
-  return [...new Set(rollen)];
+  return ergaenzeServicekraftFuerFilialkasse([...new Set(rollen)]);
 }
 
 function mapRollenwert(value: unknown): TMitarbeiterRolle | null {

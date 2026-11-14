@@ -136,7 +136,7 @@ Umsetzungsverlauf steht in den [erledigten Todos](../todo_erledigt.md); der aktu
 | Rollen              | Werden als eindeutiges Array unter `rollen` gespeichert.                        |
 | `Service`           | Wird als `servicekraft` übernommen.                                             |
 | `Servicekraft`      | Wird als `servicekraft` übernommen.                                             |
-| `Filialkasse`       | Wird als `filialkasse` übernommen.                                              |
+| `Filialkasse`       | Wird als `filialkasse` und zusätzlich `servicekraft` übernommen.                |
 | `Administrator`     | Wird als `administrator` übernommen.                                            |
 | `Einstellungen`     | Wird als `administrator` übernommen.                                            |
 | `Kassierer`         | Wird als `kassierer` übernommen.                                                |

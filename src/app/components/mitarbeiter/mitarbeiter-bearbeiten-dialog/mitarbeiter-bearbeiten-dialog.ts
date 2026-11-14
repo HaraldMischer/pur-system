@@ -25,6 +25,7 @@ import {
   TMitarbeiterRolle,
 } from '../../../commons/models/domain/mitarbeiter';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
+import { ergaenzeServicekraftFuerFilialkasse } from '../../../commons/utils/mitarbeiter/mitarbeiter-rollen';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { FilialeService } from '../../../services/domain/filiale.service';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
@@ -132,10 +133,13 @@ export class MitarbeiterBearbeitenDialog {
         }),
       }),
     }),
-    rollen: new FormControl<TMitarbeiterRolle[]>(this.dialogDaten.mitarbeiter.rollen, {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
+    rollen: new FormControl<TMitarbeiterRolle[]>(
+      ergaenzeServicekraftFuerFilialkasse(this.dialogDaten.mitarbeiter.rollen),
+      {
+        nonNullable: true,
+        validators: [Validators.required],
+      },
+    ),
     filialIds: new FormControl<string[]>(
       this.dialogDaten.mitarbeiter.filialIds.filter((filialId) => {
         return this.erlaubteFilialIds.has(filialId);
@@ -159,6 +163,12 @@ export class MitarbeiterBearbeitenDialog {
 
   constructor() {
     this.urspruenglicherFormwert = JSON.stringify(this.mitarbeiterForm.getRawValue());
+    const rollenControl = this.mitarbeiterForm.controls.rollen;
+    rollenControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((rollen) => {
+      const ergaenzteRollen = ergaenzeServicekraftFuerFilialkasse(rollen);
+      if (ergaenzteRollen === rollen) return;
+      rollenControl.setValue(ergaenzteRollen);
+    });
     this.mitarbeiterForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.updateHatAenderungen();
     });

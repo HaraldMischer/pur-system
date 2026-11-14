@@ -76,7 +76,7 @@ describe('Mitarbeiter-Dokument-Utilities', () => {
         filialIds: [],
         aktiv: true,
       }).rollen,
-    ).toEqual(['filialkasse']);
+    ).toEqual(['filialkasse', 'servicekraft']);
   });
 
   it('should preserve the employee planner role', () => {
