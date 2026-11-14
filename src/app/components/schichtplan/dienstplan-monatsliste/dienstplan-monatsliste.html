@@ -1,6 +1,6 @@
 <!-- pur-system/src/app/components/schichtplan/dienstplan-monatsliste/dienstplan-monatsliste.html -->
 
-<div class="pur-scroll">
+<div class="pur-scroll pur-scroll--horizontal">
   <div
     class="monatsliste"
     [style.--zeitachsenbreite]="zeitachsenbreite() + 'px'"
@@ -101,9 +101,7 @@
                   zelle.tagesschicht.vorbereitungsminuten > 0 ||
                   zelle.tagesschicht.nachbereitungsminuten > 0
                 ) {
-                  <span
-                    class="pur-text pur-text--small pur-text--secondary pur-text--ellipsis"
-                  >
+                  <span class="pur-text pur-text--small pur-text--secondary pur-text--ellipsis">
                     @if (zelle.tagesschicht.vorbereitungsminuten > 0) {
                       +{{ zelle.tagesschicht.vorbereitungsminuten }} Min. Vorbereitung
                     }

@@ -12,6 +12,12 @@
     flex: 1 1 auto;
   }
 
+  &--horizontal {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-gutter: auto;
+  }
+
   &--hidden {
     scrollbar-gutter: auto;
     scrollbar-width: none;
