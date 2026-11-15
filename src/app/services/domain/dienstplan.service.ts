@@ -47,7 +47,10 @@ import {
   ITagesschichtEintrag,
 } from '../../commons/models/domain/schichtmodell';
 import { createDienstplanZeitraum } from '../../commons/utils/dienstplan/dienstplan-zeitraum';
-import { createDienstplanTagesschichten } from '../../commons/utils/dienstplan/dienstplan-tagesschichten';
+import {
+  createDienstplanTagesschichten,
+  SchichtmodellOeffnungszeitenFehler,
+} from '../../commons/utils/dienstplan/dienstplan-tagesschichten';
 import { createDienstplanKalendertage } from '../../commons/utils/dienstplan/dienstplan-kalendertage';
 import { calculateSchichtLohnzeitMinuten } from '../../commons/utils/dienstplan/schicht-zeit';
 import {
@@ -70,9 +73,15 @@ import { FilialeinstellungService } from './filialeinstellung.service';
 
 // ===== Top-Level Helper =====================
 
-export function createDienstplanAnlageFehler(ursache: string): DienstplanFachfehler {
+export function createDienstplanAnlageFehler(
+  ursache: string,
+  code?: TDienstplanFachfehlerCode,
+): DienstplanFachfehler {
   const prefix = 'Der Dienstplan konnte nicht angelegt werden.';
-  return new DienstplanFachfehler(ursache.startsWith(prefix) ? ursache : `${prefix} ${ursache}`);
+  return new DienstplanFachfehler(
+    ursache.startsWith(prefix) ? ursache : `${prefix} ${ursache}`,
+    code,
+  );
 }
 
 function createDienstplanVeroeffentlichungFehler(ursache: string): DienstplanFachfehler {
@@ -113,8 +122,13 @@ function mergeFirestoreOperationen(
 
 // ===== Konstanten & Typen ===================
 
+export type TDienstplanFachfehlerCode = 'schichtmodell-oeffnungszeiten';
+
 export class DienstplanFachfehler extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly code?: TDienstplanFachfehlerCode,
+  ) {
     super(message);
     this.name = 'DienstplanFachfehler';
   }
@@ -253,19 +267,19 @@ export class DienstplanService {
   }
 
   /**
-   * Legt einen Monatsplan aus einem Schichtmodell und vollständig erfassten Sondertagen an.
+   * Legt einen Monatsplan aus einem Schichtmodell und vollständig erfassten abweichenden Tagen an.
    *
    * @param pfad - Vollständiger Filialpfad.
    * @param monat - Monat im Format `YYYY-MM`.
    * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
-   * @param freieSondertagsschichten - Frei konfigurierte Schichten aller geöffneten Sondertage.
+   * @param freieTagesschichten - Frei konfigurierte Schichten aller abweichend geöffneten Tage.
    * @param benutzerUid - UID des anlegenden Benutzers.
    */
   async createDienstplan(
     pfad: IFilialPfad,
     monat: string,
     schichtmodell: ISchichtmodellBestand,
-    freieSondertagsschichten: readonly IFreieTagesschichtSchreibdaten[],
+    freieTagesschichten: readonly IFreieTagesschichtSchreibdaten[],
     benutzerUid: string,
   ): Promise<IDienstplanAnlageErgebnis> {
     validateSchichtmodell(pfad, schichtmodell);
@@ -297,10 +311,16 @@ export class DienstplanService {
       tagesschichtAnlagen = createDienstplanTagesschichten({
         kalendertage,
         schichtmodell,
-        freieSondertagsschichten,
+        freieTagesschichten,
         zeitzone: zeitraum.zeitzone,
       });
     } catch (error: unknown) {
+      if (error instanceof SchichtmodellOeffnungszeitenFehler) {
+        throw createDienstplanAnlageFehler(
+          `Das Schichtmodell „${schichtmodell.schichtmodell.bezeichnung}“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.`,
+          'schichtmodell-oeffnungszeiten',
+        );
+      }
       throw createDienstplanAnlageFehler(
         error instanceof Error ? error.message : 'Die Tagesstrukturen sind ungültig.',
       );

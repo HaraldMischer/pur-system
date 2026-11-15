@@ -68,9 +68,11 @@ Wochentags- und Sonntagsvorlage dürfen sich in Anzahl, Identität, Grenzen und 
 Überschneidungen sind fachlich zulässig. Jede Kernschicht muss eine positive Dauer besitzen und vollständig innerhalb der
 maßgeblichen Öffnung liegen. Nur Vor- und Nachbereitung darf die tatsächliche Arbeitszeit über die Öffnungsgrenzen erweitern.
 
-Beim initialen Erstellen eines Monatsplans erhält jeder Kalendertag eine eigene Tagesstruktur. Reguläre Tage übernehmen die
-passende Vorlage. Feiertage mit `Wie Sonntag` verwenden die Sonntagsvorlage. Abweichend geöffnete Feier- und Sondertage werden
-vor dem Schreiben frei konfiguriert. Geschlossene Tage enthalten keine Tagesschichten.
+Beim initialen Erstellen eines Monatsplans erhält jeder Kalendertag eine eigene Tagesstruktur. Standardmäßig geöffnete
+Wochentage übernehmen die Wochentagsvorlage. Reguläre Sonntage und Feiertage mit `Wie Sonntag` verwenden die Sonntagsvorlage.
+Regelmäßig abweichend geöffnete Wochentage werden einmal je Wochentag und Monat frei konfiguriert und auf ihre regulären
+Vorkommen übertragen. Abweichend geöffnete Feier- und Sondertage werden einzeln frei konfiguriert. Geschlossene Tage enthalten
+keine Tagesschichten.
 
 Jede Tagesschicht speichert eine stabile Tagesinstanz-ID, Datum, Herkunft, Reihenfolge, Kernzeit, tatsächliche Arbeitszeit und
 Mehrfachbelegung. Monatsplan, erste Entwurfsversion, Kalender-Momentaufnahme und Tagesschichten werden erst nach vollständiger
@@ -134,10 +136,11 @@ Prüfstruktur.
 
 ## Planungs- und Veröffentlichungsablauf
 
-Existiert kein Monatsplan, wählt ein Planer ein aktives Schichtmodell und vervollständigt erforderliche
-Sondertagstrukturen. Danach werden Monatsplan, Version 1 und sämtliche Momentaufnahmen atomar als Entwurf angelegt. Ein noch
-nicht veröffentlichter,
-leerer Entwurf darf vollständig gelöscht und aus einem anderen aktiven Modell neu angelegt werden.
+Existiert kein Monatsplan, wählt ein Planer ein aktives Schichtmodell und vervollständigt die erforderlichen freien Strukturen
+für regelmäßig abweichende Wochentage und konkrete Sondertage. Eine Wochentagsgruppe wird einmal bearbeitet und auf alle
+regulären Vorkommen im Monat übertragen; konkrete Sondertage besitzen Vorrang und bleiben eigenständig. Danach werden
+Monatsplan, Version 1 und sämtliche Momentaufnahmen atomar als Entwurf angelegt. Ein noch nicht veröffentlichter, leerer Entwurf
+darf vollständig gelöscht und aus einem anderen aktiven Modell neu angelegt werden.
 
 Die Veröffentlichung verlangt einen vollständig geladenen, konfliktfreien Entwurf. Existiert bereits eine veröffentlichte
 Version, wird sie im selben Vorgang archiviert. Änderungen an einem veröffentlichten Plan beginnen mit einem neuen Entwurf,

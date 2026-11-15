@@ -245,13 +245,13 @@ export const DienstplanStore = signalStore(
        * @param pfad - Vollständiger Filialpfad.
        * @param monat - Monat im Format `YYYY-MM`.
        * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
-       * @param freieSondertagsschichten - Vollständige freie Strukturen geöffneter Sondertage.
+       * @param freieTagesschichten - Vollständige freie Strukturen abweichend geöffneter Tage.
        */
       async function createDienstplan(
         pfad: IFilialPfad,
         monat: string,
         schichtmodell: ISchichtmodellBestand,
-        freieSondertagsschichten: readonly IFreieTagesschichtSchreibdaten[],
+        freieTagesschichten: readonly IFreieTagesschichtSchreibdaten[],
       ): Promise<void> {
         await executeWrite(async () => {
           const kontext = requireSchreibkontext(pfad, monat, false);
@@ -264,7 +264,7 @@ export const DienstplanStore = signalStore(
             pfad,
             monat,
             schichtmodell,
-            freieSondertagsschichten,
+            freieTagesschichten,
             requireBenutzerUid(),
           );
           setKontext(pfad, {

@@ -184,6 +184,7 @@ describe('DienstplanMonatsliste', () => {
             endeLokalzeit: '01:00',
             endetAmFolgetag: true,
           },
+          tagesstrukturQuelle: 'freieTagesstruktur',
         },
       ],
       schichtmodellId: 'modell-1',

@@ -1,9 +1,9 @@
-<!-- pur-system/src/app/components/schichtplan/dienstplan-sondertage-dialog/dienstplan-sondertage-dialog.html -->
+<!-- pur-system/src/app/components/schichtplan/dienstplan-abweichende-tage-dialog/dienstplan-abweichende-tage-dialog.html -->
 
-<h2 mat-dialog-title>Sondertage für den Monatsplan festlegen</h2>
+<h2 mat-dialog-title>Abweichende Tage für den Monatsplan festlegen</h2>
 <mat-dialog-content class="pur-dialog__content">
   <form
-    id="dienstplan-sondertage-form"
+    id="dienstplan-abweichende-tage-form"
     class="pur-form pur-form--grid"
     [formGroup]="form"
     (ngSubmit)="save()"
@@ -13,7 +13,7 @@
         <section class="pur-form__group pur-form__group--outlined" [formGroupName]="tagIndex">
           <header class="pur-form__row">
             <h2 class="pur-form__item pur-flex__item--basis-sm pur-form__group-titel">
-              {{ sondertage[tagIndex].bezeichnung || sondertage[tagIndex].datum }}
+              {{ abweichendeTage[tagIndex].bezeichnung }}
             </h2>
             <app-eingabe-minuten
               class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
@@ -101,7 +101,7 @@
   <button
     matButton="filled"
     type="submit"
-    form="dienstplan-sondertage-form"
+    form="dienstplan-abweichende-tage-form"
     [disabled]="form.invalid"
   >
     Monatsplan anlegen

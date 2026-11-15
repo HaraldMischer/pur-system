@@ -41,6 +41,52 @@ describe('createDienstplanKalendertage', () => {
     expect(kalendertage.at(-1)?.datum).toBe(letztesDatum);
   });
 
+  it('should require a free structure for recurring overriding weekdays', () => {
+    const kalendertage = createDienstplanKalendertage({
+      monat: '2026-12',
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
+      wochenregeln: WOCHENREGELN,
+      sondertage: [],
+    });
+
+    expect(
+      kalendertage.find((eintrag) => {
+        return eintrag.datum === '2026-12-05';
+      })?.tagesstrukturQuelle,
+    ).toBe('freieTagesstruktur');
+    expect(
+      kalendertage.find((eintrag) => {
+        return eintrag.datum === '2026-12-06';
+      })?.tagesstrukturQuelle,
+    ).toBe('geschlossen');
+    expect(
+      kalendertage.find((eintrag) => {
+        return eintrag.datum === '2026-12-07';
+      })?.tagesstrukturQuelle,
+    ).toBe('wochentagsvorlage');
+  });
+
+  it('should keep an overriding sunday on the sunday template', () => {
+    const kalendertage = createDienstplanKalendertage({
+      monat: '2026-12',
+      standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
+      wochenregeln: {
+        ...WOCHENREGELN,
+        sonntag: {
+          modus: 'abweichend',
+          oeffnungsregel: createGeoeffnet('10:00', '16:00'),
+        },
+      },
+      sondertage: [],
+    });
+
+    expect(
+      kalendertage.find((eintrag) => {
+        return eintrag.datum === '2026-12-06';
+      })?.tagesstrukturQuelle,
+    ).toBe('sonntagsvorlage');
+  });
+
   it('should snapshot a user-defined special opening and statutory holiday data', () => {
     const neujahr = createSondertag('neujahr', 'Neujahr', 'system', {
       typ: 'gesetzlicherFeiertag',
@@ -65,6 +111,7 @@ describe('createDienstplanKalendertage', () => {
         bezeichnung: 'Sonderöffnung',
         sondertagId: 'sonderoeffnung',
         oeffnungsregelQuelle: 'sondertag',
+        tagesstrukturQuelle: 'freieTagesstruktur',
         gesetzlicherFeiertag: { schluessel: 'neujahr', bezeichnung: 'Neujahr' },
       }),
     );

@@ -161,8 +161,9 @@ Hauptquellen.
 - Beim Hinzufügen einer Modellschicht werden alle inneren Grenzen der betroffenen Vorlage auf dem 15-Minuten-Raster möglichst
   gleichmäßig über die vollständige Öffnung neu verteilt. Die Grenzen bleiben anschließend unabhängig bearbeitbar; Lücken und
   Überlappungen bleiben zulässig.
-- Das Schichtmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Geöffnete Feier- und
-  Sondertage werden vor dem atomaren Schreiben frei konfiguriert, geschlossene Tage bleiben ohne Tagesschichten.
+- Das Schichtmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Regelmäßig abweichend
+  geöffnete Wochentage werden einmal je Wochentag und Monat frei konfiguriert und auf ihre regulären Vorkommen übertragen.
+  Geöffnete abweichende Feier- und Sondertage werden einzeln konfiguriert; geschlossene Tage bleiben ohne Tagesschichten.
 - Nach der Rastermodell-Entfernung und der Umbenennung auf das einheitliche Schichtmodell wurden am 13.11.2026 die vollständige
   Unit-Test-Suite mit 944 Tests, alle 63 Firestore-Emulator-Tests, die vier Produktionsbuilds sowie die manuelle Prüfung vom
   Benutzer als erfolgreich bestätigt.

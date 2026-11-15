@@ -16,19 +16,29 @@ describe('DienstplanService', () => {
   const loadDocument = vi.fn();
   const loadCollection = vi.fn();
   const observeCollectionByDocumentIds = vi.fn();
+  const createDocumentId = vi.fn().mockReturnValue('version-1');
+  const createServerTimestamp = vi.fn().mockReturnValue({});
+  const loadFilialeinstellung = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
     loadDocument.mockResolvedValue(null);
     loadCollection.mockResolvedValue([]);
+    loadFilialeinstellung.mockReset();
     TestBed.configureTestingModule({
       providers: [
         DienstplanService,
         {
           provide: FirestoreDbService,
-          useValue: { loadDocument, loadCollection, observeCollectionByDocumentIds },
+          useValue: {
+            loadDocument,
+            loadCollection,
+            observeCollectionByDocumentIds,
+            createDocumentId,
+            createServerTimestamp,
+          },
         },
-        { provide: FilialeinstellungService, useValue: {} },
+        { provide: FilialeinstellungService, useValue: { loadFilialeinstellung } },
       ],
     });
   });
@@ -113,5 +123,98 @@ describe('DienstplanService', () => {
       next,
       error,
     );
+  });
+
+  it('should explain that a shift model no longer matches the current opening times', async () => {
+    const oeffnungsregel = {
+      geoeffnet: true as const,
+      beginnLokalzeit: '18:00',
+      endeLokalzeit: '23:00',
+      endetAmFolgetag: false,
+    };
+    loadFilialeinstellung.mockResolvedValue({
+      oeffnungszeiten: {
+        standardoeffnungsregel: oeffnungsregel,
+        wochenregeln: {
+          montag: { modus: 'standard' },
+          dienstag: { modus: 'standard' },
+          mittwoch: { modus: 'standard' },
+          donnerstag: { modus: 'standard' },
+          freitag: { modus: 'standard' },
+          samstag: { modus: 'standard' },
+          sonntag: { modus: 'standard' },
+        },
+      },
+      sondertage: [],
+    });
+    const service = TestBed.inject(DienstplanService);
+
+    await expect(
+      service.createDienstplan(
+        pfad,
+        '2026-10',
+        {
+          schichtmodell: {
+            unternehmerId: 'u-1',
+            firmaId: 'f-1',
+            filialeId: 'b-1',
+            id: 'modell-1',
+            bezeichnung: 'Schichtmodell',
+            aktiv: true,
+            erstelltVonUid: 'uid-1',
+            aktualisiertVonUid: 'uid-1',
+          },
+          tagesvorlagenschichten: [
+            {
+              unternehmerId: 'u-1',
+              firmaId: 'f-1',
+              filialeId: 'b-1',
+              schichtmodellId: 'modell-1',
+              id: 'wochentag-1',
+              vorlage: 'wochentag',
+              bezeichnung: 'Schicht 1',
+              reihenfolge: 0,
+              ende: { lokalzeit: '16:30', tag: 'starttag' },
+              mehrfachbelegungErlaubt: false,
+              vorbereitungsminuten: 0,
+              nachbereitungsminuten: 0,
+            },
+            {
+              unternehmerId: 'u-1',
+              firmaId: 'f-1',
+              filialeId: 'b-1',
+              schichtmodellId: 'modell-1',
+              id: 'wochentag-2',
+              vorlage: 'wochentag',
+              bezeichnung: 'Schicht 2',
+              reihenfolge: 1,
+              beginn: { lokalzeit: '16:30', tag: 'starttag' },
+              mehrfachbelegungErlaubt: false,
+              vorbereitungsminuten: 0,
+              nachbereitungsminuten: 0,
+            },
+            {
+              unternehmerId: 'u-1',
+              firmaId: 'f-1',
+              filialeId: 'b-1',
+              schichtmodellId: 'modell-1',
+              id: 'sonntag-1',
+              vorlage: 'sonntag',
+              bezeichnung: 'Sonntag',
+              reihenfolge: 0,
+              mehrfachbelegungErlaubt: false,
+              vorbereitungsminuten: 0,
+              nachbereitungsminuten: 0,
+            },
+          ],
+        },
+        [],
+        'uid-1',
+      ),
+    ).rejects.toMatchObject({
+      message:
+        'Der Dienstplan konnte nicht angelegt werden. Das Schichtmodell „Schichtmodell“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.',
+      code: 'schichtmodell-oeffnungszeiten',
+    });
   });
 });

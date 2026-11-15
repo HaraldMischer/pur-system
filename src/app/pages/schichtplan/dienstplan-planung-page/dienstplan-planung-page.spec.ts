@@ -188,12 +188,17 @@ describe('DienstplanPlanungPage', () => {
       true,
     );
     const fremderMitarbeiter = createMitarbeiter('m-5', 'Fred', 'Fremd', ['b-3'], true);
+    const techniker: IMitarbeiterEintrag = {
+      ...createMitarbeiter('m-6', 'Theo', 'Technik', ['b-1'], true),
+      rollen: ['techniker'],
+    };
     getMitarbeiter.mockReturnValue([
       inaktiverMitarbeiter,
       mitarbeiter1,
       mitarbeiter2,
       gemeinsamerMitarbeiter,
       fremderMitarbeiter,
+      techniker,
     ]);
     getMitarbeiterNachFilialen.mockReturnValue([gemeinsamerMitarbeiter]);
     const fixture = TestBed.createComponent(DienstplanPlanungPage);
@@ -414,6 +419,7 @@ describe('DienstplanPlanungPage', () => {
           endeLokalzeit: '18:00',
           endetAmFolgetag: false,
         },
+        tagesstrukturQuelle: 'wochentagsvorlage',
       };
     });
   }

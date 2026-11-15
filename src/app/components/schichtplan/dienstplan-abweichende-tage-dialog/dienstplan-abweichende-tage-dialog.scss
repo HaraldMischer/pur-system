@@ -1,0 +1,9 @@
+// pur-system/src/app/components/schichtplan/dienstplan-abweichende-tage-dialog/dienstplan-abweichende-tage-dialog.scss
+
+.pur-list {
+  margin: 0;
+
+  > .pur-list__row:last-child {
+    border-bottom: 0;
+  }
+}

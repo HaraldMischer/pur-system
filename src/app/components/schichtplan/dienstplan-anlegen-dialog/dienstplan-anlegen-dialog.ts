@@ -18,13 +18,19 @@ import {
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { firstValueFrom } from 'rxjs';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
-import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
+import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
+import {
+  assertSchichtmodellPasstZuKalendertagen,
+  SchichtmodellOeffnungszeitenFehler,
+} from '../../../commons/utils/dienstplan/dienstplan-tagesschichten';
+import { DienstplanFachfehler } from '../../../services/domain/dienstplan.service';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
-import { firstValueFrom } from 'rxjs';
-import { DienstplanSondertageDialog } from '../dienstplan-sondertage-dialog/dienstplan-sondertage-dialog';
+import { HinweisDialog } from '../../shared/hinweis-dialog/hinweis-dialog';
+import { DienstplanAbweichendeTageDialog } from '../dienstplan-abweichende-tage-dialog/dienstplan-abweichende-tage-dialog';
 
 export type TDienstplanAnlegenDialogDaten = {
   readonly pfad: IFilialPfad;
@@ -79,33 +85,52 @@ export class DienstplanAnlegenDialog {
   async saveDienstplan(): Promise<void> {
     if (this.dienstplanStore.inProgress() || this.dienstplanForm.invalid) return;
     const schichtmodellId = this.dienstplanForm.controls.schichtmodellId.value;
+    const schichtmodell = this.daten.schichtmodelle.find((bestand) => {
+      return bestand.schichtmodell.id === schichtmodellId;
+    });
     this.error.set(null);
+
+    if (!schichtmodell) {
+      this.error.set('Das ausgewählte Schichtmodell ist ungültig.');
+      return;
+    }
+
     try {
-      const schichtmodell = this.daten.schichtmodelle.find((bestand) => {
-        return bestand.schichtmodell.id === schichtmodellId;
-      });
-      if (!schichtmodell) throw new Error('Schichtmodell ungültig.');
-      const freieSondertagsschichten = await firstValueFrom(
+      assertSchichtmodellPasstZuKalendertagen(this.daten.kalendertage ?? [], schichtmodell);
+      const freieTagesschichten = await firstValueFrom(
         this.dialog
-          .open(DienstplanSondertageDialog, {
+          .open(DienstplanAbweichendeTageDialog, {
             data: { kalendertage: this.daten.kalendertage ?? [] },
             panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
           })
           .afterClosed(),
       );
-      if (!freieSondertagsschichten) return;
+      if (!freieTagesschichten) return;
       await this.dienstplanStore.createDienstplan(
         this.daten.pfad,
         this.daten.monat,
         schichtmodell,
-        freieSondertagsschichten,
+        freieTagesschichten,
       );
       this.dialogRef.close(true);
     } catch (error: unknown) {
-      this.error.set(
+      if (
+        error instanceof SchichtmodellOeffnungszeitenFehler ||
+        (error instanceof DienstplanFachfehler && error.code === 'schichtmodell-oeffnungszeiten')
+      ) {
+        this.dialog.open(HinweisDialog, {
+          panelClass: ['pur-dialog__panel'],
+          data: {
+            titel: 'Der Dienstplan wurde nicht angelegt',
+            nachricht: `Das Schichtmodell „${schichtmodell.schichtmodell.bezeichnung}“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.`,
+          },
+        });
+        return;
+      }
+      const fehlermeldung =
         this.dienstplanStore.error() ??
-          (error instanceof Error ? error.message : 'Der Dienstplan konnte nicht angelegt werden.'),
-      );
+        (error instanceof Error ? error.message : 'Der Dienstplan konnte nicht angelegt werden.');
+      this.error.set(fehlermeldung);
     }
   }
 }

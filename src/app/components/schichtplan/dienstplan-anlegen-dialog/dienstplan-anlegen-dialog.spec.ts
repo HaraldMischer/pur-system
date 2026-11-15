@@ -6,7 +6,9 @@ import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dial
 import { of } from 'rxjs';
 
 import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
+import { DienstplanFachfehler } from '../../../services/domain/dienstplan.service';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
+import { HinweisDialog } from '../../shared/hinweis-dialog/hinweis-dialog';
 import {
   DienstplanAnlegenDialog,
   TDienstplanAnlegenDialogDaten,
@@ -15,6 +17,23 @@ import {
 describe('DienstplanAnlegenDialog', () => {
   const pfad = { unternehmerId: 'u-1', firmaId: 'f-1', filialeId: 'b-1' };
   const schichtmodell = createSchichtmodell();
+  const ungueltigesSchichtmodell = createUngueltigesSchichtmodell();
+  const kalendertage = [
+    {
+      datum: '2026-10-01',
+      wochentag: 'donnerstag' as const,
+      istSonntag: false,
+      aktiveSondertage: [],
+      oeffnungsregelQuelle: 'wochentag' as const,
+      oeffnungsregel: {
+        geoeffnet: true as const,
+        beginnLokalzeit: '08:00',
+        endeLokalzeit: '23:00',
+        endetAmFolgetag: false,
+      },
+      tagesstrukturQuelle: 'wochentagsvorlage' as const,
+    },
+  ];
   const inProgress = signal(false);
   const storeError = signal<string | null>(null);
   const createDienstplan = vi.fn().mockResolvedValue(undefined);
@@ -31,7 +50,12 @@ describe('DienstplanAnlegenDialog', () => {
     storeError.set(null);
     createDienstplan.mockResolvedValue(undefined);
     open.mockReturnValue({ afterClosed: () => of([]) });
-    await setup({ pfad, monat: '2026-10', schichtmodelle: [schichtmodell] });
+    await setup({
+      pfad,
+      monat: '2026-10',
+      schichtmodelle: [schichtmodell, ungueltigesSchichtmodell],
+      kalendertage,
+    });
   });
 
   async function setup(daten: TDienstplanAnlegenDialogDaten): Promise<void> {
@@ -88,6 +112,47 @@ describe('DienstplanAnlegenDialog', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
+  it('should show incompatible opening times in a notice dialog', async () => {
+    const fehlermeldung =
+      'Der Dienstplan konnte nicht angelegt werden. Das Schichtmodell „Standard“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.';
+    createDienstplan.mockImplementationOnce(async () => {
+      storeError.set(fehlermeldung);
+      throw new DienstplanFachfehler(fehlermeldung, 'schichtmodell-oeffnungszeiten');
+    });
+    fixture.componentInstance.dienstplanForm.controls.schichtmodellId.setValue('modell-1');
+
+    await fixture.componentInstance.saveDienstplan();
+
+    expect(open).toHaveBeenNthCalledWith(2, HinweisDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: {
+        titel: 'Der Dienstplan wurde nicht angelegt',
+        nachricht:
+          'Das Schichtmodell „Standard“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.',
+      },
+    });
+    expect(fixture.componentInstance.error()).toBeNull();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('should reject an incompatible shift model before opening the day-structure dialog', async () => {
+    fixture.componentInstance.dienstplanForm.controls.schichtmodellId.setValue('modell-2');
+
+    await fixture.componentInstance.saveDienstplan();
+
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith(HinweisDialog, {
+      panelClass: ['pur-dialog__panel'],
+      data: {
+        titel: 'Der Dienstplan wurde nicht angelegt',
+        nachricht:
+          'Das Schichtmodell „Ungültig“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.',
+      },
+    });
+    expect(createDienstplan).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
+
   function createSchichtmodell(): ISchichtmodellBestand {
     return {
       schichtmodell: {
@@ -107,6 +172,45 @@ describe('DienstplanAnlegenDialog', () => {
           bezeichnung: 'Früh',
           reihenfolge: 0,
           ende: { lokalzeit: '16:00', tag: 'starttag' },
+          mehrfachbelegungErlaubt: false,
+          vorbereitungsminuten: 0,
+          nachbereitungsminuten: 0,
+        },
+      ],
+    };
+  }
+
+  function createUngueltigesSchichtmodell(): ISchichtmodellBestand {
+    return {
+      schichtmodell: {
+        ...pfad,
+        id: 'modell-2',
+        bezeichnung: 'Ungültig',
+        aktiv: true,
+        erstelltVonUid: 'uid-1',
+        aktualisiertVonUid: 'uid-1',
+      },
+      tagesvorlagenschichten: [
+        {
+          ...pfad,
+          id: 'ungueltig-frueh',
+          schichtmodellId: 'modell-2',
+          vorlage: 'wochentag',
+          bezeichnung: 'Früh',
+          reihenfolge: 0,
+          ende: { lokalzeit: '07:00', tag: 'starttag' },
+          mehrfachbelegungErlaubt: false,
+          vorbereitungsminuten: 0,
+          nachbereitungsminuten: 0,
+        },
+        {
+          ...pfad,
+          id: 'ungueltig-spaet',
+          schichtmodellId: 'modell-2',
+          vorlage: 'wochentag',
+          bezeichnung: 'Spät',
+          reihenfolge: 1,
+          beginn: { lokalzeit: '07:00', tag: 'starttag' },
           mehrfachbelegungErlaubt: false,
           vorbereitungsminuten: 0,
           nachbereitungsminuten: 0,

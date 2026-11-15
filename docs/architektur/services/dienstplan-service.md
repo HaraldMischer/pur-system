@@ -17,10 +17,11 @@ Kalendertage und Tagesschichten sind verbindliche Momentaufnahmen; unvollständi
 Ersatzwerte ergänzt.
 
 `createDienstplan()` prüft ein aktives, nicht leeres Schichtmodell derselben Filiale. Anschließend löst der Service alle
-Kalendertage und wirksamen Öffnungen auf. Reguläre Tage von Montag bis Samstag erhalten Tagesschichten aus der
+Kalendertage und wirksamen Öffnungen auf. Standardmäßig geöffnete Tage von Montag bis Samstag erhalten Tagesschichten aus der
 Wochentagsvorlage, reguläre Sonntage aus der Sonntagsvorlage. Feiertage mit `Wie Sonntag` verwenden ebenfalls die
-Sonntagsvorlage. Für abweichend geöffnete Feier- und Sondertage wird die zuvor frei konfigurierte Tagesstruktur übernommen;
-geschlossene Tage bleiben ohne Tagesschichten.
+Sonntagsvorlage. Für regelmäßig abweichend geöffnete Wochentage und abweichend geöffnete Feier- oder Sondertage wird die zuvor
+frei konfigurierte Tagesstruktur übernommen; geschlossene Tage bleiben ohne Tagesschichten. Eine einmal konfigurierte
+Wochentagsgruppe wird vor dem Schreiben in konkrete datumsgebundene Tagesschichten für alle regulären Vorkommen aufgelöst.
 
 Vor dem Schreiben validiert der Service jede Kernzeit gegen die wirksame Öffnung des konkreten Tages. Nur Vor- und
 Nachbereitungsminuten dürfen die Öffnungsgrenzen erweitern. Monatsplan, erste Entwurfsversion, Kalender-Momentaufnahme,

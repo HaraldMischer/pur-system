@@ -21,7 +21,8 @@ Kalendereigenschaften, Öffnungsregeln und Tagesschichten.
 - `loadDienstplanMonat()` und `loadDienstplanBestand()` laden einen Monat beziehungsweise den vollständigen Filialbestand und
   lassen noch fehlende, durch Schichten referenzierte Mitarbeiter-IDs gezielt mit `networkOnly` nachladen.
 - `createDienstplan()` verlangt ein aktives, nicht leeres Schichtmodell derselben Filiale und übernimmt Plan, erste
-  Version und Tagesschichten aus dem bestätigten Service-Ergebnis in den lokalen Zustand.
+  Version und Tagesschichten aus dem bestätigten Service-Ergebnis in den lokalen Zustand. Frei konfigurierte Strukturen
+  regelmäßig abweichender Wochentage und konkreter Sondertage werden vollständig an den Service übergeben.
 - `deleteDienstplan()` erlaubt das Löschen nur für den leeren, noch nie veröffentlichten Entwurf und entfernt Plan, Version,
   Schichten sowie Tagesschichten nach dem bestätigten Service-Aufruf aus dem lokalen Zustand.
 - `publishDienstplan()` übergibt die zuletzt geladene Entwurfsrevision und übernimmt den bestätigten veröffentlichten sowie

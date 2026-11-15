@@ -1,12 +1,12 @@
-// pur-system/src/app/components/schichtplan/dienstplan-sondertage-dialog/dienstplan-sondertage-dialog.spec.ts
+// pur-system/src/app/components/schichtplan/dienstplan-abweichende-tage-dialog/dienstplan-abweichende-tage-dialog.spec.ts
 
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import type { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
-import { DienstplanSondertageDialog } from './dienstplan-sondertage-dialog';
+import { DienstplanAbweichendeTageDialog } from './dienstplan-abweichende-tage-dialog';
 
-describe('DienstplanSondertageDialog', () => {
+describe('DienstplanAbweichendeTageDialog', () => {
   const close = vi.fn();
   const kalendertage: IDienstplanKalendertag[] = [
     {
@@ -21,19 +21,22 @@ describe('DienstplanSondertageDialog', () => {
         endeLokalzeit: '01:00',
         endetAmFolgetag: true,
       },
+      tagesstrukturQuelle: 'freieTagesstruktur',
       bezeichnung: 'Allerheiligen',
     },
   ];
 
-  async function createComponent(): Promise<DienstplanSondertageDialog> {
+  async function createComponent(
+    tage: readonly IDienstplanKalendertag[] = kalendertage,
+  ): Promise<DienstplanAbweichendeTageDialog> {
     await TestBed.configureTestingModule({
-      imports: [DienstplanSondertageDialog],
+      imports: [DienstplanAbweichendeTageDialog],
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: { kalendertage } },
+        { provide: MAT_DIALOG_DATA, useValue: { kalendertage: tage } },
         { provide: MatDialogRef, useValue: { close } },
       ],
     }).compileComponents();
-    return TestBed.createComponent(DienstplanSondertageDialog).componentInstance;
+    return TestBed.createComponent(DienstplanAbweichendeTageDialog).componentInstance;
   }
 
   beforeEach(() => {
@@ -104,6 +107,112 @@ describe('DienstplanSondertageDialog', () => {
 
     schicht.controls.endeLokalzeit.setValue('00:30');
     expect(schicht.controls.endeTag.value).toBe('folgetag');
+  });
+
+  it('should not save an incomplete free daily structure', async () => {
+    const component = await createComponent();
+    const schicht = component.form.controls.tage.at(0).controls.schichten.at(0);
+    schicht.controls.bezeichnung.setValue('   ');
+
+    component.save();
+
+    expect(component.form.invalid).toBe(true);
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('should configure recurring overriding weekdays once and expand them to every date', async () => {
+    const montag = {
+      datum: '2026-11-02',
+      wochentag: 'montag',
+      istSonntag: false,
+      aktiveSondertage: [],
+      oeffnungsregelQuelle: 'wochentag',
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '14:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+      tagesstrukturQuelle: 'freieTagesstruktur',
+    } satisfies IDienstplanKalendertag;
+    const component = await createComponent([
+      montag,
+      { ...montag, datum: '2026-11-09' },
+      { ...montag, datum: '2026-11-16' },
+    ]);
+
+    expect(component.abweichendeTage).toEqual([
+      expect.objectContaining({
+        bezeichnung: 'Montag',
+        daten: ['2026-11-02', '2026-11-09', '2026-11-16'],
+      }),
+    ]);
+
+    component.save();
+
+    expect(close).toHaveBeenCalledWith([
+      expect.objectContaining({
+        datum: '2026-11-02',
+        beginn: { lokalzeit: '14:00', tag: 'starttag' },
+      }),
+      expect.objectContaining({
+        datum: '2026-11-09',
+        beginn: { lokalzeit: '14:00', tag: 'starttag' },
+      }),
+      expect.objectContaining({
+        datum: '2026-11-16',
+        beginn: { lokalzeit: '14:00', tag: 'starttag' },
+      }),
+    ]);
+  });
+
+  it('should keep a special day separate from the recurring weekday group', async () => {
+    const montag = {
+      datum: '2026-11-02',
+      wochentag: 'montag',
+      istSonntag: false,
+      aktiveSondertage: [],
+      oeffnungsregelQuelle: 'wochentag',
+      oeffnungsregel: {
+        geoeffnet: true,
+        beginnLokalzeit: '14:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
+      tagesstrukturQuelle: 'freieTagesstruktur',
+    } satisfies IDienstplanKalendertag;
+    const sondertag = {
+      ...montag,
+      datum: '2026-11-09',
+      aktiveSondertage: [{ id: 'jubilaeum', bezeichnung: 'Jubiläum' }],
+      oeffnungsregelQuelle: 'sondertag',
+      bezeichnung: 'Jubiläum',
+      sondertagId: 'jubilaeum',
+    } satisfies IDienstplanKalendertag;
+    const geschlossenerSondertag = {
+      ...montag,
+      datum: '2026-11-23',
+      aktiveSondertage: [{ id: 'geschlossen', bezeichnung: 'Geschlossen' }],
+      oeffnungsregelQuelle: 'sondertag',
+      oeffnungsregel: { geoeffnet: false },
+      tagesstrukturQuelle: 'geschlossen',
+      bezeichnung: 'Geschlossen',
+      sondertagId: 'geschlossen',
+    } satisfies IDienstplanKalendertag;
+    const component = await createComponent([
+      montag,
+      sondertag,
+      { ...montag, datum: '2026-11-16' },
+      geschlossenerSondertag,
+    ]);
+
+    expect(component.abweichendeTage).toEqual([
+      expect.objectContaining({
+        bezeichnung: 'Montag',
+        daten: ['2026-11-02', '2026-11-16'],
+      }),
+      expect.objectContaining({ bezeichnung: 'Jubiläum', daten: ['2026-11-09'] }),
+    ]);
   });
 
   it('should save preparation only on the first and follow-up only on the last shift', async () => {

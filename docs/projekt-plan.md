@@ -197,11 +197,11 @@ aufgelöst und bei der Monatsplananlage zusammen mit seinen unabhängigen Kalend
 Das Schichtmodell enthält eine Wochentagsvorlage für Montag bis Samstag und eine davon unabhängige Sonntagsvorlage.
 Anzahl, Identität und innere Grenzen ihrer Schichten dürfen sich unterscheiden. Der Beginn der ersten und das Ende der letzten
 Schicht werden nicht fest gespeichert. Beim initialen Erstellen eines Monatsplans erhält jeder Kalendertag eine eigene
-Tagesstruktur, deren Außengrenzen aus seiner wirksamen Öffnung abgeleitet werden. Reguläre Tage übernehmen die passende
-Vorlage. Feiertage mit `Wie Sonntag` übernehmen die wirksame Sonntagsöffnung und die Sonntagsvorlage, ohne bei der
-Monatsplananlage erneut konfiguriert zu werden. Nur abweichend geöffnete Feier- und Sondertage werden vor dem Anlegen des Plans
-frei konfiguriert.
-Geschlossene Tage enthalten keine Tagesschichten.
+Tagesstruktur, deren Außengrenzen aus seiner wirksamen Öffnung abgeleitet werden. Standardmäßig geöffnete Wochentage übernehmen
+die Wochentagsvorlage. Reguläre Sonntage und Feiertage mit `Wie Sonntag` übernehmen die wirksame Sonntagsöffnung und die
+Sonntagsvorlage, ohne bei der Monatsplananlage erneut konfiguriert zu werden. Regelmäßig abweichend geöffnete Wochentage werden
+einmal je Wochentag und Monat frei konfiguriert und anschließend auf ihre regulären Monatsdaten übertragen. Abweichend
+geöffnete Feier- und Sondertage werden weiterhin einzeln frei konfiguriert. Geschlossene Tage enthalten keine Tagesschichten.
 
 Die aufgelösten Grenzen jeder Kernschicht des Schichtmodells müssen innerhalb der wirksamen Öffnung liegen. Innerhalb
 jeder Modellvorlage besitzt nur die erste Schicht Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; bei einer

@@ -19,9 +19,9 @@
         }
       </mat-select>
     </mat-form-field>
-    @if (error() || dienstplanStore.error(); as fehlermeldung) {
+    @if (error(); as fehlermeldung) {
       <p class="pur-message pur-message--error pur-message--full" role="alert">
-        {{ error() ?? fehlermeldung }}
+        {{ fehlermeldung }}
       </p>
     }
   </form>

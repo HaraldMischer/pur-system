@@ -24,10 +24,11 @@ der ersten und das Ende der letzten Schicht werden aus der wirksamen Öffnung de
 Schicht einer Vorlage besitzt Vorbereitung und nur die letzte Nachbereitung; bei einer einzelnen Schicht gelten beide Werte.
 Anzahl, Identität und innere Grenzen der Schichten dürfen sich zwischen beiden Vorlagen unterscheiden.
 
-Beim initialen Erstellen eines Monatsdienstplans wird für jeden Kalendertag eine eigene Tagesstruktur erzeugt. Reguläre
-Wochentage und Sonntage übernehmen ihre Schichten aus der passenden Vorlage. Gesetzliche Feiertage erhalten die Öffnungsarten
-`Standard`, `Wie Sonntag`, `Abweichend` und `Geschlossen`. `Wie Sonntag` übernimmt dynamisch die wirksame Sonntagsöffnung und
-die Sonntagsvorlage. Nur abweichend geöffnete Feier- und Sondertage werden vor dem Anlegen des Monatsplans frei konfiguriert.
+Beim initialen Erstellen eines Monatsdienstplans wird für jeden Kalendertag eine eigene Tagesstruktur erzeugt. Standardmäßig
+geöffnete Wochentage und Sonntage übernehmen ihre Schichten aus der passenden Vorlage. Regelmäßig abweichend geöffnete
+Wochentage werden einmal je Wochentag und Monat frei konfiguriert. Gesetzliche Feiertage erhalten die Öffnungsarten `Standard`,
+`Wie Sonntag`, `Abweichend` und `Geschlossen`. `Wie Sonntag` übernimmt dynamisch die wirksame Sonntagsöffnung und die
+Sonntagsvorlage. Abweichend geöffnete Feier- und Sondertage werden vor dem Anlegen des Monatsplans einzeln frei konfiguriert.
 Erst wenn alle erforderlichen Tagesstrukturen vollständig sind, werden Monatsplan, erste Entwurfsversion und Tagesschichten
 atomar angelegt. Danach ordnet der Planer Mitarbeiter den vorbereiteten Tagesschichten zu.
 
@@ -100,6 +101,8 @@ Zu löschen:
       oder Folgetag konfigurieren. Die äußeren Vorlagengrenzen aus der wirksamen Öffnung ableiten. Prozentuale und relative
       Übergänge gehören nicht zum Schichtmodell.
 - [x] Feier- und Sondertage ohne wiederverwendbare Vorlage innerhalb der Monatsplananlage frei konfigurieren.
+- [x] Regelmäßig abweichend geöffnete Wochentage innerhalb eines Monats einmal je Wochentag frei konfigurieren und auf alle
+      regulären Vorkommen übertragen.
 - [x] Für gesetzliche Feiertage die vier Öffnungsarten `Standard`, `Wie Sonntag`, `Abweichend` und `Geschlossen` festlegen.
       `Wie Sonntag` verweist dynamisch auf die wirksame Sonntagsöffnung und die Sonntagsvorlage; nur `Abweichend` benötigt eine
       freie Tagesstruktur in der Monatsplananlage.
@@ -122,7 +125,7 @@ Zu löschen:
 - [x] Den vorbereiteten Wert `schichtbausteine`, seine leeren Dokumenttypen und die deaktivierten UI-Einstiege kontrolliert
       entfernen. Eine dauerhafte stillschweigende Ersatzannahme ist nicht vorgesehen.
 
-### [ ] Schritt 3: Schichtmodelle verwalten
+### [x] Schritt 3: Schichtmodelle verwalten
 
 - [x] Schichtmodelle in einem eigenen Service und Store laden, anlegen, bearbeiten und deaktivieren.
 - [x] Schichtmodelle in der Modellverwaltung anbieten.
@@ -134,14 +137,16 @@ Zu löschen:
       gleichmäßig über die vollständige Öffnung neu verteilen und anschließend unabhängig bearbeitbar lassen.
 - [x] Unterschiedliche Schichtanzahlen, Längen, Lücken und Überschneidungen zwischen Wochentags- und Sonntagsvorlage zulassen.
 - [x] Kernzeiten gegen die für die Vorlage maßgebliche Öffnung validieren.
-- [ ] Die tatsächliche Arbeitszeit einschließlich Vor- und Nachbereitung im Modelldialog nachvollziehbar anzeigen.
+- [x] Die tatsächliche Arbeitszeit einschließlich Vor- und Nachbereitung im Modelldialog nachvollziehbar anzeigen.
 - [x] Während eines Schreibvorgangs das vollständige Formular und alle datenverändernden Aktionen deaktivieren.
 
 ### [x] Schritt 4: Vollständige Tagesstrukturen beim Monatsplan anlegen
 
 - [x] Nach der Auswahl eines Schichtmodells alle Kalendertage und ihre wirksamen Öffnungsregeln auflösen.
-- [x] Für reguläre Wochentage von Montag bis Samstag eigene Tagesschichten aus der Wochentagsvorlage und für reguläre Sonntage
-      aus der Sonntagsvorlage erzeugen.
+- [x] Für standardmäßig geöffnete Wochentage von Montag bis Samstag eigene Tagesschichten aus der Wochentagsvorlage und für
+      reguläre Sonntage aus der Sonntagsvorlage erzeugen.
+- [x] Für regelmäßig abweichend geöffnete Wochentage eine gruppiert erfasste freie Tagesstruktur auf alle regulären
+      Monatsvorkommen übertragen.
 - [x] Gesetzliche Feiertage mit `Standard` anhand der allgemeinen Standardöffnung und mit `Wie Sonntag` anhand der wirksamen
       Sonntagsöffnung auflösen, ohne sie im Sondertagsdialog erneut konfigurieren zu lassen. Für `Standard` bestimmt der
       tatsächliche Wochentag weiterhin die Wochentags- oder Sonntagsvorlage; `Wie Sonntag` verwendet die Sonntagsvorlage.
@@ -187,8 +192,8 @@ Zu löschen:
 ### [ ] Tests und Abschluss
 
 - [x] Modell-, Mapper-, Validator-, Service- und Store-Tests nach der Bereinigung auf den alleinigen Schichtmodellpfad ausrichten.
-- [x] Tageserzeugung für reguläre Wochentage, Sonntage, Feiertage mit `Standard` oder `Wie Sonntag`, geschlossene Tage sowie
-      frei konfigurierte Feier- und Sondertage testen.
+- [x] Tageserzeugung für standardmäßig und abweichend geöffnete Wochentage, Sonntage, Feiertage mit `Standard` oder
+      `Wie Sonntag`, geschlossene Tage sowie frei konfigurierte Feier- und Sondertage testen.
 - [x] Übernachtöffnungen, Kernzeitgrenzen, Vor- und Nachbereitung, unterschiedliche Schichtanzahlen, Lücken und
       Überschneidungen testen.
 - [x] Component-Tests für Modellauswahl, beide Vorlagen, freie Sondertagserfassung und variable Tagesdarstellung ergänzen.
@@ -210,13 +215,117 @@ Zu löschen:
 - [x] Jeder geöffnete Monatstag eines Schichtmodellplans besitzt eine eigene vollständige und historisch stabile
       Tagesstruktur; geschlossene Tage bleiben ohne Tagesschichten.
 - [x] Wochentage und Sonntage können unterschiedliche Schichtanzahlen, Identitäten, Uhrzeiten und Überschneidungen besitzen.
+- [x] Regelmäßig abweichend geöffnete Wochentage werden einmal je Wochentag und Monat frei konfiguriert und auf ihre regulären
+      Vorkommen übertragen.
 - [x] Feiertage mit `Wie Sonntag` verwenden automatisch Sonntagsöffnung und Sonntagsvorlage; abweichend geöffnete Feier- und
-      Sondertage werden vor der Monatsplananlage innerhalb ihrer wirksamen Öffnung frei konfiguriert.
+      Sondertage werden vor der Monatsplananlage innerhalb ihrer wirksamen Öffnung einzeln frei konfiguriert.
 - [x] Kernzeiten bleiben innerhalb der Öffnung; nur Vor- und Nachbereitung darf die Öffnungsgrenzen überschreiten.
 - [x] Mitarbeiter können anschließend ohne Änderung der Tagesstruktur auf konkrete Tagesschichten verteilt werden.
 - [x] Konfliktprüfung, Pausenberechnung, Versionierung und Veröffentlichung funktionieren für das Schichtmodell konsistent.
 - [ ] Der Modelldialog zeigt die tatsächliche Arbeitszeit einschließlich Vor- und Nachbereitung nachvollziehbar an.
 - [ ] Automatisierte Tests, Rules-Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
+
+### [x] 26.1 Abweichende Wochentage bei der Monatsplananlage konfigurieren
+
+#### Ziel
+
+Das Schichtmodell behält seine wiederverwendbare Wochentags- und Sonntagsvorlage. Beim Anlegen eines Monatsplans werden jedoch
+nicht nur abweichend geöffnete Feier- und Sondertage, sondern auch regelmäßig abweichend geöffnete Wochentage frei
+konfiguriert. Ein solcher Wochentag wird innerhalb eines Monats nur einmal bearbeitet; die gewählte Schichtaufteilung wird
+anschließend auf alle regulären Vorkommen dieses Wochentags im Monat übertragen.
+
+Standardmäßig geöffnete Tage von Montag bis Samstag verwenden weiterhin die Wochentagsvorlage. Reguläre Sonntage und Tage mit
+`Wie Sonntag` verwenden weiterhin die Sonntagsvorlage. Geschlossene Tage besitzen keine Tagesschichten. Fällt ein regelmäßig
+abweichender Wochentag zusätzlich auf einen wirksamen Feier- oder Sondertag, hat dessen konkrete Tagesregel Vorrang und der Tag
+wird nicht zusätzlich über die Wochentagsgruppe konfiguriert.
+
+#### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/models/domain/dienstplan-kalendertag.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.spec.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.spec.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/
+- src/app/components/schichtplan/dienstplan-abweichende-tage-dialog/
+- src/app/components/schichtplan/dienstplan-monatsliste/dienstplan-monatsliste.spec.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
+- src/app/services/domain/dienstplan.service.ts
+- src/app/stores/domain/dienstplan.store.ts
+- docs/matrizen/oeffnungszeiten.md
+- docs/architektur/components/schichtplan.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/stores/dienstplan-store.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_naechste.md
+
+#### Schritt 1: Abweichende Tagesstrukturen fachlich bestimmen
+
+- [x] Geöffnete Wochentage mit dem Modus `Abweichend` als frei zu konfigurierende Wochentagsgruppen des Monats bestimmen.
+- [x] Reguläre Vorkommen desselben abweichenden Wochentags innerhalb eines Monats gemeinsam konfigurieren.
+- [x] Abweichend geöffnete Feier- und Sondertage weiterhin als einzelne konkrete Kalendertage konfigurieren.
+- [x] Wirksame Feier- und Sondertage aus der wiederkehrenden Wochentagsgruppe ausschließen, damit jede konkrete Tagesstruktur
+      genau einmal bestimmt wird.
+- [x] Standardtage, reguläre Sonntage, Tage mit `Wie Sonntag` und geschlossene Tage unverändert aus ihren bisherigen Regeln
+      ableiten.
+
+#### Schritt 2: Dialog für alle abweichenden Tage verallgemeinern
+
+- [x] Den bisherigen Sondertagsdialog fachlich und technisch zu einem Dialog für abweichende Tage verallgemeinern.
+- [x] Für jede abweichende Wochentagsgruppe Wochentag, wirksame Öffnung und alle betroffenen Monatsdaten anzeigen.
+- [x] Für jeden einzelnen abweichenden Feier- oder Sondertag weiterhin Bezeichnung, Datum und wirksame Öffnung anzeigen.
+- [x] Anzahl, Bezeichnung, Kernzeiten, Vor- und Nachbereitung sowie Mehrfachbelegung mit der bestehenden freien
+      Schichtbearbeitung erfassen.
+- [x] Den Monatsplan erst anlegen, wenn sämtliche erforderlichen abweichenden Tagesstrukturen vollständig und gültig sind.
+
+#### Schritt 3: Freie Strukturen in konkrete Monatsdaten auflösen
+
+- [x] Die einmal erfasste Struktur einer abweichenden Wochentagsgruppe auf alle zugehörigen regulären Kalendertage des Monats
+      kopieren.
+- [x] Für jeden betroffenen Kalendertag eigene stabile Tagesschicht-IDs und datumsgebundene Zeitstempel erzeugen.
+- [x] Freie Strukturen unabhängig davon verwenden, ob ihre Öffnungsregel aus einem Wochentag oder einem Feier- und Sondertag
+      stammt.
+- [x] Kernzeiten gegen die jeweilige wirksame Tagesöffnung validieren und weiterhin nur Vor- und Nachbereitung außerhalb der
+      Öffnung zulassen.
+- [x] Monatsplan, Kalender-Momentaufnahme, erste Entwurfsversion und alle Tagesschichten weiterhin atomar anlegen.
+
+#### Schritt 4: Dokumentation an das erweiterte Verhalten anpassen
+
+- [x] Fachkonzept und Projektplan um frei konfigurierte regelmäßig abweichende Wochentage ergänzen.
+- [x] Komponenten-, Service- und Store-Dokumentation auf den verallgemeinerten Dialog und die Auflösung je Kalendertag
+      aktualisieren.
+- [x] In der Öffnungszeitenmatrix für jede Öffnungsart die verwendete Vorlage oder freie Tagesstruktur eindeutig festhalten.
+- [x] Den umgesetzten Stand im Projektstand dokumentieren; den erfolgreichen Prüfstand nach der manuellen Abnahme ergänzen.
+
+#### Tests und Abschluss
+
+- [x] Unit-Tests für einen einzelnen abweichenden Wochentag mit mehreren regulären Vorkommen im Monat ergänzen.
+- [x] Prioritätsfälle testen, bei denen ein abweichender Wochentag auf einen geöffneten oder geschlossenen Feier- oder
+      Sondertag fällt.
+- [x] Standardtage, reguläre Sonntage, `Wie Sonntag`, abweichende Sondertage und geschlossene Tage als unveränderte
+      Vergleichsfälle absichern.
+- [x] Dialogtests für Gruppierung, Hinzufügen und Entfernen von Schichten, Validierung und vollständige Rückgabe der freien
+      Tagesstrukturen ergänzen.
+- [x] Einen Monatsplan mit abweichendem Montag, regulärem Sonntag und mehreren Sondertagen manuell anlegen und die erzeugten
+      Schichtzeiten kontrollieren.
+- [x] `npm test`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich ausführen.
+
+#### Erledigt, wenn
+
+- [x] Jeder regelmäßig abweichend geöffnete Wochentag kann bei der Monatsplananlage mit einer eigenen Schichtaufteilung
+      konfiguriert werden.
+- [x] Eine Wochentagsgruppe muss pro Monat nur einmal bearbeitet werden und erzeugt für jedes reguläre Vorkommen eigene
+      datumsgebundene Tagesschichten.
+- [x] Feier- und Sondertage besitzen Vorrang und werden weder ausgelassen noch doppelt konfiguriert.
+- [x] Tage ohne freie Konfiguration verwenden weiterhin zuverlässig die Wochentags- oder Sonntagsvorlage beziehungsweise
+      bleiben geschlossen.
+- [x] Alle erzeugten Kernzeiten liegen innerhalb der jeweiligen wirksamen Öffnung und vorhandene Monatspläne bleiben
+      unveränderliche Momentaufnahmen.
+- [x] Unit-Tests, betroffene Produktionsbuilds, Dokumentation und manuelle Monatsprüfung sind erfolgreich.
 
 ## 27. Feiertage, Gedenk- und Trauertage fachlich neu ordnen
 

@@ -1,4 +1,4 @@
-// pur-system/src/app/components/schichtplan/dienstplan-sondertage-dialog/dienstplan-sondertage-dialog.ts
+// pur-system/src/app/components/schichtplan/dienstplan-abweichende-tage-dialog/dienstplan-abweichende-tage-dialog.ts
 
 import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -11,6 +11,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
 import type { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
+import type {
+  IGeoeffneteOeffnungsregel,
+  TWochentag,
+} from '../../../commons/models/domain/filialeinstellung';
 import type {
   IFreieTagesschichtSchreibdaten,
   TSchichtZeitgrenzeTag,
@@ -36,16 +40,33 @@ type TSchichtForm = FormGroup<{
 }>;
 
 type TTagForm = FormGroup<{
-  datum: FormControl<string>;
+  daten: FormControl<readonly string[]>;
   schichten: FormArray<TSchichtForm>;
 }>;
 
-export type TDienstplanSondertageDialogDaten = {
+type TAbweichendeTagesgruppe = {
+  readonly id: string;
+  readonly bezeichnung: string;
+  readonly daten: readonly string[];
+  readonly oeffnungsregel: IGeoeffneteOeffnungsregel;
+};
+
+export type TDienstplanAbweichendeTageDialogDaten = {
   readonly kalendertage: readonly IDienstplanKalendertag[];
 };
 
+const WOCHENTAG_BEZEICHNUNGEN: Readonly<Record<TWochentag, string>> = {
+  montag: 'Montag',
+  dienstag: 'Dienstag',
+  mittwoch: 'Mittwoch',
+  donnerstag: 'Donnerstag',
+  freitag: 'Freitag',
+  samstag: 'Samstag',
+  sonntag: 'Sonntag',
+};
+
 @Component({
-  selector: 'app-dienstplan-sondertage-dialog',
+  selector: 'app-dienstplan-abweichende-tage-dialog',
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -57,29 +78,27 @@ export type TDienstplanSondertageDialogDaten = {
     EingabeMinuten,
     EingabeZeit,
   ],
-  templateUrl: './dienstplan-sondertage-dialog.html',
-  styleUrl: './dienstplan-sondertage-dialog.scss',
+  templateUrl: './dienstplan-abweichende-tage-dialog.html',
+  styleUrl: './dienstplan-abweichende-tage-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DienstplanSondertageDialog {
+export class DienstplanAbweichendeTageDialog {
   // ===== Interne Dependency Injection =========
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialogRef = inject(
-    MatDialogRef<DienstplanSondertageDialog, readonly IFreieTagesschichtSchreibdaten[]>,
+    MatDialogRef<DienstplanAbweichendeTageDialog, readonly IFreieTagesschichtSchreibdaten[]>,
   );
-  readonly daten = inject<TDienstplanSondertageDialogDaten>(MAT_DIALOG_DATA);
+  readonly daten = inject<TDienstplanAbweichendeTageDialogDaten>(MAT_DIALOG_DATA);
 
   // ===== Öffentliche Werte ====================
 
-  readonly sondertage = this.daten.kalendertage.filter((tag) => {
-    return tag.oeffnungsregelQuelle === 'sondertag' && tag.oeffnungsregel.geoeffnet;
-  });
+  readonly abweichendeTage = this.createAbweichendeTagesgruppen();
   readonly form = new FormGroup({
     tage: new FormArray<TTagForm>(
-      this.sondertage.map((tag) => {
+      this.abweichendeTage.map((tag) => {
         return new FormGroup({
-          datum: new FormControl(tag.datum, { nonNullable: true }),
+          daten: new FormControl<readonly string[]>(tag.daten, { nonNullable: true }),
           schichten: new FormArray<TSchichtForm>([this.createSchichtForm(tag)]),
         });
       }),
@@ -89,7 +108,7 @@ export class DienstplanSondertageDialog {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Fügt dem ausgewählten Sondertag eine weitere frei konfigurierbare Schicht hinzu.
+   * Fügt der ausgewählten abweichenden Tagesgruppe eine weitere frei konfigurierbare Schicht hinzu.
    */
   addSchicht(tagIndex: number): void {
     const schichten = this.form.controls.tage.at(tagIndex).controls.schichten;
@@ -98,7 +117,7 @@ export class DienstplanSondertageDialog {
       bisherigeLetzteSchicht.controls.nachbereitungsminuten.value;
     bisherigeLetzteSchicht.controls.nachbereitungsminuten.setValue(0);
     const neueSchicht = this.createSchichtForm(
-      this.sondertage[tagIndex],
+      this.abweichendeTage[tagIndex],
       getNaechsteSchichtbezeichnung(
         schichten.controls.map((schicht) => {
           return schicht.controls.bezeichnung.value;
@@ -111,7 +130,7 @@ export class DienstplanSondertageDialog {
   }
 
   /**
-   * Entfernt eine Schicht aus dem ausgewählten Sondertag.
+   * Entfernt eine Schicht aus der ausgewählten abweichenden Tagesgruppe.
    */
   removeSchicht(tagIndex: number, schichtIndex: number): void {
     const schichten = this.form.controls.tage.at(tagIndex).controls.schichten;
@@ -134,35 +153,41 @@ export class DienstplanSondertageDialog {
   }
 
   /**
-   * Bestätigt alle frei konfigurierten Sondertagsschichten.
+   * Bestätigt alle frei konfigurierten Tagesschichten.
    */
   save(): void {
     if (this.form.invalid) return;
     const schichten = this.form.controls.tage.controls.flatMap((tag) => {
       const tagesschichten = tag.controls.schichten.controls;
       const letzterIndex = tagesschichten.length - 1;
-      return tagesschichten.map((schicht, reihenfolge) => {
-        const wert = schicht.getRawValue();
-        return {
-          datum: tag.controls.datum.value,
-          bezeichnung: wert.bezeichnung.trim(),
-          reihenfolge,
-          beginn: { lokalzeit: wert.beginnLokalzeit, tag: wert.beginnTag },
-          ende: { lokalzeit: wert.endeLokalzeit, tag: wert.endeTag },
-          vorbereitungsminuten: reihenfolge === 0 ? wert.vorbereitungsminuten : 0,
-          nachbereitungsminuten: reihenfolge === letzterIndex ? wert.nachbereitungsminuten : 0,
-          mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
-        } satisfies IFreieTagesschichtSchreibdaten;
+      return tag.controls.daten.value.flatMap((datum) => {
+        return tagesschichten.map((schicht, reihenfolge) => {
+          const wert = schicht.getRawValue();
+          return {
+            datum,
+            bezeichnung: wert.bezeichnung.trim(),
+            reihenfolge,
+            beginn: { lokalzeit: wert.beginnLokalzeit, tag: wert.beginnTag },
+            ende: { lokalzeit: wert.endeLokalzeit, tag: wert.endeTag },
+            vorbereitungsminuten: reihenfolge === 0 ? wert.vorbereitungsminuten : 0,
+            nachbereitungsminuten: reihenfolge === letzterIndex ? wert.nachbereitungsminuten : 0,
+            mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
+          } satisfies IFreieTagesschichtSchreibdaten;
+        });
       });
     });
-    this.dialogRef.close(schichten);
+    this.dialogRef.close(
+      schichten.sort((a, b) => {
+        return a.datum.localeCompare(b.datum) || a.reihenfolge - b.reihenfolge;
+      }),
+    );
   }
 
   // ===== Interne Helfer =======================
 
   private verteileSchichtenGleichmaessig(tagIndex: number): void {
     const schichten = this.form.controls.tage.at(tagIndex).controls.schichten;
-    const oeffnung = this.sondertage[tagIndex]?.oeffnungsregel;
+    const oeffnung = this.abweichendeTage[tagIndex]?.oeffnungsregel;
     if (!oeffnung?.geoeffnet) return;
     const grenzen = getGleichmaessigeLokalzeitGrenzen(oeffnung, schichten.length, 15);
     if (grenzen.length !== schichten.length - 1) return;
@@ -177,7 +202,7 @@ export class DienstplanSondertageDialog {
   }
 
   private createSchichtForm(
-    tag?: IDienstplanKalendertag,
+    tag?: TAbweichendeTagesgruppe,
     standardbezeichnung = 'Schicht 1',
   ): TSchichtForm {
     const oeffnung = tag?.oeffnungsregel;
@@ -219,5 +244,42 @@ export class DienstplanSondertageDialog {
         });
     }
     return form;
+  }
+
+  /**
+   * Gruppiert wiederkehrende abweichende Wochentage und lässt konkrete Sondertage eigenständig.
+   */
+  private createAbweichendeTagesgruppen(): readonly TAbweichendeTagesgruppe[] {
+    const gruppen: TAbweichendeTagesgruppe[] = [];
+    const gruppenNachId = new Map<string, TAbweichendeTagesgruppe>();
+    for (const tag of this.daten.kalendertage) {
+      if (tag.tagesstrukturQuelle !== 'freieTagesstruktur' || !tag.oeffnungsregel.geoeffnet) {
+        continue;
+      }
+      const istSondertag = tag.oeffnungsregelQuelle === 'sondertag';
+      const id = istSondertag ? `sondertag:${tag.datum}` : `wochentag:${tag.wochentag}`;
+      const vorhandeneGruppe = gruppenNachId.get(id);
+      if (vorhandeneGruppe) {
+        const daten = [...vorhandeneGruppe.daten, tag.datum];
+        const aktualisierteGruppe = {
+          ...vorhandeneGruppe,
+          daten,
+        };
+        gruppen[gruppen.indexOf(vorhandeneGruppe)] = aktualisierteGruppe;
+        gruppenNachId.set(id, aktualisierteGruppe);
+        continue;
+      }
+      const gruppe: TAbweichendeTagesgruppe = {
+        id,
+        bezeichnung: istSondertag
+          ? (tag.bezeichnung ?? 'Sondertag')
+          : WOCHENTAG_BEZEICHNUNGEN[tag.wochentag],
+        daten: [tag.datum],
+        oeffnungsregel: tag.oeffnungsregel,
+      };
+      gruppen.push(gruppe);
+      gruppenNachId.set(id, gruppe);
+    }
+    return gruppen;
   }
 }

@@ -20,7 +20,7 @@ Die wiederverwendbare Component `MonatSelector` erhält den ausgewählten Monat 
 `selectedMonatChange`. Das Utility `getAktuellerMonat()` ermittelt den aktuellen Monat für `Europe/Berlin`.
 
 Auf breiten Ansichten stehen Dienstpläne und Mitarbeiterübersicht in zwei unabhängig scrollbaren Spalten. Die Übersicht führt
-aktive Mitarbeiter aller ausgewählten Filialen ohne Duplikate zusammen und zeigt Farbkennung, Lohnzeit und Schichtanzahl des
+aktive Servicekräfte aller ausgewählten Filialen ohne Duplikate zusammen und zeigt Farbkennung, Lohnzeit und Schichtanzahl des
 aktiven Monatsstands. Die Mitarbeiterkarten sind mit Angular CDK Drag-and-drop als kopierbare Planungselemente verfügbar.
 Bei höchstens `900px` Containerbreite werden die Bereiche untereinander angeordnet.
 
@@ -33,8 +33,9 @@ diese Zuordnung erneut und zeigt bei einer Verletzung `Mitarbeiter nicht zugelas
 
 `DienstplanMonatsliste` stellt den Monatsplan als gemeinsame Zeitachse und tagesabhängige Tagesschichten dar. Jeder Listentag
 zeigt Wochentag, Datum, wirksame Öffnung und Feiertags- oder Sondertagsbezeichnungen sowie ausschließlich seine eigenen
-Tagesschichten. Reguläre Tage verwenden die aus dem Modell erzeugten Instanzen; abweichend geöffnete Feier- und Sondertage
-verwenden ihre bei der Monatsanlage frei konfigurierten Instanzen.
+Tagesschichten. Standardmäßig geöffnete Wochentage und Sonntage verwenden die aus dem Modell erzeugten Instanzen. Regelmäßig
+abweichend geöffnete Wochentage sowie abweichend geöffnete Feier- und Sondertage verwenden ihre bei der Monatsanlage frei
+konfigurierten Instanzen.
 
 Die Zeitachse reicht ohne Stundenrundung von der exakten frühesten Öffnung bis zum exakten spätesten Öffnungsende. Die
 Berechnung verwendet den verbindlichen 15-Minuten-Schritt; die Kopfzeile beschriftet nur die dazwischenliegenden vollen
@@ -58,10 +59,12 @@ ist zusätzlich die transaktionale Prüfung beim Schreiben.
 
 ## Planaktionen und Dialoge
 
-`DienstplanAnlegenDialog` verlangt ein aktives Schichtmodell der Filiale. Nach der Modellwahl konfiguriert der Planer die
-Tagesstruktur für abweichend geöffnete Feier- und Sondertage. Plan, erste Entwurfsversion, Kalender-Momentaufnahme und
-Tagesschichten entstehen anschließend atomar. Ein leerer, noch nie veröffentlichter Plan darf gelöscht und aus einem anderen
-aktiven Modell neu angelegt werden.
+`DienstplanAnlegenDialog` verlangt ein aktives Schichtmodell der Filiale. Nach der Modellwahl öffnet er den
+`DienstplanAbweichendeTageDialog`. Darin konfiguriert der Planer regelmäßig abweichend geöffnete Wochentage einmal je
+Wochentagsgruppe und abweichend geöffnete Feier- oder Sondertage einzeln. Der Dialog zeigt die betroffenen Monatsdaten und die
+wirksame Öffnung; beim Bestätigen erzeugt er für jedes Datum vollständige freie Tagesschichten. Plan, erste Entwurfsversion,
+Kalender-Momentaufnahme und Tagesschichten entstehen anschließend atomar. Ein leerer, noch nie veröffentlichter Plan darf
+gelöscht und aus einem anderen aktiven Modell neu angelegt werden.
 
 `SchichtBelegenDialog` ordnet einer bereits festgelegten Tagesschicht einen aktiven Mitarbeiter zu. Datum, Bezeichnung und
 Zeitspanne bleiben schreibgeschützt. Eine belegte Einfachschicht oder eine filialübergreifende zeitliche Überschneidung sperrt
@@ -106,7 +109,7 @@ Veröffentlichung den bisherigen Stand, erscheint nach der nächsten Netzwerklad
 - `src/app/components/schichtplan/schicht-belegen-dialog`
 - `src/app/components/schichtplan/schichtmodelle-filiale`
 - `src/app/components/schichtplan/schichtmodell-bearbeiten-dialog`
-- `src/app/components/schichtplan/dienstplan-sondertage-dialog`
+- `src/app/components/schichtplan/dienstplan-abweichende-tage-dialog`
 - `src/app/pages/schichtplan/dienstplan-ansicht-page`
 - `src/app/pages/schichtplan/dienstplan-planung-page`
 - `src/app/pages/schichtplan/schichtmodelle-page`

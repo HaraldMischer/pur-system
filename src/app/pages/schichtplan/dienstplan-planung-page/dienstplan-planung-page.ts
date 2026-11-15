@@ -145,7 +145,9 @@ export class DienstplanPlanungPage {
     return sortMitarbeiter(
       [...mitarbeiterNachId.values()].filter((eintrag) => {
         return (
-          eintrag.aktiv && eintrag.filialIds.some((filialId) => ausgewaehlteFilialIds.has(filialId))
+          eintrag.aktiv &&
+          eintrag.rollen.includes('servicekraft') &&
+          eintrag.filialIds.some((filialId) => ausgewaehlteFilialIds.has(filialId))
         );
       }),
     );

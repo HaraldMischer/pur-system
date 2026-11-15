@@ -3,6 +3,7 @@
 import { Timestamp } from 'firebase/firestore';
 
 import type { IDienstplanKalendertag } from '../../models/domain/dienstplan-kalendertag';
+import type { IGeoeffneteOeffnungsregel } from '../../models/domain/filialeinstellung';
 import type {
   IFreieTagesschichtSchreibdaten,
   ISchichtmodellBestand,
@@ -19,11 +20,49 @@ export type TTagesschichtAnlage = ITagesschichtDaten & {
   readonly id?: string;
 };
 
+/**
+ * Kennzeichnet eine Schichtmodellvorlage, deren feste innere Grenzen außerhalb der aktuellen Öffnung liegen.
+ */
+export class SchichtmodellOeffnungszeitenFehler extends Error {
+  constructor() {
+    super('Das Schichtmodell passt nicht zu den aktuellen Öffnungszeiten.');
+    this.name = 'SchichtmodellOeffnungszeitenFehler';
+  }
+}
+
 export interface IDienstplanTagesschichtenAnfrage {
   kalendertage: readonly IDienstplanKalendertag[];
   schichtmodell: ISchichtmodellBestand;
-  freieSondertagsschichten: readonly IFreieTagesschichtSchreibdaten[];
+  freieTagesschichten: readonly IFreieTagesschichtSchreibdaten[];
   zeitzone: string;
+}
+
+/**
+ * Prüft alle aus Modellvorlagen erzeugten Tagesstrukturen gegen die wirksamen Monatsöffnungen.
+ *
+ * Frei konfigurierte und geschlossene Tage werden dabei nicht durch das Schichtmodell bestimmt.
+ */
+export function assertSchichtmodellPasstZuKalendertagen(
+  kalendertage: readonly IDienstplanKalendertag[],
+  schichtmodell: ISchichtmodellBestand,
+): void {
+  kalendertage.forEach((kalendertag) => {
+    if (
+      !kalendertag.oeffnungsregel.geoeffnet ||
+      kalendertag.tagesstrukturQuelle === 'freieTagesstruktur'
+    ) {
+      return;
+    }
+    const vorlage: TTagesvorlageTyp =
+      kalendertag.tagesstrukturQuelle === 'sonntagsvorlage' ? 'sonntag' : 'wochentag';
+    const schichten = resolveTagesvorlagenschichten(
+      schichtmodell.tagesvorlagenschichten.filter((schicht) => {
+        return schicht.vorlage === vorlage;
+      }),
+      kalendertag.oeffnungsregel,
+    );
+    assertTagesstrukturMitModellfehler(schichten, kalendertag.oeffnungsregel);
+  });
 }
 
 /**
@@ -32,21 +71,27 @@ export interface IDienstplanTagesschichtenAnfrage {
 export function createDienstplanTagesschichten(
   anfrage: IDienstplanTagesschichtenAnfrage,
 ): readonly TTagesschichtAnlage[] {
+  assertSchichtmodellPasstZuKalendertagen(anfrage.kalendertage, anfrage.schichtmodell);
   const freieNachDatum = new Map<string, IFreieTagesschichtSchreibdaten[]>();
-  anfrage.freieSondertagsschichten.forEach((schicht) => {
+  anfrage.freieTagesschichten.forEach((schicht) => {
     freieNachDatum.set(schicht.datum, [...(freieNachDatum.get(schicht.datum) ?? []), schicht]);
   });
   return anfrage.kalendertage.flatMap((kalendertag) => {
     if (!kalendertag.oeffnungsregel.geoeffnet) return [];
-    const istSondertag = kalendertag.oeffnungsregelQuelle === 'sondertag';
+    const freieSchichten = freieNachDatum.get(kalendertag.datum);
+    const verwendetFreieTagesstruktur = kalendertag.tagesstrukturQuelle === 'freieTagesstruktur';
+    if (verwendetFreieTagesstruktur && (!freieSchichten || freieSchichten.length === 0)) {
+      throw new Error(`Für ${kalendertag.datum} fehlt die abweichende Tagesstruktur.`);
+    }
     const vorlage: TTagesvorlageTyp =
-      kalendertag.istSonntag || kalendertag.oeffnungsregelQuelle === 'sonntag'
-        ? 'sonntag'
-        : 'wochentag';
-    const herkunft: TTagesschichtHerkunft = istSondertag ? 'sondertag' : vorlage;
-    const schichten: TTagesstrukturSchichtSchreibdaten[] = istSondertag
-      ? (freieNachDatum.get(kalendertag.datum) ?? []).map((schicht) => {
-          const { datum: _datum, ...daten } = schicht;
+      kalendertag.tagesstrukturQuelle === 'sonntagsvorlage' ? 'sonntag' : 'wochentag';
+    const herkunft: TTagesschichtHerkunft =
+      verwendetFreieTagesstruktur && kalendertag.oeffnungsregelQuelle === 'sondertag'
+        ? 'sondertag'
+        : vorlage;
+    const schichten: TTagesstrukturSchichtSchreibdaten[] = verwendetFreieTagesstruktur
+      ? freieSchichten!.map((schicht) => {
+          const { datum: _datum, id: _id, ...daten } = schicht;
           return daten;
         })
       : resolveTagesvorlagenschichten(
@@ -55,11 +100,30 @@ export function createDienstplanTagesschichten(
           }),
           kalendertag.oeffnungsregel,
         );
-    assertGueltigeTagesstruktur(schichten, kalendertag.oeffnungsregel);
+    if (verwendetFreieTagesstruktur) {
+      assertGueltigeTagesstruktur(schichten, kalendertag.oeffnungsregel);
+    }
     return schichten.map((schicht) => {
       return createTagesschicht(kalendertag.datum, herkunft, schicht, anfrage.zeitzone);
     });
   });
+}
+
+function assertTagesstrukturMitModellfehler(
+  schichten: readonly TTagesstrukturSchichtSchreibdaten[],
+  oeffnungsregel: IGeoeffneteOeffnungsregel,
+): void {
+  try {
+    assertGueltigeTagesstruktur(schichten, oeffnungsregel);
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message === 'Die Kernzeit der Tagesschicht muss innerhalb der Öffnung liegen.'
+    ) {
+      throw new SchichtmodellOeffnungszeitenFehler();
+    }
+    throw error;
+  }
 }
 
 function createTagesschicht(

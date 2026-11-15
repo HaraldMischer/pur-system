@@ -1,6 +1,9 @@
 // pur-system/src/app/commons/utils/dienstplan/dienstplan-kalendertage.ts
 
-import type { IDienstplanKalendertag } from '../../models/domain/dienstplan-kalendertag';
+import type {
+  IDienstplanKalendertag,
+  TDienstplanTagesstrukturQuelle,
+} from '../../models/domain/dienstplan-kalendertag';
 import type {
   IFilialeinstellungSondertagEintrag,
   IGeoeffneteOeffnungsregel,
@@ -35,6 +38,7 @@ export function createDienstplanKalendertage(
       wochenregeln: anfrage.wochenregeln,
       sondertage: anfrage.sondertage,
     });
+    const tagesstrukturQuelle = resolveTagesstrukturQuelle(aufgeloest, anfrage.wochenregeln);
     return {
       datum,
       wochentag: aufgeloest.wochentag,
@@ -42,6 +46,7 @@ export function createDienstplanKalendertage(
       aktiveSondertage: aufgeloest.aktiveSondertage,
       oeffnungsregelQuelle: aufgeloest.quelle,
       oeffnungsregel: { ...aufgeloest.oeffnungsregel },
+      tagesstrukturQuelle,
       ...(aufgeloest.bezeichnung ? { bezeichnung: aufgeloest.bezeichnung } : {}),
       ...(aufgeloest.sondertagId ? { sondertagId: aufgeloest.sondertagId } : {}),
       ...(aufgeloest.gesetzlicherFeiertag
@@ -49,4 +54,22 @@ export function createDienstplanKalendertage(
         : {}),
     };
   });
+}
+
+function resolveTagesstrukturQuelle(
+  aufgeloest: ReturnType<typeof resolveOeffnungsregel>,
+  wochenregeln: TWochenregeln,
+): TDienstplanTagesstrukturQuelle {
+  if (!aufgeloest.oeffnungsregel.geoeffnet) return 'geschlossen';
+  if (aufgeloest.quelle === 'sondertag') return 'freieTagesstruktur';
+  if (aufgeloest.quelle === 'sonntag' || aufgeloest.wochentag === 'sonntag') {
+    return 'sonntagsvorlage';
+  }
+  if (
+    !aufgeloest.gesetzlicherFeiertag &&
+    wochenregeln[aufgeloest.wochentag].modus === 'abweichend'
+  ) {
+    return 'freieTagesstruktur';
+  }
+  return 'wochentagsvorlage';
 }
