@@ -500,6 +500,7 @@ export class FilialeinstellungService {
           aktualisiertAm: zeitstempel,
           aktualisiertVonUid: benutzerUid,
         },
+        replaceFields: true,
       },
       ...sondertagVorlagen
         .filter((sondertag) => !bisherigeNachId.has(sondertag.id))

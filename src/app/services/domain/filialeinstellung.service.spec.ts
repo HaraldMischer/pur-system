@@ -320,6 +320,48 @@ describe('FilialeinstellungService', () => {
     );
   });
 
+  it('should replace weekly rules when switching an overriding sunday to standard', async () => {
+    const service = TestBed.inject(FilialeinstellungService);
+    const bestand = createBestand([]);
+    const bestandMitAbweichendemSonntag: IFilialeinstellungBestand = {
+      ...bestand,
+      oeffnungszeiten: {
+        ...bestand.oeffnungszeiten,
+        wochenregeln: {
+          ...bestand.oeffnungszeiten.wochenregeln,
+          sonntag: {
+            modus: 'abweichend',
+            oeffnungsregel: {
+              geoeffnet: true,
+              beginnLokalzeit: '09:00',
+              endeLokalzeit: '18:00',
+              endetAmFolgetag: false,
+            },
+          },
+        },
+      },
+    };
+    const neueGrundlagen: IFilialeinstellungGrundlagen = {
+      ...grundlagen,
+      wochenregeln: {
+        ...grundlagen.wochenregeln,
+        sonntag: { modus: 'standard' },
+      },
+    };
+
+    await service.saveGrundlagen(pfad, bestandMitAbweichendemSonntag, neueGrundlagen, 'uid-2');
+
+    expect(firestoreDbServiceMock.updateDocumentsAtomically.mock.calls[0][0]).toContainEqual(
+      expect.objectContaining({
+        documentPath: 'unternehmer/u-1/firma/f-1/filiale/b-1/einstellung/oeffnungszeiten',
+        daten: expect.objectContaining({
+          wochenregeln: expect.objectContaining({ sonntag: { modus: 'standard' } }),
+        }),
+        replaceFields: true,
+      }),
+    );
+  });
+
   it('should create, update and delete a user-defined special day', async () => {
     const service = TestBed.inject(FilialeinstellungService);
     const anlage = {
