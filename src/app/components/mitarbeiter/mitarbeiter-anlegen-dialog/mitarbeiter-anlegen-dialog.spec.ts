@@ -82,17 +82,30 @@ describe('MitarbeiterAnlegenDialog', () => {
     ).toHaveLength(0);
   });
 
-  it('should hide the fixed branch assignment for a branch account', () => {
+  it('should keep the own branch while allowing another branch for a branch account', async () => {
     benutzerProfil.set({ ...profil, userRole: 'filiale' });
     const fixture = TestBed.createComponent(MitarbeiterAnlegenDialog);
     fixture.detectChanges();
+    const component = fixture.componentInstance;
 
-    expect(fixture.componentInstance.mitarbeiterForm.controls.filialIds.value).toEqual(['b-1']);
+    expect(component.mitarbeiterForm.controls.filialIds.value).toEqual(['b-1']);
     expect(
       (fixture.nativeElement as HTMLElement).querySelector(
         'mat-select[formcontrolname="filialIds"]',
       ),
-    ).toBeNull();
+    ).not.toBeNull();
+
+    component.mitarbeiterForm.patchValue({
+      person: { vorname: 'Mia', nachname: 'Muster' },
+      filialIds: ['b-2'],
+    });
+    await component.onSubmit();
+
+    expect(createMitarbeiterMock).toHaveBeenCalledWith(
+      'u-1',
+      'f-1',
+      expect.objectContaining({ filialIds: ['b-2', 'b-1'] }),
+    );
   });
 
   it('should summarize multiple selected branches in the select trigger', () => {

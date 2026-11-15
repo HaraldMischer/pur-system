@@ -132,6 +132,7 @@ service cloud.firestore {
         match /filiale/{filialId} {
           allow read, create, update: if isMaster();
           allow read: if darfFilialeLesen(unternehmerId, firmaId, filialId);
+          allow read: if isFiliale() && darfFirmaLesen(unternehmerId, firmaId);
           allow read: if darfMitarbeiterFirmaLesen(unternehmerId, firmaId);
 
           match /einstellung/{einstellungId} {

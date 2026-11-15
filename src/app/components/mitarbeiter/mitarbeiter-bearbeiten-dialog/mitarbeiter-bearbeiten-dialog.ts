@@ -79,6 +79,7 @@ export class MitarbeiterBearbeitenDialog {
   private readonly entfernteVerwaisteFilialIds = signal<readonly string[]>([]);
 
   // ===== Öffentliche Werte ====================
+  readonly verpflichtendeFilialId = this.getVerpflichtendeFilialId();
   readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
     { value: 'filialkasse', label: 'Filialkasse' },
     { value: 'servicekraft', label: 'Servicekraft' },
@@ -141,9 +142,14 @@ export class MitarbeiterBearbeitenDialog {
       },
     ),
     filialIds: new FormControl<string[]>(
-      this.dialogDaten.mitarbeiter.filialIds.filter((filialId) => {
-        return this.erlaubteFilialIds.has(filialId);
-      }),
+      [
+        ...new Set([
+          ...this.dialogDaten.mitarbeiter.filialIds.filter((filialId) => {
+            return this.erlaubteFilialIds.has(filialId);
+          }),
+          ...(this.verpflichtendeFilialId ? [this.verpflichtendeFilialId] : []),
+        ]),
+      ],
       {
         nonNullable: true,
         validators: [Validators.required],
@@ -252,7 +258,6 @@ export class MitarbeiterBearbeitenDialog {
     const geburtstag = value.person.geburtstag.trim();
     const entfernteFilialIds = new Set(this.entfernteVerwaisteFilialIds());
 
-    const verpflichtendeFilialId = this.getVerpflichtendeFilialId();
     return {
       person: {
         vorname: value.person.vorname.trim(),
@@ -281,7 +286,7 @@ export class MitarbeiterBearbeitenDialog {
             return !entfernteFilialIds.has(filialId);
           }),
           ...value.filialIds,
-          ...(verpflichtendeFilialId ? [verpflichtendeFilialId] : []),
+          ...(this.verpflichtendeFilialId ? [this.verpflichtendeFilialId] : []),
         ]),
       ],
       aktiv: value.aktiv,

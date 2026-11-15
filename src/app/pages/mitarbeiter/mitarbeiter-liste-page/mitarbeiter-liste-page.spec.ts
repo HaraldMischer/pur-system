@@ -3,9 +3,11 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { By } from '@angular/platform-browser';
 
 import { MitarbeiterAnlegenDialog } from '../../../components/mitarbeiter/mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog';
 import { MitarbeiterBearbeitenDialog } from '../../../components/mitarbeiter/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog';
+import { MitarbeiterCard } from '../../../components/mitarbeiter/mitarbeiter-card/mitarbeiter-card';
 import { MitarbeiterZusammenfuehrenDialog } from '../../../components/mitarbeiter/mitarbeiter-zusammenfuehren-dialog/mitarbeiter-zusammenfuehren-dialog';
 import { IBenutzerProfilDokument } from '../../../commons/models/domain/benutzer';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
@@ -78,7 +80,10 @@ describe('MitarbeiterListePage', () => {
     zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
   });
   let dialogMock: { open: ReturnType<typeof vi.fn> };
-  let stammdatenStoreMock: { getFilialen: ReturnType<typeof vi.fn> };
+  let stammdatenStoreMock: {
+    getFilialen: ReturnType<typeof vi.fn>;
+    getFilialuebersicht: ReturnType<typeof vi.fn>;
+  };
   let mitarbeiterStoreMock: {
     inProgress: typeof inProgress;
     loadMitarbeiter: ReturnType<typeof vi.fn>;
@@ -110,6 +115,11 @@ describe('MitarbeiterListePage', () => {
     dialogMock = { open: vi.fn() };
     stammdatenStoreMock = {
       getFilialen: vi.fn().mockReturnValue([{ id: 'b-1', anzeigename: 'Filiale 1' }]),
+      getFilialuebersicht: vi.fn().mockReturnValue([
+        { id: 'b-1', anzeigename: 'Filiale 1', aktiv: true },
+        { id: 'b-2', anzeigename: 'Filiale 2', aktiv: true },
+        { id: 'b-3', anzeigename: 'Filiale 3', aktiv: false },
+      ]),
     };
     mitarbeiterStoreMock = {
       inProgress,
@@ -263,6 +273,20 @@ describe('MitarbeiterListePage', () => {
     await fixture.whenStable();
 
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledWith('u-1', 'f-1', 'b-1');
+
+    fixture.componentInstance.openMitarbeiterAnlegenDialog();
+
+    expect(dialogMock.open).toHaveBeenCalledWith(MitarbeiterAnlegenDialog, {
+      data: {
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        filialen: [
+          { id: 'b-1', anzeigename: 'Filiale 1', aktiv: true },
+          { id: 'b-2', anzeigename: 'Filiale 2', aktiv: true },
+        ],
+      },
+      panelClass: ['pur-dialog__panel'],
+    });
   });
 
   it('should wait while the app context contains no company', async () => {
@@ -302,14 +326,40 @@ describe('MitarbeiterListePage', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const mergeButton = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
-      (button) => button.textContent?.includes('Zusammenführen'),
-    );
-    mergeButton?.click();
+    const mitarbeiterCard = fixture.debugElement.query(By.directive(MitarbeiterCard));
+    expect(mitarbeiterCard.componentInstance.darfZusammenfuehren()).toBe(true);
+    mitarbeiterCard.triggerEventHandler('zusammenfuehren', mitarbeiter);
 
     expect(dialogMock.open).toHaveBeenCalledWith(MitarbeiterZusammenfuehrenDialog, {
       data: { ziel: mitarbeiter, mitarbeiter: [mitarbeiter, ziel] },
     });
+  });
+
+  it('should not offer merging when no employee has a similar name', async () => {
+    const andererMitarbeiter = {
+      ...mitarbeiter,
+      id: 'm-2',
+      person: { ...mitarbeiter.person, vorname: 'Zoe', nachname: 'Anders' },
+    };
+    mitarbeiterSignal.set([mitarbeiter, andererMitarbeiter]);
+    isLoaded.set(true);
+    mitarbeiterStoreMock.loadMitarbeiter.mockImplementation(async () => undefined);
+    benutzerProfil.set({ ...benutzerProfil()!, userRole: 'master', zugriffe: {} });
+    const fixture = TestBed.createComponent(MitarbeiterListePage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const mitarbeiterCards = fixture.debugElement.queryAll(By.directive(MitarbeiterCard));
+    expect(
+      mitarbeiterCards.every((karte) => {
+        return karte.componentInstance.darfZusammenfuehren() === false;
+      }),
+    ).toBe(true);
+
+    fixture.componentInstance.openMitarbeiterZusammenfuehrenDialog(mitarbeiter);
+
+    expect(dialogMock.open).not.toHaveBeenCalled();
   });
 
   it('should switch between active and inactive employees', async () => {

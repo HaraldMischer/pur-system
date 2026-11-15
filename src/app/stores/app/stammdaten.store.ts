@@ -34,6 +34,7 @@ export type TStammdatenSnapshot = {
   readonly unternehmer: readonly IUnternehmerEintrag[];
   readonly firmenNachUnternehmer: TFirmenNachUnternehmer;
   readonly filialenNachFirma: TFilialenNachFirma;
+  readonly filialuebersichtNachFirma: TFilialenNachFirma;
   readonly benutzerprofile: readonly IBenutzerProfilEintrag[];
   readonly download: boolean;
   readonly isLoaded: boolean;
@@ -47,6 +48,7 @@ const initialState: TStammdatenState = {
   unternehmer: [],
   firmenNachUnternehmer: {},
   filialenNachFirma: {},
+  filialuebersichtNachFirma: {},
   benutzerprofile: [],
   download: false,
   isLoaded: false,
@@ -184,6 +186,58 @@ export const StammdatenStore = signalStore(
               [unternehmerId]: {
                 ...(store.filialenNachFirma()[unternehmerId] ?? {}),
                 [firmaId]: sortEintraege([...vorhandeneFilialen, ...filialen]),
+              },
+            },
+            download: false,
+            isLoaded: true,
+            error: null,
+          });
+        } catch (error: unknown) {
+          if (aktuell === generation && store.benutzerId() === benutzerId) {
+            patchState(store, {
+              download: false,
+              isLoaded: false,
+              error: getFirebaseErrorMessage(error),
+            });
+          }
+          throw error;
+        }
+      }
+
+      /**
+       * Lädt die firmenweite read-only Filialübersicht getrennt vom operativen Arbeitskontext.
+       *
+       * @param benutzerId - UID des angemeldeten Benutzers.
+       * @param unternehmerId - ID des zugeordneten Unternehmers.
+       * @param firmaId - ID der zugeordneten Firma.
+       * @param strategie - Datenquellenstrategie für den Ladevorgang.
+       * @returns Ein Promise, das nach dem vollständigen Laden abgeschlossen ist.
+       * @throws Gibt Ladefehler der Filialübersicht weiter.
+       */
+      async function loadFilialuebersicht(
+        benutzerId: string,
+        unternehmerId: string,
+        firmaId: string,
+        strategie: TFirestoreLesestrategie,
+      ): Promise<void> {
+        if (store.benutzerId() !== benutzerId || !store.isLoaded()) {
+          throw { code: 'app/invalid-user-profile' };
+        }
+
+        const aktuell = generation;
+        patchState(store, { download: true, isLoaded: false, error: null });
+        try {
+          const filialen = await injector
+            .get(FilialeService)
+            .loadFilialen(unternehmerId, firmaId, strategie);
+          if (aktuell !== generation || store.benutzerId() !== benutzerId) return;
+
+          patchState(store, {
+            filialuebersichtNachFirma: {
+              ...store.filialuebersichtNachFirma(),
+              [unternehmerId]: {
+                ...(store.filialuebersichtNachFirma()[unternehmerId] ?? {}),
+                [firmaId]: sortEintraege(filialen),
               },
             },
             download: false,
@@ -362,6 +416,20 @@ export const StammdatenStore = signalStore(
       }
 
       /**
+       * Liefert die firmenweite read-only Filialübersicht getrennt vom operativen Arbeitskontext.
+       *
+       * @param unternehmerId - ID des zugeordneten Unternehmers.
+       * @param firmaId - ID der zugeordneten Firma.
+       * @returns Die im Sitzungsspeicher vorhandene Filialübersicht.
+       */
+      function getFilialuebersicht(
+        unternehmerId: string,
+        firmaId: string,
+      ): readonly IFilialeEintrag[] {
+        return store.filialuebersichtNachFirma()[unternehmerId]?.[firmaId] ?? [];
+      }
+
+      /**
        * Setzt sämtliche sitzungsbezogenen Stammdaten zurück.
        */
       function reset(): void {
@@ -382,6 +450,7 @@ export const StammdatenStore = signalStore(
           unternehmer: store.unternehmer(),
           firmenNachUnternehmer: store.firmenNachUnternehmer(),
           filialenNachFirma: store.filialenNachFirma(),
+          filialuebersichtNachFirma: store.filialuebersichtNachFirma(),
           benutzerprofile: store.benutzerprofile(),
           download: store.download(),
           isLoaded: store.isLoaded(),
@@ -539,6 +608,7 @@ export const StammdatenStore = signalStore(
       return {
         loadStammdaten,
         loadFilialenNachIds,
+        loadFilialuebersicht,
         upsertUnternehmer,
         upsertFirma,
         upsertFiliale,
@@ -549,6 +619,7 @@ export const StammdatenStore = signalStore(
         removeFiliale,
         getFirmen,
         getFilialen,
+        getFilialuebersicht,
         reset,
         snapshot,
       };

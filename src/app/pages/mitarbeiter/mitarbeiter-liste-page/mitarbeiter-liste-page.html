@@ -68,7 +68,9 @@
             @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
               <app-mitarbeiter-card
                 [mitarbeiter]="mitarbeiter"
-                [darfZusammenfuehren]="darfZusammenfuehren() && hatZusammenfuehrungsZiel()"
+                [darfZusammenfuehren]="
+                  darfZusammenfuehren() && zusammenfuehrbareMitarbeiterIds().has(mitarbeiter.id)
+                "
                 (bearbeiten)="openMitarbeiterBearbeitenDialog($event)"
                 (zusammenfuehren)="openMitarbeiterZusammenfuehrenDialog($event)"
               />

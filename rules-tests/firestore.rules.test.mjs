@@ -822,7 +822,7 @@ test('legacy and unauthenticated accounts cannot access migration status', async
   }
 });
 
-for (const role of ['office', 'filiale']) {
+for (const role of ['office']) {
   test(`${role} reads only assigned hierarchy and rejects unspecified branch descendants`, async () => {
     const db = await seedProfile(role);
     for (const path of [unternehmerPath, firmaPath, filialePath]) {
@@ -858,6 +858,35 @@ for (const role of ['office', 'filiale']) {
     }
   });
 }
+
+test('filiale reads all branch master documents of the assigned company only', async () => {
+  const db = await seedProfile('filiale', {
+    erlaubteBereiche: ['dashboard', 'einstellungen'],
+  });
+
+  await assertSucceeds(getDoc(doc(db, unternehmerPath)));
+  await assertSucceeds(getDoc(doc(db, firmaPath)));
+  await assertSucceeds(getDoc(doc(db, filialePath)));
+  await assertSucceeds(getDoc(doc(db, nichtZugeordneteFilialePath)));
+  await assertSucceeds(getDocs(collection(db, `${firmaPath}/filiale`)));
+
+  for (const path of [
+    'unternehmer/u-2/firma/f-1/filiale/b-1',
+    'unternehmer/u-1/firma/f-2/filiale/b-1',
+    `${nichtZugeordneteFilialePath}/einstellung/allgemein`,
+    `${nichtZugeordneteFilialePath}/schichtmodell/standard`,
+    `${nichtZugeordneteFilialePath}/dienstplan/2026-10`,
+  ]) {
+    await assertFails(getDoc(doc(db, path)));
+  }
+});
+
+test('filiale has no business access with empty scopes', async () => {
+  const db = await seedProfile('filiale', { zugriffe: {} });
+  for (const path of [unternehmerPath, firmaPath, filialePath]) {
+    await assertFails(getDoc(doc(db, path)));
+  }
+});
 
 test('active employee account reads direct company data only within the assigned company', async () => {
   const db = await seedProfile('mitarbeiter', {

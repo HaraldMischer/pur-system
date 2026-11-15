@@ -21,6 +21,7 @@ import { MitarbeiterZusammenfuehrenDialog } from '../../../components/mitarbeite
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { hatMitarbeiterVerwaltungszugriffAufFirma } from '../../../commons/utils/mitarbeiter/mitarbeiter-berechtigung';
+import { istAehnlicherMitarbeiterName } from '../../../commons/utils/mitarbeiter/mitarbeiter-namensaehnlichkeit';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { StammdatenStore } from '../../../stores/app/stammdaten.store';
@@ -142,13 +143,27 @@ export class MitarbeiterListePage {
         )
       : null;
   });
-  readonly hatZusammenfuehrungsZiel: Signal<boolean> = computed(() => {
+  readonly zusammenfuehrbareMitarbeiterIds: Signal<ReadonlySet<string>> = computed(() => {
     const kontext = this.getSelectedMitarbeiterKontext();
-    if (!kontext) return false;
-    return (
-      this.mitarbeiterStore.getMitarbeiter(kontext.unternehmerId, kontext.firmaId, kontext.filialId)
-        .length > 1
+    if (!kontext) return new Set<string>();
+
+    const mitarbeiter = this.mitarbeiterStore.getMitarbeiter(
+      kontext.unternehmerId,
+      kontext.firmaId,
+      kontext.filialId,
     );
+    const mitarbeiterIds = new Set<string>();
+    for (let quellIndex = 0; quellIndex < mitarbeiter.length; quellIndex += 1) {
+      for (let zielIndex = quellIndex + 1; zielIndex < mitarbeiter.length; zielIndex += 1) {
+        const quelle = mitarbeiter[quellIndex];
+        const ziel = mitarbeiter[zielIndex];
+        if (!istAehnlicherMitarbeiterName(quelle.person, ziel.person)) continue;
+
+        mitarbeiterIds.add(quelle.id);
+        mitarbeiterIds.add(ziel.id);
+      }
+    }
+    return mitarbeiterIds;
   });
 
   // ===== Öffentliche Aktionen =================
@@ -210,7 +225,14 @@ export class MitarbeiterListePage {
    */
   openMitarbeiterZusammenfuehrenDialog(mitarbeiter: IMitarbeiterEintrag): void {
     const kontext = this.getSelectedMitarbeiterKontext();
-    if (!kontext || !this.darfZusammenfuehren() || this.mitarbeiterStore.inProgress()) return;
+    if (
+      !kontext ||
+      !this.darfZusammenfuehren() ||
+      !this.zusammenfuehrbareMitarbeiterIds().has(mitarbeiter.id) ||
+      this.mitarbeiterStore.inProgress()
+    ) {
+      return;
+    }
 
     const alleMitarbeiter = this.mitarbeiterStore.getMitarbeiter(
       kontext.unternehmerId,
@@ -269,10 +291,21 @@ export class MitarbeiterListePage {
     const firmaId = this.appKontextStore.selectedFirma()?.id;
     if (!unternehmerId || !firmaId) return null;
 
+    const profil = this.benutzerStore.benutzerProfil();
+    const filialen =
+      profil?.userRole === 'filiale'
+        ? this.stammdatenStore.getFilialuebersicht(unternehmerId, firmaId).filter((filiale) => {
+            return (
+              filiale.aktiv ||
+              profil.zugriffe[unternehmerId]?.[firmaId]?.includes(filiale.id) === true
+            );
+          })
+        : this.stammdatenStore.getFilialen(unternehmerId, firmaId);
+
     return {
       unternehmerId,
       firmaId,
-      filialen: this.stammdatenStore.getFilialen(unternehmerId, firmaId),
+      filialen,
     };
   }
 

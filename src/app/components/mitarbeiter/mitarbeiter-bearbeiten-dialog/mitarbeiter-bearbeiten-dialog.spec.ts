@@ -105,7 +105,7 @@ describe('MitarbeiterBearbeitenDialog', () => {
       (fixture.nativeElement as HTMLElement).querySelector(
         'mat-select[formcontrolname="filialIds"]',
       ),
-    ).toBeNull();
+    ).not.toBeNull();
     expect(
       (fixture.nativeElement as HTMLElement).querySelectorAll(
         '[formcontrolname="geburtstag"], [formcontrolname="geschlecht"], [formcontrolname="telefon"], [formcontrolname="webseite"]',
@@ -242,12 +242,12 @@ describe('MitarbeiterBearbeitenDialog', () => {
     );
   });
 
-  it('should preserve inaccessible branch assignments while updating editable data', async () => {
+  it('should preserve inaccessible and own branch assignments while allowing another branch', async () => {
     const component = TestBed.createComponent(MitarbeiterBearbeitenDialog).componentInstance;
     component.mitarbeiterForm.patchValue({
       person: { vorname: ' Mia Neu ' },
       rollen: ['administrator'],
-      filialIds: ['b-1'],
+      filialIds: ['b-2'],
       aktiv: false,
     });
 
@@ -268,12 +268,12 @@ describe('MitarbeiterBearbeitenDialog', () => {
           },
         }),
         rollen: ['administrator'],
-        filialIds: ['b-3', 'b-1'],
+        filialIds: ['b-3', 'b-2', 'b-1'],
         aktiv: false,
       }),
     );
     expect(dialogRefMock.close).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'm-1', filialIds: ['b-3', 'b-1'], aktiv: false }),
+      expect.objectContaining({ id: 'm-1', filialIds: ['b-3', 'b-2', 'b-1'], aktiv: false }),
     );
   });
 

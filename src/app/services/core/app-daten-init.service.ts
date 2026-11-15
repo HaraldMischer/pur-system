@@ -181,12 +181,20 @@ export class AppDatenInitService {
       this.getZugeordnetenStammdatenLadeauftrag(zugriffe, strategie),
     );
 
-    // Schritt 2: Mitarbeiter der zugeordneten Filiale laden.
+    // Schritt 2: Firmenweite read-only Filialübersicht laden.
+    await this._stammdatenStore.loadFilialuebersicht(
+      benutzerId,
+      firmen[0].unternehmerId,
+      firmen[0].firmaId,
+      'networkFirst',
+    );
+
+    // Schritt 3: Mitarbeiter der zugeordneten Filiale laden.
     await this.warteAufLadeauftraege(
       this.loadMitarbeiterAuftraege(mitarbeiterAuftraege, strategie),
     );
 
-    // Schritt 3: Vollständigen Dienstplanbestand der zugeordneten Filiale laden.
+    // Schritt 4: Vollständigen Dienstplanbestand der zugeordneten Filiale laden.
     await this._dienstplanStore.loadDienstplanBestand(
       {
         unternehmerId: firmen[0].unternehmerId,
@@ -376,7 +384,11 @@ export class AppDatenInitService {
       },
       0,
     );
-    const filialenAnzahl = Object.values(stammdaten.filialenNachFirma).reduce((gesamt, firmen) => {
+    const filialenNachFirma =
+      Object.keys(stammdaten.filialuebersichtNachFirma).length > 0
+        ? stammdaten.filialuebersichtNachFirma
+        : stammdaten.filialenNachFirma;
+    const filialenAnzahl = Object.values(filialenNachFirma).reduce((gesamt, firmen) => {
       return (
         gesamt +
         Object.values(firmen).reduce((anzahl, filialen) => {
@@ -384,13 +396,28 @@ export class AppDatenInitService {
         }, 0)
       );
     }, 0);
+    const filialuebersichtFirmen = Object.entries(stammdaten.filialuebersichtNachFirma).flatMap(
+      ([unternehmerId, firmen]) => {
+        return Object.keys(firmen).map((firmaId) => {
+          return { unternehmerId, firmaId };
+        });
+      },
+    );
+    let filialenBezeichnung = 'Filialen';
+    if (filialuebersichtFirmen.length === 1) {
+      const { unternehmerId, firmaId } = filialuebersichtFirmen[0];
+      const firma = stammdaten.firmenNachUnternehmer[unternehmerId]?.find((eintrag) => {
+        return eintrag.id === firmaId;
+      });
+      filialenBezeichnung = `Filialen | ${firma?.anzeigename ?? firmaId}`;
+    }
 
     if (benutzerprofileGeladen) {
       this._debugLogService.logDatenGeladen('Benutzerprofile', stammdaten.benutzerprofile.length);
     }
     this._debugLogService.logDatenGeladen('Unternehmer', stammdaten.unternehmer.length);
     this._debugLogService.logDatenGeladen('Firmen', firmenAnzahl);
-    this._debugLogService.logDatenGeladen('Filialen', filialenAnzahl);
+    this._debugLogService.logDatenGeladen(filialenBezeichnung, filialenAnzahl);
 
     const mitarbeiterErgebnisse = mitarbeiterAuftraege
       .map((auftrag) => {

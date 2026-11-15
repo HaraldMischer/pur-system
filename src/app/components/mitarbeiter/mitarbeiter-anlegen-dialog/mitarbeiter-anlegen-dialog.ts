@@ -61,10 +61,8 @@ export class MitarbeiterAnlegenDialog {
   readonly benutzerStore = inject(BenutzerStore);
   readonly mitarbeiterStore = inject(MitarbeiterStore);
 
-  // ===== Interner State =======================
-  private readonly verpflichtendeFilialId = this.getVerpflichtendeFilialId();
-
   // ===== Öffentliche Werte ====================
+  readonly verpflichtendeFilialId = this.getVerpflichtendeFilialId();
   readonly rollen: readonly { value: TMitarbeiterRolle; label: string }[] = [
     { value: 'filialkasse', label: 'Filialkasse' },
     { value: 'servicekraft', label: 'Servicekraft' },

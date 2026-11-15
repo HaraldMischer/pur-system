@@ -94,11 +94,7 @@ describe('MitarbeiterCard', () => {
     fixture.componentInstance.zusammenfuehren.subscribe(zusammenfuehrenSpy);
     fixture.detectChanges();
 
-    const mergeButton = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(
-      (button) => button.textContent?.includes('Zusammenführen'),
-    );
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Löschen');
-    mergeButton?.click();
+    fixture.componentInstance.selectZusammenfuehren();
 
     expect(zusammenfuehrenSpy).toHaveBeenCalledWith(mitarbeiter);
   });

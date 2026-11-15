@@ -17,6 +17,7 @@ describe('AppDatenInitService', () => {
   let stammdatenStoreMock: {
     unternehmer: WritableSignal<readonly IUnternehmerEintrag[]>;
     getFirmen: ReturnType<typeof vi.fn>;
+    loadFilialuebersicht: ReturnType<typeof vi.fn>;
     loadFilialenNachIds: ReturnType<typeof vi.fn>;
     loadStammdaten: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
@@ -49,6 +50,7 @@ describe('AppDatenInitService', () => {
         { id: 'f-2', nummer: 2, anzeigename: 'Firma 2' },
         { id: 'f-1', nummer: 1, anzeigename: 'Firma 1' },
       ]),
+      loadFilialuebersicht: vi.fn().mockResolvedValue(undefined),
       loadFilialenNachIds: vi.fn().mockResolvedValue(undefined),
       loadStammdaten: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn(),
@@ -67,6 +69,7 @@ describe('AppDatenInitService', () => {
             'f-2': [{ id: 'b-2', nummer: 2, anzeigename: 'Filiale 2' }],
           },
         },
+        filialuebersichtNachFirma: {},
         benutzerprofile: [{ uid: 'profil-1' }],
         download: false,
         isLoaded: true,
@@ -212,6 +215,19 @@ describe('AppDatenInitService', () => {
 
   it('should load only branch employees for a branch profile', async () => {
     const zugriffe = { 'u-1': { 'f-1': ['b-1'] } };
+    stammdatenStoreMock.snapshot.mockReturnValue({
+      ...stammdatenStoreMock.snapshot(),
+      filialuebersichtNachFirma: {
+        'u-1': {
+          'f-1': [
+            { id: 'b-1', nummer: 1, anzeigename: 'Filiale 1' },
+            { id: 'b-2', nummer: 2, anzeigename: 'Filiale 2' },
+            { id: 'b-3', nummer: 3, anzeigename: 'Filiale 3' },
+            { id: 'b-4', nummer: 4, anzeigename: 'Filiale 4' },
+          ],
+        },
+      },
+    });
     const service = TestBed.inject(AppDatenInitService);
 
     await service.loadStammdaten('filiale-1', createProfil('filiale', zugriffe));
@@ -222,6 +238,12 @@ describe('AppDatenInitService', () => {
       benutzerprofile: false,
       lesestrategie: 'networkOnly',
     });
+    expect(stammdatenStoreMock.loadFilialuebersicht).toHaveBeenCalledWith(
+      'filiale-1',
+      'u-1',
+      'f-1',
+      'networkFirst',
+    );
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledOnce();
     expect(mitarbeiterStoreMock.loadMitarbeiter).toHaveBeenCalledWith(
       'u-1',
@@ -234,11 +256,18 @@ describe('AppDatenInitService', () => {
       'networkOnly',
     );
     expect(stammdatenStoreMock.loadStammdaten.mock.invocationCallOrder[0]).toBeLessThan(
+      stammdatenStoreMock.loadFilialuebersicht.mock.invocationCallOrder[0],
+    );
+    expect(stammdatenStoreMock.loadFilialuebersicht.mock.invocationCallOrder[0]).toBeLessThan(
       mitarbeiterStoreMock.loadMitarbeiter.mock.invocationCallOrder[0],
     );
     expect(mitarbeiterStoreMock.loadMitarbeiter.mock.invocationCallOrder[0]).toBeLessThan(
       dienstplanStoreMock.loadDienstplanBestand.mock.invocationCallOrder[0],
     );
+    expect(debugLogServiceMock.logDatenGeladen.mock.calls).toContainEqual([
+      'Filialen | Firma 1',
+      4,
+    ]);
   });
 
   it('should load only employees of the assigned branches for an employee profile', async () => {

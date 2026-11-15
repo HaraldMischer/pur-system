@@ -30,16 +30,22 @@ Sitzungsstarts. Die technische Umsetzung beschreiben
 
 ### Matrix
 
-| Benutzerrolle | Unternehmer | Firmen     | Filialen             | Benutzerprofile | Geladene Mitarbeiter                               |
-| ------------- | ----------- | ---------- | -------------------- | --------------- | -------------------------------------------------- |
-| `master`      | alle        | alle       | alle                 | alle            | Mitarbeiter aller Firmen                           |
-| `office`      | zugeordnet  | zugeordnet | zugeordnet           | –               | Mitarbeiter der zugeordneten Firmen                |
-| `filiale`     | genau einer | genau eine | genau eine           | –               | Mitarbeiter der zugeordneten Filiale               |
-| `mitarbeiter` | genau einer | genau eine | zugeordnete Filialen | –               | eigener Mitarbeiter, weitere bei fachlichem Bedarf |
+| Benutzerrolle | Unternehmer | Firmen     | Filialen               | Benutzerprofile | Geladene Mitarbeiter                               |
+| ------------- | ----------- | ---------- | ---------------------- | --------------- | -------------------------------------------------- |
+| `master`      | alle        | alle       | alle                   | alle            | Mitarbeiter aller Firmen                           |
+| `office`      | zugeordnet  | zugeordnet | zugeordnet             | –               | Mitarbeiter der zugeordneten Firmen                |
+| `filiale`     | genau einer | genau eine | alle der eigenen Firma | –               | Mitarbeiter der zugeordneten Filiale               |
+| `mitarbeiter` | genau einer | genau eine | zugeordnete Filialen   | –               | eigener Mitarbeiter, weitere bei fachlichem Bedarf |
 
 ### Zusatzbedingungen
 
 - Bei `filiale` werden nur Mitarbeiter geladen, deren `filialIds` die dem Profil zugeordnete Filial-ID enthalten.
+- Bei `filiale` werden die obersten Filialstammdokumente aller Filialen der zugeordneten Firma geladen. Der operative
+  Arbeitskontext bleibt auf die im Profil zugeordnete Filiale begrenzt; Untercollections fremder Filialen gehören nicht zum
+  Ladeumfang.
+- Die firmenweite Filialübersicht verwendet bei `filiale` abweichend von den übrigen Stammdaten `networkFirst`. Ein
+  erfolgreicher Online-Start aktualisiert dadurch den vollständigen persistenten Cachebestand; bei einem technischen
+  Serverfehler wird auf die bereits lokal vorhandene Filialübersicht zurückgefallen.
 - Bei `mitarbeiter` werden die zugeordneten Filialen aus den `filialIds` des über `firmaMitarbeiterId` verknüpften
   Mitarbeiterdokuments bestimmt.
 - Beim Öffnen eines Dienstplans werden für alle Rollen dessen eindeutige Mitarbeiter-IDs ermittelt. Bereits geladene Einträge
@@ -71,8 +77,8 @@ Sitzungsstarts. Die technische Umsetzung beschreiben
   ermittelt der `AppDatenInitService` aus den geladenen Firmen die erforderlichen Mitarbeiteraufträge und führt diese parallel
   aus.
 - Bei `office` werden zuerst die zugeordneten Strukturdaten und danach die Mitarbeiter der freigegebenen Firmen geladen.
-- Bei `filiale` werden zuerst der zugeordnete Unternehmer, die Firma und die Filiale und danach die Mitarbeiter dieser Filiale
-  geladen.
+- Bei `filiale` werden zuerst der zugeordnete Unternehmer, die Firma und die obersten Filialstammdokumente aller Filialen dieser
+  Firma und danach die Mitarbeiter der eigenen Filiale geladen.
 - Bei `mitarbeiter` werden zuerst der zugeordnete Unternehmer und die Firma geladen. Anschließend wird der eigene aktive
   Mitarbeiter gezielt über `firmaMitarbeiterId` geladen. Aus dessen `filialIds` werden anschließend die zugeordneten Filialen
   geladen. Weitere Mitarbeiter werden erst für einen geöffneten Dienstplan anhand der dort verwendeten IDs nachgeladen.

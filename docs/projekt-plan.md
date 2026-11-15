@@ -83,9 +83,9 @@ Die vier Auth-Rollen besitzen folgende grundsätzliche Bedeutung:
 | Rolle         | Zielkontext                                                         |
 | ------------- | ------------------------------------------------------------------- |
 | `master`      | systemweite Struktur- und Benutzerverwaltung ohne Zugriffszuordnung |
-| `office`      | ausgewählte Firmen und ausdrücklich freigegebene Filialen            |
-| `filiale`     | genau ein Unternehmer, eine Firma und eine Filiale                    |
-| `mitarbeiter` | genau ein Unternehmer, eine Firma und ein verknüpfter Mitarbeiter     |
+| `office`      | ausgewählte Firmen und ausdrücklich freigegebene Filialen           |
+| `filiale`     | genau ein Unternehmer, eine Firma und eine Filiale                  |
+| `mitarbeiter` | genau ein Unternehmer, eine Firma und ein verknüpfter Mitarbeiter   |
 
 `erlaubteBereiche` steuert Navigation und erreichbare App-Funktionen. Datenrechte ergeben sich aus aktivem Profil, Auth-Rolle,
 fachlicher Zuordnung, Pfad und CRUD-Aktion. Filialeinstellungen bilden die dokumentierte Ausnahme, bei der Office- und
@@ -124,6 +124,10 @@ Der Arbeitskontext bleibt von der hierarchischen Zuweisung von Benutzerrechten g
 eine Mitarbeiterauswahl nicht den globalen Kontext. Sichtbarkeit und Bedienbarkeit der Kontextselektoren richten sich nach
 Rolle und App-Bereich.
 
+Ein Filialkonto bleibt operativ genau seiner im Profil zugeordneten Filiale zugeordnet, lädt jedoch die obersten
+Filialstammdokumente aller Filialen der eigenen Firma als read-only Firmenübersicht. Daraus entsteht kein Zugriff auf
+Untercollections oder operative Daten fremder Filialen.
+
 Die verbindlichen Selektormodi stehen in der [Kontextselektor-Matrix](./matrizen/kontextselektor.md). Rollenabhängige
 Ladeumfänge und Verantwortlichkeiten stehen in der [Datenladematrix](./matrizen/datenladen.md).
 
@@ -137,6 +141,10 @@ Firestore-Rechte.
 Master, Office und Filiale verwalten Mitarbeiter ausschließlich im laut Berechtigungsmatrix erlaubten Datenraum. Filialkonten
 begrenzen ihre Mitarbeiterabfragen und Änderungen auf die eigene Filiale. Verknüpfte Mitarbeiter dürfen weder gelöscht noch
 mit einem anderen Datensatz zusammengeführt werden.
+
+Bei der Mitarbeiteranlage durch ein Filialkonto bleibt die eigene Filiale verpflichtend. Weitere aktive Filialen derselben
+Firma können anhand der firmenweiten Filialübersicht als vorgesehene Einsatzfilialen zugeordnet werden. Bereits vorhandene
+fremde Filialzuordnungen bleiben für Filialkonten unveränderlich.
 
 Ein Mitarbeiter kann optional einen persönlichen Firebase-Auth-Zugang erhalten. Benutzerprofil und Mitarbeiterdatensatz werden
 serverseitig eindeutig und atomar miteinander verknüpft. Der Zugang bleibt vom betrieblichen Filialkonto getrennt und erhält in

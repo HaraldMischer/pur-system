@@ -25,6 +25,8 @@ Build- und Hostingdetails stehen in der [PWA-Konfigurationsmatrix](./pwa-konfigu
 - `cacheOnly` wird technisch unterstützt, ist derzeit aber keinem regulären Startablauf zugeordnet.
 - Der persistente Cache gewährt keine zusätzlichen Berechtigungen.
 - Offline-Schreibvorgänge und eine spätere Synchronisation sind nicht Bestandteil der Ladestrategie.
+- Die firmenweite Filialübersicht von Pur Filiale verwendet als ausdrückliche Stammdaten-Ausnahme `networkFirst`. Alle anderen
+  Stammdaten bleiben bei `cacheFirst`.
 
 ### Bedeutung der Lesestrategien
 
@@ -59,11 +61,16 @@ durch den benutzerabhängigen Ladeplan angeforderten Stammdaten sowie nach Umset
 Dienstpläne, Versionen und Schichten der eigenen Filiale ohne zeitliche oder jährliche Begrenzung. Die anderen Varianten
 verwenden einen flüchtigen Cache.
 
-Pur Filiale lädt diesen vollständigen Filialbestand bei jedem Programmstart. Stammdaten verwenden weiterhin `cacheFirst`; der
-gesamte Dienstplanbestand wird bei einem Online-Start zuerst vom Server gelesen und aktualisiert den IndexedDB-basierten
-Firestore-Cache. Bei einem technischen Serverfehler wird auf die lokal vorhandenen Dienstplandaten zurückgefallen. Ein
-Offline-Start kann nur den Stand anzeigen, der bei früheren erfolgreichen Ladevorgängen tatsächlich in IndexedDB gespeichert
-wurde; der Cache bleibt deshalb eine lokale Kopie und keine verbindliche Datenquelle.
+Zu den Stammdaten von Pur Filiale gehören die obersten Filialstammdokumente aller Filialen der zugeordneten Firma. Einstellungen,
+Schichtmodelle, Dienstpläne und andere Untercollections fremder Filialen gehören nicht zum persistent geladenen Datenbestand.
+
+Pur Filiale lädt diesen vollständigen Filialbestand bei jedem Programmstart. Stammdaten verwenden grundsätzlich `cacheFirst`;
+die firmenweite Filialübersicht verwendet `networkFirst`, damit ein Online-Start die vollständige Liste einschließlich neu
+hinzugekommener Filialen im IndexedDB-basierten Firestore-Cache aktualisiert. Der gesamte Dienstplanbestand wird bei einem
+Online-Start ebenfalls zuerst vom Server gelesen und aktualisiert den Cache. Bei einem technischen Serverfehler wird auf die
+lokal vorhandene Filialübersicht beziehungsweise die vorhandenen Dienstplandaten zurückgefallen. Ein Offline-Start kann nur den
+Stand anzeigen, der bei früheren erfolgreichen Ladevorgängen tatsächlich in IndexedDB gespeichert wurde; der Cache bleibt
+deshalb eine lokale Kopie und keine verbindliche Datenquelle.
 
 ## 3. Bedeutung der Betriebsarten
 

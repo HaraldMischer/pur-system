@@ -88,12 +88,18 @@ der TypeScript-Code.
 - Firmen- und Filialstammdaten dürfen ausschließlich von `master` angelegt oder bearbeitet werden. Für `office`, `filiale` und
   `mitarbeiter` sind diese Dokumente rein lesbar.
 - `filiale` ist genau einem Unternehmer, einer Firma und einer Filiale zugeordnet.
+- Als ausdrückliche Ausnahme von der konkreten Filialzuordnung darf `filiale` die obersten Filialstammdokumente aller Filialen
+  der zugeordneten Firma lesen. Dieses firmenweite Leserecht gilt nicht für Einstellungen, Schichtmodelle, Dienstpläne oder
+  andere Untercollections fremder Filialen.
 
 #### Mitarbeiter
 
 - `office` und `filiale` besitzen innerhalb zugewiesener Firmen die in der Matrix aufgeführten Rechte. Das Filial-Frontend lädt
   und bearbeitet über `filialIds` ausschließlich Mitarbeiter der eigenen Filiale; Feldinhalte und Filialzuordnungen validiert
   der TypeScript-Code.
+- Bei der Anlage eines Mitarbeiters durch `filiale` bleibt die eigene Filiale verpflichtend zugeordnet. Zusätzlich dürfen
+  weitere aktive Filialen derselben Firma als vorgesehene Einsatzfilialen ausgewählt werden. Bestehende Zuordnungen zu anderen
+  Filialen darf ein Filialkonto nicht entfernen.
 - Der Aktivstatus eines fachlichen Mitarbeiters schränkt diese Lese- und Bearbeitungsrechte nicht ein. `aktiv: false` beschreibt
   einen inaktiven Beschäftigungsstatus; berechtigte Rollen können den Mitarbeiter später wieder aktivieren.
 - Die betrieblichen Mitarbeiterrollen `filialkasse`, `servicekraft`, `administrator`, `kassierer`, `techniker` und

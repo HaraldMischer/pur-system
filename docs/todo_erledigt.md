@@ -4317,7 +4317,6 @@ Neu hinzuzufügen:
 - [x] Mitarbeiter sehen ausschließlich die für sie freigegebenen veröffentlichten Dienstplandaten.
 - [x] Gleichzeitige und nachträgliche Änderungen folgen dem festgelegten konsistenten Ablauf.
 
-
 ## 24. Filialbezogenen Schließzeitraum für Öffnungszeiten umsetzen
 
 > Historischer Umsetzungsstand: Der hier beschriebene Schließzeitraum wurde mit Todo 25 wieder vollständig entfernt, nachdem
@@ -4523,3 +4522,88 @@ Feiertage, jährliche Sondertage und einmalige Datumsausnahmen behalten ihre bes
 - [x] Der nicht mehr benötigte Schließzeitraum und die zugehörige Altkompatibilität sind vollständig entfernt.
 - [x] Bestehende Dienstplan-Momentaufnahmen bleiben unverändert; neue Monatspläne speichern die korrekt aufgelösten Zeiten.
 - [x] Automatisierte Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
+
+## 31. Firmenweite Filialübersicht für Filialkonten bereitstellen
+
+### Ziel
+
+Ein Filialkonto bleibt operativ genau der im Benutzerprofil zugeordneten Filiale zugeordnet, lädt beim Sitzungsstart jedoch die
+obersten Filialstammdokumente aller Filialen seiner Firma. Diese read-only Firmenübersicht liegt mit der bestehenden
+`networkFirst`-Strategie im persistenten Firestore-Cache von Pur Filiale und stellt in den Mitarbeiterdialogen die IDs und
+Anzeigenamen zusätzlicher aktiver Einsatzfilialen bereit. Die eigene Filiale bleibt verpflichtend ausgewählt. Untercollections
+und operative Daten fremder Filialen bleiben unzugänglich; Mitarbeiter der anderen Filialen werden nicht pauschal geladen.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- firestore.rules
+- rules-tests/firestore.rules.test.mjs
+- src/app/services/core/app-daten-init.service.ts
+- src/app/services/core/app-daten-init.service.spec.ts
+- src/app/stores/app/stammdaten.store.ts
+- src/app/stores/app/stammdaten.store.spec.ts
+- src/app/pages/mitarbeiter/mitarbeiter-liste-page/mitarbeiter-liste-page.ts
+- src/app/pages/mitarbeiter/mitarbeiter-liste-page/mitarbeiter-liste-page.spec.ts
+- src/app/components/mitarbeiter/mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog.ts
+- src/app/components/mitarbeiter/mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog.html
+- src/app/components/mitarbeiter/mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog.spec.ts
+- src/app/components/mitarbeiter/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog.ts
+- src/app/components/mitarbeiter/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog.html
+- src/app/components/mitarbeiter/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog.spec.ts
+- docs/matrizen/berechtigungen.md
+- docs/matrizen/datenladen.md
+- docs/matrizen/cache-strategien.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_naechste.md
+- docs/todo_erledigt.md
+
+### [x] Schritt 1: Firmenweiten Filial-Lesezugriff absichern
+
+- [x] Die Firestore Rules so erweitern, dass ein aktives Filialkonto die obersten Filialstammdokumente der zugeordneten Firma
+      lesen kann.
+- [x] Einstellungen, Schichtmodelle, Dienstpläne und alle anderen Untercollections fremder Filialen weiterhin sperren.
+- [x] Rules-Tests für erlaubte Firmenfilialen sowie Filialen fremder Firmen und fremde Untercollections ergänzen.
+
+### [x] Schritt 2: Filialübersicht beim Sitzungsstart laden
+
+- [x] Beim Filial-Sitzungsstart alle obersten Filialstammdokumente der eigenen Firma mit `networkFirst` laden und im
+      Stammdatenbestand halten.
+- [x] Bei einem erfolgreichen Online-Start die vollständige Filialübersicht im persistenten Firestore-Cache aktualisieren und
+      bei einem technischen Serverfehler auf den vorhandenen Cachebestand zurückfallen.
+- [x] Den operativen App-Kontext und die ausgewählte Filiale unverändert auf die Profilzuordnung begrenzen.
+- [x] Mitarbeiter und Feature-Daten weiterhin ausschließlich im bisher erlaubten Filialkontext laden.
+- [x] Lade-, Cache-, Fehler- und Resetverhalten durch Service- und Store-Tests absichern.
+
+### [x] Schritt 3: Zusätzliche Einsatzfilialen bei der Mitarbeiteranlage und -bearbeitung anbieten
+
+- [x] Den Mitarbeiterdialogen die aktiven Filialen der eigenen Firma mit ID und Anzeigename bereitstellen.
+- [x] Die eigene Filiale vorauswählen, verpflichtend beibehalten und weitere aktive Filialen optional auswählbar machen.
+- [x] Fremde Filialzuordnungen bei späterer Bearbeitung durch ein Filialkonto unverändert erhalten.
+- [x] Rollenabhängige Dialog- und Seitentests für Master, Office und Filiale ergänzen.
+
+### [x] Tests und Abschluss
+
+- [x] `npm test` mit 962 von 962 Unit-Tests und `npm run test:rules` mit 63 von 63 Firestore-Emulator-Tests erfolgreich
+      ausgeführt.
+- [x] `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich ausgeführt.
+- [x] Mit einem realen Filialkonto geprüft, dass die Firmenfilialen nach erfolgreichem Online-Start offline in den
+      Mitarbeiterdialogen verfügbar sind, ohne fremde operative Filialdaten zu öffnen.
+- [x] Mit einem bereits vorhandenen Cache geprüft, dass ein Online-Start die vollständige Filialübersicht mit `networkFirst`
+      aktualisiert.
+- [x] Die aktualisierten Firestore Rules erfolgreich im Projekt `pur-system` veröffentlicht.
+- [x] Den umgesetzten und geprüften Stand in `docs/projekt-stand.md` dokumentiert und das abgeschlossene Todo verschoben.
+
+### [x] Erledigt, wenn
+
+- [x] Ein Filialkonto kann alle obersten Filialstammdokumente seiner Firma lesen, aber keine fremden Filial-Untercollections.
+- [x] Der Sitzungsstart lädt die firmenweite Filialübersicht und hält sie im persistenten Cache, ohne den eigenen operativen
+      Filialkontext zu erweitern.
+- [x] Ein Online-Start aktualisiert die vollständige Filialübersicht mit `networkFirst`; ein technischer Serverfehler verwendet
+      den zuvor vollständig aufgebauten Cachebestand.
+- [x] Bei der Mitarbeiteranlage und -bearbeitung ist die eigene Filiale verpflichtend; weitere aktive Firmenfilialen sind,
+      sofern vorhanden, optional auswählbar.
+- [x] Mitarbeiter-, Dienstplan- und andere Feature-Daten fremder Filialen bleiben außerhalb des geladenen und erlaubten
+      Datenraums.
+- [x] Rules-Tests, Unit-Tests, betroffene Produktionsbuilds, Offline-Prüfung und Dokumentation sind erfolgreich.

@@ -158,6 +158,50 @@ describe('StammdatenStore', () => {
     expect(store.isLoaded()).toBe(true);
   });
 
+  it('should load the company branch overview without extending the operational branches', async () => {
+    filialeServiceMock.loadFilialen.mockResolvedValue([
+      { id: 'b-2', nummer: 2, anzeigename: 'Zulu' },
+      { id: 'b-1', nummer: 1, anzeigename: 'Alpha' },
+    ]);
+    const store = TestBed.inject(StammdatenStore);
+    await store.loadStammdaten('filiale-1', {
+      alleStrukturdaten: false,
+      zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
+      benutzerprofile: false,
+      lesestrategie: 'cacheFirst',
+    });
+
+    await store.loadFilialuebersicht('filiale-1', 'u-1', 'f-1', 'networkFirst');
+
+    expect(filialeServiceMock.loadFilialen).toHaveBeenCalledWith('u-1', 'f-1', 'networkFirst');
+    expect(store.getFilialen('u-1', 'f-1').map((filiale) => filiale.id)).toEqual(['b-1']);
+    expect(store.getFilialuebersicht('u-1', 'f-1').map((filiale) => filiale.id)).toEqual([
+      'b-1',
+      'b-2',
+    ]);
+    expect(store.isLoaded()).toBe(true);
+  });
+
+  it('should keep the operational branch when loading the company overview fails', async () => {
+    const store = TestBed.inject(StammdatenStore);
+    await store.loadStammdaten('filiale-1', {
+      alleStrukturdaten: false,
+      zugriffe: { 'u-1': { 'f-1': ['b-1'] } },
+      benutzerprofile: false,
+      lesestrategie: 'cacheFirst',
+    });
+    filialeServiceMock.loadFilialen.mockRejectedValue({ code: 'unavailable' });
+
+    await expect(
+      store.loadFilialuebersicht('filiale-1', 'u-1', 'f-1', 'networkFirst'),
+    ).rejects.toEqual({ code: 'unavailable' });
+
+    expect(store.getFilialen('u-1', 'f-1').map((filiale) => filiale.id)).toEqual(['b-1']);
+    expect(store.getFilialuebersicht('u-1', 'f-1')).toEqual([]);
+    expect(store.isLoaded()).toBe(false);
+    expect(store.error()).toBe('Die Daten sind gerade nicht erreichbar. Bitte versuche es erneut.');
+  });
+
   it('should reject a missing employee branch document', async () => {
     const store = TestBed.inject(StammdatenStore);
     await store.loadStammdaten('mitarbeiter-1', {
@@ -231,6 +275,7 @@ describe('StammdatenStore', () => {
       unternehmer: [],
       firmenNachUnternehmer: {},
       filialenNachFirma: {},
+      filialuebersichtNachFirma: {},
       benutzerprofile: [],
       download: false,
       isLoaded: false,

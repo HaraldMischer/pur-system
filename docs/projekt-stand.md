@@ -2,7 +2,7 @@
 
 # Projekt-Stand: Pur-System
 
-Stand: 14.11.2026. Dieses Dokument fasst den aktuell umgesetzten, geprüften und veröffentlichten Stand zusammen. Das
+Stand: 15.11.2026. Dieses Dokument fasst den aktuell umgesetzten, geprüften und veröffentlichten Stand zusammen. Das
 langfristige Zielbild steht im [Projektplan](./projekt-plan.md), fachliche und technische Details in den dort verlinkten
 Hauptquellen.
 
@@ -58,12 +58,16 @@ Hauptquellen.
   Fehlerzustand.
 - `AppDatenInitService` bildet aus Rolle, Zugriffszuordnung und persönlicher Mitarbeiterverknüpfung den Ladeplan. Fachliche
   Stores und Services laden und halten die Daten.
-- Master lädt die vollständige Unternehmenshierarchie, Profile und Mitarbeiter. Office und Filiale laden nur ihren erlaubten
-  Bereich. Mitarbeiter lädt die eigene Firma, den verknüpften Mitarbeiter und die aus dessen `filialIds` abgeleiteten Filialen.
+- Master lädt die vollständige Unternehmenshierarchie, Profile und Mitarbeiter. Office lädt nur den erlaubten Bereich. Filiale
+  hält den operativen Kontext auf der eigenen Filiale, lädt aber die obersten Filialstammdokumente der eigenen Firma als
+  getrennte read-only Übersicht. Mitarbeiter lädt die eigene Firma, den verknüpften Mitarbeiter und die aus dessen `filialIds`
+  abgeleiteten Filialen.
 - Abmeldung, Benutzerwechsel und relevante Profiländerungen verwerfen den bisherigen Sitzungskontext. Verspätete Ergebnisse
   werden nicht in einen neuen Kontext übernommen.
-- Pur Filiale verwendet persistenten Firestore-Cache, Profilstrategie `networkFirst` und Stammdatenstrategie `cacheFirst`.
-  Master, Office, Mitarbeiter und Entwicklungsumgebung arbeiten mit flüchtigem Cache und `networkOnly`.
+- Pur Filiale verwendet persistenten Firestore-Cache, Profilstrategie `networkFirst` und Stammdatenstrategie `cacheFirst`. Die
+  firmenweite Filialübersicht verwendet abweichend `networkFirst`, damit Online-Starts den vollständigen Bestand aktualisieren
+  und Offline-Starts auf den vorhandenen Cache zurückfallen. Master, Office, Mitarbeiter und Entwicklungsumgebung arbeiten mit
+  flüchtigem Cache und `networkOnly`.
 - Offline-Schreibvorgänge und spätere Synchronisation sind nicht umgesetzt. Verbindliche Strategien und Ladeumfänge stehen in
   der [Cache-Matrix](./matrizen/cache-strategien.md) und [Datenladematrix](./matrizen/datenladen.md).
 
@@ -103,6 +107,9 @@ Hauptquellen.
   Rollenabhängigkeit einheitlich.
 - Master, Office und Filiale besitzen die laut Berechtigungsmatrix erlaubten Lese-, Anlage- und Aktualisierungsrechte.
   Filialkonten begrenzen ihre tatsächliche Abfrage und Bearbeitung auf die eigene Filiale.
+- Filialkonten können bei der Mitarbeiteranlage und -bearbeitung alle aktiven Filialen der eigenen Firma als Einsatzfilialen
+  auswählen. Die eigene Filiale bleibt verpflichtend und nicht abwählbar; bestehende nicht angebotene Zuordnungen bleiben bei
+  einer Bearbeitung erhalten.
 - Mitarbeiter können angelegt, bearbeitet, deaktiviert, reaktiviert und durch Master kontrolliert zusammengeführt werden. Eine
   eigenständige Löschaktion wird nicht angeboten.
 - Verknüpfte Mitarbeiter sind vor Zusammenführung und Löschung geschützt. `benutzerUid` und `firmaMitarbeiterId` bilden die
@@ -205,9 +212,21 @@ Hauptquellen.
   Benutzer produktiv veröffentlicht. Die zugehörigen Functions einschließlich sicherer Kontoaktivierung sind deployed.
 - Die aktuellen Firestore Rules und die Hostings aller vier PWA-Varianten wurden nach der Schichtmodell-Bereinigung am
   13.11.2026 erfolgreich veröffentlicht.
+- Die Rules für den read-only Zugriff von Filialkonten auf alle obersten Filialstammdokumente der eigenen Firma wurden am
+  15.11.2026 nach erfolgreichem Emulator-Test produktiv veröffentlicht. Untercollections fremder Filialen bleiben gesperrt.
 - Ein Git-Push führt kein Firebase-Deployment aus. Hosting, Rules und Functions werden getrennt und kontrolliert veröffentlicht.
 
 ## Bestätigter Prüfstand
+
+Am 15.11.2026 wurden nach der firmenweiten Filialübersicht für Filialkonten folgende Prüfungen und Veröffentlichungen vom
+Benutzer bestätigt:
+
+- `npm test` mit 962 von 962 Frontend-Tests erfolgreich
+- `npm run test:rules` mit 63 von 63 Firestore-Emulator-Tests erfolgreich
+- Produktionsbuilds für Master, Office und Filiale erfolgreich
+- Firestore Rules erfolgreich veröffentlicht
+- Online-/Offline-Prüfung der Filialübersicht sowie der verpflichtenden und zusätzlichen Einsatzfilialen in der
+  Mitarbeiteranlage und -bearbeitung erfolgreich
 
 Am 14.11.2026 wurden nach den Anpassungen an Mitarbeiterformularen, Mitarbeiterkarten und Farbkennzeichnungen folgende
 Prüfungen vom Benutzer bestätigt:

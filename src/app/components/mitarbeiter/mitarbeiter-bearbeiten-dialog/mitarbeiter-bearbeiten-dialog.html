@@ -135,50 +135,50 @@
           formControlName="farbkennung"
         />
       </div>
-      @if (benutzerStore.benutzerProfil()?.userRole !== 'filiale') {
-        <div class="pur-form__row">
-          <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
-            <mat-label>Filialen</mat-label>
-            <mat-select formControlName="filialIds" multiple>
-              <mat-select-trigger>
-                @if (mitarbeiterForm.controls.filialIds.value.length > 1) {
-                  {{ mitarbeiterForm.controls.filialIds.value.length }} Filialen zugeordnet
-                } @else {
-                  @for (filiale of dialogDaten.filialen; track filiale.id) {
-                    @if (mitarbeiterForm.controls.filialIds.value.includes(filiale.id)) {
-                      {{ filiale.anzeigename }}
-                    }
+      <div class="pur-form__row">
+        <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+          <mat-label>Filialen</mat-label>
+          <mat-select formControlName="filialIds" multiple>
+            <mat-select-trigger>
+              @if (mitarbeiterForm.controls.filialIds.value.length > 1) {
+                {{ mitarbeiterForm.controls.filialIds.value.length }} Filialen zugeordnet
+              } @else {
+                @for (filiale of dialogDaten.filialen; track filiale.id) {
+                  @if (mitarbeiterForm.controls.filialIds.value.includes(filiale.id)) {
+                    {{ filiale.anzeigename }}
                   }
                 }
-              </mat-select-trigger>
-              @for (filiale of dialogDaten.filialen; track filiale.id) {
-                <mat-option [value]="filiale.id">{{ filiale.anzeigename }}</mat-option>
               }
-            </mat-select>
-            @if (entfernteVerwaisteFilialzuordnungen() > 0) {
-              <mat-hint
-                >{{ entfernteVerwaisteFilialzuordnungen() }} unbekannte Zuordnung(en) werden beim
-                Speichern entfernt.</mat-hint
-              >
-            } @else if (verwaisteFilialzuordnungen() > 0) {
-              <mat-hint>
-                <button
-                  matButton
-                  type="button"
-                  [disabled]="mitarbeiterStore.inProgress()"
-                  (click)="handleVerwaisteFilialzuordnungenEntfernen()"
-                >
-                  {{ verwaisteFilialzuordnungen() }} unbekannte Zuordnung(en) entfernen
-                </button>
-              </mat-hint>
-            } @else if (weitereFilialzuordnungen > 0) {
-              <mat-hint
-                >{{ weitereFilialzuordnungen }} weitere Zuordnung(en) bleiben erhalten.</mat-hint
-              >
+            </mat-select-trigger>
+            @for (filiale of dialogDaten.filialen; track filiale.id) {
+              <mat-option [value]="filiale.id" [disabled]="filiale.id === verpflichtendeFilialId">
+                {{ filiale.anzeigename }}
+              </mat-option>
             }
-          </mat-form-field>
-        </div>
-      }
+          </mat-select>
+          @if (entfernteVerwaisteFilialzuordnungen() > 0) {
+            <mat-hint
+              >{{ entfernteVerwaisteFilialzuordnungen() }} unbekannte Zuordnung(en) werden beim
+              Speichern entfernt.</mat-hint
+            >
+          } @else if (verwaisteFilialzuordnungen() > 0) {
+            <mat-hint>
+              <button
+                matButton
+                type="button"
+                [disabled]="mitarbeiterStore.inProgress()"
+                (click)="handleVerwaisteFilialzuordnungenEntfernen()"
+              >
+                {{ verwaisteFilialzuordnungen() }} unbekannte Zuordnung(en) entfernen
+              </button>
+            </mat-hint>
+          } @else if (weitereFilialzuordnungen > 0) {
+            <mat-hint
+              >{{ weitereFilialzuordnungen }} weitere Zuordnung(en) bleiben erhalten.</mat-hint
+            >
+          }
+        </mat-form-field>
+      </div>
     </div>
 
     @if (submitError() || mitarbeiterStore.error(); as error) {
