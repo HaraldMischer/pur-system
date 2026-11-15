@@ -18,9 +18,13 @@
       <mat-label>Mitarbeiter</mat-label>
       <mat-select formControlName="mitarbeiterId">
         @for (mitarbeiter of daten.mitarbeiter; track mitarbeiter.id) {
-          <mat-option [value]="mitarbeiter.id"
-            >{{ mitarbeiter.person.nachname }}, {{ mitarbeiter.person.vorname }}</mat-option
+          <mat-option
+            class="pur-farbkennung"
+            [value]="mitarbeiter.id"
+            [style.--pur-farbkennung-farbe]="getMitarbeiterFarbe(mitarbeiter)"
           >
+            {{ mitarbeiter.person.nachname }}, {{ mitarbeiter.person.vorname }}
+          </mat-option>
         }
       </mat-select>
     </mat-form-field>

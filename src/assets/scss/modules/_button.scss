@@ -62,11 +62,17 @@
   // Kompakter Icon-Button
   &--icon-sm {
     &.mat-mdc-icon-button {
-      --mat-icon-button-touch-target-size: 24px;
       display: flex;
+      justify-self: start;
       width: auto;
       height: auto;
-      padding: 0;
+      padding: 5px;
+
+      .mat-icon {
+        width: auto;
+        height: auto;
+        font-size: 20px;
+      }
     }
   }
 

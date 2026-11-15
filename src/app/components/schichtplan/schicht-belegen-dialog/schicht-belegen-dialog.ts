@@ -11,6 +11,7 @@ import type { IDienstplanVersionPfad } from '../../../commons/models/app/firesto
 import type { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import type { ISchichtEintrag } from '../../../commons/models/domain/schicht';
 import type { ITagesschichtEintrag } from '../../../commons/models/domain/schichtmodell';
+import { getMitarbeiterFarbe as resolveMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 
 export type TSchichtBelegenDialogDaten = {
@@ -51,6 +52,16 @@ export class SchichtBelegenDialog {
   readonly error = signal<string | null>(null);
 
   // ===== Öffentliche Aktionen =================
+
+  /**
+   * Liefert die Darstellungsfarbe eines Mitarbeiters.
+   *
+   * @param mitarbeiter - Mitarbeiter der Auswahlliste.
+   * @returns Konkrete Farbe oder `null` ohne verfügbare Farbkennung.
+   */
+  getMitarbeiterFarbe(mitarbeiter: IMitarbeiterEintrag): string | null {
+    return resolveMitarbeiterFarbe(mitarbeiter.farbkennung);
+  }
 
   /**
    * Speichert die Mitarbeiterbelegung der konkreten Tagesschicht.

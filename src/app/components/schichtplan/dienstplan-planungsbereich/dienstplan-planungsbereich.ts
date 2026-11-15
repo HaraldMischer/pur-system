@@ -222,7 +222,13 @@ export class DienstplanPlanungsbereich {
     const pfad = this.pfad();
     return this.mitarbeiterStore
       .getMitarbeiter(pfad.unternehmerId, pfad.firmaId)
-      .filter((eintrag) => eintrag.aktiv && eintrag.filialIds.includes(pfad.filialeId));
+      .filter((eintrag) => {
+        return (
+          eintrag.aktiv &&
+          eintrag.rollen.includes('servicekraft') &&
+          eintrag.filialIds.includes(pfad.filialeId)
+        );
+      });
   });
   readonly mitarbeiterIds = computed(() => {
     return this.mitarbeiter().map((mitarbeiter) => mitarbeiter.id);

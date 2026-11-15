@@ -6,28 +6,31 @@
     [style.--zeitachsenbreite]="zeitachsenbreite() + 'px'"
     [style.--zeitachsenraster]="zeitachse().rasterAnzahl"
   >
-    <div class="monatsliste__zeile">
-      <span class="monatsliste__zeilenkopf monatsliste__zeilenkopf--uhrzeit">
+    <section class="monatsliste__zeile">
+
+      <header class="monatsliste__zeilenkopf monatsliste__zeilenkopf--uhrzeit">
         <span class="pur-text pur-text--label">Öffnungszeit</span>
-      </span>
-      <div class="monatsliste__zeitachse" aria-hidden="true">
+      </header>
+
+      <div class="monatsliste__zeitskala" aria-hidden="true">
         @for (
           zeitmarke of zeitachse().marken;
           track zeitmarke.positionProzent;
           let erste = $first, letzte = $last
         ) {
           @if (!erste && !letzte) {
-            <span class="monatsliste__zeitmarke" [style.left.%]="zeitmarke.positionProzent">
+            <span class="zeitmarke" [style.left.%]="zeitmarke.positionProzent">
               {{ zeitmarke.bezeichnung }}
             </span>
           }
         }
       </div>
-    </div>
+    </section>
+
     @for (tag of tage(); track tag.kalendertag.datum) {
       <section class="monatsliste__zeile">
-        <header
-          class="monatsliste__zeilenkopf monatsliste__zeilenkopf--tag"
+
+        <header class="monatsliste__zeilenkopf monatsliste__zeilenkopf--tag"
           [class.monatsliste__zeilenkopf--sonntag]="tag.hervorhebung === 'sonntag'"
           [class.monatsliste__zeilenkopf--feiertag]="tag.hervorhebung === 'feiertag'"
           [class.monatsliste__zeilenkopf--sondertag]="tag.hervorhebung === 'sondertag'"
@@ -56,7 +59,8 @@
             </span>
           }
         </header>
-        <div class="monatsliste__zeileninhalt">
+
+        <div class="monatsliste__zeitachse">
           @for (bereich of tag.geschlosseneBereiche; track bereich.id) {
             <div
               class="monatsliste__zeitbereich monatsliste__zeitbereich--geschlossen"
@@ -129,12 +133,8 @@
                     class="pur-button pur-button--icon-sm"
                     matIconButton
                     type="button"
+                    aria-label="Schicht mit einem Mitarbeiter belegen"
                     [disabled]="schreibvorgang()"
-                    [matTooltip]="
-                      !zelle.tagesschicht.mehrfachbelegungErlaubt && zelle.schichten.length > 0
-                        ? 'Diese Schicht kann nur einmal belegt werden.'
-                        : 'Diese Schicht mit einem Mitarbeiter belegen.'
-                    "
                     (click)="
                       handleTagesschichtAnlegen(zelle.tagesschicht, zelle.schichten.length > 0)
                     "
@@ -146,19 +146,28 @@
               @for (schicht of zelle.schichten; track schicht.id) {
                 <div
                   cdkDrag
-                  class="schichtkarte"
+                  class="pur-card pur-card--schicht pur-farbkennung"
                   [cdkDragData]="{ art: 'schicht', schicht }"
                   [cdkDragDisabled]="!kannSchichtenAblegen()"
+                  [style.--pur-farbkennung-farbe]="getMitarbeiterFarbe(schicht.mitarbeiterId)"
                 >
-                  <span class="pur-text pur-text--label">
+                  <span class="pur-text pur-text--label pur-text--ellipsis">
                     {{ getMitarbeiterAnzeigename(schicht.mitarbeiterId) }}
                   </span>
-                  <span class="pur-text pur-text--secondary">
+                  <span
+                    class="pur-text pur-text--small pur-text--secondary pur-text--ellipsis"
+                  >
                     Lohnzeit: {{ formatLohnzeit(schicht) }}
                   </span>
                   @if (darfSchreiben() && aktiveVersion()?.status === 'entwurf') {
-                    <button matButton type="button" (click)="tagesschichtBearbeiten.emit(schicht)">
-                      Bearbeiten
+                    <button
+                      class="pur-card__action pur-button pur-button--icon-sm"
+                      matIconButton
+                      type="button"
+                      aria-label="Schichtbelegung bearbeiten"
+                      (click)="tagesschichtBearbeiten.emit(schicht)"
+                    >
+                      <mat-icon>edit</mat-icon>
                     </button>
                   }
                 </div>
@@ -173,6 +182,7 @@
             </div>
           }
         </div>
+
       </section>
     }
   </div>

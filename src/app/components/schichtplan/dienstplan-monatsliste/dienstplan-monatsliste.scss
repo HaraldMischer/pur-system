@@ -14,25 +14,21 @@
 
   &__zeilenkopf {
     position: sticky;
+    z-index: 2;
     left: 8px;
     display: flex;
     min-width: 0;
+    padding: 8px 12px;
     border: 1px solid var(--mat-sys-outline-variant);
     border-radius: 10px;
     background: var(--mat-sys-surface-container-low);
 
     &--uhrzeit {
-      z-index: 3;
       align-items: center;
-      padding: 8px 12px;
-      white-space: nowrap;
     }
 
     &--tag {
-      z-index: 2;
       flex-direction: column;
-      padding: 12px;
-      text-transform: capitalize;
     }
 
     &--sonntag {
@@ -48,34 +44,34 @@
     }
   }
 
-  &__zeitachse {
+  &__zeitskala {
     position: relative;
     height: 48px;
     border: 1px solid var(--mat-sys-outline-variant);
     border-radius: 10px;
     background: var(--mat-sys-surface-container-low);
-  }
 
-  &__zeitmarke {
-    position: absolute;
-    bottom: 15px;
-    color: var(--mat-sys-on-surface-variant);
-    font: var(--mat-sys-label-small);
-    transform: translateX(-50%);
-    white-space: nowrap;
-
-    &::after {
+    .zeitmarke {
       position: absolute;
-      top: calc(100% + 6px);
-      left: 50%;
-      width: 1px;
-      height: 6px;
-      background: var(--mat-sys-outline-variant);
-      content: '';
+      bottom: 15px;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-label-small);
+      transform: translateX(-50%);
+      white-space: nowrap;
+
+      &::after {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 50%;
+        width: 1px;
+        height: 6px;
+        background: var(--mat-sys-outline-variant);
+        content: '';
+      }
     }
   }
 
-  &__zeileninhalt {
+  &__zeitachse {
     display: grid;
     grid-template-columns: repeat(var(--zeitachsenraster), minmax(0, 1fr));
     grid-auto-rows: minmax(60px, auto);
@@ -83,36 +79,36 @@
   }
 
   &__zeitbereich {
+    display: flex;
     min-width: 0;
+    gap: 4px;
+    padding: 8px;
     border: 1px solid var(--mat-sys-outline-variant);
     border-radius: 10px;
     margin-inline: 4px;
+    overflow: hidden;
 
     &-header {
       display: flex;
       min-width: 0;
       gap: 8px;
+      padding-inline: 10px;
       align-items: center;
       justify-content: space-between;
     }
 
     &-text {
+      padding-left: 12px;
       width: 100%;
     }
 
     &--geschlossen {
-      display: flex;
       align-items: center;
-      padding: 12px;
       background: var(--mat-sys-surface-container-low);
-      overflow: hidden;
     }
 
     &--tagesschicht {
-      display: flex;
       flex-direction: column;
-      gap: 8px;
-      padding: 12px;
       background: var(--mat-sys-surface-container-lowest);
     }
 
@@ -127,23 +123,6 @@
     &--am-ende {
       margin-inline-end: 0;
     }
-  }
-}
-
-.schichtkarte {
-  display: grid;
-  gap: 4px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--mat-sys-surface-container);
-  overflow-wrap: anywhere;
-
-  &.cdk-drag-disabled {
-    cursor: default;
-  }
-
-  &:not(.cdk-drag-disabled) {
-    cursor: grab;
   }
 }
 

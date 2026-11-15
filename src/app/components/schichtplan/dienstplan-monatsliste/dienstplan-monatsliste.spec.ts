@@ -57,6 +57,29 @@ describe('DienstplanMonatsliste', () => {
     expect(letzteSchichtText).toContain('+30 Min. Nachbereitung');
   });
 
+  it('should resolve the assigned employee color', () => {
+    const fixture = createFixture();
+    fixture.componentRef.setInput('mitarbeiter', [
+      {
+        id: 'm-1',
+        unternehmerId: 'u-1',
+        firmaId: 'f-1',
+        person: {
+          vorname: 'Anna',
+          nachname: 'Alpha',
+          adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
+          kontakt: {},
+        },
+        rollen: ['servicekraft'],
+        filialIds: ['b-1'],
+        aktiv: true,
+        farbkennung: 'blau',
+      },
+    ]);
+
+    expect(fixture.componentInstance.getMitarbeiterFarbe('m-1')).toBe('#1976d2');
+  });
+
   it('should reject an additional employee for a single-occupancy day shift', () => {
     const fixture = createFixture();
     const ablehnung = vi.fn();
@@ -97,10 +120,12 @@ describe('DienstplanMonatsliste', () => {
     expect(anlegen).not.toHaveBeenCalled();
   });
 
-  it('should keep the add action clickable but not open it for an occupied single shift', () => {
+  it('should explain why the add action cannot occupy a single shift again', () => {
     const fixture = createFixture();
+    const ablehnung = vi.fn();
     const anlegen = vi.fn();
     fixture.componentRef.setInput('schichten', [createSchicht()]);
+    fixture.componentInstance.mehrfachbelegungAbgelehnt.subscribe(ablehnung);
     fixture.componentInstance.tagesschichtAnlegen.subscribe(anlegen);
     fixture.detectChanges();
 
@@ -110,6 +135,7 @@ describe('DienstplanMonatsliste', () => {
     expect(button?.disabled).toBe(false);
     button?.click();
 
+    expect(ablehnung).toHaveBeenCalledWith({ schichtBezeichnung: '1. Schicht' });
     expect(anlegen).not.toHaveBeenCalled();
   });
 

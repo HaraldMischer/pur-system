@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
+import { IMitarbeiterEintrag } from '../../../commons/models/domain/mitarbeiter';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
@@ -27,6 +28,7 @@ const FILIALE: IFilialeEintrag = {
 describe('DienstplanPlanungsbereich', () => {
   const loadDienstplanMonat = vi.fn().mockResolvedValue(undefined);
   const dialogOpen = vi.fn();
+  const getMitarbeiter = vi.fn().mockReturnValue([]);
   const benutzerProfil = signal({
     email: 'office@example.com',
     anzeigename: 'Office',
@@ -38,6 +40,7 @@ describe('DienstplanPlanungsbereich', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    getMitarbeiter.mockReturnValue([]);
     await TestBed.configureTestingModule({
       imports: [DienstplanPlanungsbereich],
       providers: [
@@ -67,6 +70,7 @@ describe('DienstplanPlanungsbereich', () => {
         {
           provide: MitarbeiterStore,
           useValue: {
+            getMitarbeiter,
             getMitarbeiterById: vi.fn().mockReturnValue(null),
             getMitarbeiterNachFilialen: vi.fn().mockReturnValue([]),
           },
@@ -99,6 +103,18 @@ describe('DienstplanPlanungsbereich', () => {
     await fixture.whenStable();
 
     expect(fixture.componentInstance.darfSchreiben()).toBe(false);
+  });
+
+  it('should offer only active service employees assigned to the branch', () => {
+    getMitarbeiter.mockReturnValue([
+      createMitarbeiter('m-1', ['servicekraft'], ['b-1'], true),
+      createMitarbeiter('m-2', ['techniker'], ['b-1'], true),
+      createMitarbeiter('m-3', ['servicekraft'], ['b-2'], true),
+      createMitarbeiter('m-4', ['servicekraft'], ['b-1'], false),
+    ]);
+    const fixture = createComponent(true);
+
+    expect(fixture.componentInstance.mitarbeiter().map((eintrag) => eintrag.id)).toEqual(['m-1']);
   });
 
   it('should explain a rejected multiple occupancy in a dialog', () => {
@@ -151,5 +167,27 @@ describe('DienstplanPlanungsbereich', () => {
     fixture.componentRef.setInput('planungsmodus', planungsmodus);
     fixture.componentRef.setInput('belegungsstandVerfuegbar', true);
     return fixture;
+  }
+
+  function createMitarbeiter(
+    id: string,
+    rollen: IMitarbeiterEintrag['rollen'],
+    filialIds: string[],
+    aktiv: boolean,
+  ): IMitarbeiterEintrag {
+    return {
+      id,
+      unternehmerId: 'u-1',
+      firmaId: 'f-1',
+      person: {
+        vorname: 'Max',
+        nachname: id,
+        adresse: { strasse: '', hausnummer: '', postleitzahl: '', ort: '' },
+        kontakt: {},
+      },
+      rollen,
+      filialIds,
+      aktiv,
+    };
   }
 });

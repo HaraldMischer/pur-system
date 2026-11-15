@@ -64,18 +64,20 @@
                 @for (mitarbeiter of mitarbeiter(); track mitarbeiter.id) {
                   <li
                     cdkDrag
-                    class="mitarbeiter-karte pur-farbkennung"
+                    class="pur-card pur-card--schicht pur-farbkennung"
                     [cdkDragData]="{ art: 'mitarbeiter', mitarbeiterId: mitarbeiter.id }"
                     [cdkDragDisabled]="!mitarbeiterbelegungStore.istVerfuegbar()"
                     [style.--pur-farbkennung-farbe]="mitarbeiter.farbe"
                   >
-                    <span class="mitarbeiter-daten">
-                      <strong>{{ mitarbeiter.anzeigename }}</strong>
-                      <span class="mitarbeiter-monatswerte">
-                        Lohnzeit: {{ mitarbeiter.lohnzeit }} ·
-                        {{ mitarbeiter.schichtanzahl }}
-                        {{ mitarbeiter.schichtanzahl === 1 ? 'Schicht' : 'Schichten' }}
-                      </span>
+                    <span class="pur-text pur-text--label pur-text--ellipsis">
+                      {{ mitarbeiter.anzeigename }}
+                    </span>
+                    <span
+                      class="pur-text pur-text--small pur-text--secondary pur-text--ellipsis"
+                    >
+                      Lohnzeit: {{ mitarbeiter.lohnzeit }} ·
+                      {{ mitarbeiter.schichtanzahl }}
+                      {{ mitarbeiter.schichtanzahl === 1 ? 'Schicht' : 'Schichten' }}
                     </span>
                   </li>
                 }

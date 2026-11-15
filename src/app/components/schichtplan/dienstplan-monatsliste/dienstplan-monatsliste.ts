@@ -4,7 +4,6 @@ import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 import {
   IDienstplanEintrag,
@@ -21,6 +20,7 @@ import {
   createDienstplanZeitachsenPositionen,
   IDienstplanZeitachsenPosition,
 } from '../../../commons/utils/dienstplan/dienstplan-zeitachse';
+import { getMitarbeiterFarbe } from '../../../commons/utils/mitarbeiter/mitarbeiter-farbkennung';
 import {
   TSchichtplanDragDaten,
   TSchichtplanMehrfachbelegungAblehnung,
@@ -50,7 +50,7 @@ type TSchichtplanListentag = {
 
 @Component({
   selector: 'app-dienstplan-monatsliste',
-  imports: [CdkDrag, CdkDropList, MatButtonModule, MatIconModule, MatTooltipModule],
+  imports: [CdkDrag, CdkDropList, MatButtonModule, MatIconModule],
   templateUrl: './dienstplan-monatsliste.html',
   styleUrl: './dienstplan-monatsliste.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -217,7 +217,12 @@ export class DienstplanMonatsliste {
    * @param istBelegt - Gibt an, ob bereits mindestens eine Belegung vorhanden ist.
    */
   handleTagesschichtAnlegen(tagesschicht: ITagesschichtEintrag, istBelegt: boolean): void {
-    if (!tagesschicht.mehrfachbelegungErlaubt && istBelegt) return;
+    if (!tagesschicht.mehrfachbelegungErlaubt && istBelegt) {
+      this.mehrfachbelegungAbgelehnt.emit({
+        schichtBezeichnung: tagesschicht.bezeichnung,
+      });
+      return;
+    }
     this.tagesschichtAnlegen.emit({
       datum: tagesschicht.datum,
       tagesschichtId: tagesschicht.id,
@@ -300,6 +305,16 @@ export class DienstplanMonatsliste {
     return mitarbeiter
       ? `${mitarbeiter.person.nachname}, ${mitarbeiter.person.vorname}`.trim()
       : 'Mitarbeiter nicht verfügbar';
+  }
+
+  /**
+   * Liefert die Darstellungsfarbe eines referenzierten Mitarbeiters.
+   *
+   * @param mitarbeiterId - Dokument-ID des Mitarbeiters.
+   * @returns Konkrete Farbe oder `null` ohne verfügbare Farbkennung.
+   */
+  getMitarbeiterFarbe(mitarbeiterId: string): string | null {
+    return getMitarbeiterFarbe(this.mitarbeiterNachId().get(mitarbeiterId)?.farbkennung);
   }
 }
 
