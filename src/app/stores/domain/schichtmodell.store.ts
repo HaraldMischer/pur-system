@@ -4,18 +4,15 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 import type { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
-import type { IGeoeffneteOeffnungsregel } from '../../commons/models/domain/filialeinstellung';
 import type {
   ISchichtmodellAktualisierung,
   ISchichtmodellAnlage,
   ISchichtmodellBestand,
-  TTagesvorlageTyp,
 } from '../../commons/models/domain/schichtmodell';
+import type { ISchichtmodellVorlage } from '../../commons/utils/dienstplan/schichtmodell-vorlagen';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { SchichtmodellService } from '../../services/domain/schichtmodell.service';
 import { BenutzerStore } from '../app/benutzer.store';
-
-type TOeffnungen = Readonly<Record<TTagesvorlageTyp, IGeoeffneteOeffnungsregel>>;
 
 export type TSchichtmodellKontext = IFilialPfad & {
   readonly schichtmodelle: readonly ISchichtmodellBestand[];
@@ -65,13 +62,13 @@ export const SchichtmodellStore = signalStore(
         return uid;
       }
 
-      async function executeWrite(aktion: () => Promise<void>): Promise<void> {
+      async function executeWrite<T>(aktion: () => Promise<T>): Promise<T> {
         if (store.inProgress()) {
           throw new Error('Ein Schichtmodell-Schreibvorgang läuft bereits.');
         }
         patchState(store, { inProgress: true, error: null });
         try {
-          await aktion();
+          return await aktion();
         } catch (error: unknown) {
           patchState(store, { error: getFirebaseErrorMessage(error) });
           throw error;
@@ -124,15 +121,16 @@ export const SchichtmodellStore = signalStore(
       async function createSchichtmodell(
         pfad: IFilialPfad,
         anlage: ISchichtmodellAnlage,
-        oeffnungen: TOeffnungen,
-      ): Promise<void> {
+        vorlagen: readonly ISchichtmodellVorlage[],
+      ): Promise<ISchichtmodellBestand> {
         const kontext = requireKontext(pfad);
-        await executeWrite(async () => {
-          const bestand = await service.createSchichtmodell(pfad, anlage, oeffnungen, requireUid());
+        return executeWrite(async () => {
+          const bestand = await service.createSchichtmodell(pfad, anlage, vorlagen, requireUid());
           setKontext(pfad, {
             ...kontext,
             schichtmodelle: [...kontext.schichtmodelle, bestand],
           });
+          return bestand;
         });
       }
 
@@ -143,19 +141,19 @@ export const SchichtmodellStore = signalStore(
         pfad: IFilialPfad,
         schichtmodellId: string,
         aktualisierung: ISchichtmodellAktualisierung,
-        oeffnungen: TOeffnungen,
-      ): Promise<void> {
+        vorlagen: readonly ISchichtmodellVorlage[],
+      ): Promise<ISchichtmodellBestand> {
         const kontext = requireKontext(pfad);
         const bestand = kontext.schichtmodelle.find((eintrag) => {
           return eintrag.schichtmodell.id === schichtmodellId;
         });
         if (!bestand) throw new Error('Das Schichtmodell wurde nicht gefunden.');
-        await executeWrite(async () => {
+        return executeWrite(async () => {
           const aktualisiert = await service.updateSchichtmodell(
             pfad,
             bestand,
             aktualisierung,
-            oeffnungen,
+            vorlagen,
             requireUid(),
           );
           setKontext(pfad, {
@@ -164,6 +162,7 @@ export const SchichtmodellStore = signalStore(
               return eintrag.schichtmodell.id === schichtmodellId ? aktualisiert : eintrag;
             }),
           });
+          return aktualisiert;
         });
       }
 

@@ -2,11 +2,20 @@
 
 import type { Timestamp } from 'firebase/firestore';
 
-export type TTagesvorlageTyp = 'wochentag' | 'sonntag';
-export type TTagesschichtHerkunft = TTagesvorlageTyp | 'sondertag';
+import type { TWochentag } from './filialeinstellung';
+
+export type TAbweichenderWochentag = Exclude<TWochentag, 'sonntag'>;
+export type TTagesvorlageTyp =
+  'wochentag' | 'sonntag' | `wochentag:${TAbweichenderWochentag}` | `sondertag:${string}`;
+export type TTagesschichtHerkunft = 'wochentag' | 'sonntag' | 'sondertag';
 export type TSchichtZeitgrenzeTag = 'starttag' | 'folgetag';
 
-export interface ISchichtmodellDokument {
+export interface ISchichtmodellRandzeiten {
+  vorbereitungsminuten: number;
+  nachbereitungsminuten: number;
+}
+
+export interface ISchichtmodellDokument extends ISchichtmodellRandzeiten {
   bezeichnung: string;
   aktiv: boolean;
   erstelltAm?: Timestamp;
@@ -34,8 +43,6 @@ export interface ITagesvorlagenschichtDaten {
   beginn?: ITagesvorlagenschichtZeitgrenze;
   ende?: ITagesvorlagenschichtZeitgrenze;
   mehrfachbelegungErlaubt: boolean;
-  vorbereitungsminuten: number;
-  nachbereitungsminuten: number;
 }
 
 export interface ITagesvorlagenschichtSchreibdaten extends ITagesvorlagenschichtDaten {
@@ -50,7 +57,7 @@ export interface ITagesvorlagenschichtEintrag extends ITagesvorlagenschichtDaten
   filialeId: string;
 }
 
-export interface ISchichtmodellAnlage {
+export interface ISchichtmodellAnlage extends ISchichtmodellRandzeiten {
   bezeichnung: string;
   tagesvorlagenschichten: readonly ITagesvorlagenschichtSchreibdaten[];
 }
@@ -89,19 +96,11 @@ export interface ITagesschichtEintrag extends ITagesschichtDaten {
   filialeId: string;
 }
 
-export interface IFreieTagesschichtSchreibdaten {
-  id?: string;
-  datum: string;
-  bezeichnung: string;
-  reihenfolge: number;
-  beginn: ITagesvorlagenschichtZeitgrenze;
-  ende: ITagesvorlagenschichtZeitgrenze;
-  mehrfachbelegungErlaubt: boolean;
-  vorbereitungsminuten: number;
-  nachbereitungsminuten: number;
-}
-
-export type TTagesstrukturSchichtSchreibdaten = Omit<IFreieTagesschichtSchreibdaten, 'datum'>;
+export type TTagesstrukturSchichtSchreibdaten = Omit<ITagesvorlagenschichtSchreibdaten, 'vorlage'> &
+  ISchichtmodellRandzeiten & {
+    beginn: ITagesvorlagenschichtZeitgrenze;
+    ende: ITagesvorlagenschichtZeitgrenze;
+  };
 
 export interface ITagesvorlagenschichtDokument extends ITagesvorlagenschichtDaten {}
 

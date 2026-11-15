@@ -2,6 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
@@ -27,6 +28,7 @@ describe('OeffnungszeitenPage', () => {
     await TestBed.configureTestingModule({
       imports: [OeffnungszeitenPage],
       providers: [
+        provideRouter([]),
         {
           provide: AppKontextStore,
           useValue: {

@@ -1,0 +1,32 @@
+// pur-system/src/app/components/schichtplan/schichtmodell-formular/schichtmodell-formular.scss
+
+.schichtmodell-formular {
+  .pur-list {
+    margin: 0;
+
+    > .pur-list__row:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  .formular-aktionen {
+    position: sticky;
+    z-index: 1;
+    bottom: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 0;
+    background: var(--mat-sys-surface);
+  }
+
+  @media (max-width: 600px) {
+    .formular-aktionen {
+      flex-direction: column-reverse;
+
+      > button {
+        width: 100%;
+      }
+    }
+  }
+}

@@ -56,27 +56,35 @@ Momentaufnahme gespeichert. Spätere Änderungen an Filialeinstellungen oder Fei
 
 ## Schichtmodell
 
-Jede Filiale besitzt eigene Schichtmodelle. Ein Modell enthält Bezeichnung, Aktivstatus, eine Wochentagsvorlage für
-Montag bis Samstag und eine davon unabhängige Sonntagsvorlage. Jede Vorlage enthält fachlich geordnete Vorlagenschichten mit
-stabiler ID, Bezeichnung, Reihenfolge und der Einstellung zur Mehrfachbelegung.
+Jede Filiale besitzt eigene Schichtmodelle. Ein Modell enthält Bezeichnung, Aktivstatus, eine allgemeine Wochentagsvorlage für
+Montag bis Samstag, eine davon unabhängige Sonntagsvorlage und zusätzliche Vorlagen für alle aktuell geöffneten Regeln mit dem
+Modus `Abweichend`. Eine abweichende Vorlage verweist entweder auf einen Wochentag oder auf die stabile ID eines aktiven
+gesetzlichen Feiertags beziehungsweise jährlich wiederkehrenden Sondertags. Konkrete Kalenderdaten gehören nicht zum Modell.
+Jede Vorlage enthält fachlich geordnete Vorlagenschichten mit stabiler ID, Bezeichnung, Reihenfolge und der Einstellung zur
+Mehrfachbelegung. Vorbereitungs- und Nachbereitungsminuten werden einmal am Schichtmodell gespeichert und gelten für sämtliche
+Vorlagen des Modells identisch.
 
 Der Beginn der ersten und das Ende der letzten Vorlagenschicht werden nicht fest gespeichert, sondern aus der wirksamen
-Tagesöffnung abgeleitet. Nur innere Grenzen besitzen konkrete Lokalzeiten am Start- oder Folgetag. Die erste Schicht darf
-Vorbereitungsminuten und die letzte Nachbereitungsminuten enthalten; bei einer einzelnen Schicht gelten beide Werte.
+Tagesöffnung abgeleitet. Nur innere Grenzen besitzen konkrete Lokalzeiten am Start- oder Folgetag. Vorlagenschichten besitzen
+keine eigenen Vor- oder Nachbereitungsminuten.
 
-Wochentags- und Sonntagsvorlage dürfen sich in Anzahl, Identität, Grenzen und Überschneidungen unterscheiden. Lücken und
-Überschneidungen sind fachlich zulässig. Jede Kernschicht muss eine positive Dauer besitzen und vollständig innerhalb der
-maßgeblichen Öffnung liegen. Nur Vor- und Nachbereitung darf die tatsächliche Arbeitszeit über die Öffnungsgrenzen erweitern.
+Alle Vorlagen dürfen sich in Anzahl, Identität, Grenzen und Überschneidungen unterscheiden. Lücken und Überschneidungen sind
+fachlich zulässig. Jede Kernschicht muss eine positive Dauer besitzen und vollständig innerhalb der maßgeblichen Öffnung
+liegen. Nur Vor- und Nachbereitung darf die tatsächliche Arbeitszeit über die Öffnungsgrenzen erweitern.
 
 Beim initialen Erstellen eines Monatsplans erhält jeder Kalendertag eine eigene Tagesstruktur. Standardmäßig geöffnete
 Wochentage übernehmen die Wochentagsvorlage. Reguläre Sonntage und Feiertage mit `Wie Sonntag` verwenden die Sonntagsvorlage.
-Regelmäßig abweichend geöffnete Wochentage werden einmal je Wochentag und Monat frei konfiguriert und auf ihre regulären
-Vorkommen übertragen. Abweichend geöffnete Feier- und Sondertage werden einzeln frei konfiguriert. Geschlossene Tage enthalten
-keine Tagesschichten.
+Regelmäßig abweichend geöffnete Wochentage verwenden ihre Wochentagsvorlage; abweichend geöffnete Feier- und Sondertage die
+über ihre stabile Sondertag-ID zugeordnete Vorlage. `Geschlossen` erzeugt keine Tagesschichten. Ein Modell ist für neue
+Monatspläne nur verwendbar, wenn alle aktuell erforderlichen Vorlagen vorhanden sind und zu den aktuellen Öffnungen passen.
+Spätere Änderungen an den Öffnungen machen ein betroffenes Modell anpassungsbedürftig, verändern aber keine vorhandene
+Monatsmomentaufnahme.
 
 Jede Tagesschicht speichert eine stabile Tagesinstanz-ID, Datum, Herkunft, Reihenfolge, Kernzeit, tatsächliche Arbeitszeit und
-Mehrfachbelegung. Monatsplan, erste Entwurfsversion, Kalender-Momentaufnahme und Tagesschichten werden erst nach vollständiger
-Validierung atomar angelegt. Die Tagesstruktur bleibt anschließend für alle Versionen des Monatsplans unverändert.
+Mehrfachbelegung. Beim Erzeugen der Tagesstruktur übernimmt die erste Tagesschicht die modellweiten Vorbereitungsminuten und
+die letzte die modellweiten Nachbereitungsminuten; bei einer einzelnen Schicht gelten beide Werte. Monatsplan, erste
+Entwurfsversion, Kalender-Momentaufnahme und Tagesschichten werden erst nach vollständiger Validierung atomar angelegt. Die
+Tagesstruktur einschließlich der übernommenen Randminuten bleibt anschließend für alle Versionen des Monatsplans unverändert.
 
 Die tatsächliche Arbeitszeit beginnt um die Vorbereitungsminuten vor dem Kernbeginn und endet um die Nachbereitungsminuten nach
 dem Kernende. Vor- und Nachbereitung sind damit vollständig bezahlte Zeit. Für eine Mitarbeiterschicht gilt entsprechend
@@ -136,11 +144,11 @@ Prüfstruktur.
 
 ## Planungs- und Veröffentlichungsablauf
 
-Existiert kein Monatsplan, wählt ein Planer ein aktives Schichtmodell und vervollständigt die erforderlichen freien Strukturen
-für regelmäßig abweichende Wochentage und konkrete Sondertage. Eine Wochentagsgruppe wird einmal bearbeitet und auf alle
-regulären Vorkommen im Monat übertragen; konkrete Sondertage besitzen Vorrang und bleiben eigenständig. Danach werden
-Monatsplan, Version 1 und sämtliche Momentaufnahmen atomar als Entwurf angelegt. Ein noch nicht veröffentlichter, leerer Entwurf
-darf vollständig gelöscht und aus einem anderen aktiven Modell neu angelegt werden.
+Existiert kein Monatsplan, wählt ein Planer ein aktives, für die aktuellen Öffnungen vollständiges Schichtmodell. Vor der
+Anlage wird erneut geprüft, ob alle benötigten allgemeinen und abweichenden Vorlagen vorhanden und gültig sind. Danach werden
+die Modellvorlagen auf die konkreten Kalendertage aufgelöst und Monatsplan, Version 1 sowie sämtliche Momentaufnahmen atomar als
+Entwurf angelegt. Eine zusätzliche freie Tageskonfiguration während der Monatsplananlage ist nicht vorgesehen. Ein noch nicht
+veröffentlichter, leerer Entwurf darf vollständig gelöscht und aus einem anderen aktiven Modell neu angelegt werden.
 
 Die Veröffentlichung verlangt einen vollständig geladenen, konfliktfreien Entwurf. Existiert bereits eine veröffentlichte
 Version, wird sie im selben Vorgang archiviert. Änderungen an einem veröffentlichten Plan beginnen mit einem neuen Entwurf,

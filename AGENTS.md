@@ -241,6 +241,9 @@
 - Vollständig definierte globale Layout-Modifier dürfen eigenständig mit Elementen anderer Blöcke kombiniert werden, z. B.
   `pur-form__item pur-flex__item--fixed-115`. Die Basisklasse des Layout-Helper-Blocks muss dabei nicht zusätzlich verwendet
   werden.
+- Vor dem Anlegen oder Verwenden einer lokalen CSS-Klasse wird unter `src/assets/scss` nach einer passenden globalen
+  `pur-*`-Klasse gesucht. Eine vorhandene globale Klasse wird bevorzugt verwendet. Lokale Klassen werden nur ergänzt, wenn
+  keine globale Klasse das erforderliche komponentenspezifische Verhalten abdeckt.
 - Lokale, durch Angulars Style-Kapselung begrenzte Helferklassen müssen nicht nach BEM benannt werden. Sie erhalten kurze
   fachliche Namen und enthalten keine vermeintlich global wiederverwendbaren Layoutregeln.
 - Wird eine lokale Helferklasse später wiederverwendet, wird sie als globale `pur-*`-Klasse nach BEM überführt.

@@ -10,6 +10,7 @@ import {
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -69,7 +70,7 @@ export class AppSidenavNestedNavigation {
   readonly navigationSelected = output<void>();
 
   // ===== View Queries =========================
-  private readonly tree = viewChild<MatTree<TNavigationEintrag>>('tree');
+  private readonly tree = viewChild<MatTree<TNavigationEintrag, string>>('tree');
 
   // ===== Interner State =======================
   private readonly aktuelleUrl = signal(this.router.url);
@@ -100,7 +101,9 @@ export class AppSidenavNestedNavigation {
       this.aktuelleUrl();
 
       if (tree) {
-        this.expandAktiveGruppen(tree, eintraege);
+        untracked(() => {
+          this.expandAktiveGruppen(tree, eintraege);
+        });
       }
     });
   }
@@ -113,19 +116,50 @@ export class AppSidenavNestedNavigation {
     this.navigationSelected.emit();
   }
 
+  /**
+   * Gibt an, ob die Navigationsgruppe die aktuell gewählte Route enthält.
+   */
+  istGruppeAktiv(gruppe: INavigationGruppe): boolean {
+    return this.enthaeltAktiveRoute(gruppe);
+  }
+
+  /**
+   * Öffnet eine Navigationsgruppe und schließt zuvor alle anderen Gruppen.
+   */
+  toggleGruppe(
+    tree: MatTree<TNavigationEintrag, string>,
+    gruppe: INavigationGruppe,
+  ): void {
+    if (tree.isExpanded(gruppe)) {
+      tree.collapse(gruppe);
+      return;
+    }
+
+    tree.collapseAll();
+    tree.expand(gruppe);
+  }
+
   // ===== Interne Helfer =======================
   private expandAktiveGruppen(
-    tree: MatTree<TNavigationEintrag>,
+    tree: MatTree<TNavigationEintrag, string>,
     eintraege: readonly TNavigationEintrag[],
   ): void {
-    for (const eintrag of eintraege) {
-      if (eintrag.typ !== 'gruppe') continue;
+    tree.collapseAll();
+    this.expandAktiveGruppe(tree, eintraege);
+  }
 
-      if (this.enthaeltAktiveRoute(eintrag)) {
-        tree.expand(eintrag);
-      }
-      this.expandAktiveGruppen(tree, eintrag.kinder);
-    }
+  private expandAktiveGruppe(
+    tree: MatTree<TNavigationEintrag, string>,
+    eintraege: readonly TNavigationEintrag[],
+  ): void {
+    const aktiveGruppe = eintraege.find((eintrag) => {
+      return eintrag.typ === 'gruppe' && this.enthaeltAktiveRoute(eintrag);
+    });
+
+    if (!aktiveGruppe || aktiveGruppe.typ !== 'gruppe') return;
+
+    tree.expand(aktiveGruppe);
+    this.expandAktiveGruppe(tree, aktiveGruppe.kinder);
   }
 
   private enthaeltAktiveRoute(gruppe: INavigationGruppe): boolean {

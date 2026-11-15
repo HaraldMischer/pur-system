@@ -194,20 +194,33 @@ dynamisch die wirksame Sonntagsöffnung, eine eigene abweichende Öffnung oder e
 jährliche Sondertage überschreiben systemdefinierte Sondertage. Für jeden Kalendertag wird die wirksame Öffnungsregel
 aufgelöst und bei der Monatsplananlage zusammen mit seinen unabhängigen Kalendereigenschaften als Momentaufnahme gespeichert.
 
-Das Schichtmodell enthält eine Wochentagsvorlage für Montag bis Samstag und eine davon unabhängige Sonntagsvorlage.
-Anzahl, Identität und innere Grenzen ihrer Schichten dürfen sich unterscheiden. Der Beginn der ersten und das Ende der letzten
-Schicht werden nicht fest gespeichert. Beim initialen Erstellen eines Monatsplans erhält jeder Kalendertag eine eigene
-Tagesstruktur, deren Außengrenzen aus seiner wirksamen Öffnung abgeleitet werden. Standardmäßig geöffnete Wochentage übernehmen
-die Wochentagsvorlage. Reguläre Sonntage und Feiertage mit `Wie Sonntag` übernehmen die wirksame Sonntagsöffnung und die
-Sonntagsvorlage, ohne bei der Monatsplananlage erneut konfiguriert zu werden. Regelmäßig abweichend geöffnete Wochentage werden
-einmal je Wochentag und Monat frei konfiguriert und anschließend auf ihre regulären Monatsdaten übertragen. Abweichend
-geöffnete Feier- und Sondertage werden weiterhin einzeln frei konfiguriert. Geschlossene Tage enthalten keine Tagesschichten.
+Das Schichtmodell enthält eine allgemeine Wochentagsvorlage für Montag bis Samstag, eine davon unabhängige Sonntagsvorlage und
+zusätzliche Vorlagen für jede aktuell geöffnete Regel mit `Abweichend`. Abweichende Wochentagsvorlagen werden über den
+Wochentag, Vorlagen für gesetzliche Feiertage und jährlich wiederkehrende Sondertage über deren stabile Sondertag-ID
+zugeordnet. Anzahl, Identität und innere Grenzen ihrer Schichten dürfen sich unterscheiden. Der Beginn der ersten und das Ende
+der letzten Schicht werden nicht fest gespeichert.
 
-Die aufgelösten Grenzen jeder Kernschicht des Schichtmodells müssen innerhalb der wirksamen Öffnung liegen. Innerhalb
-jeder Modellvorlage besitzt nur die erste Schicht Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; bei einer
-Schicht gelten beide Werte. Ausschließlich konfigurierte Randzeiten dürfen über die Öffnungsgrenzen hinausreichen. Monatsplan,
+Die Schichtmodellverwaltung erfolgt direkt auf der routbaren Schichtmodellseite. Das zu bearbeitende Modell wird im Seitenkopf
+über ein `mat-select` gewählt; die allgemeine Wochentagsvorlage, die Sonntagsvorlage und alle aktuell erforderlichen
+abweichenden Tagesvorlagen erscheinen vollständig im darunterliegenden Seitenformular. Neuanlage und Bearbeitung benötigen
+keinen nachgelagerten Modelldialog. Änderungen werden weiterhin erst durch eine bewusste Speicheraktion übernommen.
+Modellwechsel, Neuanlage und Navigation dürfen ungespeicherte Änderungen nicht unbemerkt verwerfen.
+
+Beim initialen Erstellen eines Monatsplans erhält jeder Kalendertag eine eigene Tagesstruktur, deren Außengrenzen aus seiner
+wirksamen Öffnung abgeleitet werden. `Standard` verwendet die allgemeine Wochentags- oder Sonntagsvorlage, `Wie Sonntag` die
+Sonntagsvorlage, `Abweichend` die zugeordnete zusätzliche Modellvorlage und `Geschlossen` keine Tagesschichten. Eine freie
+Tageskonfiguration während der Monatsplananlage ist nicht erforderlich. Das Modell wird vor der Anlage auf Vollständigkeit und
+zeitliche Gültigkeit gegenüber den aktuellen Öffnungen geprüft.
+
+Die aufgelösten Grenzen jeder Kernschicht des Schichtmodells müssen innerhalb der wirksamen Öffnung liegen. Vorbereitungs- und
+Nachbereitungsminuten werden einmal für das gesamte Schichtmodell festgelegt und gelten identisch für alle Modellvorlagen.
+Bei der Monatsplananlage übernimmt die erste konkrete Tagesschicht die Vorbereitungsminuten und die letzte die
+Nachbereitungsminuten; bei einer Schicht gelten beide Werte. Ausschließlich konfigurierte Randzeiten dürfen über die
+Öffnungsgrenzen hinausreichen. Monatsplan,
 Kalender-Momentaufnahme und alle Tagesschichten werden erst nach vollständiger Tageskonfiguration atomar angelegt. Spätere
-Änderungen am Modell oder an den Öffnungszeiten verändern bestehende Monatspläne nicht.
+Änderungen am Modell oder an den Öffnungszeiten verändern bestehende Monatspläne nicht. Neue oder zeitlich geänderte
+Abweichungen machen ein betroffenes Modell für neue Monatspläne so lange anpassungsbedürftig, bis die fehlende oder ungültige
+Vorlage bearbeitet wurde.
 
 Schichten eines Mitarbeiters werden filialübergreifend auf zeitliche Konflikte geprüft. Pausen werden aus den gemeinsamen
 Arbeitsblöcken eines Tages berechnet und in der Planungsmomentaufnahme erhalten. Veröffentlichungen, parallele Änderungen und

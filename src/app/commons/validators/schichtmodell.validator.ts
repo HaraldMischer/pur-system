@@ -4,45 +4,73 @@ import { MAX_RANDMINUTEN } from '../constants/schicht.constants';
 import { ZEITRASTER_MINUTEN } from '../constants/zeit.constants';
 import type { IGeoeffneteOeffnungsregel } from '../models/domain/filialeinstellung';
 import type {
+  ISchichtmodellBestand,
+  ISchichtmodellRandzeiten,
   ITagesvorlagenschichtSchreibdaten,
   ITagesvorlagenschichtZeitgrenze,
   TTagesstrukturSchichtSchreibdaten,
-  TTagesvorlageTyp,
 } from '../models/domain/schichtmodell';
 import { resolveTagesvorlagenschichten } from '../utils/dienstplan/tagesvorlagenschichten';
 import { getLokalzeitMinuten } from '../utils/dienstplan/schicht-lokalzeit';
+import type { ISchichtmodellVorlage } from '../utils/dienstplan/schichtmodell-vorlagen';
 
 const MINUTEN_PRO_TAG = 24 * 60;
 
 /**
- * Prüft beide Vorlagen eines Schichtmodells einschließlich ihrer Öffnungsgrenzen.
+ * Prüft alle erforderlichen Vorlagen eines Schichtmodells einschließlich ihrer Öffnungsgrenzen.
  *
- * @param schichten - Sämtliche Schichten der Wochentags- und Sonntagsvorlage.
- * @param oeffnungen - Maßgebliche Öffnung je Tagesvorlage.
+ * @param schichten - Sämtliche Schichten der Modellvorlagen.
+ * @param vorlagen - Aktuell erforderliche Vorlagen mit ihrer maßgeblichen Öffnung.
+ * @param randzeiten - Modellweit gültige Vor- und Nachbereitungsminuten.
  */
 export function assertGueltigeTagesvorlagenschichten(
   schichten: readonly ITagesvorlagenschichtSchreibdaten[],
-  oeffnungen: Readonly<Record<TTagesvorlageTyp, IGeoeffneteOeffnungsregel>>,
+  vorlagen: readonly ISchichtmodellVorlage[],
+  randzeiten: ISchichtmodellRandzeiten,
 ): void {
-  (['wochentag', 'sonntag'] as const).forEach((vorlage) => {
+  assertRandminuten(randzeiten.vorbereitungsminuten);
+  assertRandminuten(randzeiten.nachbereitungsminuten);
+  const erforderlicheVorlagen = new Set(vorlagen.map((vorlage) => vorlage.vorlage));
+  if (schichten.some((schicht) => !erforderlicheVorlagen.has(schicht.vorlage))) {
+    throw new Error('Das Schichtmodell enthält eine nicht mehr erforderliche Tagesvorlage.');
+  }
+  vorlagen.forEach((definition) => {
+    const vorlage = definition.vorlage;
     const vorlagenschichten = schichten
       .filter((schicht) => schicht.vorlage === vorlage)
       .sort((a, b) => a.reihenfolge - b.reihenfolge);
     if (vorlagenschichten.length === 0) {
       throw new Error(
-        vorlage === 'wochentag'
-          ? 'Die Wochentagsvorlage benötigt mindestens eine Schicht.'
-          : 'Die Sonntagsvorlage benötigt mindestens eine Schicht.',
+        `Die Tagesvorlage „${definition.bezeichnung}“ benötigt mindestens eine Schicht.`,
       );
     }
     assertVorlagengrenzen(vorlagenschichten);
     const aufgeloesteSchichten = resolveTagesvorlagenschichten(
       vorlagenschichten,
-      oeffnungen[vorlage],
+      definition.oeffnung,
+      randzeiten,
     );
-    assertTagesstruktur(aufgeloesteSchichten, oeffnungen[vorlage]);
-    assertRandminutenPositionen(vorlagenschichten);
+    assertTagesstruktur(aufgeloesteSchichten, definition.oeffnung);
   });
+}
+
+/**
+ * Prüft, ob ein gespeichertes Schichtmodell für alle aktuell erforderlichen Vorlagen verwendbar ist.
+ */
+export function isSchichtmodellGueltig(
+  bestand: ISchichtmodellBestand,
+  vorlagen: readonly ISchichtmodellVorlage[],
+): boolean {
+  try {
+    assertGueltigeTagesvorlagenschichten(
+      bestand.tagesvorlagenschichten,
+      vorlagen,
+      bestand.schichtmodell,
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -110,23 +138,6 @@ function assertVorlagengrenzen(schichten: readonly ITagesvorlagenschichtSchreibd
         istLetzteSchicht
           ? 'Die letzte Tagesschicht darf kein festes Ende enthalten.'
           : 'Die Tagesschicht benötigt ein festes Ende.',
-      );
-    }
-  });
-}
-
-function assertRandminutenPositionen(
-  schichten: readonly ITagesvorlagenschichtSchreibdaten[],
-): void {
-  schichten.forEach((schicht, index) => {
-    const istErsteSchicht = index === 0;
-    const istLetzteSchicht = index === schichten.length - 1;
-    if (
-      (!istErsteSchicht && schicht.vorbereitungsminuten !== 0) ||
-      (!istLetzteSchicht && schicht.nachbereitungsminuten !== 0)
-    ) {
-      throw new Error(
-        'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
       );
     }
   });

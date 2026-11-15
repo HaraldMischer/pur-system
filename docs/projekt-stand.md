@@ -156,19 +156,34 @@ Hauptquellen.
 - Das Schichtmodell besitzt unabhängige Wochentags- und Sonntagsvorlagen sowie konkrete Tagesschichten als
   Monatsmomentaufnahme.
 - In jeder Schichtmodellvorlage werden der Beginn der ersten und das Ende der letzten Schicht aus der wirksamen Tagesöffnung
-  abgeleitet. Nur die erste Schicht besitzt Vorbereitungsminuten und nur die letzte Nachbereitungsminuten; beim Hinzufügen oder
-  Entfernen einer äußeren Schicht werden diese Randminuten entsprechend übertragen.
+  abgeleitet. Vorbereitungs- und Nachbereitungsminuten werden einmal am Schichtmodell gespeichert und gelten für alle Vorlagen.
+  Bei der Monatsplananlage übernimmt die erste konkrete Tagesschicht die Vorbereitung und die letzte die Nachbereitung; eine
+  einzelne Schicht übernimmt beide Werte.
 - Beim Hinzufügen einer Modellschicht werden alle inneren Grenzen der betroffenen Vorlage auf dem 15-Minuten-Raster möglichst
   gleichmäßig über die vollständige Öffnung neu verteilt. Die Grenzen bleiben anschließend unabhängig bearbeitbar; Lücken und
   Überlappungen bleiben zulässig.
-- Das Schichtmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Regelmäßig abweichend
-  geöffnete Wochentage werden einmal je Wochentag und Monat frei konfiguriert und auf ihre regulären Vorkommen übertragen.
-  Geöffnete abweichende Feier- und Sondertage werden einzeln konfiguriert; geschlossene Tage bleiben ohne Tagesschichten.
+- Das Schichtmodell erzeugt beim initialen Monatsaufbau eine eigene Schichtstruktur je Kalendertag. Neben der allgemeinen
+  Wochentags- und Sonntagsvorlage enthält es eigene Vorlagen für regelmäßig abweichend geöffnete Wochentage und für abweichend
+  geöffnete Sondertage. Die Monatsplananlage benötigt keine zusätzliche freie Tageskonfiguration mehr.
+- Nach späteren Änderungen der Öffnungszeiten werden unvollständige oder zeitlich nicht mehr passende Modelle in der Übersicht
+  als anpassungsbedürftig gekennzeichnet und für neue Monatspläne zurückgewiesen. Bereits angelegte Monatspläne bleiben als
+  Momentaufnahme unverändert.
 - Nach der Rastermodell-Entfernung und der Umbenennung auf das einheitliche Schichtmodell wurden am 13.11.2026 die vollständige
   Unit-Test-Suite mit 944 Tests, alle 63 Firestore-Emulator-Tests, die vier Produktionsbuilds sowie die manuelle Prüfung vom
   Benutzer als erfolgreich bestätigt.
-- Die anschließend umgesetzte direkte Modellliste und die gleichmäßige Neuverteilung aller Schichtgrenzen beim Hinzufügen sind
-  statisch geprüft. Unit-Tests, betroffene Produktionsbuilds und die manuelle Prüfung stehen für diesen neueren Stand noch aus.
+- Die anschließend umgesetzte direkte Modellliste, die gleichmäßige Neuverteilung aller Schichtgrenzen beim Hinzufügen, die
+  abweichenden Modellvorlagen und die direkte Seitenbearbeitung wurden mit der vollständigen Suite aus 973 Unit-Tests sowie den
+  Produktionsbuilds für Master, Office und Filiale sowie manuell auf Desktop und einem kleinen Touch-Viewport erfolgreich
+  geprüft.
+- Die Schichtmodellverwaltung wurde anschließend aus dem Bearbeitungsdialog direkt auf die routbare Modellseite verlagert.
+  Pro Filiale wählt ein `mat-select` das unmittelbar darunter bearbeitete Modell; Neuanlage, Speicherung und Verwerfen erfolgen
+  im Seitenformular. Modellwechsel, interne Navigation sowie Browser-Neuladen oder -Schließen berücksichtigen ungespeicherte
+  Änderungen. Strikte Templateprüfung, Testbestand und stabile Formularverfolgung sind mit dem erfolgreichen Abschlussstand
+  abgeglichen.
+- Todo 26.4 hat Vorbereitungs- und Nachbereitungsminuten aus den Vorlagenschichten in das Schichtmodell-Dokument verlagert. Die
+  konkreten Tagesschichten übernehmen die Modellwerte bei der Monatsplananlage als unveränderliche Momentaufnahme. Die alten
+  Schichtmodelle wurden zuvor gelöscht; eine Migration oder Kompatibilitätslogik wurde nicht umgesetzt. Die abschließenden
+  automatisierten Builds und Tests sowie die manuelle Prüfung der neu angelegten Modelle stehen noch aus.
 - Beim Anlegen eines Monatsplans werden Schichtmodell, Kalendertage, wirksame Öffnungen und konkrete datumsgebundene
   Tagesschichten als unveränderliche Momentaufnahme gespeichert.
 - Mitarbeiter können per Drag-and-drop eingeplant, verschoben und entfernt werden. Mehrfachbelegung, Pausen und

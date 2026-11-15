@@ -41,7 +41,6 @@ import {
   ISchichtZeitdaten,
 } from '../../commons/models/domain/schicht';
 import {
-  IFreieTagesschichtSchreibdaten,
   ISchichtmodellBestand,
   ITagesschichtDokument,
   ITagesschichtEintrag,
@@ -267,19 +266,17 @@ export class DienstplanService {
   }
 
   /**
-   * Legt einen Monatsplan aus einem Schichtmodell und vollständig erfassten abweichenden Tagen an.
+   * Legt einen Monatsplan vollständig aus den Vorlagen eines Schichtmodells an.
    *
    * @param pfad - Vollständiger Filialpfad.
    * @param monat - Monat im Format `YYYY-MM`.
    * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
-   * @param freieTagesschichten - Frei konfigurierte Schichten aller abweichend geöffneten Tage.
    * @param benutzerUid - UID des anlegenden Benutzers.
    */
   async createDienstplan(
     pfad: IFilialPfad,
     monat: string,
     schichtmodell: ISchichtmodellBestand,
-    freieTagesschichten: readonly IFreieTagesschichtSchreibdaten[],
     benutzerUid: string,
   ): Promise<IDienstplanAnlageErgebnis> {
     validateSchichtmodell(pfad, schichtmodell);
@@ -311,13 +308,12 @@ export class DienstplanService {
       tagesschichtAnlagen = createDienstplanTagesschichten({
         kalendertage,
         schichtmodell,
-        freieTagesschichten,
         zeitzone: zeitraum.zeitzone,
       });
     } catch (error: unknown) {
       if (error instanceof SchichtmodellOeffnungszeitenFehler) {
         throw createDienstplanAnlageFehler(
-          `Das Schichtmodell „${schichtmodell.schichtmodell.bezeichnung}“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.`,
+          `Das Schichtmodell „${schichtmodell.schichtmodell.bezeichnung}“ ist für die aktuellen Öffnungszeiten nicht vollständig oder nicht mehr gültig. Bitte passen Sie die Schichtvorlagen an.`,
           'schichtmodell-oeffnungszeiten',
         );
       }

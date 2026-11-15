@@ -1,11 +1,13 @@
 // pur-system/src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.ts
 
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { OeffnungszeitenFiliale } from '../../../components/einstellungen/oeffnungszeiten-filiale/oeffnungszeiten-filiale';
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
+import { PageRouteTitleDirective } from '../../../directives/page-route-title.directive';
 
 // ===== Konstanten & Typen ===================
 
@@ -16,7 +18,7 @@ type TOeffnungszeitenFilialauswahl = {
 
 @Component({
   selector: 'app-oeffnungszeiten-page',
-  imports: [OeffnungszeitenFiliale],
+  imports: [MatToolbarModule, OeffnungszeitenFiliale, PageRouteTitleDirective],
   templateUrl: './oeffnungszeiten-page.html',
   styleUrl: './oeffnungszeiten-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

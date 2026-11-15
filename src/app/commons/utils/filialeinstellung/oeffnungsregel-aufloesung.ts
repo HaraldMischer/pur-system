@@ -156,6 +156,7 @@ export function resolveOeffnungsregel(
 export function getSondertagsmodus(
   sondertag: Pick<IFilialeinstellungSondertagEintrag, 'aktiv' | 'modus' | 'oeffnungsregel'>,
 ): TSondertagsmodus {
+  if (!sondertag.aktiv) return 'standard';
   if (
     sondertag.modus === 'standard' ||
     sondertag.modus === 'wieSonntag' ||
@@ -164,7 +165,6 @@ export function getSondertagsmodus(
   ) {
     return sondertag.modus;
   }
-  if (!sondertag.aktiv) return 'standard';
   return sondertag.oeffnungsregel.geoeffnet ? 'abweichend' : 'geschlossen';
 }
 

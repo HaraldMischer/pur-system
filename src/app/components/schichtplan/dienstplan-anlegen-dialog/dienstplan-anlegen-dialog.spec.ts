@@ -3,8 +3,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { of } from 'rxjs';
-
 import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
 import { DienstplanFachfehler } from '../../../services/domain/dienstplan.service';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
@@ -38,7 +36,7 @@ describe('DienstplanAnlegenDialog', () => {
   const storeError = signal<string | null>(null);
   const createDienstplan = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
-  const open = vi.fn().mockReturnValue({ afterClosed: () => of([]) });
+  const open = vi.fn();
   const dienstplanStoreMock = { createDienstplan, inProgress, error: storeError };
   const dialogRefMock = { close };
   const dialogMock = { open };
@@ -49,7 +47,6 @@ describe('DienstplanAnlegenDialog', () => {
     inProgress.set(false);
     storeError.set(null);
     createDienstplan.mockResolvedValue(undefined);
-    open.mockReturnValue({ afterClosed: () => of([]) });
     await setup({
       pfad,
       monat: '2026-10',
@@ -84,18 +81,8 @@ describe('DienstplanAnlegenDialog', () => {
 
     await fixture.componentInstance.saveDienstplan();
 
-    expect(createDienstplan).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell, []);
+    expect(createDienstplan).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell);
     expect(close).toHaveBeenCalledWith(true);
-  });
-
-  it('should keep the dialog open when the day-structure dialog is cancelled', async () => {
-    open.mockReturnValueOnce({ afterClosed: () => of(undefined) });
-    fixture.componentInstance.dienstplanForm.controls.schichtmodellId.setValue('modell-1');
-
-    await fixture.componentInstance.saveDienstplan();
-
-    expect(createDienstplan).not.toHaveBeenCalled();
-    expect(close).not.toHaveBeenCalled();
   });
 
   it('should show the known plan creation error', async () => {
@@ -114,7 +101,7 @@ describe('DienstplanAnlegenDialog', () => {
 
   it('should show incompatible opening times in a notice dialog', async () => {
     const fehlermeldung =
-      'Der Dienstplan konnte nicht angelegt werden. Das Schichtmodell „Standard“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.';
+      'Der Dienstplan konnte nicht angelegt werden. Das Schichtmodell „Standard“ ist für die aktuellen Öffnungszeiten nicht vollständig oder nicht mehr gültig. Bitte passen Sie die Schichtvorlagen an.';
     createDienstplan.mockImplementationOnce(async () => {
       storeError.set(fehlermeldung);
       throw new DienstplanFachfehler(fehlermeldung, 'schichtmodell-oeffnungszeiten');
@@ -123,19 +110,19 @@ describe('DienstplanAnlegenDialog', () => {
 
     await fixture.componentInstance.saveDienstplan();
 
-    expect(open).toHaveBeenNthCalledWith(2, HinweisDialog, {
+    expect(open).toHaveBeenCalledWith(HinweisDialog, {
       panelClass: ['pur-dialog__panel'],
       data: {
         titel: 'Der Dienstplan wurde nicht angelegt',
         nachricht:
-          'Das Schichtmodell „Standard“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.',
+          'Das Schichtmodell „Standard“ ist für die aktuellen Öffnungszeiten nicht vollständig oder nicht mehr gültig. Bitte passen Sie die Schichtvorlagen an.',
       },
     });
     expect(fixture.componentInstance.error()).toBeNull();
     expect(close).not.toHaveBeenCalled();
   });
 
-  it('should reject an incompatible shift model before opening the day-structure dialog', async () => {
+  it('should reject an incompatible shift model before creating the monthly plan', async () => {
     fixture.componentInstance.dienstplanForm.controls.schichtmodellId.setValue('modell-2');
 
     await fixture.componentInstance.saveDienstplan();
@@ -146,7 +133,7 @@ describe('DienstplanAnlegenDialog', () => {
       data: {
         titel: 'Der Dienstplan wurde nicht angelegt',
         nachricht:
-          'Das Schichtmodell „Ungültig“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.',
+          'Das Schichtmodell „Ungültig“ ist für die aktuellen Öffnungszeiten nicht vollständig oder nicht mehr gültig. Bitte passen Sie die Schichtvorlagen an.',
       },
     });
     expect(createDienstplan).not.toHaveBeenCalled();
@@ -160,6 +147,8 @@ describe('DienstplanAnlegenDialog', () => {
         id: 'modell-1',
         bezeichnung: 'Standard',
         aktiv: true,
+        vorbereitungsminuten: 0,
+        nachbereitungsminuten: 0,
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },
@@ -173,8 +162,6 @@ describe('DienstplanAnlegenDialog', () => {
           reihenfolge: 0,
           ende: { lokalzeit: '16:00', tag: 'starttag' },
           mehrfachbelegungErlaubt: false,
-          vorbereitungsminuten: 0,
-          nachbereitungsminuten: 0,
         },
       ],
     };
@@ -187,6 +174,8 @@ describe('DienstplanAnlegenDialog', () => {
         id: 'modell-2',
         bezeichnung: 'Ungültig',
         aktiv: true,
+        vorbereitungsminuten: 0,
+        nachbereitungsminuten: 0,
         erstelltVonUid: 'uid-1',
         aktualisiertVonUid: 'uid-1',
       },
@@ -200,8 +189,6 @@ describe('DienstplanAnlegenDialog', () => {
           reihenfolge: 0,
           ende: { lokalzeit: '07:00', tag: 'starttag' },
           mehrfachbelegungErlaubt: false,
-          vorbereitungsminuten: 0,
-          nachbereitungsminuten: 0,
         },
         {
           ...pfad,
@@ -212,8 +199,6 @@ describe('DienstplanAnlegenDialog', () => {
           reihenfolge: 1,
           beginn: { lokalzeit: '07:00', tag: 'starttag' },
           mehrfachbelegungErlaubt: false,
-          vorbereitungsminuten: 0,
-          nachbereitungsminuten: 0,
         },
       ],
     };

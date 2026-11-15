@@ -9,7 +9,6 @@ import {
 } from '../../commons/constants/firebase.constants';
 import type { IFilialPfad } from '../../commons/models/app/firestore-pfad.types';
 import type { TFirestoreLesestrategie } from '../../commons/models/app/firestore-lesestrategie.types';
-import type { IGeoeffneteOeffnungsregel } from '../../commons/models/domain/filialeinstellung';
 import type {
   ISchichtmodellAktualisierung,
   ISchichtmodellAnlage,
@@ -19,15 +18,13 @@ import type {
   ITagesvorlagenschichtDokument,
   ITagesvorlagenschichtEintrag,
   ITagesvorlagenschichtSchreibdaten,
-  TTagesvorlageTyp,
 } from '../../commons/models/domain/schichtmodell';
+import type { ISchichtmodellVorlage } from '../../commons/utils/dienstplan/schichtmodell-vorlagen';
 import { assertGueltigeTagesvorlagenschichten } from '../../commons/validators/schichtmodell.validator';
 import {
   FirestoreDbService,
   type TFirestoreBatchOperation,
 } from '../firebase/firestore-db.service';
-
-type TOeffnungen = Readonly<Record<TTagesvorlageTyp, IGeoeffneteOeffnungsregel>>;
 
 function sortSchichten(a: ITagesvorlagenschichtEintrag, b: ITagesvorlagenschichtEintrag): number {
   return a.vorlage.localeCompare(b.vorlage) || a.reihenfolge - b.reihenfolge;
@@ -44,8 +41,6 @@ function normalizeSchicht(
     ...(schicht.beginn ? { beginn: { ...schicht.beginn } } : {}),
     ...(schicht.ende ? { ende: { ...schicht.ende } } : {}),
     mehrfachbelegungErlaubt: schicht.mehrfachbelegungErlaubt,
-    vorbereitungsminuten: schicht.vorbereitungsminuten,
-    nachbereitungsminuten: schicht.nachbereitungsminuten,
   };
 }
 
@@ -57,8 +52,6 @@ function mapDokument(schicht: ITagesvorlagenschichtSchreibdaten): ITagesvorlagen
     ...(schicht.beginn ? { beginn: { ...schicht.beginn } } : {}),
     ...(schicht.ende ? { ende: { ...schicht.ende } } : {}),
     mehrfachbelegungErlaubt: schicht.mehrfachbelegungErlaubt,
-    vorbereitungsminuten: schicht.vorbereitungsminuten,
-    nachbereitungsminuten: schicht.nachbereitungsminuten,
   };
 }
 
@@ -71,7 +64,7 @@ export class SchichtmodellService {
   // ===== Öffentliche Aktionen =================
 
   /**
-   * Lädt alle Schichtmodelle einer Filiale mit ihren beiden Vorlagen.
+   * Lädt alle Schichtmodelle einer Filiale mit ihren Tagesvorlagen.
    */
   async loadSchichtmodelle(
     pfad: IFilialPfad,
@@ -115,15 +108,15 @@ export class SchichtmodellService {
   }
 
   /**
-   * Legt ein aktives Schichtmodell mit Wochentags- und Sonntagsvorlage an.
+   * Legt ein aktives Schichtmodell mit allen aktuell erforderlichen Tagesvorlagen an.
    */
   async createSchichtmodell(
     pfad: IFilialPfad,
     anlage: ISchichtmodellAnlage,
-    oeffnungen: TOeffnungen,
+    vorlagen: readonly ISchichtmodellVorlage[],
     benutzerUid: string,
   ): Promise<ISchichtmodellBestand> {
-    this.assertModell(anlage, oeffnungen);
+    this.assertModell(anlage, vorlagen);
     const schichtmodellId = this.firestoreDbService.createDocumentId(
       FIRESTORE_COLLECTION_PATHS.schichtmodelle(pfad),
     );
@@ -133,6 +126,8 @@ export class SchichtmodellService {
       id: schichtmodellId,
       bezeichnung: anlage.bezeichnung.trim(),
       aktiv: true,
+      vorbereitungsminuten: anlage.vorbereitungsminuten,
+      nachbereitungsminuten: anlage.nachbereitungsminuten,
       erstelltVonUid: benutzerUid,
       aktualisiertVonUid: benutzerUid,
     };
@@ -152,6 +147,8 @@ export class SchichtmodellService {
         daten: {
           bezeichnung: schichtmodell.bezeichnung,
           aktiv: true,
+          vorbereitungsminuten: schichtmodell.vorbereitungsminuten,
+          nachbereitungsminuten: schichtmodell.nachbereitungsminuten,
           erstelltAm: zeitstempel,
           erstelltVonUid: benutzerUid,
           aktualisiertAm: zeitstempel,
@@ -180,10 +177,10 @@ export class SchichtmodellService {
     pfad: IFilialPfad,
     bestand: ISchichtmodellBestand,
     aktualisierung: ISchichtmodellAktualisierung,
-    oeffnungen: TOeffnungen,
+    vorlagen: readonly ISchichtmodellVorlage[],
     benutzerUid: string,
   ): Promise<ISchichtmodellBestand> {
-    this.assertModell(aktualisierung, oeffnungen);
+    this.assertModell(aktualisierung, vorlagen);
     const schichtmodellId = bestand.schichtmodell.id;
     const bekannteIds = new Set(bestand.tagesvorlagenschichten.map((schicht) => schicht.id));
     const verwendeteIds = new Set<string>();
@@ -210,6 +207,8 @@ export class SchichtmodellService {
         daten: {
           bezeichnung: aktualisierung.bezeichnung.trim(),
           aktiv: aktualisierung.aktiv,
+          vorbereitungsminuten: aktualisierung.vorbereitungsminuten,
+          nachbereitungsminuten: aktualisierung.nachbereitungsminuten,
           aktualisiertAm: zeitstempel,
           aktualisiertVonUid: benutzerUid,
         },
@@ -243,6 +242,8 @@ export class SchichtmodellService {
         ...bestand.schichtmodell,
         bezeichnung: aktualisierung.bezeichnung.trim(),
         aktiv: aktualisierung.aktiv,
+        vorbereitungsminuten: aktualisierung.vorbereitungsminuten,
+        nachbereitungsminuten: aktualisierung.nachbereitungsminuten,
         aktualisiertVonUid: benutzerUid,
       },
       tagesvorlagenschichten: tagesvorlagenschichten.sort(sortSchichten),
@@ -269,10 +270,13 @@ export class SchichtmodellService {
 
   // ===== Interne Helfer =======================
 
-  private assertModell(anlage: ISchichtmodellAnlage, oeffnungen: TOeffnungen): void {
+  private assertModell(
+    anlage: ISchichtmodellAnlage,
+    vorlagen: readonly ISchichtmodellVorlage[],
+  ): void {
     if (!anlage.bezeichnung.trim()) {
       throw new Error('Ein Schichtmodell benötigt eine Bezeichnung.');
     }
-    assertGueltigeTagesvorlagenschichten(anlage.tagesvorlagenschichten, oeffnungen);
+    assertGueltigeTagesvorlagenschichten(anlage.tagesvorlagenschichten, vorlagen, anlage);
   }
 }

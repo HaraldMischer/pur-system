@@ -19,14 +19,28 @@ Ersatzwerte ergänzt.
 `createDienstplan()` prüft ein aktives, nicht leeres Schichtmodell derselben Filiale. Anschließend löst der Service alle
 Kalendertage und wirksamen Öffnungen auf. Standardmäßig geöffnete Tage von Montag bis Samstag erhalten Tagesschichten aus der
 Wochentagsvorlage, reguläre Sonntage aus der Sonntagsvorlage. Feiertage mit `Wie Sonntag` verwenden ebenfalls die
-Sonntagsvorlage. Für regelmäßig abweichend geöffnete Wochentage und abweichend geöffnete Feier- oder Sondertage wird die zuvor
-frei konfigurierte Tagesstruktur übernommen; geschlossene Tage bleiben ohne Tagesschichten. Eine einmal konfigurierte
-Wochentagsgruppe wird vor dem Schreiben in konkrete datumsgebundene Tagesschichten für alle regulären Vorkommen aufgelöst.
+Sonntagsvorlage. Regelmäßig abweichend geöffnete Wochentage verwenden ihre Wochentagsvorlage, abweichend geöffnete Feier- oder
+Sondertage die anhand ihrer stabilen Sondertag-ID zugeordnete Sondertagsvorlage. Geschlossene Tage bleiben ohne
+Tagesschichten.
 
 Vor dem Schreiben validiert der Service jede Kernzeit gegen die wirksame Öffnung des konkreten Tages. Nur Vor- und
 Nachbereitungsminuten dürfen die Öffnungsgrenzen erweitern. Monatsplan, erste Entwurfsversion, Kalender-Momentaufnahme,
 Modellreferenz und sämtliche Tagesschichten werden atomar geschrieben. Spätere Änderungen am Modell oder an den
 Filialeinstellungen verändern den Monatsplan nicht.
+
+`createDienstplan()` erhält keine frei konfigurierten Tagesstrukturen. Der Service prüft, ob das ausgewählte Modell für jede
+aktuell wirksame geöffnete Regel mit `Abweichend` eine passende Wochentags- oder Sondertagsvorlage enthält. Standardtage
+verwenden weiterhin die allgemeine Wochentags- beziehungsweise Sonntagsvorlage, Feiertage mit `Wie Sonntag` die
+Sonntagsvorlage und geschlossene Tage keine Vorlage.
+
+Eine fehlende Vorlage und eine nicht mehr zur Öffnung passende Schichtgrenze führen zu einem fachlich unterscheidbaren
+Modellfehler. Der Dialog übersetzt beide Fälle in eine verständliche Aufforderung zur Modellanpassung. Vorhandene Monatspläne
+und ihre Tagesschichten werden nicht neu berechnet.
+
+`createDienstplan()` übernimmt die modellweiten Vorbereitungsminuten auf die erste und die modellweiten
+Nachbereitungsminuten auf die letzte erzeugte Tagesschicht jedes geöffneten Tages. Innere Tagesschichten erhalten keine
+Randminuten; bei einer einzelnen Schicht werden beide Werte gespeichert. Die konkreten Tagesschichten behalten diese Werte als
+unveränderliche Momentaufnahme.
 
 ## Versionierung und Veröffentlichung
 

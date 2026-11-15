@@ -7,25 +7,32 @@ import {
   effect,
   inject,
   input,
+  signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { firstValueFrom } from 'rxjs';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { ISchichtmodellBestand } from '../../../commons/models/domain/schichtmodell';
+import {
+  createSchichtmodellVorlagen,
+  type ISchichtmodellVorlage,
+} from '../../../commons/utils/dienstplan/schichtmodell-vorlagen';
+import { isSchichtmodellGueltig } from '../../../commons/validators/schichtmodell.validator';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
-import {
-  SchichtmodellBearbeitenDialog,
-  TSchichtmodellBearbeitenDialogDaten,
-} from '../schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog';
+import { BestaetigungDialog } from '../../shared/bestaetigung-dialog/bestaetigung-dialog';
+import { SchichtmodellFormular } from '../schichtmodell-formular/schichtmodell-formular';
 
 @Component({
   selector: 'app-schichtmodelle-filiale',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, MatMenuModule, SchichtmodellFormular],
   templateUrl: './schichtmodelle-filiale.html',
   styleUrl: './schichtmodelle-filiale.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,6 +48,16 @@ export class SchichtmodelleFiliale {
 
   readonly filiale = input.required<IFilialeEintrag>();
   readonly pfad = input.required<IFilialPfad>();
+
+  // ===== View Queries =========================
+
+  private readonly formular = viewChild(SchichtmodellFormular);
+
+  // ===== Interner State =======================
+
+  private readonly selectedSchichtmodellId = signal<string | null>(null);
+  readonly istNeuanlage = signal(false);
+  private readonly formularVersion = signal(0);
 
   // ===== Interne Ableitungen ==================
 
@@ -66,6 +83,29 @@ export class SchichtmodelleFiliale {
       this.filialeinstellungKontext()?.bestand !== null
     );
   });
+  readonly vorlagen = computed<readonly ISchichtmodellVorlage[]>(() => {
+    const bestand = this.filialeinstellungKontext()?.bestand;
+    if (!bestand || bestand.oeffnungszeiten.wochenregeln.sonntag.modus === 'geschlossen') {
+      return [];
+    }
+    return createSchichtmodellVorlagen(bestand.oeffnungszeiten, bestand.sondertage);
+  });
+  readonly selectedBestand = computed(() => {
+    if (this.istNeuanlage()) return undefined;
+    const selectedId = this.selectedSchichtmodellId();
+    return this.schichtmodellKontext()?.schichtmodelle.find((bestand) => {
+      return bestand.schichtmodell.id === selectedId;
+    });
+  });
+  readonly formularTrackKeys = computed<readonly string[]>(() => {
+    const modell = this.istNeuanlage()
+      ? 'neu'
+      : (this.selectedBestand()?.schichtmodell.id ?? 'ohne-auswahl');
+    return [`${modell}:${this.formularVersion()}`];
+  });
+  readonly hatUngespeicherteAenderungen = computed(() => {
+    return this.formular()?.hatAenderungen() ?? false;
+  });
 
   // ===== Öffentliche Aktionen =================
 
@@ -77,31 +117,53 @@ export class SchichtmodelleFiliale {
   }
 
   /**
-   * Öffnet den Dialog zum Anlegen oder Bearbeiten eines Schichtmodells.
-   *
-   * @param bestand - Optional ausgewählter Schichtmodellbestand.
+   * Wechselt nach einer gegebenenfalls erforderlichen Bestätigung zum ausgewählten Modell.
    */
-  openSchichtmodellDialog(bestand?: ISchichtmodellBestand): void {
-    const oeffnungszeiten = this.filialeinstellungKontext()?.bestand?.oeffnungszeiten;
-    if (!oeffnungszeiten) return;
-    const sonntagsregel = oeffnungszeiten.wochenregeln.sonntag;
-    if (sonntagsregel.modus === 'geschlossen') return;
-    const sonntag =
-      sonntagsregel.modus === 'abweichend'
-        ? sonntagsregel.oeffnungsregel
-        : oeffnungszeiten.standardoeffnungsregel;
-    const daten: TSchichtmodellBearbeitenDialogDaten = {
-      pfad: this.pfad(),
-      oeffnungen: {
-        wochentag: oeffnungszeiten.standardoeffnungsregel,
-        sonntag,
-      },
-      ...(bestand ? { bestand } : {}),
-    };
-    this.dialog.open(SchichtmodellBearbeitenDialog, {
-      data: daten,
-      panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
-    });
+  async selectSchichtmodell(schichtmodellId: string): Promise<void> {
+    if (schichtmodellId === this.selectedSchichtmodellId() && !this.istNeuanlage()) return;
+    if (!(await this.bestaetigeVerwerfen())) return;
+    this.istNeuanlage.set(false);
+    this.selectedSchichtmodellId.set(schichtmodellId);
+    this.formularVersion.update((version) => version + 1);
+  }
+
+  /**
+   * Öffnet ein neues Modellformular, sofern kein anderes Modell ungespeichert bearbeitet wird.
+   */
+  createSchichtmodell(): void {
+    if (
+      this.vorlagen().length === 0 ||
+      this.istNeuanlage() ||
+      this.hatUngespeicherteAenderungen()
+    ) {
+      return;
+    }
+    this.istNeuanlage.set(true);
+    this.formularVersion.update((version) => version + 1);
+  }
+
+  /**
+   * Übernimmt das gespeicherte Modell als aktuelle Seitenauswahl.
+   */
+  handleGespeichert(bestand: ISchichtmodellBestand): void {
+    this.selectedSchichtmodellId.set(bestand.schichtmodell.id);
+    this.istNeuanlage.set(false);
+    this.formularVersion.update((version) => version + 1);
+  }
+
+  /**
+   * Verwirft das aktuelle Formular und stellt den gespeicherten Modellzustand wieder her.
+   */
+  handleAbgebrochen(): void {
+    this.istNeuanlage.set(false);
+    this.formularVersion.update((version) => version + 1);
+  }
+
+  /**
+   * Zeigt an, ob ein Modell vor der nächsten Monatsplananlage angepasst werden muss.
+   */
+  istAnpassungErforderlich(bestand: ISchichtmodellBestand): boolean {
+    return !isSchichtmodellGueltig(bestand, this.vorlagen());
   }
 
   // ===== Interne Helfer =======================
@@ -115,5 +177,23 @@ export class SchichtmodelleFiliale {
     } catch {
       // Der Store stellt die benutzerfreundliche Fehlermeldung im Filialkontext bereit.
     }
+  }
+
+  private async bestaetigeVerwerfen(): Promise<boolean> {
+    if (!this.hatUngespeicherteAenderungen()) return true;
+    const bestaetigt = await firstValueFrom(
+      this.dialog
+        .open(BestaetigungDialog, {
+          panelClass: ['pur-dialog__panel'],
+          data: {
+            titel: 'Ungespeicherte Änderungen',
+            nachricht: 'Die ungespeicherten Änderungen wirklich verwerfen?',
+            bestaetigenText: 'Verwerfen',
+            abbrechenText: 'Weiter bearbeiten',
+          },
+        })
+        .afterClosed(),
+    );
+    return bestaetigt === true;
   }
 }

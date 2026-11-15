@@ -61,7 +61,7 @@ function resolveTagesstrukturQuelle(
   wochenregeln: TWochenregeln,
 ): TDienstplanTagesstrukturQuelle {
   if (!aufgeloest.oeffnungsregel.geoeffnet) return 'geschlossen';
-  if (aufgeloest.quelle === 'sondertag') return 'freieTagesstruktur';
+  if (aufgeloest.quelle === 'sondertag') return 'sondertagsvorlage';
   if (aufgeloest.quelle === 'sonntag' || aufgeloest.wochentag === 'sonntag') {
     return 'sonntagsvorlage';
   }
@@ -69,7 +69,7 @@ function resolveTagesstrukturQuelle(
     !aufgeloest.gesetzlicherFeiertag &&
     wochenregeln[aufgeloest.wochentag].modus === 'abweichend'
   ) {
-    return 'freieTagesstruktur';
+    return 'abweichendeWochentagsvorlage';
   }
   return 'wochentagsvorlage';
 }

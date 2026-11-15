@@ -1,23 +1,35 @@
 // pur-system/src/app/commons/validators/schichtmodell.validator.spec.ts
 
-import type { ITagesvorlagenschichtSchreibdaten } from '../models/domain/schichtmodell';
+import type {
+  ITagesvorlagenschichtSchreibdaten,
+  TTagesvorlageTyp,
+} from '../models/domain/schichtmodell';
 import { assertGueltigeTagesvorlagenschichten } from './schichtmodell.validator';
 
 describe('Schichtmodell-Validierung', () => {
-  const oeffnungen = {
-    wochentag: {
-      geoeffnet: true as const,
-      beginnLokalzeit: '07:00',
-      endeLokalzeit: '01:00',
-      endetAmFolgetag: true,
+  const randzeiten = { vorbereitungsminuten: 15, nachbereitungsminuten: 10 };
+  const vorlagen = [
+    {
+      vorlage: 'wochentag' as const,
+      bezeichnung: 'Wochentagsvorlage',
+      oeffnung: {
+        geoeffnet: true as const,
+        beginnLokalzeit: '07:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
     },
-    sonntag: {
-      geoeffnet: true as const,
-      beginnLokalzeit: '10:00',
-      endeLokalzeit: '01:00',
-      endetAmFolgetag: true,
+    {
+      vorlage: 'sonntag' as const,
+      bezeichnung: 'Sonntagsvorlage',
+      oeffnung: {
+        geoeffnet: true as const,
+        beginnLokalzeit: '10:00',
+        endeLokalzeit: '01:00',
+        endetAmFolgetag: true,
+      },
     },
-  };
+  ];
 
   it('akzeptiert unabhängige Vorlagen mit Überlappungen', () => {
     const schichten: ITagesvorlagenschichtSchreibdaten[] = [
@@ -27,7 +39,9 @@ describe('Schichtmodell-Validierung', () => {
       createSchicht('sonntag', 1, '17:00', undefined),
     ];
 
-    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).not.toThrow();
+    expect(() => {
+      assertGueltigeTagesvorlagenschichten(schichten, vorlagen, randzeiten);
+    }).not.toThrow();
   });
 
   it('weist Kernzeiten außerhalb der Öffnung zurück', () => {
@@ -37,32 +51,38 @@ describe('Schichtmodell-Validierung', () => {
       createSchicht('sonntag', 0, undefined, undefined),
     ];
 
-    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, vorlagen, randzeiten)).toThrow(
       'Die Kernzeit der Tagesschicht muss innerhalb der Öffnung liegen.',
     );
   });
 
-  it('erlaubt Randminuten nur an der ersten und letzten Schicht jeder Vorlage', () => {
+  it('weist ungültige modellweite Randminuten zurück', () => {
     const schichten: ITagesvorlagenschichtSchreibdaten[] = [
-      createSchicht('wochentag', 0, undefined, '17:00', 'starttag', 15, 0),
-      createSchicht('wochentag', 1, '15:00', undefined, 'starttag', 5, 15),
-      createSchicht('sonntag', 0, undefined, undefined, 'starttag', 15, 15),
+      createSchicht('wochentag', 0, undefined, '17:00'),
+      createSchicht('wochentag', 1, '15:00', undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
     ];
 
-    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
-      'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
-    );
+    expect(() =>
+      assertGueltigeTagesvorlagenschichten(schichten, vorlagen, {
+        vorbereitungsminuten: -1,
+        nachbereitungsminuten: 10,
+      }),
+    ).toThrow('Vor- und Nachbereitungsminuten müssen ganze Zahlen von 0 bis 999 sein.');
 
-    schichten[1].vorbereitungsminuten = 0;
-    schichten[0].nachbereitungsminuten = 5;
+    expect(() =>
+      assertGueltigeTagesvorlagenschichten(schichten, vorlagen, {
+        vorbereitungsminuten: 15,
+        nachbereitungsminuten: 1.5,
+      }),
+    ).toThrow('Vor- und Nachbereitungsminuten müssen ganze Zahlen von 0 bis 999 sein.');
 
-    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
-      'Vorbereitungsminuten sind nur an der ersten und Nachbereitungsminuten nur an der letzten Tagesschicht erlaubt.',
-    );
-
-    schichten[0].nachbereitungsminuten = 0;
-
-    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).not.toThrow();
+    expect(() =>
+      assertGueltigeTagesvorlagenschichten(schichten, vorlagen, {
+        vorbereitungsminuten: undefined as unknown as number,
+        nachbereitungsminuten: 10,
+      }),
+    ).toThrow('Vor- und Nachbereitungsminuten müssen ganze Zahlen von 0 bis 999 sein.');
   });
 
   it('verlangt dynamische Außengrenzen und feste innere Grenzen', () => {
@@ -73,14 +93,14 @@ describe('Schichtmodell-Validierung', () => {
     ];
     schichten[0].beginn = { lokalzeit: '07:00', tag: 'starttag' };
 
-    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, vorlagen, randzeiten)).toThrow(
       'Die erste Tagesschicht darf keinen festen Beginn enthalten.',
     );
 
     delete schichten[0].beginn;
     delete schichten[1].beginn;
 
-    expect(() => assertGueltigeTagesvorlagenschichten(schichten, oeffnungen)).toThrow(
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, vorlagen, randzeiten)).toThrow(
       'Die Tagesschicht benötigt einen festen Beginn.',
     );
   });
@@ -93,19 +113,59 @@ describe('Schichtmodell-Validierung', () => {
     ];
 
     expect(() => {
-      assertGueltigeTagesvorlagenschichten(schichten, oeffnungen);
+      assertGueltigeTagesvorlagenschichten(schichten, vorlagen, randzeiten);
     }).toThrow('15-Minuten-Raster');
+  });
+
+  it('verlangt jede aktuell erforderliche abweichende Vorlage', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
+    ];
+    const erweiterteVorlagen = [
+      ...vorlagen,
+      {
+        vorlage: 'wochentag:montag' as const,
+        bezeichnung: 'Montag',
+        oeffnung: {
+          geoeffnet: true as const,
+          beginnLokalzeit: '14:00',
+          endeLokalzeit: '01:00',
+          endetAmFolgetag: true,
+        },
+      },
+    ];
+
+    expect(() =>
+      assertGueltigeTagesvorlagenschichten(schichten, erweiterteVorlagen, randzeiten),
+    ).toThrow('Die Tagesvorlage „Montag“ benötigt mindestens eine Schicht.');
+
+    schichten.push(createSchicht('wochentag:montag', 0, undefined, undefined));
+
+    expect(() => {
+      assertGueltigeTagesvorlagenschichten(schichten, erweiterteVorlagen, randzeiten);
+    }).not.toThrow();
+  });
+
+  it('weist nicht mehr erforderliche Vorlagen zurück', () => {
+    const schichten: ITagesvorlagenschichtSchreibdaten[] = [
+      createSchicht('wochentag', 0, undefined, undefined),
+      createSchicht('sonntag', 0, undefined, undefined),
+      createSchicht('sondertag:alt', 0, undefined, undefined),
+    ];
+
+    expect(() => assertGueltigeTagesvorlagenschichten(schichten, vorlagen, randzeiten)).toThrow(
+      'Das Schichtmodell enthält eine nicht mehr erforderliche Tagesvorlage.',
+    );
   });
 });
 
 function createSchicht(
-  vorlage: 'wochentag' | 'sonntag',
+  vorlage: TTagesvorlageTyp,
   reihenfolge: number,
   beginn: string | undefined,
   ende: string | undefined,
   endeTag: 'starttag' | 'folgetag' = 'starttag',
-  vorbereitungsminuten = 0,
-  nachbereitungsminuten = 0,
 ): ITagesvorlagenschichtSchreibdaten {
   return {
     vorlage,
@@ -113,8 +173,6 @@ function createSchicht(
     reihenfolge,
     ...(beginn ? { beginn: { lokalzeit: beginn, tag: 'starttag' as const } } : {}),
     ...(ende ? { ende: { lokalzeit: ende, tag: endeTag } } : {}),
-    vorbereitungsminuten,
-    nachbereitungsminuten,
     mehrfachbelegungErlaubt: false,
   };
 }

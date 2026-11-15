@@ -1,11 +1,14 @@
-// pur-system/src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/schichtmodell-bearbeiten-dialog.ts
+// pur-system/src/app/components/schichtplan/schichtmodell-formular/schichtmodell-formular.ts
 
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  OnInit,
   effect,
   inject,
+  input,
+  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -13,14 +16,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
 import { MAX_RANDMINUTEN } from '../../../commons/constants/schicht.constants';
 import type { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
-import type { IGeoeffneteOeffnungsregel } from '../../../commons/models/domain/filialeinstellung';
 import type {
   ISchichtmodellAktualisierung,
   ISchichtmodellAnlage,
@@ -35,6 +36,7 @@ import {
   getGleichmaessigeLokalzeitGrenzen,
   getSchichtTagFuerLokalzeit,
 } from '../../../commons/utils/dienstplan/schicht-lokalzeit';
+import type { ISchichtmodellVorlage } from '../../../commons/utils/dienstplan/schichtmodell-vorlagen';
 import { nichtLeerValidator } from '../../../commons/validators/nicht-leer.validator';
 import { SchichtmodellStore } from '../../../stores/domain/schichtmodell.store';
 import { EingabeMinuten } from '../../shared/eingabe-minuten/eingabe-minuten';
@@ -47,77 +49,88 @@ type TSchichtForm = FormGroup<{
   beginnTag: FormControl<TSchichtZeitgrenzeTag>;
   endeLokalzeit: FormControl<string>;
   endeTag: FormControl<TSchichtZeitgrenzeTag>;
-  vorbereitungsminuten: FormControl<number>;
-  nachbereitungsminuten: FormControl<number>;
   mehrfachbelegungErlaubt: FormControl<boolean>;
 }>;
 
-export type TSchichtmodellBearbeitenDialogDaten = {
-  readonly pfad: IFilialPfad;
-  readonly oeffnungen: Readonly<Record<TTagesvorlageTyp, IGeoeffneteOeffnungsregel>>;
-  readonly bestand?: ISchichtmodellBestand;
-};
+type TVorlageForm = FormGroup<{
+  vorlage: FormControl<TTagesvorlageTyp>;
+  schichten: FormArray<TSchichtForm>;
+}>;
 
 @Component({
-  selector: 'app-schichtmodell-bearbeiten-dialog',
+  selector: 'app-schichtmodell-formular',
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
     MatCheckboxModule,
-    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     EingabeMinuten,
     EingabeZeit,
   ],
-  templateUrl: './schichtmodell-bearbeiten-dialog.html',
-  styleUrl: './schichtmodell-bearbeiten-dialog.scss',
+  templateUrl: './schichtmodell-formular.html',
+  styleUrl: './schichtmodell-formular.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SchichtmodellBearbeitenDialog {
+export class SchichtmodellFormular implements OnInit {
   // ===== Interne Dependency Injection =========
 
   private readonly destroyRef = inject(DestroyRef);
-  private readonly dialogRef = inject(MatDialogRef<SchichtmodellBearbeitenDialog, boolean>);
-  readonly daten = inject<TSchichtmodellBearbeitenDialogDaten>(MAT_DIALOG_DATA);
   readonly store = inject(SchichtmodellStore);
+
+  // ===== Öffentliche API ======================
+
+  readonly pfad = input.required<IFilialPfad>();
+  readonly vorlagen = input.required<readonly ISchichtmodellVorlage[]>();
+  readonly bestand = input<ISchichtmodellBestand>();
+  readonly gespeichert = output<ISchichtmodellBestand>();
+  readonly abgebrochen = output<void>();
 
   // ===== Interner State =======================
 
-  private readonly urspruenglicherDatenwert: string;
+  private urspruenglicherDatenwert = '';
 
   // ===== Öffentliche Werte ====================
 
-  readonly istBearbeitung = Boolean(this.daten.bestand);
-  readonly form = new FormGroup({
-    bezeichnung: new FormControl(this.daten.bestand?.schichtmodell.bezeichnung ?? '', {
-      nonNullable: true,
-      validators: [Validators.required, nichtLeerValidator, Validators.maxLength(80)],
-    }),
-    aktiv: new FormControl(
-      { value: this.daten.bestand?.schichtmodell.aktiv ?? true, disabled: !this.istBearbeitung },
-      { nonNullable: true },
-    ),
-    wochentag: new FormArray<TSchichtForm>(this.createVorlage('wochentag')),
-    sonntag: new FormArray<TSchichtForm>(this.createVorlage('sonntag')),
-  });
-  readonly hatAenderungen = signal(!this.istBearbeitung);
+  form!: FormGroup<{
+    bezeichnung: FormControl<string>;
+    aktiv: FormControl<boolean>;
+    vorbereitungsminuten: FormControl<number>;
+    nachbereitungsminuten: FormControl<number>;
+    vorlagen: FormArray<TVorlageForm>;
+  }>;
+  readonly hatAenderungen = signal(false);
 
   constructor() {
-    this.urspruenglicherDatenwert = JSON.stringify(this.getSchreibwert());
-    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.updateHatAenderungen();
-    });
     effect(() => {
       const inProgress = this.store.inProgress();
       untracked(() => {
+        if (!this.form) return;
         if (inProgress) this.form.disable({ emitEvent: false });
         else {
           this.form.enable({ emitEvent: false });
           if (!this.istBearbeitung) this.form.controls.aktiv.disable({ emitEvent: false });
         }
       });
+    });
+  }
+
+  // ===== Öffentliche Ableitungen ==============
+
+  get istBearbeitung(): boolean {
+    return Boolean(this.bestand());
+  }
+
+  // ===== Lifecycle Hooks ======================
+
+  ngOnInit(): void {
+    this.form = this.createForm();
+    this.urspruenglicherDatenwert = JSON.stringify(this.getSchreibwert());
+    this.hatAenderungen.set(!this.istBearbeitung);
+    this.updateHatAenderungen();
+    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.updateHatAenderungen();
     });
   }
 
@@ -129,11 +142,7 @@ export class SchichtmodellBearbeitenDialog {
    * Alle inneren Grenzen werden anschließend gleichmäßig auf dem 15-Minuten-Raster neu verteilt.
    */
   addSchicht(vorlage: TTagesvorlageTyp): void {
-    const schichten = this.form.controls[vorlage];
-    const bisherigeLetzteSchicht = schichten.at(-1);
-    const bisherigeNachbereitungsminuten =
-      bisherigeLetzteSchicht?.controls.nachbereitungsminuten.value ?? 0;
-    bisherigeLetzteSchicht?.controls.nachbereitungsminuten.setValue(0);
+    const schichten = this.getVorlageForm(vorlage);
     const neueSchicht = this.createSchichtForm(
       vorlage,
       undefined,
@@ -145,7 +154,6 @@ export class SchichtmodellBearbeitenDialog {
         }),
       ),
     );
-    neueSchicht.controls.nachbereitungsminuten.setValue(bisherigeNachbereitungsminuten);
     schichten.push(neueSchicht);
     this.verteileSchichtenGleichmaessig(vorlage);
   }
@@ -153,72 +161,102 @@ export class SchichtmodellBearbeitenDialog {
   /**
    * Liefert die typisierte Schichtliste der ausgewählten Tagesvorlage.
    *
-   * @param vorlage - Wochentags- oder Sonntagsvorlage.
+   * @param vorlage - Eindeutige Referenz der Modellvorlage.
    */
   getVorlageForm(vorlage: TTagesvorlageTyp): FormArray<TSchichtForm> {
-    return this.form.controls[vorlage];
+    const vorlageForm = this.form.controls.vorlagen.controls.find((eintrag) => {
+      return eintrag.controls.vorlage.value === vorlage;
+    });
+    if (!vorlageForm) throw new Error(`Die Tagesvorlage „${vorlage}“ wurde nicht gefunden.`);
+    return vorlageForm.controls.schichten;
   }
 
   /**
    * Entfernt eine Schicht aus der ausgewählten Tagesvorlage.
    */
   removeSchicht(vorlage: TTagesvorlageTyp, index: number): void {
-    const schichten = this.form.controls[vorlage];
+    const schichten = this.getVorlageForm(vorlage);
     if (schichten.length <= 1) return;
-    if (index === 0) {
-      schichten
-        .at(1)
-        .controls.vorbereitungsminuten.setValue(
-          schichten.at(0).controls.vorbereitungsminuten.value,
-        );
-    }
-    if (index === schichten.length - 1) {
-      schichten
-        .at(index - 1)
-        .controls.nachbereitungsminuten.setValue(
-          schichten.at(index).controls.nachbereitungsminuten.value,
-        );
-    }
     schichten.removeAt(index);
-    const oeffnung = this.daten.oeffnungen[vorlage];
+    const oeffnung = this.getVorlage(vorlage).oeffnung;
     schichten.at(0).controls.beginnLokalzeit.setValue(oeffnung.beginnLokalzeit);
     schichten.at(-1).controls.endeLokalzeit.setValue(oeffnung.endeLokalzeit);
   }
 
   /**
-   * Speichert beide Vorlagen des Schichtmodells.
+   * Speichert alle aktuell erforderlichen Vorlagen des Schichtmodells.
    */
   async save(): Promise<void> {
     if (this.form.invalid || this.store.inProgress() || !this.hatAenderungen()) return;
     try {
-      if (this.daten.bestand) {
-        await this.store.updateSchichtmodell(
-          this.daten.pfad,
-          this.daten.bestand.schichtmodell.id,
-          this.getAktualisierung(),
-          this.daten.oeffnungen,
-        );
-      } else {
-        await this.store.createSchichtmodell(
-          this.daten.pfad,
-          this.getAnlage(),
-          this.daten.oeffnungen,
-        );
-      }
-      this.dialogRef.close(true);
+      const bestand = this.bestand();
+      const gespeichert = bestand
+        ? await this.store.updateSchichtmodell(
+            this.pfad(),
+            bestand.schichtmodell.id,
+            this.getAktualisierung(),
+            this.vorlagen(),
+          )
+        : await this.store.createSchichtmodell(this.pfad(), this.getAnlage(), this.vorlagen());
+      this.urspruenglicherDatenwert = JSON.stringify(this.getSchreibwert());
+      this.hatAenderungen.set(false);
+      this.gespeichert.emit(gespeichert);
     } catch {
       // Der Store stellt die benutzerfreundliche Fehlermeldung bereit.
     }
   }
 
+  /**
+   * Bricht die aktuelle Modellbearbeitung oder Neuanlage ab.
+   */
+  cancel(): void {
+    if (this.store.inProgress()) return;
+    this.abgebrochen.emit();
+  }
+
   // ===== Interne Helfer =======================
 
-  private createVorlage(vorlage: TTagesvorlageTyp): TSchichtForm[] {
-    const schichten = this.daten.bestand?.tagesvorlagenschichten.filter((schicht) => {
+  private createForm(): SchichtmodellFormular['form'] {
+    const bestand = this.bestand();
+    return new FormGroup({
+      bezeichnung: new FormControl(bestand?.schichtmodell.bezeichnung ?? '', {
+        nonNullable: true,
+        validators: [Validators.required, nichtLeerValidator, Validators.maxLength(80)],
+      }),
+      aktiv: new FormControl(
+        { value: bestand?.schichtmodell.aktiv ?? true, disabled: !bestand },
+        { nonNullable: true },
+      ),
+      vorbereitungsminuten: new FormControl(bestand?.schichtmodell.vorbereitungsminuten ?? 0, {
+        nonNullable: true,
+        validators: [Validators.required, Validators.min(0), Validators.max(MAX_RANDMINUTEN)],
+      }),
+      nachbereitungsminuten: new FormControl(bestand?.schichtmodell.nachbereitungsminuten ?? 0, {
+        nonNullable: true,
+        validators: [Validators.required, Validators.min(0), Validators.max(MAX_RANDMINUTEN)],
+      }),
+      vorlagen: new FormArray<TVorlageForm>(
+        this.vorlagen().map((vorlage) => {
+          return this.createVorlageForm(vorlage);
+        }),
+      ),
+    });
+  }
+
+  private createVorlageForm(definition: ISchichtmodellVorlage): TVorlageForm {
+    return new FormGroup({
+      vorlage: new FormControl<TTagesvorlageTyp>(definition.vorlage, { nonNullable: true }),
+      schichten: new FormArray<TSchichtForm>(this.createVorlage(definition)),
+    });
+  }
+
+  private createVorlage(definition: ISchichtmodellVorlage): TSchichtForm[] {
+    const vorlage = definition.vorlage;
+    const schichten = this.bestand()?.tagesvorlagenschichten.filter((schicht) => {
       return schicht.vorlage === vorlage;
     });
     const schichtdaten = schichten?.length ? schichten : [undefined];
-    const formen = schichtdaten.map((schicht, index) => {
+    return schichtdaten.map((schicht, index) => {
       return this.createSchichtForm(
         vorlage,
         schicht,
@@ -227,19 +265,11 @@ export class SchichtmodellBearbeitenDialog {
         `Schicht ${index + 1}`,
       );
     });
-    const letzterIndex = formen.length - 1;
-    formen.forEach((form, index) => {
-      if (index > 0) form.controls.vorbereitungsminuten.setValue(0, { emitEvent: false });
-      if (index < letzterIndex) {
-        form.controls.nachbereitungsminuten.setValue(0, { emitEvent: false });
-      }
-    });
-    return formen;
   }
 
   private verteileSchichtenGleichmaessig(vorlage: TTagesvorlageTyp): void {
-    const schichten = this.form.controls[vorlage];
-    const oeffnung = this.daten.oeffnungen[vorlage];
+    const schichten = this.getVorlageForm(vorlage);
+    const oeffnung = this.getVorlage(vorlage).oeffnung;
     const grenzen = getGleichmaessigeLokalzeitGrenzen(oeffnung, schichten.length, 15);
     if (grenzen.length !== schichten.length - 1) return;
     schichten.controls.forEach((schicht, index) => {
@@ -259,7 +289,7 @@ export class SchichtmodellBearbeitenDialog {
     istLetzteSchicht = false,
     standardbezeichnung = '',
   ): TSchichtForm {
-    const oeffnung = this.daten.oeffnungen[vorlage];
+    const oeffnung = this.getVorlage(vorlage).oeffnung;
     const beginnLokalzeit = istErsteSchicht
       ? oeffnung.beginnLokalzeit
       : (schicht?.beginn?.lokalzeit ?? '');
@@ -288,24 +318,12 @@ export class SchichtmodellBearbeitenDialog {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      beginnTag: new FormControl<TSchichtZeitgrenzeTag>(beginnTag, {
-        nonNullable: true,
-      }),
+      beginnTag: new FormControl<TSchichtZeitgrenzeTag>(beginnTag, { nonNullable: true }),
       endeLokalzeit: new FormControl(endeLokalzeit, {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      endeTag: new FormControl<TSchichtZeitgrenzeTag>(endeTag, {
-        nonNullable: true,
-      }),
-      vorbereitungsminuten: new FormControl(schicht?.vorbereitungsminuten ?? 0, {
-        nonNullable: true,
-        validators: [Validators.min(0), Validators.max(MAX_RANDMINUTEN)],
-      }),
-      nachbereitungsminuten: new FormControl(schicht?.nachbereitungsminuten ?? 0, {
-        nonNullable: true,
-        validators: [Validators.min(0), Validators.max(MAX_RANDMINUTEN)],
-      }),
+      endeTag: new FormControl<TSchichtZeitgrenzeTag>(endeTag, { nonNullable: true }),
       mehrfachbelegungErlaubt: new FormControl(schicht?.mehrfachbelegungErlaubt ?? false, {
         nonNullable: true,
       }),
@@ -328,7 +346,11 @@ export class SchichtmodellBearbeitenDialog {
   private getAnlage(): ISchichtmodellAnlage {
     return {
       bezeichnung: this.form.controls.bezeichnung.value.trim(),
-      tagesvorlagenschichten: [...this.mapVorlage('wochentag'), ...this.mapVorlage('sonntag')],
+      vorbereitungsminuten: this.form.controls.vorbereitungsminuten.value,
+      nachbereitungsminuten: this.form.controls.nachbereitungsminuten.value,
+      tagesvorlagenschichten: this.vorlagen().flatMap((vorlage) => {
+        return this.mapVorlage(vorlage.vorlage);
+      }),
     };
   }
 
@@ -344,7 +366,7 @@ export class SchichtmodellBearbeitenDialog {
   }
 
   private mapVorlage(vorlage: TTagesvorlageTyp): ITagesvorlagenschichtSchreibdaten[] {
-    const schichten = this.form.controls[vorlage].controls;
+    const schichten = this.getVorlageForm(vorlage).controls;
     const letzterIndex = schichten.length - 1;
     return schichten.map((schicht, reihenfolge) => {
       const wert = schicht.getRawValue();
@@ -359,8 +381,6 @@ export class SchichtmodellBearbeitenDialog {
         ...(reihenfolge < letzterIndex
           ? { ende: { lokalzeit: wert.endeLokalzeit, tag: wert.endeTag } }
           : {}),
-        vorbereitungsminuten: reihenfolge === 0 ? wert.vorbereitungsminuten : 0,
-        nachbereitungsminuten: reihenfolge === letzterIndex ? wert.nachbereitungsminuten : 0,
         mehrfachbelegungErlaubt: wert.mehrfachbelegungErlaubt,
       };
     });
@@ -369,7 +389,27 @@ export class SchichtmodellBearbeitenDialog {
   private updateHatAenderungen(): void {
     if (!this.istBearbeitung) return;
     this.hatAenderungen.set(
-      JSON.stringify(this.getAktualisierung()) !== this.urspruenglicherDatenwert,
+      this.hatAbweichendenVorlagenbestand() ||
+        JSON.stringify(this.getAktualisierung()) !== this.urspruenglicherDatenwert,
     );
+  }
+
+  private hatAbweichendenVorlagenbestand(): boolean {
+    const erforderlicheVorlagen = new Set(this.vorlagen().map((vorlage) => vorlage.vorlage));
+    const vorhandeneVorlagen = new Set(
+      this.bestand()?.tagesvorlagenschichten.map((schicht) => schicht.vorlage) ?? [],
+    );
+    return (
+      [...erforderlicheVorlagen].some((vorlage) => !vorhandeneVorlagen.has(vorlage)) ||
+      [...vorhandeneVorlagen].some((vorlage) => !erforderlicheVorlagen.has(vorlage))
+    );
+  }
+
+  private getVorlage(vorlage: TTagesvorlageTyp): ISchichtmodellVorlage {
+    const definition = this.vorlagen().find((eintrag) => {
+      return eintrag.vorlage === vorlage;
+    });
+    if (!definition) throw new Error(`Die Tagesvorlage „${vorlage}“ wurde nicht gefunden.`);
+    return definition;
   }
 }

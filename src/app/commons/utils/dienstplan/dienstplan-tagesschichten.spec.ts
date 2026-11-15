@@ -1,7 +1,7 @@
 // pur-system/src/app/commons/utils/dienstplan/dienstplan-tagesschichten.spec.ts
 
 import type { IDienstplanKalendertag } from '../../models/domain/dienstplan-kalendertag';
-import type { ISchichtmodellBestand } from '../../models/domain/schichtmodell';
+import type { ISchichtmodellBestand, TTagesvorlageTyp } from '../../models/domain/schichtmodell';
 import {
   assertSchichtmodellPasstZuKalendertagen,
   createDienstplanTagesschichten,
@@ -9,54 +9,25 @@ import {
 } from './dienstplan-tagesschichten';
 
 describe('Dienstplan-Tagesschichten', () => {
-  it('verwendet Vorlagen und freie Strukturen für abweichende Wochen- und Sondertage', () => {
+  it('verwendet die passenden Modellvorlagen für reguläre und abweichende Tage', () => {
     const kalendertage = [
       createKalendertag('2026-12-05', false),
       createKalendertag('2026-12-06', true),
-      createKalendertag('2026-12-07', false, false, '09:00', '23:00', false, true),
+      createKalendertag('2026-12-07', false, false, '09:00', '23:00', false, 'montag'),
       {
         ...createKalendertag('2026-12-25', false, false, '10:00'),
         oeffnungsregelQuelle: 'sonntag' as const,
         tagesstrukturQuelle: 'sonntagsvorlage' as const,
         sondertagId: 'erster-weihnachtstag',
       },
-      createKalendertag('2026-12-24', false, true, '07:00', '16:00', false),
+      {
+        ...createKalendertag('2026-12-24', false, true, '07:00', '16:00', false),
+        sondertagId: 'heiligabend',
+      },
     ];
     const ergebnis = createDienstplanTagesschichten({
       kalendertage,
       schichtmodell: createModell(),
-      freieTagesschichten: [
-        {
-          datum: '2026-12-07',
-          bezeichnung: 'Montag Früh',
-          reihenfolge: 0,
-          beginn: { lokalzeit: '09:00', tag: 'starttag' },
-          ende: { lokalzeit: '18:00', tag: 'starttag' },
-          vorbereitungsminuten: 0,
-          nachbereitungsminuten: 0,
-          mehrfachbelegungErlaubt: false,
-        },
-        {
-          datum: '2026-12-07',
-          bezeichnung: 'Montag Spät',
-          reihenfolge: 1,
-          beginn: { lokalzeit: '18:00', tag: 'starttag' },
-          ende: { lokalzeit: '23:00', tag: 'starttag' },
-          vorbereitungsminuten: 0,
-          nachbereitungsminuten: 0,
-          mehrfachbelegungErlaubt: false,
-        },
-        {
-          datum: '2026-12-24',
-          bezeichnung: 'Heiligabend',
-          reihenfolge: 0,
-          beginn: { lokalzeit: '07:00', tag: 'starttag' },
-          ende: { lokalzeit: '16:00', tag: 'starttag' },
-          vorbereitungsminuten: 15,
-          nachbereitungsminuten: 30,
-          mehrfachbelegungErlaubt: false,
-        },
-      ],
       zeitzone: 'Europe/Berlin',
     });
 
@@ -64,24 +35,58 @@ describe('Dienstplan-Tagesschichten', () => {
     expect(ergebnis.filter((schicht) => schicht.datum === '2026-12-06')).toHaveLength(3);
     const abweichenderWochentag = ergebnis.filter((schicht) => schicht.datum === '2026-12-07');
     expect(abweichenderWochentag[0].kernbeginnLokalzeit).toBe('09:00');
-    expect(abweichenderWochentag[0].kernendeLokalzeit).toBe('18:00');
+    expect(abweichenderWochentag[0].kernendeLokalzeit).toBe('14:00');
     expect(abweichenderWochentag.at(-1)?.kernendeLokalzeit).toBe('23:00');
     expect(ergebnis.filter((schicht) => schicht.datum === '2026-12-25')).toHaveLength(3);
     expect(ergebnis.find((schicht) => schicht.datum === '2026-12-25')?.herkunft).toBe('sonntag');
     expect(ergebnis.find((schicht) => schicht.datum === '2026-12-24')?.herkunft).toBe('sondertag');
+    const samstag = ergebnis.filter((schicht) => schicht.datum === '2026-12-05');
+    expect(samstag[0].vorbereitungsminuten).toBe(30);
+    expect(samstag[0].nachbereitungsminuten).toBe(0);
+    expect(samstag.at(-1)?.vorbereitungsminuten).toBe(0);
+    expect(samstag.at(-1)?.nachbereitungsminuten).toBe(20);
+    const sonntag = ergebnis.filter((schicht) => schicht.datum === '2026-12-06');
+    expect(sonntag[0].vorbereitungsminuten).toBe(30);
+    expect(sonntag[0].nachbereitungsminuten).toBe(0);
+    expect(sonntag[1].vorbereitungsminuten).toBe(0);
+    expect(sonntag[1].nachbereitungsminuten).toBe(0);
+    expect(sonntag[2].vorbereitungsminuten).toBe(0);
+    expect(sonntag[2].nachbereitungsminuten).toBe(20);
+    const heiligabend = ergebnis.filter((schicht) => schicht.datum === '2026-12-24');
+    expect(heiligabend[0].vorbereitungsminuten).toBe(30);
+    expect(heiligabend[0].nachbereitungsminuten).toBe(20);
   });
 
-  it('verhindert die Anlage ohne erforderliche freie Tagesstruktur', () => {
+  it('behält die übernommenen Randzeiten als Monatsmomentaufnahme bei', () => {
+    const modell = createModell();
+    const ergebnis = createDienstplanTagesschichten({
+      kalendertage: [createKalendertag('2026-12-05', false)],
+      schichtmodell: modell,
+      zeitzone: 'Europe/Berlin',
+    });
+
+    modell.schichtmodell.vorbereitungsminuten = 45;
+    modell.schichtmodell.nachbereitungsminuten = 35;
+
+    expect(ergebnis[0].vorbereitungsminuten).toBe(30);
+    expect(ergebnis.at(-1)?.nachbereitungsminuten).toBe(20);
+  });
+
+  it('verhindert die Anlage ohne erforderliche abweichende Modellvorlage', () => {
     expect(() => {
       return createDienstplanTagesschichten({
         kalendertage: [
-          createKalendertag('2026-12-07', false, false, '09:00', '23:00', false, true),
+          createKalendertag('2026-12-07', false, false, '09:00', '23:00', false, 'montag'),
         ],
-        schichtmodell: createModell(),
-        freieTagesschichten: [],
+        schichtmodell: {
+          ...createModell(),
+          tagesvorlagenschichten: createModell().tagesvorlagenschichten.filter((schicht) => {
+            return schicht.vorlage !== 'wochentag:montag';
+          }),
+        },
         zeitzone: 'Europe/Berlin',
       });
-    }).toThrow('Für 2026-12-07 fehlt die abweichende Tagesstruktur.');
+    }).toThrow(SchichtmodellOeffnungszeitenFehler);
   });
 
   it('erkennt ein unpassendes Schichtmodell bereits vor der freien Tageskonfiguration', () => {
@@ -101,20 +106,22 @@ function createKalendertag(
   beginnLokalzeit = istSonntag ? '10:00' : '07:00',
   endeLokalzeit = '01:00',
   endetAmFolgetag = true,
-  istFreieTagesstruktur = istSondertag,
+  wochentag: IDienstplanKalendertag['wochentag'] = istSonntag ? 'sonntag' : 'samstag',
 ): IDienstplanKalendertag {
   return {
     datum,
-    wochentag: istSonntag ? 'sonntag' : 'samstag',
+    wochentag,
     istSonntag,
     aktiveSondertage: [],
     oeffnungsregelQuelle: istSondertag ? 'sondertag' : 'wochentag',
     oeffnungsregel: { geoeffnet: true, beginnLokalzeit, endeLokalzeit, endetAmFolgetag },
-    tagesstrukturQuelle: istFreieTagesstruktur
-      ? 'freieTagesstruktur'
-      : istSonntag
-        ? 'sonntagsvorlage'
-        : 'wochentagsvorlage',
+    tagesstrukturQuelle: istSondertag
+      ? 'sondertagsvorlage'
+      : wochentag === 'montag'
+        ? 'abweichendeWochentagsvorlage'
+        : istSonntag
+          ? 'sonntagsvorlage'
+          : 'wochentagsvorlage',
   };
 }
 
@@ -126,19 +133,23 @@ function createModell(): ISchichtmodellBestand {
       id: 'tage-1',
       bezeichnung: 'Standard',
       aktiv: true,
+      vorbereitungsminuten: 30,
+      nachbereitungsminuten: 20,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },
     tagesvorlagenschichten: [
       ...createVorlage(pfad, 'wochentag', 2),
       ...createVorlage(pfad, 'sonntag', 3),
+      ...createVorlage(pfad, 'wochentag:montag', 2),
+      ...createVorlage(pfad, 'sondertag:heiligabend', 1),
     ],
   };
 }
 
 function createVorlage(
   pfad: { unternehmerId: string; firmaId: string; filialeId: string },
-  vorlage: 'wochentag' | 'sonntag',
+  vorlage: TTagesvorlageTyp,
   anzahl: number,
 ) {
   return Array.from({ length: anzahl }, (_, reihenfolge) => {
@@ -155,8 +166,6 @@ function createVorlage(
       ...(!istLetzte
         ? { ende: { lokalzeit: `${14 + reihenfolge * 4}:00`, tag: 'starttag' as const } }
         : {}),
-      vorbereitungsminuten: 0,
-      nachbereitungsminuten: 0,
       mehrfachbelegungErlaubt: false,
     };
   });

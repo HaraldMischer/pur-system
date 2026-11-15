@@ -161,6 +161,8 @@ describe('DienstplanService', () => {
             id: 'modell-1',
             bezeichnung: 'Schichtmodell',
             aktiv: true,
+            vorbereitungsminuten: 0,
+            nachbereitungsminuten: 0,
             erstelltVonUid: 'uid-1',
             aktualisiertVonUid: 'uid-1',
           },
@@ -176,8 +178,6 @@ describe('DienstplanService', () => {
               reihenfolge: 0,
               ende: { lokalzeit: '16:30', tag: 'starttag' },
               mehrfachbelegungErlaubt: false,
-              vorbereitungsminuten: 0,
-              nachbereitungsminuten: 0,
             },
             {
               unternehmerId: 'u-1',
@@ -190,8 +190,6 @@ describe('DienstplanService', () => {
               reihenfolge: 1,
               beginn: { lokalzeit: '16:30', tag: 'starttag' },
               mehrfachbelegungErlaubt: false,
-              vorbereitungsminuten: 0,
-              nachbereitungsminuten: 0,
             },
             {
               unternehmerId: 'u-1',
@@ -203,17 +201,14 @@ describe('DienstplanService', () => {
               bezeichnung: 'Sonntag',
               reihenfolge: 0,
               mehrfachbelegungErlaubt: false,
-              vorbereitungsminuten: 0,
-              nachbereitungsminuten: 0,
             },
           ],
         },
-        [],
         'uid-1',
       ),
     ).rejects.toMatchObject({
       message:
-        'Der Dienstplan konnte nicht angelegt werden. Das Schichtmodell „Schichtmodell“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.',
+        'Der Dienstplan konnte nicht angelegt werden. Das Schichtmodell „Schichtmodell“ ist für die aktuellen Öffnungszeiten nicht vollständig oder nicht mehr gültig. Bitte passen Sie die Schichtvorlagen an.',
       code: 'schichtmodell-oeffnungszeiten',
     });
   });

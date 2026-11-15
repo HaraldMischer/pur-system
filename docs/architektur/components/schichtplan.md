@@ -34,8 +34,8 @@ diese Zuordnung erneut und zeigt bei einer Verletzung `Mitarbeiter nicht zugelas
 `DienstplanMonatsliste` stellt den Monatsplan als gemeinsame Zeitachse und tagesabhängige Tagesschichten dar. Jeder Listentag
 zeigt Wochentag, Datum, wirksame Öffnung und Feiertags- oder Sondertagsbezeichnungen sowie ausschließlich seine eigenen
 Tagesschichten. Standardmäßig geöffnete Wochentage und Sonntage verwenden die aus dem Modell erzeugten Instanzen. Regelmäßig
-abweichend geöffnete Wochentage sowie abweichend geöffnete Feier- und Sondertage verwenden ihre bei der Monatsanlage frei
-konfigurierten Instanzen.
+abweichend geöffnete Wochentage sowie abweichend geöffnete Feier- und Sondertage verwenden die jeweils zugehörige
+Schichtmodellvorlage. Bei der Monatsanlage werden keine freien Tagesstrukturen mehr erfasst.
 
 Die Zeitachse reicht ohne Stundenrundung von der exakten frühesten Öffnung bis zum exakten spätesten Öffnungsende. Die
 Berechnung verwendet den verbindlichen 15-Minuten-Schritt; die Kopfzeile beschriftet nur die dazwischenliegenden vollen
@@ -59,33 +59,45 @@ ist zusätzlich die transaktionale Prüfung beim Schreiben.
 
 ## Planaktionen und Dialoge
 
-`DienstplanAnlegenDialog` verlangt ein aktives Schichtmodell der Filiale. Nach der Modellwahl öffnet er den
-`DienstplanAbweichendeTageDialog`. Darin konfiguriert der Planer regelmäßig abweichend geöffnete Wochentage einmal je
-Wochentagsgruppe und abweichend geöffnete Feier- oder Sondertage einzeln. Der Dialog zeigt die betroffenen Monatsdaten und die
-wirksame Öffnung; beim Bestätigen erzeugt er für jedes Datum vollständige freie Tagesschichten. Plan, erste Entwurfsversion,
-Kalender-Momentaufnahme und Tagesschichten entstehen anschließend atomar. Ein leerer, noch nie veröffentlichter Plan darf
-gelöscht und aus einem anderen aktiven Modell neu angelegt werden.
+`DienstplanAnlegenDialog` verlangt ein aktives, für die aktuellen Öffnungszeiten vollständiges Schichtmodell der Filiale. Nach
+der Modellwahl entstehen Plan, erste Entwurfsversion, Kalender-Momentaufnahme und Tagesschichten atomar. Bei einem
+unvollständigen oder ungültigen Modell bleibt die Modellauswahl geöffnet und eine Meldebox fordert zur Anpassung der
+Modellvorlagen auf. Ein leerer, noch nie veröffentlichter Plan darf gelöscht und aus einem anderen aktiven Modell neu angelegt
+werden.
 
 `SchichtBelegenDialog` ordnet einer bereits festgelegten Tagesschicht einen aktiven Mitarbeiter zu. Datum, Bezeichnung und
 Zeitspanne bleiben schreibgeschützt. Eine belegte Einfachschicht oder eine filialübergreifende zeitliche Überschneidung sperrt
 das Speichern.
 
-`SchichtmodellBearbeitenDialog` enthält getrennte Bereiche für die Wochentagsvorlage und die
-Sonntagsvorlage. Beide erlauben beliebig viele Vorlagenschichten mit stabiler ID, Bezeichnung, Reihenfolge,
-Mehrfachbelegung und unabhängigen inneren Grenzen. Der Beginn der ersten und das Ende der letzten Schicht werden aus der
-jeweiligen Öffnung abgeleitet. Vorlauf und Nachlauf werden im Kopf der Tagesvorlage erfasst, technisch aber weiterhin der
-ersten beziehungsweise letzten Schicht zugeordnet. Neue Vorlagenschichten erhalten direkt im editierbaren Bezeichnungsfeld
-eine fortlaufende Standardbezeichnung; eine zusätzliche Schichtüberschrift wird nicht dargestellt. Jede Tagesvorlage besitzt
-einen gemeinsamen Außenrahmen, in dem ihre Vorlagenschichten als getrennte Listenzeilen erscheinen.
+`SchichtmodellFormular` enthält Bereiche für die allgemeine Wochentags- und Sonntagsvorlage sowie für jeden aktuell abweichend
+geöffneten Wochentag und Sondertag. Jede Vorlage erlaubt beliebig viele Vorlagenschichten mit stabiler ID, Bezeichnung,
+Reihenfolge, Mehrfachbelegung und unabhängigen inneren Grenzen. Der Beginn der ersten und das Ende der letzten Schicht werden
+aus der jeweiligen Öffnung abgeleitet. Vorlauf und Nachlauf werden einmal im allgemeinen Modellbereich gepflegt und gelten für
+alle Tagesvorlagen des Modells. Die Vorlagenschichten besitzen keine eigenen Randminuten. Neue Vorlagenschichten erhalten
+direkt im editierbaren
+Bezeichnungsfeld eine fortlaufende Standardbezeichnung; eine zusätzliche Schichtüberschrift wird nicht dargestellt. Jede
+Tagesvorlage besitzt einen gemeinsamen Außenrahmen, in dem ihre Vorlagenschichten als getrennte Listenzeilen erscheinen.
 
 Beim Hinzufügen einer Schicht werden alle inneren Grenzen der betroffenen Vorlage auf dem 15-Minuten-Raster möglichst
 gleichmäßig über die vollständige Öffnung neu verteilt. Die Grenzen bleiben anschließend bearbeitbar. Lücken und
 Überschneidungen bleiben zulässig; jede Kernschicht benötigt eine positive Dauer innerhalb der maßgeblichen Öffnung. Nur
 Randminuten dürfen die Öffnungsgrenzen erweitern.
 
+Fehlende oder zeitlich nicht mehr passende Vorlagen werden in der Modellübersicht als `Anpassung erforderlich` gekennzeichnet.
+Beim Bearbeiten erscheinen alle aktuell erforderlichen Vorlagen; nicht mehr erforderliche Vorlagen werden beim Speichern
+kontrolliert entfernt. Vorhandene Monatspläne bleiben unverändert.
+
 Die routbare `SchichtmodellePage` rendert pro ausgewählter Filiale eine `SchichtmodelleFiliale`. Der Bereich lädt
-ausschließlich Modelle seines Filialpfads und zeigt alle Modelle als umrandete Liste mit direkter Bearbeitungsaktion. Inaktive
-Modelle bleiben sichtbar und werden gekennzeichnet.
+ausschließlich Modelle seines Filialpfads. Ein `mat-select` im Kopf des Filialbereichs wählt das Modell, dessen vollständiges
+`SchichtmodellFormular` direkt darunter erscheint. Inaktive und anpassungsbedürftige Modelle bleiben auswählbar und werden in
+der Auswahl gekennzeichnet. Eine Neuanlage öffnet ein noch nicht gespeichertes Seitenformular; nach erfolgreichem Speichern
+bleibt der angelegte Bestand ausgewählt.
+
+Modellwechsel und Neuanlage verlangen bei ungespeicherten Änderungen eine bewusste Verwerfbestätigung. Die Page bündelt den
+Änderungszustand aller sichtbaren Filialbereiche. Ein `CanDeactivate`-Guard schützt die interne Navigation; beim Neuladen oder
+Schließen des Browserfensters wird zusätzlich die native Browserwarnung aktiviert. Während eines Schreibvorgangs sind das
+vollständige Formular, die Modellauswahl und weitere datenverändernde Aktionen gesperrt. Bei einem Fehler bleiben Eingaben und
+Modellauswahl erhalten; der Store stellt die sichtbare Fehlermeldung bereit.
 
 ## Veröffentlichte Dienstplanansicht
 
@@ -107,9 +119,9 @@ Veröffentlichung den bisherigen Stand, erscheint nach der nächsten Netzwerklad
 - `src/app/components/schichtplan/dienstplan-anlegen-dialog`
 - `src/app/components/schichtplan/dienstplan-monatsliste`
 - `src/app/components/schichtplan/schicht-belegen-dialog`
+- `src/app/components/schichtplan/schichtmodell-formular`
 - `src/app/components/schichtplan/schichtmodelle-filiale`
-- `src/app/components/schichtplan/schichtmodell-bearbeiten-dialog`
-- `src/app/components/schichtplan/dienstplan-abweichende-tage-dialog`
+- `src/app/guards/schichtmodelle-aenderungen.guard.ts`
 - `src/app/pages/schichtplan/dienstplan-ansicht-page`
 - `src/app/pages/schichtplan/dienstplan-planung-page`
 - `src/app/pages/schichtplan/schichtmodelle-page`

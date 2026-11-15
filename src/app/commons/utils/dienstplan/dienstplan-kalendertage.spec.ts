@@ -41,7 +41,7 @@ describe('createDienstplanKalendertage', () => {
     expect(kalendertage.at(-1)?.datum).toBe(letztesDatum);
   });
 
-  it('should require a free structure for recurring overriding weekdays', () => {
+  it('should use a dedicated model template for recurring overriding weekdays', () => {
     const kalendertage = createDienstplanKalendertage({
       monat: '2026-12',
       standardoeffnungsregel: STANDARDOEFFNUNGSREGEL,
@@ -53,7 +53,7 @@ describe('createDienstplanKalendertage', () => {
       kalendertage.find((eintrag) => {
         return eintrag.datum === '2026-12-05';
       })?.tagesstrukturQuelle,
-    ).toBe('freieTagesstruktur');
+    ).toBe('abweichendeWochentagsvorlage');
     expect(
       kalendertage.find((eintrag) => {
         return eintrag.datum === '2026-12-06';
@@ -111,7 +111,7 @@ describe('createDienstplanKalendertage', () => {
         bezeichnung: 'Sonderöffnung',
         sondertagId: 'sonderoeffnung',
         oeffnungsregelQuelle: 'sondertag',
-        tagesstrukturQuelle: 'freieTagesstruktur',
+        tagesstrukturQuelle: 'sondertagsvorlage',
         gesetzlicherFeiertag: { schluessel: 'neujahr', bezeichnung: 'Neujahr' },
       }),
     );

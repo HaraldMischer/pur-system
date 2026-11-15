@@ -2,7 +2,10 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { provideRouter } from '@angular/router';
 
+import { STANDARD_OEFFNUNGSREGEL } from '../../../commons/constants/filialeinstellung.constants';
 import { IFilialeEintrag } from '../../../commons/models/domain/filiale';
 import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { FilialeinstellungStore } from '../../../stores/domain/filialeinstellung.store';
@@ -26,6 +29,7 @@ describe('SchichtmodellePage', () => {
     await TestBed.configureTestingModule({
       imports: [SchichtmodellePage],
       providers: [
+        provideRouter([]),
         {
           provide: AppKontextStore,
           useValue: {
@@ -51,9 +55,27 @@ describe('SchichtmodellePage', () => {
           provide: FilialeinstellungStore,
           useValue: {
             loadFilialeinstellung: vi.fn().mockResolvedValue(undefined),
-            getFilialeinstellungKontext: vi.fn().mockReturnValue({ bestand: { sondertage: [] } }),
+            getFilialeinstellungKontext: vi.fn().mockReturnValue({
+              isLoaded: true,
+              bestand: {
+                oeffnungszeiten: {
+                  standardoeffnungsregel: STANDARD_OEFFNUNGSREGEL,
+                  wochenregeln: {
+                    montag: { modus: 'standard' },
+                    dienstag: { modus: 'standard' },
+                    mittwoch: { modus: 'standard' },
+                    donnerstag: { modus: 'standard' },
+                    freitag: { modus: 'standard' },
+                    samstag: { modus: 'standard' },
+                    sonntag: { modus: 'standard' },
+                  },
+                },
+                sondertage: [],
+              },
+            }),
           },
         },
+        { provide: MatDialog, useValue: { open: vi.fn() } },
       ],
     }).compileComponents();
   });

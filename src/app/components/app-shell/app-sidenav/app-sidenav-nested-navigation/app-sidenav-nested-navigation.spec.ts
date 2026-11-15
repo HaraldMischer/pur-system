@@ -2,6 +2,8 @@
 
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatTree } from '@angular/material/tree';
+import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
 
 import { TNavigationEintrag } from '../../../../commons/models/app/navigation';
@@ -61,6 +63,22 @@ const EINTRAEGE: readonly TNavigationEintrag[] = [
       },
     ],
   },
+  {
+    typ: 'gruppe',
+    id: 'mitarbeiter',
+    label: 'Mitarbeiter',
+    icon: 'groups',
+    kinder: [
+      {
+        typ: 'link',
+        id: 'mitarbeiterliste',
+        label: 'Mitarbeiterliste',
+        icon: 'badge',
+        route: '/mitarbeiter/liste',
+        bereich: 'mitarbeiter',
+      },
+    ],
+  },
 ];
 
 describe('AppSidenavNestedNavigation', () => {
@@ -76,6 +94,7 @@ describe('AppSidenavNestedNavigation', () => {
           { path: 'system/struktur/bearbeiten', component: TestRouteComponent },
           { path: 'system/benutzer/anlegen', component: TestRouteComponent },
           { path: 'system/benutzer/verwalten', component: TestRouteComponent },
+          { path: 'mitarbeiter/liste', component: TestRouteComponent },
         ]),
       ],
     }).compileComponents();
@@ -108,6 +127,66 @@ describe('AppSidenavNestedNavigation', () => {
     childLink?.click();
 
     expect(navigationSelectedSpy).toHaveBeenCalledOnce();
+  });
+
+  it('should close an expanded group when another group is opened', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    const tree = fixture.debugElement.query(By.directive(MatTree))
+      .componentInstance as MatTree<TNavigationEintrag, string>;
+    const system = EINTRAEGE.find((eintrag) => eintrag.id === 'system');
+    const mitarbeiter = EINTRAEGE.find((eintrag) => eintrag.id === 'mitarbeiter');
+    const gruppenButtons = [
+      ...compiled.querySelectorAll<HTMLButtonElement>('button[mat-list-item]'),
+    ];
+
+    gruppenButtons.find((button) => button.textContent?.includes('System'))?.click();
+    fixture.detectChanges();
+    gruppenButtons.find((button) => button.textContent?.includes('Mitarbeiter'))?.click();
+    fixture.detectChanges();
+
+    expect(system && tree.isExpanded(system)).toBe(false);
+    expect(mitarbeiter && tree.isExpanded(mitarbeiter)).toBe(true);
+  });
+
+  it('should keep only the group of the active route expanded after navigation', async () => {
+    const router = TestBed.inject(Router);
+    const tree = fixture.debugElement.query(By.directive(MatTree))
+      .componentInstance as MatTree<TNavigationEintrag, string>;
+    const system = EINTRAEGE.find((eintrag) => eintrag.id === 'system');
+    const mitarbeiter = EINTRAEGE.find((eintrag) => eintrag.id === 'mitarbeiter');
+
+    await router.navigateByUrl('/system/benutzer/verwalten');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await router.navigateByUrl('/mitarbeiter/liste');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(system && tree.isExpanded(system)).toBe(false);
+    expect(mitarbeiter && tree.isExpanded(mitarbeiter)).toBe(true);
+  });
+
+  it('should keep the active route while another group is opened manually', async () => {
+    const router = TestBed.inject(Router);
+    const compiled = fixture.nativeElement as HTMLElement;
+    const tree = fixture.debugElement.query(By.directive(MatTree))
+      .componentInstance as MatTree<TNavigationEintrag, string>;
+    const system = EINTRAEGE.find((eintrag) => eintrag.id === 'system');
+    const mitarbeiter = EINTRAEGE.find((eintrag) => eintrag.id === 'mitarbeiter');
+
+    await router.navigateByUrl('/system/benutzer/verwalten');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const mitarbeiterButton = [
+      ...compiled.querySelectorAll<HTMLButtonElement>('button[mat-list-item]'),
+    ].find((button) => button.textContent?.includes('Mitarbeiter'));
+
+    mitarbeiterButton?.click();
+    fixture.detectChanges();
+
+    expect(router.url).toBe('/system/benutzer/verwalten');
+    expect(system && tree.isExpanded(system)).toBe(false);
+    expect(mitarbeiter && tree.isExpanded(mitarbeiter)).toBe(true);
   });
 
   it.each([

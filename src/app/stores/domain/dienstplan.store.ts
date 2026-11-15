@@ -22,10 +22,9 @@ import {
   ISchichtEintrag,
   ISchichtPausenaktualisierung,
 } from '../../commons/models/domain/schicht';
-import type { ITagesschichtEintrag } from '../../commons/models/domain/schichtmodell';
-import {
-  IFreieTagesschichtSchreibdaten,
+import type {
   ISchichtmodellBestand,
+  ITagesschichtEintrag,
 } from '../../commons/models/domain/schichtmodell';
 import { getFirebaseErrorMessage } from '../../commons/utils/errors/firebase-error-message';
 import { BenutzerStore } from '../app/benutzer.store';
@@ -245,13 +244,11 @@ export const DienstplanStore = signalStore(
        * @param pfad - Vollständiger Filialpfad.
        * @param monat - Monat im Format `YYYY-MM`.
        * @param schichtmodell - Aktives Schichtmodell derselben Filiale.
-       * @param freieTagesschichten - Vollständige freie Strukturen abweichend geöffneter Tage.
        */
       async function createDienstplan(
         pfad: IFilialPfad,
         monat: string,
         schichtmodell: ISchichtmodellBestand,
-        freieTagesschichten: readonly IFreieTagesschichtSchreibdaten[],
       ): Promise<void> {
         await executeWrite(async () => {
           const kontext = requireSchreibkontext(pfad, monat, false);
@@ -264,7 +261,6 @@ export const DienstplanStore = signalStore(
             pfad,
             monat,
             schichtmodell,
-            freieTagesschichten,
             requireBenutzerUid(),
           );
           setKontext(pfad, {

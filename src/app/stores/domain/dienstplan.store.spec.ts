@@ -68,9 +68,9 @@ describe('DienstplanStore', () => {
     await store.loadDienstplanMonat(pfad, '2026-10', false);
     const schichtmodell = createSchichtmodell();
 
-    await store.createDienstplan(pfad, '2026-10', schichtmodell, []);
+    await store.createDienstplan(pfad, '2026-10', schichtmodell);
 
-    expect(createDienstplan).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell, [], 'uid-1');
+    expect(createDienstplan).toHaveBeenCalledWith(pfad, '2026-10', schichtmodell, 'uid-1');
     expect(store.getDienstplanKontext(pfad)?.dienstplaene).toHaveLength(1);
     expect(store.getDienstplanKontext(pfad)?.tagesschichten).toHaveLength(1);
   });
@@ -150,6 +150,8 @@ function createSchichtmodell() {
       id: 'modell-1',
       bezeichnung: 'Standard',
       aktiv: true,
+      vorbereitungsminuten: 0,
+      nachbereitungsminuten: 0,
       erstelltVonUid: 'uid-1',
       aktualisiertVonUid: 'uid-1',
     },

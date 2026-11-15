@@ -8,6 +8,7 @@ import { dienstplanPlanungGuard } from './guards/dienstplan-planung.guard';
 import { initialisierungGuard } from './guards/initialisierung.guard';
 import { masterGuard } from './guards/master.guard';
 import { mitarbeiterVerwaltungGuard } from './guards/mitarbeiter-verwaltung.guard';
+import { schichtmodelleAenderungenGuard } from './guards/schichtmodelle-aenderungen.guard';
 
 export const routes: Routes = [
   // ===== Standardweiterleitung =======================
@@ -63,6 +64,7 @@ export const routes: Routes = [
       {
         path: 'ansicht',
         title: 'Dienstplanübersicht',
+        data: { pageToolbar: true },
         loadComponent: () =>
           import('./pages/schichtplan/dienstplan-ansicht-page/dienstplan-ansicht-page').then(
             (m) => m.DienstplanAnsichtPage,
@@ -82,6 +84,8 @@ export const routes: Routes = [
         path: 'einstellungen',
         title: 'Schichtmodelle',
         canActivate: [dienstplanPlanungGuard],
+        canDeactivate: [schichtmodelleAenderungenGuard],
+        data: { pageToolbar: true },
         loadComponent: () =>
           import('./pages/schichtplan/schichtmodelle-page/schichtmodelle-page').then(
             (m) => m.SchichtmodellePage,
@@ -103,6 +107,7 @@ export const routes: Routes = [
         path: 'liste',
         title: 'Mitarbeiter',
         canActivate: [mitarbeiterVerwaltungGuard],
+        data: { pageToolbar: true },
         loadComponent: () =>
           import('./pages/mitarbeiter/mitarbeiter-liste-page/mitarbeiter-liste-page').then(
             (m) => m.MitarbeiterListePage,
@@ -124,6 +129,7 @@ export const routes: Routes = [
       {
         path: 'oeffnungszeiten',
         title: 'Öffnungszeiten',
+        data: { pageToolbar: true },
         loadComponent: () =>
           import('./pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page').then(
             (m) => m.OeffnungszeitenPage,

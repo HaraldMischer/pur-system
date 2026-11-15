@@ -29,12 +29,18 @@
     <button
       class="app-sidenav-nested-navigation__item"
       mat-list-item
-      matTreeNodeToggle
       type="button"
+      [class.app-sidenav-nested-navigation__item--active-group]="
+        !tree.isExpanded(eintrag) && istGruppeAktiv(eintrag)
+      "
       [attr.aria-label]="eintrag.label + (tree.isExpanded(eintrag) ? ' einklappen' : ' ausklappen')"
+      (click)="toggleGruppe(tree, eintrag)"
     >
       <mat-icon matListItemIcon aria-hidden="true">{{ eintrag.icon }}</mat-icon>
       <span matListItemTitle>{{ eintrag.label }}</span>
+      @if (!tree.isExpanded(eintrag) && istGruppeAktiv(eintrag)) {
+        <span class="app-sidenav-nested-navigation__active-marker" aria-hidden="true"></span>
+      }
       <mat-icon matListItemMeta aria-hidden="true">
         {{ tree.isExpanded(eintrag) ? 'expand_less' : 'expand_more' }}
       </mat-icon>

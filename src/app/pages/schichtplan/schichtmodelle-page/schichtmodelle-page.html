@@ -1,21 +1,21 @@
 <!-- pur-system/src/app/pages/schichtplan/schichtmodelle-page/schichtmodelle-page.html -->
 
-<section class="pur-page schichtmodelle-page">
+<section class="pur-page">
+  <mat-toolbar class="pur-toolbar pur-toolbar--page">
+    <h1 class="pur-toolbar__title" purPageRouteTitle></h1>
+  </mat-toolbar>
+
   <div class="pur-scroll pur-scroll--fill">
     <div class="pur-page__content pur-page__content--limited">
-      <section class="pur-page-section">
-        @if (filialauswahl().length === 0) {
-          <p class="pur-message pur-message--surface pur-message--full" role="status">
-            Wähle mindestens eine Filiale aus.
-          </p>
-        } @else {
-          <div class="schichtmodelle-page__filialen">
-            @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
-              <app-schichtmodelle-filiale [filiale]="auswahl.filiale" [pfad]="auswahl.pfad" />
-            }
-          </div>
+      @if (filialauswahl().length === 0) {
+        <p class="pur-message pur-message--surface pur-message--full" role="status">
+          Wähle mindestens eine Filiale aus.
+        </p>
+      } @else {
+        @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
+          <app-schichtmodelle-filiale [filiale]="auswahl.filiale" [pfad]="auswahl.pfad" />
         }
-      </section>
+      }
     </div>
   </div>
 </section>

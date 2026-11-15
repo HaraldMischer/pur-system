@@ -35,6 +35,10 @@
       outline-offset: -2px;
     }
 
+    &--active-group {
+      color: var(--mat-sys-primary);
+    }
+
     [matListItemTitle] {
       flex: 1 1 auto;
     }
@@ -42,6 +46,14 @@
     [matListItemMeta] {
       margin-inline-start: auto;
     }
+  }
+
+  &__active-marker {
+    flex: 0 0 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mat-sys-primary);
   }
 
   &__children {

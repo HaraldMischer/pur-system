@@ -19,15 +19,13 @@
           Wähle mindestens eine Filiale, um ihre veröffentlichten Dienstpläne anzuzeigen.
         </p>
       } @else {
-        <div class="dienstplan-ansichten">
-          @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
-            <app-dienstplan-ansichtsbereich
-              [filiale]="auswahl.filiale"
-              [pfad]="auswahl.pfad"
-              [monat]="selectedMonat()"
-            />
-          }
-        </div>
+        @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
+          <app-dienstplan-ansichtsbereich
+            [filiale]="auswahl.filiale"
+            [pfad]="auswahl.pfad"
+            [monat]="selectedMonat()"
+          />
+        }
       }
     </div>
   </div>

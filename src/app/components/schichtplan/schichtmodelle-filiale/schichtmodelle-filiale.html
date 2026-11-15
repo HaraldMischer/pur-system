@@ -1,76 +1,127 @@
 <!-- pur-system/src/app/components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale.html -->
 
-<section class="pur-page-section schichtmodelle-filiale">
+<section class="pur-page-section">
   <header class="pur-page-section__header">
     <h3 class="pur-page-section__title">{{ filiale().anzeigename }}</h3>
-  </header>
 
-  <section class="pur-list pur-list--outlined">
-    <header class="pur-list__header pur-list__header--outlined">
-      <h4 class="pur-text pur-text--title-medium">Schichtmodelle</h4>
+    <div class="pur-page-section__header-actions">
+      @if (schichtmodellKontext(); as tageskontext) {
+        @let ausgewaehlterBestand = selectedBestand();
+        <button
+          matButton="tonal"
+          type="button"
+          [matMenuTriggerFor]="schichtmodellMenu"
+          [disabled]="
+            schichtmodellStore.inProgress() ||
+            istNeuanlage() ||
+            !istSchichtmodellBereit() ||
+            tageskontext.schichtmodelle.length === 0
+          "
+        >
+          <span>
+            {{
+              ausgewaehlterBestand
+                ? ausgewaehlterBestand.schichtmodell.bezeichnung
+                : 'Schichtmodell wählen'
+            }}
+          </span>
+          <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
+        </button>
+        <mat-menu #schichtmodellMenu="matMenu">
+          @for (bestand of tageskontext.schichtmodelle; track bestand.schichtmodell.id) {
+            <button
+              mat-menu-item
+              type="button"
+              role="menuitemradio"
+              [attr.aria-checked]="
+                ausgewaehlterBestand
+                  ? ausgewaehlterBestand.schichtmodell.id === bestand.schichtmodell.id
+                  : false
+              "
+              (click)="selectSchichtmodell(bestand.schichtmodell.id)"
+            >
+              <mat-icon aria-hidden="true">
+                {{
+                  ausgewaehlterBestand &&
+                  ausgewaehlterBestand.schichtmodell.id === bestand.schichtmodell.id
+                    ? 'check'
+                    : ''
+                }}
+              </mat-icon>
+              <span>
+                {{ bestand.schichtmodell.bezeichnung }}
+                @if (!bestand.schichtmodell.aktiv) {
+                  · Inaktiv
+                }
+                @if (istAnpassungErforderlich(bestand)) {
+                  · Anpassung erforderlich
+                }
+              </span>
+            </button>
+          }
+        </mat-menu>
+      }
+
       <button
         matButton="filled"
         type="button"
-        [disabled]="schichtmodellStore.inProgress() || !istSchichtmodellBereit()"
-        (click)="openSchichtmodellDialog()"
+        [disabled]="
+          schichtmodellStore.inProgress() ||
+          !istSchichtmodellBereit() ||
+          vorlagen().length === 0 ||
+          istNeuanlage() ||
+          hatUngespeicherteAenderungen()
+        "
+        (click)="createSchichtmodell()"
       >
         <mat-icon>add</mat-icon>
         Schichtmodell hinzufügen
       </button>
-    </header>
+    </div>
+  </header>
 
-    @if (schichtmodellKontext(); as tageskontext) {
-      @if (tageskontext.download && !tageskontext.isLoaded) {
-        <p class="pur-message pur-message--surface pur-message--full" role="status">
-          Schichtmodelle werden geladen …
-        </p>
-      } @else if (tageskontext.error; as fehlermeldung) {
-        <div class="pur-page-section__error-state" role="alert">
-          <p class="pur-message pur-message--error">{{ fehlermeldung }}</p>
-          <button matButton type="button" (click)="retryLoad()">Erneut laden</button>
-        </div>
-      } @else if (tageskontext.isLoaded && tageskontext.schichtmodelle.length === 0) {
-        <p
-          class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
-          role="status"
-        >
-          Für diese Filiale sind noch keine Schichtmodelle angelegt.
-        </p>
-      } @else if (tageskontext.isLoaded) {
-        @for (bestand of tageskontext.schichtmodelle; track bestand.schichtmodell.id) {
-          <div
-            class="pur-list__row modell-details"
-            [class.pur-list__row--inactive]="!bestand.schichtmodell.aktiv"
-          >
-            <div class="pur-list__row-item modell-inhalt">
-              <h5 class="pur-text pur-text--title-large">
-                {{ bestand.schichtmodell.bezeichnung }}
-              </h5>
-              <p class="pur-text pur-text--secondary">
-                Schichtmodell · {{ bestand.schichtmodell.aktiv ? 'Aktiv' : 'Inaktiv' }}
-              </p>
-              <p>
-                {{ bestand.tagesvorlagenschichten.length }} Vorlagenschichten in Wochentags- und
-                Sonntagsvorlage
-              </p>
-            </div>
-            <div class="pur-list__row-item pur-list__row-item--end">
-              <button
-                matButton
-                type="button"
-                [disabled]="schichtmodellStore.inProgress() || !istSchichtmodellBereit()"
-                (click)="openSchichtmodellDialog(bestand)"
-              >
-                Bearbeiten
-              </button>
-            </div>
-          </div>
-        }
-      }
-    } @else {
+  @if (schichtmodellKontext(); as tageskontext) {
+    @if (tageskontext.download && !tageskontext.isLoaded) {
       <p class="pur-message pur-message--surface pur-message--full" role="status">
         Schichtmodelle werden geladen …
       </p>
+    } @else if (tageskontext.error; as fehlermeldung) {
+      <div class="pur-page-section__error-state" role="alert">
+        <p class="pur-message pur-message--error">{{ fehlermeldung }}</p>
+        <button matButton type="button" (click)="retryLoad()">Erneut laden</button>
+      </div>
+    } @else if (
+      !istNeuanlage() && tageskontext.isLoaded && tageskontext.schichtmodelle.length === 0
+    ) {
+      <p
+        class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+        role="status"
+      >
+        Für diese Filiale sind noch keine Schichtmodelle angelegt.
+      </p>
+    } @else if (!istNeuanlage() && tageskontext.isLoaded && !selectedBestand()) {
+      <p
+        class="pur-message pur-message--empty pur-message--surface pur-message--dashed pur-message--full"
+        role="status"
+      >
+        Bitte für diese Filiale ein Schichtmodell wählen.
+      </p>
     }
-  </section>
+  } @else {
+    <p class="pur-message pur-message--surface pur-message--full" role="status">
+      Schichtmodelle werden geladen …
+    </p>
+  }
+
+  @if (istSchichtmodellBereit() && (istNeuanlage() || selectedBestand())) {
+    @for (formularKey of formularTrackKeys(); track formularKey) {
+      <app-schichtmodell-formular
+        [pfad]="pfad()"
+        [vorlagen]="vorlagen()"
+        [bestand]="selectedBestand()"
+        (gespeichert)="handleGespeichert($event)"
+        (abgebrochen)="handleAbgebrochen()"
+      />
+    }
+  }
 </section>

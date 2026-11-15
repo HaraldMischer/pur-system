@@ -5,7 +5,6 @@ import { Timestamp } from 'firebase/firestore';
 import type { IDienstplanKalendertag } from '../../models/domain/dienstplan-kalendertag';
 import type { IGeoeffneteOeffnungsregel } from '../../models/domain/filialeinstellung';
 import type {
-  IFreieTagesschichtSchreibdaten,
   ISchichtmodellBestand,
   ITagesschichtDaten,
   TTagesschichtHerkunft,
@@ -14,6 +13,7 @@ import type {
 } from '../../models/domain/schichtmodell';
 import { assertGueltigeTagesstruktur } from '../../validators/schichtmodell.validator';
 import { createSchichtZeitstempelAusLokalzeiten } from './schicht-lokalzeit';
+import { getTagesschichtHerkunft } from './schichtmodell-vorlagen';
 import { resolveTagesvorlagenschichten } from './tagesvorlagenschichten';
 
 export type TTagesschichtAnlage = ITagesschichtDaten & {
@@ -33,33 +33,27 @@ export class SchichtmodellOeffnungszeitenFehler extends Error {
 export interface IDienstplanTagesschichtenAnfrage {
   kalendertage: readonly IDienstplanKalendertag[];
   schichtmodell: ISchichtmodellBestand;
-  freieTagesschichten: readonly IFreieTagesschichtSchreibdaten[];
   zeitzone: string;
 }
 
 /**
  * Prüft alle aus Modellvorlagen erzeugten Tagesstrukturen gegen die wirksamen Monatsöffnungen.
  *
- * Frei konfigurierte und geschlossene Tage werden dabei nicht durch das Schichtmodell bestimmt.
+ * Geschlossene Tage benötigen keine Modellvorlage.
  */
 export function assertSchichtmodellPasstZuKalendertagen(
   kalendertage: readonly IDienstplanKalendertag[],
   schichtmodell: ISchichtmodellBestand,
 ): void {
   kalendertage.forEach((kalendertag) => {
-    if (
-      !kalendertag.oeffnungsregel.geoeffnet ||
-      kalendertag.tagesstrukturQuelle === 'freieTagesstruktur'
-    ) {
-      return;
-    }
-    const vorlage: TTagesvorlageTyp =
-      kalendertag.tagesstrukturQuelle === 'sonntagsvorlage' ? 'sonntag' : 'wochentag';
+    if (!kalendertag.oeffnungsregel.geoeffnet) return;
+    const vorlage = getTagesvorlage(kalendertag);
     const schichten = resolveTagesvorlagenschichten(
       schichtmodell.tagesvorlagenschichten.filter((schicht) => {
         return schicht.vorlage === vorlage;
       }),
       kalendertag.oeffnungsregel,
+      schichtmodell.schichtmodell,
     );
     assertTagesstrukturMitModellfehler(schichten, kalendertag.oeffnungsregel);
   });
@@ -72,37 +66,17 @@ export function createDienstplanTagesschichten(
   anfrage: IDienstplanTagesschichtenAnfrage,
 ): readonly TTagesschichtAnlage[] {
   assertSchichtmodellPasstZuKalendertagen(anfrage.kalendertage, anfrage.schichtmodell);
-  const freieNachDatum = new Map<string, IFreieTagesschichtSchreibdaten[]>();
-  anfrage.freieTagesschichten.forEach((schicht) => {
-    freieNachDatum.set(schicht.datum, [...(freieNachDatum.get(schicht.datum) ?? []), schicht]);
-  });
   return anfrage.kalendertage.flatMap((kalendertag) => {
     if (!kalendertag.oeffnungsregel.geoeffnet) return [];
-    const freieSchichten = freieNachDatum.get(kalendertag.datum);
-    const verwendetFreieTagesstruktur = kalendertag.tagesstrukturQuelle === 'freieTagesstruktur';
-    if (verwendetFreieTagesstruktur && (!freieSchichten || freieSchichten.length === 0)) {
-      throw new Error(`Für ${kalendertag.datum} fehlt die abweichende Tagesstruktur.`);
-    }
-    const vorlage: TTagesvorlageTyp =
-      kalendertag.tagesstrukturQuelle === 'sonntagsvorlage' ? 'sonntag' : 'wochentag';
-    const herkunft: TTagesschichtHerkunft =
-      verwendetFreieTagesstruktur && kalendertag.oeffnungsregelQuelle === 'sondertag'
-        ? 'sondertag'
-        : vorlage;
-    const schichten: TTagesstrukturSchichtSchreibdaten[] = verwendetFreieTagesstruktur
-      ? freieSchichten!.map((schicht) => {
-          const { datum: _datum, id: _id, ...daten } = schicht;
-          return daten;
-        })
-      : resolveTagesvorlagenschichten(
-          anfrage.schichtmodell.tagesvorlagenschichten.filter((schicht) => {
-            return schicht.vorlage === vorlage;
-          }),
-          kalendertag.oeffnungsregel,
-        );
-    if (verwendetFreieTagesstruktur) {
-      assertGueltigeTagesstruktur(schichten, kalendertag.oeffnungsregel);
-    }
+    const vorlage = getTagesvorlage(kalendertag);
+    const herkunft: TTagesschichtHerkunft = getTagesschichtHerkunft(vorlage);
+    const schichten: TTagesstrukturSchichtSchreibdaten[] = resolveTagesvorlagenschichten(
+      anfrage.schichtmodell.tagesvorlagenschichten.filter((schicht) => {
+        return schicht.vorlage === vorlage;
+      }),
+      kalendertag.oeffnungsregel,
+      anfrage.schichtmodell.schichtmodell,
+    );
     return schichten.map((schicht) => {
       return createTagesschicht(kalendertag.datum, herkunft, schicht, anfrage.zeitzone);
     });
@@ -115,15 +89,23 @@ function assertTagesstrukturMitModellfehler(
 ): void {
   try {
     assertGueltigeTagesstruktur(schichten, oeffnungsregel);
-  } catch (error: unknown) {
-    if (
-      error instanceof Error &&
-      error.message === 'Die Kernzeit der Tagesschicht muss innerhalb der Öffnung liegen.'
-    ) {
-      throw new SchichtmodellOeffnungszeitenFehler();
-    }
-    throw error;
+  } catch {
+    throw new SchichtmodellOeffnungszeitenFehler();
   }
+}
+
+function getTagesvorlage(kalendertag: IDienstplanKalendertag): TTagesvorlageTyp {
+  if (kalendertag.tagesstrukturQuelle === 'sonntagsvorlage') return 'sonntag';
+  if (kalendertag.tagesstrukturQuelle === 'abweichendeWochentagsvorlage') {
+    if (kalendertag.wochentag === 'sonntag') throw new SchichtmodellOeffnungszeitenFehler();
+    return `wochentag:${kalendertag.wochentag}`;
+  }
+  if (kalendertag.tagesstrukturQuelle === 'sondertagsvorlage') {
+    if (!kalendertag.sondertagId) throw new SchichtmodellOeffnungszeitenFehler();
+    return `sondertag:${kalendertag.sondertagId}`;
+  }
+  if (kalendertag.tagesstrukturQuelle === 'wochentagsvorlage') return 'wochentag';
+  throw new SchichtmodellOeffnungszeitenFehler();
 }
 
 function createTagesschicht(
@@ -146,7 +128,7 @@ function createTagesschicht(
     ...(schicht.id ? { id: schicht.id } : {}),
     datum,
     herkunft,
-    ...(herkunft !== 'sondertag' && schicht.id ? { vorlagenschichtId: schicht.id } : {}),
+    ...(schicht.id ? { vorlagenschichtId: schicht.id } : {}),
     bezeichnung: schicht.bezeichnung,
     reihenfolge: schicht.reihenfolge,
     kernbeginnLokalzeit: schicht.beginn.lokalzeit,

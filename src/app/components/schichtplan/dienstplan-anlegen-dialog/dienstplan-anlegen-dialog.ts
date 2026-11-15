@@ -18,7 +18,6 @@ import {
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { firstValueFrom } from 'rxjs';
 
 import { IFilialPfad } from '../../../commons/models/app/firestore-pfad.types';
 import { IDienstplanKalendertag } from '../../../commons/models/domain/dienstplan-kalendertag';
@@ -30,7 +29,6 @@ import {
 import { DienstplanFachfehler } from '../../../services/domain/dienstplan.service';
 import { DienstplanStore } from '../../../stores/domain/dienstplan.store';
 import { HinweisDialog } from '../../shared/hinweis-dialog/hinweis-dialog';
-import { DienstplanAbweichendeTageDialog } from '../dienstplan-abweichende-tage-dialog/dienstplan-abweichende-tage-dialog';
 
 export type TDienstplanAnlegenDialogDaten = {
   readonly pfad: IFilialPfad;
@@ -97,21 +95,7 @@ export class DienstplanAnlegenDialog {
 
     try {
       assertSchichtmodellPasstZuKalendertagen(this.daten.kalendertage ?? [], schichtmodell);
-      const freieTagesschichten = await firstValueFrom(
-        this.dialog
-          .open(DienstplanAbweichendeTageDialog, {
-            data: { kalendertage: this.daten.kalendertage ?? [] },
-            panelClass: ['pur-dialog__panel', 'pur-dialog__panel--large'],
-          })
-          .afterClosed(),
-      );
-      if (!freieTagesschichten) return;
-      await this.dienstplanStore.createDienstplan(
-        this.daten.pfad,
-        this.daten.monat,
-        schichtmodell,
-        freieTagesschichten,
-      );
+      await this.dienstplanStore.createDienstplan(this.daten.pfad, this.daten.monat, schichtmodell);
       this.dialogRef.close(true);
     } catch (error: unknown) {
       if (
@@ -122,7 +106,7 @@ export class DienstplanAnlegenDialog {
           panelClass: ['pur-dialog__panel'],
           data: {
             titel: 'Der Dienstplan wurde nicht angelegt',
-            nachricht: `Das Schichtmodell „${schichtmodell.schichtmodell.bezeichnung}“ passt nicht mehr zu den aktuellen Öffnungszeiten. Bitte passen Sie die Schichtgrenzen an.`,
+            nachricht: `Das Schichtmodell „${schichtmodell.schichtmodell.bezeichnung}“ ist für die aktuellen Öffnungszeiten nicht vollständig oder nicht mehr gültig. Bitte passen Sie die Schichtvorlagen an.`,
           },
         });
         return;

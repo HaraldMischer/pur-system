@@ -13,6 +13,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { MitarbeiterAnlegenDialog } from '../../../components/mitarbeiter/mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog';
 import { MitarbeiterBearbeitenDialog } from '../../../components/mitarbeiter/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog';
@@ -26,12 +27,20 @@ import { AppKontextStore } from '../../../stores/app/app-kontext.store';
 import { BenutzerStore } from '../../../stores/app/benutzer.store';
 import { StammdatenStore } from '../../../stores/app/stammdaten.store';
 import { MitarbeiterStore } from '../../../stores/domain/mitarbeiter.store';
+import { PageRouteTitleDirective } from '../../../directives/page-route-title.directive';
 
 type TMitarbeiterAnsicht = 'aktiv' | 'inaktiv' | 'alle';
 
 @Component({
   selector: 'app-mitarbeiter-liste-page',
-  imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, MitarbeiterCard],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatToolbarModule,
+    MitarbeiterCard,
+    PageRouteTitleDirective,
+  ],
   templateUrl: './mitarbeiter-liste-page.html',
   styleUrl: './mitarbeiter-liste-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

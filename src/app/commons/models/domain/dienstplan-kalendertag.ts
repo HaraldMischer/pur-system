@@ -8,7 +8,12 @@ import type {
 
 export type TDienstplanOeffnungsregelQuelle = 'sondertag' | 'sonntag' | 'wochentag';
 export type TDienstplanTagesstrukturQuelle =
-  'wochentagsvorlage' | 'sonntagsvorlage' | 'freieTagesstruktur' | 'geschlossen';
+  | 'wochentagsvorlage'
+  | 'sonntagsvorlage'
+  | 'abweichendeWochentagsvorlage'
+  | 'sondertagsvorlage'
+  | 'freieTagesstruktur'
+  | 'geschlossen';
 
 export interface IDienstplanGesetzlicherFeiertag {
   schluessel: TGesetzlicherFeiertagSchluessel;

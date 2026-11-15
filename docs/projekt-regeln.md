@@ -27,6 +27,33 @@ Detaildokument keine ausdrücklich begründete Sonderregel beschreibt.
   Größe ausdrücklich mit der Root-Schriftgröße skalieren soll.
 - Zustandsanzeigen dürfen bestehende Seiten-, Listen-, Karten- oder Dialoginhalte nicht unnötig verschieben.
 
+### Seitenaufbau
+
+- Direkt routbare Pages verwenden als gemeinsames Grundgerüst `pur-page` mit einem füllenden Scrollbereich
+  `pur-scroll pur-scroll--fill` und dem darin liegenden Inhaltsbereich `pur-page__content`.
+- Benötigt eine Page eine eigene Seitentoolbar, steht `mat-toolbar` mit `pur-toolbar pur-toolbar--page` direkt innerhalb von
+  `pur-page` und vor dem Scrollbereich. Die Toolbar ist optional.
+- Soll die Inhaltsbreite begrenzt werden, ergänzt der Inhaltsbereich den Modifier `pur-page__content--limited`.
+- Fachlich zusammengehörige Inhaltsbereiche werden innerhalb von `pur-page__content` mit `pur-page-section` gruppiert. Eine
+  solche Section wird nur verwendet, wenn die Page tatsächlich einen entsprechenden Inhaltsbereich enthält.
+- Lokale Wrapperklassen werden nicht ergänzt, wenn das globale Seitenmuster das benötigte Layout bereits vollständig abdeckt.
+
+```html
+<section class="pur-page">
+  <mat-toolbar class="pur-toolbar pur-toolbar--page">
+    <!-- Optionale Seitentoolbar -->
+  </mat-toolbar>
+
+  <div class="pur-scroll pur-scroll--fill">
+    <div class="pur-page__content pur-page__content--limited">
+      <section class="pur-page-section">
+        <!-- Seiteninhalt -->
+      </section>
+    </div>
+  </div>
+</section>
+```
+
 ## Listen, Karten und Aktionen
 
 - Zeilenorientierte, nicht tabellarische Sammlungen verwenden den globalen Block `pur-list`. Tabellen bleiben tatsächlich

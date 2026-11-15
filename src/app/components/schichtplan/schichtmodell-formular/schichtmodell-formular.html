@@ -1,0 +1,129 @@
+<!-- pur-system/src/app/components/schichtplan/schichtmodell-formular/schichtmodell-formular.html -->
+
+<form class="pur-form pur-form--grid schichtmodell-formular" [formGroup]="form" (ngSubmit)="save()">
+  <div class="pur-form__group">
+    <div class="pur-form__row pur-padding--inline-end">
+      <mat-form-field appearance="outline" class="pur-form__item pur-form__item--field">
+        <mat-label>Bezeichnung</mat-label>
+        <input matInput formControlName="bezeichnung" />
+      </mat-form-field>
+      <app-eingabe-minuten
+        class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+        label="Vorlauf"
+        subscriptSizing="dynamic"
+        formControlName="vorbereitungsminuten"
+      />
+      <app-eingabe-minuten
+        class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+        label="Nachlauf"
+        subscriptSizing="dynamic"
+        formControlName="nachbereitungsminuten"
+      />
+      <mat-checkbox
+        class="pur-form__item pur-form__item--checkbox pur-flex__item--fixed-180"
+        formControlName="aktiv"
+      >
+        Schichtmodell aktiv
+      </mat-checkbox>
+    </div>
+  </div>
+
+  <div class="pur-form__group pur-form__group-list">
+    @for (vorlage of vorlagen(); track vorlage.vorlage) {
+      <section class="pur-form__group pur-form__group--outlined">
+        <header class="pur-form__row">
+          <h2 class="pur-form__item pur-flex__item--basis-sm pur-form__group-titel">
+            {{ vorlage.bezeichnung }}
+          </h2>
+          <button
+            matButton
+            class="pur-form__item pur-flex__item--fixed-180"
+            type="button"
+            (click)="addSchicht(vorlage.vorlage)"
+          >
+            <mat-icon>add</mat-icon>
+            Schicht hinzufügen
+          </button>
+        </header>
+
+        <div class="pur-list pur-list--divided">
+          @for (
+            schicht of getVorlageForm(vorlage.vorlage).controls;
+            track schicht;
+            let index = $index
+          ) {
+            <section class="pur-list__row" [formGroup]="schicht">
+              <mat-form-field
+                appearance="outline"
+                class="pur-form__item pur-form__item--field pur-flex__item--basis-sm"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Bezeichnung</mat-label>
+                <input matInput formControlName="bezeichnung" />
+              </mat-form-field>
+              <app-eingabe-zeit
+                class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+                label="Beginn"
+                minutenschritt="15"
+                subscriptSizing="dynamic"
+                formControlName="beginnLokalzeit"
+                [readonly]="index === 0"
+                required
+              />
+              <app-eingabe-zeit
+                class="pur-form__item pur-form__item--field pur-flex__item--fixed-110"
+                label="Ende"
+                minutenschritt="15"
+                subscriptSizing="dynamic"
+                formControlName="endeLokalzeit"
+                [readonly]="index === getVorlageForm(vorlage.vorlage).length - 1"
+                required
+              />
+              <div class="pur-list__row-item pur-list__row-item--end pur-flex__item--fixed-180">
+                <mat-checkbox
+                  aria-label="Mehrfachbelegung erlauben"
+                  formControlName="mehrfachbelegungErlaubt"
+                >
+                  Mehrfach
+                </mat-checkbox>
+                <button
+                  matIconButton
+                  type="button"
+                  aria-label="Schicht entfernen"
+                  [disabled]="getVorlageForm(vorlage.vorlage).length === 1"
+                  (click)="removeSchicht(vorlage.vorlage, index)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </section>
+          }
+        </div>
+      </section>
+    }
+  </div>
+
+  @if (store.error(); as fehlermeldung) {
+    <p class="pur-message pur-message--error pur-message--full" role="alert">
+      {{ fehlermeldung }}
+    </p>
+  }
+
+  <div class="formular-aktionen">
+    <button
+      matButton
+      type="button"
+      [disabled]="store.inProgress() || !hatAenderungen()"
+      (click)="cancel()"
+    >
+      {{ istBearbeitung ? 'Änderungen verwerfen' : 'Abbrechen' }}
+    </button>
+    <button
+      matButton="filled"
+      type="submit"
+      [disabled]="form.invalid || store.inProgress() || !hatAenderungen()"
+    >
+      {{ istBearbeitung ? 'Änderungen speichern' : 'Schichtmodell anlegen' }}
+    </button>
+  </div>
+</form>

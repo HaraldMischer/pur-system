@@ -2,6 +2,7 @@
 
 import type { IGeoeffneteOeffnungsregel } from '../../models/domain/filialeinstellung';
 import type {
+  ISchichtmodellRandzeiten,
   ITagesvorlagenschichtSchreibdaten,
   TTagesstrukturSchichtSchreibdaten,
 } from '../../models/domain/schichtmodell';
@@ -11,11 +12,13 @@ import type {
  *
  * @param schichten - Geordnete oder ungeordnete Schichten der ausgewählten Vorlage.
  * @param oeffnung - Wirksame Öffnung des konkreten Kalendertags.
+ * @param randzeiten - Modellweit gültige Vor- und Nachbereitungsminuten.
  * @returns Vollständige Tagesschichten mit aus der Öffnung abgeleiteten Außengrenzen.
  */
 export function resolveTagesvorlagenschichten(
   schichten: readonly ITagesvorlagenschichtSchreibdaten[],
   oeffnung: IGeoeffneteOeffnungsregel,
+  randzeiten: ISchichtmodellRandzeiten,
 ): TTagesstrukturSchichtSchreibdaten[] {
   const geordneteSchichten = [...schichten].sort((a, b) => a.reihenfolge - b.reihenfolge);
   const letzterIndex = geordneteSchichten.length - 1;
@@ -40,6 +43,8 @@ export function resolveTagesvorlagenschichten(
             tag: oeffnung.endetAmFolgetag ? 'folgetag' : 'starttag',
           }
         : schicht.ende!,
+      vorbereitungsminuten: istErsteSchicht ? randzeiten.vorbereitungsminuten : 0,
+      nachbereitungsminuten: istLetzteSchicht ? randzeiten.nachbereitungsminuten : 0,
     };
   });
 }

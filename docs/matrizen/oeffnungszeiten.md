@@ -69,24 +69,28 @@ Feiertage mit dem Sonntagsprofil noch nicht vollständig abbildet, erfolgt die U
 
 Für regelmäßige Wochentage gilt bei der Monatsplananlage:
 
-| Wochentagsregel                      | Wirksame Öffnung                 | Tagesstruktur im Schichtmodell                                        |
-| ------------------------------------ | -------------------------------- | --------------------------------------------------------------------- |
-| Montag bis Samstag `Standard`        | Allgemeine Standardöffnungsregel | Wochentagsvorlage                                                     |
-| Montag bis Samstag `Abweichend`      | Eigene geöffnete Wochentagsregel | Einmal je Wochentag frei konfigurieren und auf Monatsdaten übertragen |
-| Sonntag `Standard` oder `Abweichend` | Wirksame Sonntagsöffnung         | Sonntagsvorlage                                                       |
-| Beliebiger Wochentag `Geschlossen`   | Keine Kundenöffnung              | Keine Tagesschichten                                                  |
+| Wochentagsregel                      | Wirksame Öffnung                 | Tagesstruktur im Schichtmodell                 |
+| ------------------------------------ | -------------------------------- | ---------------------------------------------- |
+| Montag bis Samstag `Standard`        | Allgemeine Standardöffnungsregel | Allgemeine Wochentagsvorlage                   |
+| Montag bis Samstag `Abweichend`      | Eigene geöffnete Wochentagsregel | Eigene Modellvorlage des jeweiligen Wochentags |
+| Sonntag `Standard` oder `Abweichend` | Wirksame Sonntagsöffnung         | Sonntagsvorlage                                |
+| Beliebiger Wochentag `Geschlossen`   | Keine Kundenöffnung              | Keine Tagesschichten                           |
 
 Ein Feier- oder Sondertag besitzt Vorrang vor der regelmäßigen Wochentagsgruppe. Dadurch wird ein betroffenes Datum nicht
 zusätzlich über die wiederkehrende freie Struktur des Wochentags konfiguriert.
 
 Gesetzliche Feiertage bieten vier betriebliche Öffnungsarten:
 
-| Öffnungsart   | Wirksame Öffnung                             | Tagesstruktur im Schichtmodell                                          |
-| ------------- | -------------------------------------------- | ----------------------------------------------------------------------- |
-| `Standard`    | Allgemeine Standardöffnungsregel der Filiale | Wochentagsvorlage von Montag bis Samstag, Sonntagsvorlage am Sonntag    |
-| `Wie Sonntag` | Aktuell wirksame Sonntagsöffnung             | Sonntagsvorlage ohne zusätzliche Konfiguration bei der Monatsplananlage |
-| `Abweichend`  | Eigene geöffnete Feiertagsregel              | Freie Tagesstruktur bei der Monatsplananlage                            |
-| `Geschlossen` | Keine Kundenöffnung                          | Keine Tagesschichten                                                    |
+| Öffnungsart   | Wirksame Öffnung                             | Tagesstruktur im Schichtmodell                                       |
+| ------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+| `Standard`    | Allgemeine Standardöffnungsregel der Filiale | Wochentagsvorlage von Montag bis Samstag, Sonntagsvorlage am Sonntag |
+| `Wie Sonntag` | Aktuell wirksame Sonntagsöffnung             | Sonntagsvorlage                                                      |
+| `Abweichend`  | Eigene geöffnete Sondertagsregel             | Eigene Modellvorlage anhand der stabilen Sondertag-ID                |
+| `Geschlossen` | Keine Kundenöffnung                          | Keine Tagesschichten                                                 |
+
+Nur geöffnete Regeln mit `Abweichend` benötigen eine zusätzliche Modellvorlage. Wird eine solche Regel neu angelegt oder
+zeitlich verändert, muss ein betroffenes Schichtmodell vor der nächsten Monatsplananlage ergänzt beziehungsweise angepasst
+werden. Vorhandene Monatspläne bleiben als Momentaufnahme unverändert.
 
 `Wie Sonntag` verändert weder den gesetzlichen Feiertagsstatus noch weitere Kalendereigenschaften. Eine spätere Änderung der
 Sonntagsöffnung oder Sonntagsvorlage wirkt auf neu anzulegende Monatspläne; bereits angelegte Pläne bleiben durch ihre

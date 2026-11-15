@@ -4523,6 +4523,449 @@ Feiertage, jährliche Sondertage und einmalige Datumsausnahmen behalten ihre bes
 - [x] Bestehende Dienstplan-Momentaufnahmen bleiben unverändert; neue Monatspläne speichern die korrekt aufgelösten Zeiten.
 - [x] Automatisierte Tests, Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
 
+## 26.1 Abweichende Wochentage bei der Monatsplananlage konfigurieren
+
+### Ziel
+
+Das Schichtmodell behält seine wiederverwendbare Wochentags- und Sonntagsvorlage. Beim Anlegen eines Monatsplans werden jedoch
+nicht nur abweichend geöffnete Feier- und Sondertage, sondern auch regelmäßig abweichend geöffnete Wochentage frei
+konfiguriert. Ein solcher Wochentag wird innerhalb eines Monats nur einmal bearbeitet; die gewählte Schichtaufteilung wird
+anschließend auf alle regulären Vorkommen dieses Wochentags im Monat übertragen.
+
+Standardmäßig geöffnete Tage von Montag bis Samstag verwenden weiterhin die Wochentagsvorlage. Reguläre Sonntage und Tage mit
+`Wie Sonntag` verwenden weiterhin die Sonntagsvorlage. Geschlossene Tage besitzen keine Tagesschichten. Fällt ein regelmäßig
+abweichender Wochentag zusätzlich auf einen wirksamen Feier- oder Sondertag, hat dessen konkrete Tagesregel Vorrang und der Tag
+wird nicht zusätzlich über die Wochentagsgruppe konfiguriert.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/models/domain/dienstplan-kalendertag.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.spec.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.spec.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/
+- src/app/components/schichtplan/dienstplan-abweichende-tage-dialog/
+- src/app/components/schichtplan/dienstplan-monatsliste/dienstplan-monatsliste.spec.ts
+- src/app/pages/schichtplan/dienstplan-planung-page/dienstplan-planung-page.spec.ts
+- src/app/services/domain/dienstplan.service.ts
+- src/app/stores/domain/dienstplan.store.ts
+- docs/matrizen/oeffnungszeiten.md
+- docs/architektur/components/schichtplan.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/stores/dienstplan-store.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_naechste.md
+
+### [x] Schritt 1: Abweichende Tagesstrukturen fachlich bestimmen
+
+- [x] Geöffnete Wochentage mit dem Modus `Abweichend` als frei zu konfigurierende Wochentagsgruppen des Monats bestimmen.
+- [x] Reguläre Vorkommen desselben abweichenden Wochentags innerhalb eines Monats gemeinsam konfigurieren.
+- [x] Abweichend geöffnete Feier- und Sondertage weiterhin als einzelne konkrete Kalendertage konfigurieren.
+- [x] Wirksame Feier- und Sondertage aus der wiederkehrenden Wochentagsgruppe ausschließen, damit jede konkrete Tagesstruktur
+  genau einmal bestimmt wird.
+- [x] Standardtage, reguläre Sonntage, Tage mit `Wie Sonntag` und geschlossene Tage unverändert aus ihren bisherigen Regeln
+  ableiten.
+
+### [x] Schritt 2: Dialog für alle abweichenden Tage verallgemeinern
+
+- [x] Den bisherigen Sondertagsdialog fachlich und technisch zu einem Dialog für abweichende Tage verallgemeinern.
+- [x] Für jede abweichende Wochentagsgruppe Wochentag, wirksame Öffnung und alle betroffenen Monatsdaten anzeigen.
+- [x] Für jeden einzelnen abweichenden Feier- oder Sondertag weiterhin Bezeichnung, Datum und wirksame Öffnung anzeigen.
+- [x] Anzahl, Bezeichnung, Kernzeiten, Vor- und Nachbereitung sowie Mehrfachbelegung mit der bestehenden freien
+  Schichtbearbeitung erfassen.
+- [x] Den Monatsplan erst anlegen, wenn sämtliche erforderlichen abweichenden Tagesstrukturen vollständig und gültig sind.
+
+### [x] Schritt 3: Freie Strukturen in konkrete Monatsdaten auflösen
+
+- [x] Die einmal erfasste Struktur einer abweichenden Wochentagsgruppe auf alle zugehörigen regulären Kalendertage des Monats
+  kopieren.
+- [x] Für jeden betroffenen Kalendertag eigene stabile Tagesschicht-IDs und datumsgebundene Zeitstempel erzeugen.
+- [x] Freie Strukturen unabhängig davon verwenden, ob ihre Öffnungsregel aus einem Wochentag oder einem Feier- und Sondertag
+  stammt.
+- [x] Kernzeiten gegen die jeweilige wirksame Tagesöffnung validieren und weiterhin nur Vor- und Nachbereitung außerhalb der
+  Öffnung zulassen.
+- [x] Monatsplan, Kalender-Momentaufnahme, erste Entwurfsversion und alle Tagesschichten weiterhin atomar anlegen.
+
+### [x] Schritt 4: Dokumentation an das erweiterte Verhalten anpassen
+
+- [x] Fachkonzept und Projektplan um frei konfigurierte regelmäßig abweichende Wochentage ergänzen.
+- [x] Komponenten-, Service- und Store-Dokumentation auf den verallgemeinerten Dialog und die Auflösung je Kalendertag
+  aktualisieren.
+- [x] In der Öffnungszeitenmatrix für jede Öffnungsart die verwendete Vorlage oder freie Tagesstruktur eindeutig festhalten.
+- [x] Den umgesetzten Stand im Projektstand dokumentieren; den erfolgreichen Prüfstand nach der manuellen Abnahme ergänzen.
+
+### [x] Tests und Abschluss
+
+- [x] Unit-Tests für einen einzelnen abweichenden Wochentag mit mehreren regulären Vorkommen im Monat ergänzen.
+- [x] Prioritätsfälle testen, bei denen ein abweichender Wochentag auf einen geöffneten oder geschlossenen Feier- oder
+  Sondertag fällt.
+- [x] Standardtage, reguläre Sonntage, `Wie Sonntag`, abweichende Sondertage und geschlossene Tage als unveränderte
+  Vergleichsfälle absichern.
+- [x] Dialogtests für Gruppierung, Hinzufügen und Entfernen von Schichten, Validierung und vollständige Rückgabe der freien
+  Tagesstrukturen ergänzen.
+- [x] Einen Monatsplan mit abweichendem Montag, regulärem Sonntag und mehreren Sondertagen manuell anlegen und die erzeugten
+  Schichtzeiten kontrollieren.
+- [x] `npm test`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich ausführen.
+
+### [x] Erledigt, wenn
+
+- [x] Jeder regelmäßig abweichend geöffnete Wochentag kann bei der Monatsplananlage mit einer eigenen Schichtaufteilung
+  konfiguriert werden.
+- [x] Eine Wochentagsgruppe muss pro Monat nur einmal bearbeitet werden und erzeugt für jedes reguläre Vorkommen eigene
+  datumsgebundene Tagesschichten.
+- [x] Feier- und Sondertage besitzen Vorrang und werden weder ausgelassen noch doppelt konfiguriert.
+- [x] Tage ohne freie Konfiguration verwenden weiterhin zuverlässig die Wochentags- oder Sonntagsvorlage beziehungsweise
+  bleiben geschlossen.
+- [x] Alle erzeugten Kernzeiten liegen innerhalb der jeweiligen wirksamen Öffnung und vorhandene Monatspläne bleiben
+  unveränderliche Momentaufnahmen.
+- [x] Unit-Tests, betroffene Produktionsbuilds, Dokumentation und manuelle Monatsprüfung sind erfolgreich.
+
+## 26.2 Abweichende Tagesvorlagen im Schichtmodell pflegen
+
+### Ziel
+
+Das Schichtmodell enthält neben der allgemeinen Wochentags- und Sonntagsvorlage alle zusätzlichen Tagesvorlagen, die sich aus
+den aktuell geöffneten Filialregeln mit dem Modus `Abweichend` ergeben. Dazu gehören regelmäßig abweichende Wochentage sowie
+abweichend geöffnete gesetzliche Feiertage und jährlich wiederkehrende Sondertage. Die Vorlagen werden anhand des Wochentags
+beziehungsweise der stabilen Sondertag-ID mit der zugehörigen Öffnungsregel verknüpft; konkrete Kalenderdaten werden nicht im
+Schichtmodell gespeichert.
+
+`Standard` verwendet weiterhin die allgemeine Wochentags- oder Sonntagsvorlage, `Wie Sonntag` die Sonntagsvorlage und
+`Geschlossen` keine Tagesvorlage. Beim Anlegen eines Monatsplans werden daher keine freien Tagesstrukturen mehr abgefragt.
+Stattdessen werden sämtliche Tagesschichten aus dem vollständig geprüften Schichtmodell und den wirksamen Öffnungen des Monats
+abgeleitet und anschließend als unveränderliche Momentaufnahme gespeichert.
+
+Wird eine Öffnungsregel später auf `Abweichend` umgestellt oder zeitlich verändert, bleiben vorhandene Monatspläne
+unverändert. Ein betroffenes Schichtmodell gilt für neue Monatspläne so lange als anpassungsbedürftig, bis die fehlende Vorlage
+ergänzt beziehungsweise ihre Schichtgrenzen an die aktuelle Öffnung angepasst wurden.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/models/domain/schichtmodell.ts
+- src/app/commons/models/domain/dienstplan-kalendertag.ts
+- src/app/commons/utils/dienstplan/dienstplan-kalendertage.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.ts
+- src/app/commons/validators/schichtmodell.validator.ts
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/
+- src/app/components/schichtplan/schichtmodelle-filiale/
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/
+- src/app/services/domain/schichtmodell.service.ts
+- src/app/services/domain/dienstplan.service.ts
+- src/app/stores/domain/schichtmodell.store.ts
+- src/app/stores/domain/dienstplan.store.ts
+- zugehörige `.spec.ts`-Dateien
+- docs/matrizen/oeffnungszeiten.md
+- docs/architektur/components/schichtplan.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/stores/dienstplan-store.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_naechste.md
+
+Zu löschen:
+
+- src/app/components/schichtplan/dienstplan-abweichende-tage-dialog/
+
+### [x] Schritt 1: Abweichende Modellvorlagen fachlich und technisch abbilden
+
+- [x] Die allgemeine Wochentags- und Sonntagsvorlage um zusätzliche Vorlagen für geöffnete Wochentagsregeln mit
+  `Abweichend` ergänzen.
+- [x] Für jeden aktiven, abweichend geöffneten gesetzlichen Feiertag oder jährlichen Sondertag eine eigene Modellvorlage über
+  dessen stabile Sondertag-ID abbilden.
+- [x] Konkrete Kalenderdaten aus den Modellvorlagen heraushalten; die Zuordnung eines Sondertags zu einem Monatsdatum weiterhin
+  über seine Datumsregel auflösen.
+- [x] Eindeutige Vorlagenreferenzen festlegen, sodass Wochentage, systemdefinierte Sondertage und benutzerdefinierte jährliche
+  Sondertage kollisionsfrei unterschieden werden.
+- [x] `Standard`, `Wie Sonntag` und `Geschlossen` weiterhin ohne zusätzliche Modellvorlage behandeln.
+
+### [x] Schritt 2: Modellanlage und Modellbearbeitung erweitern
+
+- [x] Beim Öffnen des Anlegen- oder Bearbeiten-Dialogs die aktuellen Wochenregeln und aktiven Sondertagsdokumente der Filiale
+  vollständig bereitstellen.
+- [x] Für alle aktuell erforderlichen abweichenden Vorlagen eigene Schichtbereiche mit Bezeichnung, Öffnung, Vorlauf, Nachlauf,
+  Schichten und Mehrfachbelegung anzeigen.
+- [x] Neue Modelle nur speichern, wenn alle aktuell erforderlichen abweichenden Vorlagen vollständig und gültig sind.
+- [x] Bei vorhandenen Modellen neu erforderliche Vorlagen als fehlend anzeigen und erst nach bewusster Bearbeitung speichern;
+  keine fachlichen Schichtaufteilungen stillschweigend erzeugen.
+- [x] Nicht mehr erforderliche Vorlagen beim Bearbeiten erkennbar behandeln und kontrolliert entfernen, ohne vorhandene
+  Monatspläne zu verändern.
+
+### [x] Schritt 3: Vollständigkeit und Gültigkeit gegen Öffnungszeiten prüfen
+
+- [x] Für jedes Schichtmodell dynamisch prüfen, ob alle aktuell erforderlichen Vorlagen vorhanden sind und ihre Kernzeiten
+  innerhalb der zugehörigen Öffnung liegen.
+- [x] In der Modellübersicht anpassungsbedürftige Modelle erkennbar kennzeichnen und die Bearbeitung direkt anbieten.
+- [x] Vor der Monatsplananlage dieselbe fachliche Prüfung erneut ausführen und bei einem unvollständigen oder ungültigen Modell
+  die bestehende Meldebox mit einer verständlichen Ursache anzeigen.
+- [x] Die Meldung so formulieren, dass sowohl eine fehlende Vorlage als auch nicht mehr passende Schichtgrenzen abgedeckt sind.
+- [x] Änderungen an Öffnungszeiten oder Sondertagsmodi nicht rückwirkend auf bereits gespeicherte Monatsmomentaufnahmen
+  anwenden.
+
+### [x] Schritt 4: Monatsplan ausschließlich aus Modellvorlagen erzeugen
+
+- [x] Für jeden geöffneten Kalendertag anhand der wirksamen Öffnungsregel die allgemeine oder abweichende Modellvorlage
+  bestimmen.
+- [x] Abweichende Wochentage und abweichende Feier- oder Sondertage ohne erneute freie Eingabe in konkrete datumsgebundene
+  Tagesschichten überführen.
+- [x] Den Dialog für abweichende Tage aus der Monatsplananlage entfernen und die Service- sowie Store-Schnittstellen um freie
+  Tagesstrukturen bereinigen.
+- [x] Plan, erste Entwurfsversion, Kalender-Momentaufnahme und sämtliche Tagesschichten weiterhin erst nach vollständiger
+  Validierung atomar anlegen.
+- [x] Bestehende Monatspläne und ihre Tagesschichten unverändert lesbar und bearbeitbar halten.
+
+### [x] Schritt 5: Dokumentation an den neuen Modellablauf anpassen
+
+- [x] Fachkonzept und Projektplan auf vollständig wiederverwendbare Modellvorlagen für alle geöffneten Abweichungen umstellen.
+- [x] Öffnungszeitenmatrix sowie Komponenten-, Service- und Store-Dokumentation auf die Vorlagenauswahl ohne freien
+  Monatsdialog aktualisieren.
+- [x] Den umgesetzten Stand im Projektstand ergänzen und die bisherige Monatskonfiguration als abgelöst
+  kennzeichnen.
+
+### [x] Tests und Abschluss
+
+- [x] Modelltests für abweichende Wochentage, systemdefinierte Sondertage und benutzerdefinierte jährliche Sondertage ergänzen.
+- [x] Fehlende, zeitlich ungültige und nach einer Einstellungsänderung neu erforderliche Vorlagen testen.
+- [x] Die Ableitung für `Standard`, `Wie Sonntag`, `Abweichend` und `Geschlossen` sowie die Priorität eines Sondertags vor dem
+  Wochentag absichern.
+- [x] Component-Tests für vollständige Modellanlage, nachträgliche Anpassung und die Kennzeichnung anpassungsbedürftiger Modelle
+  ergänzen.
+- [x] Einen Monatsplan ohne zusätzlichen Tagesdialog aus einem vollständigen Modell anlegen und alle erzeugten Schichtzeiten
+  manuell kontrollieren.
+- [x] `npm test`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich ausführen.
+- [x] Fachkonzept, Architektur, Matrix, Projektplan und Projektstand abschließend mit der Implementierung abgleichen.
+
+### [x] Erledigt, wenn
+
+- [x] Ein neues Schichtmodell enthält alle zu den aktuell geöffneten Regeln mit `Abweichend` gehörenden Tagesvorlagen.
+- [x] `Standard`, `Wie Sonntag` und `Geschlossen` benötigen weiterhin keine zusätzliche Vorlage.
+- [x] Neu hinzugekommene oder zeitlich geänderte Abweichungen machen ein Modell für neue Monatspläne erkennbar
+  anpassungsbedürftig.
+- [x] Die Monatsplananlage benötigt keine freie Konfiguration abweichender Tage mehr und erzeugt alle Tagesschichten aus dem
+  geprüften Modell.
+- [x] Vorhandene Monatspläne bleiben von späteren Änderungen an Öffnungszeiten und Schichtmodellen unberührt.
+- [x] Unit-Tests, betroffene Produktionsbuilds, Dokumentation und manuelle Monatsprüfung sind erfolgreich.
+
+## 26.3 Schichtmodellverwaltung auf die Seite verlagern
+
+### Ziel
+
+Die Schichtmodelle einer Filiale werden nicht mehr in einer Modellliste mit nachgelagertem Bearbeitungsdialog verwaltet.
+Stattdessen wählt der Benutzer das zu bearbeitende Modell über ein `mat-select` im Kopf der Schichtmodellseite aus. Sämtliche
+allgemeinen, sonntäglichen und abweichenden Tagesvorlagen des ausgewählten Modells werden unmittelbar darunter in einem
+vollständigen Seitenformular angezeigt und bearbeitet.
+
+Die Neuanlage eines Modells erfolgt weiterhin über eine eigene Aktion im Seitenkopf, führt anschließend jedoch direkt in das
+neue Seitenformular. Änderungen werden erst durch eine bewusste Speicheraktion übernommen. Ein Modellwechsel, eine Neuanlage
+oder das Verlassen der Seite darf ungespeicherte Änderungen nicht unbemerkt verwerfen. Lade-, Leer-, Fehler- und
+Schreibzustände bleiben je ausgewählter Filiale nachvollziehbar.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- src/app/app.routes.ts
+- src/app/components/schichtplan/schichtmodelle-filiale/
+- src/app/pages/schichtplan/schichtmodelle-page/
+- src/app/stores/domain/schichtmodell.store.ts
+- zugehörige `.spec.ts`-Dateien
+- docs/architektur/components/schichtplan.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_naechste.md
+
+Neu hinzuzufügen:
+
+- src/app/components/schichtplan/schichtmodell-formular/
+- src/app/guards/schichtmodelle-aenderungen.guard.ts
+- src/app/guards/schichtmodelle-aenderungen.guard.spec.ts
+
+Zu löschen:
+
+- src/app/components/schichtplan/schichtmodell-bearbeiten-dialog/
+
+### [x] Schritt 1: Seitenaufbau und Modellauswahl umstellen
+
+- [x] Die vorhandene Modellliste durch ein `mat-select` im Kopf des Filialbereichs ersetzen und das ausgewählte Modell als
+      eigenen Auswahlzustand führen.
+- [x] Aktive und inaktive Modelle eindeutig auswählbar halten und anpassungsbedürftige Modelle in der Auswahl verständlich
+      kennzeichnen.
+- [x] Für eine Filiale ohne Modelle einen verständlichen Leerzustand mit direkter Anlageaktion anzeigen.
+- [x] Die Aktion `Schichtmodell hinzufügen` im Seitenkopf beibehalten und ein neu angelegtes Modell unmittelbar auswählen.
+
+### [x] Schritt 2: Schichtmodellformular in die Seite übernehmen
+
+- [x] Die Formularlogik des bisherigen Bearbeitungsdialogs in eine wiederverwendbare, nicht routbare
+      `SchichtmodellFormular`-Component unter `src/app/components/schichtplan` überführen.
+- [x] Bezeichnung, Aktivstatus, allgemeine Wochentagsvorlage, Sonntagsvorlage und sämtliche aktuell erforderlichen
+      abweichenden Tagesvorlagen direkt auf der Seite darstellen.
+- [x] Hinzufügen, Bearbeiten und Entfernen von Vorlagenschichten einschließlich Vorlauf, Nachlauf, Mehrfachbelegung und
+      fachlicher Zeitvalidierung unverändert unterstützen.
+- [x] Eine bewusste Speicheraktion unterhalb beziehungsweise in einer dauerhaft erreichbaren Aktionsleiste anbieten und sie
+      nur bei einer gültigen fachlichen Änderung aktivieren.
+- [x] Während eines Schreibvorgangs das gesamte Modellformular sowie Modellauswahl und weitere datenverändernde Aktionen
+      deaktivieren.
+
+### [x] Schritt 3: Neuanlage und ungespeicherte Änderungen absichern
+
+- [x] Die Neuanlage ohne Bearbeitungsdialog in das Seitenformular integrieren und erst beim Speichern dauerhaft anlegen.
+- [x] Beim Wechsel des ausgewählten Modells, bei einer weiteren Neuanlage und beim Verlassen der Seite vor dem Verwerfen
+      ungespeicherter Änderungen eine verständliche Bestätigung verlangen.
+- [x] Nach erfolgreichem Speichern das gespeicherte Modell ausgewählt lassen und Ausgangszustand, Formularstatus sowie
+      Schreibzustand vollständig aktualisieren.
+- [x] Bei einem Speicherfehler die Eingaben und die Auswahl erhalten, den Schreibzustand beenden und die verständliche
+      Fehlermeldung auf der Seite anzeigen.
+
+### [x] Schritt 4: Dialog entfernen und Dokumentation aktualisieren
+
+- [x] Nach vollständiger Übernahme aller Formularfunktionen den `SchichtmodellBearbeitenDialog` einschließlich seiner nicht
+      mehr benötigten Dateien und Dialogaufrufe entfernen.
+- [x] Die Komponentenarchitektur auf Modellauswahl und direkte Seitenbearbeitung aktualisieren.
+- [x] Projektstand und Todo-Dokumentation an den umgesetzten, noch nicht abschließend geprüften Stand anpassen.
+
+### [x] Schritt 5: Template- und Testkorrekturen abschließen
+
+- [x] Die optionale Auswahl in der `[value]`-Bindung des `mat-select` so ausdrücken, dass die strikte Angular-
+      Templateprüfung weder einen unnötigen Nullish-Coalescing-Operator noch einen möglicherweise undefinierten Bestand
+      meldet.
+- [x] Die Formular-Track-Liste stabil ableiten, damit Angular die Formular-Component nur bei einem bewussten Modell- oder
+      Zustandswechsel neu erzeugt und keine `NG0956`-Warnung ausgibt.
+- [x] Den Test für einen Modellwechsel ohne Änderungen mit einem fachlich vollständigen Modellbestand ausführen und einen
+      separaten unvollständigen Bestand für die Anpassungsprüfung verwenden.
+- [x] Anschließend den betroffenen Produktionsbuild erneut ausführen und erst nach erfolgreicher Prüfung den Buildabschluss
+      markieren.
+
+### [x] Tests und Abschluss
+
+- [x] Component-Tests für Modellauswahl, Leerzustand, Neuanlage, Bearbeitung, Aktivstatus und erfolgreiche Speicherung
+      ergänzen beziehungsweise anpassen.
+- [x] Modellwechsel, Neuanlage und Navigation mit ungespeicherten Änderungen sowie Verwerfen und Abbrechen gezielt testen.
+- [x] Gültigkeits-, Fehler- und Schreibzustände einschließlich deaktivierter Bedienelemente während eines Schreibvorgangs
+      absichern.
+- [x] Die vollständige Modellverwaltung mit mehreren aktiven und inaktiven Modellen sowie vielen abweichenden Tagesvorlagen
+      auf Desktop und kleinem Touch-Viewport manuell prüfen.
+- [x] `npm test`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich ausführen.
+- [x] Architektur-, Projektstand- und Todo-Dokumentation abschließend mit der Implementierung abgleichen.
+
+### [x] Erledigt, wenn
+
+- [x] Ein Schichtmodell wird über das `mat-select` im Seitenkopf gewählt und vollständig direkt auf der Seite dargestellt.
+- [x] Modelle können ohne Bearbeitungsdialog angelegt, geändert und aktiviert oder deaktiviert werden.
+- [x] Sämtliche allgemeinen und abweichenden Tagesvorlagen behalten ihre bisherige Bearbeitungs- und Validierungslogik.
+- [x] Ungespeicherte Änderungen können weder durch Modellwechsel noch durch Neuanlage oder Navigation unbemerkt verloren gehen.
+- [x] Lade-, Leer-, Fehler- und Schreibzustände sind auf der Seite verständlich und verhindern unzulässige Mehrfachaktionen.
+- [x] Der bisherige Schichtmodell-Bearbeitungsdialog und seine Aufrufe sind vollständig entfernt.
+- [x] Unit-Tests, betroffene Produktionsbuilds, Dokumentation und manuelle UI-Prüfung sind erfolgreich.
+
+## 26.4 Vor- und Nachbereitungszeit je Schichtmodell festlegen
+
+### Ziel
+
+Vorbereitungs- und Nachbereitungszeit werden nicht mehr je Tagesvorlage beziehungsweise Vorlagenschicht gepflegt, sondern
+einmal verbindlich für das gesamte Schichtmodell festgelegt. Damit verwenden die allgemeine Wochentagsvorlage, die
+Sonntagsvorlage und sämtliche abweichenden Tagesvorlagen eines Modells dieselben Randzeiten.
+
+Das Schichtmodell-Dokument speichert die nicht negativen `vorbereitungsminuten` und `nachbereitungsminuten`. Die
+Vorlagenschichten enthalten ausschließlich ihre fachlichen Schichtdaten und keine eigenen Randminuten mehr. Beim Anlegen eines
+Monatsplans wird die modellweite Vorbereitungszeit auf die erste konkrete Tagesschicht und die modellweite
+Nachbereitungszeit auf die letzte konkrete Tagesschicht des geöffneten Tages übertragen. Besteht eine Tagesstruktur nur aus
+einer Schicht, erhält diese beide Werte.
+
+Die erzeugten Tagesschichten speichern die übernommenen Minuten weiterhin als unveränderliche Momentaufnahme. Spätere
+Änderungen am Schichtmodell verändern dadurch keine vorhandenen Monatspläne. Eine Migration oder Kompatibilitätslogik für
+bereits gespeicherte Schichtmodelle ist nicht erforderlich; vorhandene Modelle werden vor der Umstellung gelöscht und danach
+vollständig neu angelegt.
+
+### Betroffene Dateien
+
+Änderungen:
+
+- src/app/commons/models/domain/schichtmodell.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.ts
+- src/app/commons/utils/dienstplan/dienstplan-tagesschichten.spec.ts
+- src/app/commons/validators/schichtmodell.validator.ts
+- src/app/commons/validators/schichtmodell.validator.spec.ts
+- src/app/components/schichtplan/schichtmodell-formular/schichtmodell-formular.ts
+- src/app/components/schichtplan/schichtmodell-formular/schichtmodell-formular.html
+- src/app/components/schichtplan/schichtmodell-formular/schichtmodell-formular.spec.ts
+- src/app/components/schichtplan/schichtmodelle-filiale/schichtmodelle-filiale.spec.ts
+- src/app/components/schichtplan/dienstplan-anlegen-dialog/dienstplan-anlegen-dialog.spec.ts
+- src/app/services/domain/schichtmodell.service.ts
+- src/app/services/domain/dienstplan.service.ts
+- src/app/services/domain/dienstplan.service.spec.ts
+- src/app/stores/domain/dienstplan.store.spec.ts
+- docs/architektur/components/schichtplan.md
+- docs/architektur/services/dienstplan-service.md
+- docs/architektur/services/schichtmodell-service.md
+- docs/fachkonzepte/dienst-und-schichtplanung.md
+- docs/projekt-plan.md
+- docs/projekt-stand.md
+- docs/todo_naechste.md
+
+### [x] Schritt 1: Datenmodell und Validierung auf modellweite Randzeiten umstellen
+
+- [x] `vorbereitungsminuten` und `nachbereitungsminuten` als nicht negative ganzzahlige Werte am Schichtmodell-Dokument
+  speichern.
+- [x] Vorbereitungs- und Nachbereitungsminuten aus den gespeicherten Vorlagenschichten entfernen.
+- [x] Modell-, Mapper- und Validatorlogik so umstellen, dass die Randzeiten genau einmal je Schichtmodell geprüft und
+  geschrieben werden.
+- [x] Keine Migration, Ableitung oder Kompatibilitätsbehandlung für bestehende Schichtmodelle umsetzen.
+- [x] Firestore Rules unverändert auf Pfad- und CRUD-Berechtigungen beschränken; die fachliche Feldvalidierung im
+  TypeScript-Code und dessen Tests halten.
+
+### [x] Schritt 2: Schichtmodellformular vereinfachen
+
+- [x] Vorbereitungs- und Nachbereitungszeit einmal im allgemeinen Modellbereich neben Bezeichnung und Aktivstatus erfassen.
+- [x] Die beiden Eingaben aus den Köpfen aller Tagesvorlagen entfernen.
+- [x] Neuanlage, Bearbeitung, Änderungsvergleich, Zurücksetzen und Schreibsperre um die modellweiten Werte ergänzen.
+- [x] Beim Hinzufügen, Entfernen oder Neuverteilen von Vorlagenschichten keine Randminuten mehr zwischen Schichten
+  übertragen.
+
+### [x] Schritt 3: Modellweite Werte in die Monatsmomentaufnahme übernehmen
+
+- [x] Bei jedem geöffneten Kalendertag die modellweite Vorbereitungszeit auf die erste erzeugte Tagesschicht übertragen.
+- [x] Die modellweite Nachbereitungszeit auf die letzte erzeugte Tagesschicht übertragen; bei genau einer Schicht beide Werte
+  auf derselben Tagesschicht speichern.
+- [x] Innere Tagesschichten weiterhin ohne Vor- und Nachbereitungsminuten erzeugen.
+- [x] Die konkreten Tagesschichten einschließlich der übernommenen Randminuten als unveränderliche Monatsmomentaufnahme
+  speichern.
+- [x] Spätere Änderungen der Modellwerte nicht auf vorhandene Monatspläne oder Dienstplanversionen anwenden.
+
+### [x] Schritt 4: Bestehende Modelldaten kontrolliert ersetzen und Dokumentation abschließen
+
+- [x] Vorhandene Schichtmodelle vor der manuellen Abnahme kontrolliert aus Firestore löschen.
+- [x] Benötigte Modelle anschließend vollständig mit den neuen modellweiten Vor- und Nachbereitungszeiten anlegen.
+- [x] Fachkonzept, Architektur, Projektplan und Projektstand abschließend mit der Implementierung abgleichen.
+
+### [x] Tests und Abschluss
+
+- [x] Modell- und Validator-Tests für gültige Randzeiten, negative Werte, Dezimalwerte und fehlende Pflichtwerte ergänzen.
+- [x] Formular-Tests für Neuanlage, Bearbeitung, unveränderten Zustand und modellweite Anzeige der beiden Werte ergänzen.
+- [x] Die Übernahme auf erste und letzte Tagesschicht bei einer, zwei und mehreren Schichten absichern.
+- [x] Prüfen, dass unterschiedliche allgemeine, sonntägliche und abweichende Tagesvorlagen immer dieselben Modellwerte
+  übernehmen.
+- [x] Prüfen, dass vorhandene Monatsmomentaufnahmen nach einer späteren Modelländerung unverändert bleiben.
+- [x] `npm test`, `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich ausführen.
+- [x] Die Schichtmodellverwaltung und einen neu angelegten Monatsplan auf Desktop sowie einem kleinen Touch-Viewport manuell
+  prüfen.
+- [x] Architektur-, Fach-, Projektstand- und Todo-Dokumentation abschließend mit der Implementierung abgleichen.
+
+### [x] Erledigt, wenn
+
+- [x] Jedes Schichtmodell besitzt genau eine Vorbereitungs- und eine Nachbereitungszeit.
+- [x] Tagesvorlagen und Vorlagenschichten besitzen keine eigenen Randminuten mehr.
+- [x] Erste und letzte konkrete Tagesschicht übernehmen die Modellwerte korrekt; eine einzelne Schicht übernimmt beide Werte.
+- [x] Vorhandene Monatspläne bleiben nach einer Änderung des Schichtmodells unverändert.
+- [x] Alte Schichtmodelle wurden ohne Migration gelöscht und die benötigten Modelle in der neuen Struktur angelegt.
+- [x] Unit-Tests, betroffene Produktionsbuilds, Dokumentation und manuelle Prüfung sind erfolgreich.
+
 ## 31. Firmenweite Filialübersicht für Filialkonten bereitstellen
 
 ### Ziel
@@ -4562,16 +5005,16 @@ und operative Daten fremder Filialen bleiben unzugänglich; Mitarbeiter der ande
 ### [x] Schritt 1: Firmenweiten Filial-Lesezugriff absichern
 
 - [x] Die Firestore Rules so erweitern, dass ein aktives Filialkonto die obersten Filialstammdokumente der zugeordneten Firma
-      lesen kann.
+  lesen kann.
 - [x] Einstellungen, Schichtmodelle, Dienstpläne und alle anderen Untercollections fremder Filialen weiterhin sperren.
 - [x] Rules-Tests für erlaubte Firmenfilialen sowie Filialen fremder Firmen und fremde Untercollections ergänzen.
 
 ### [x] Schritt 2: Filialübersicht beim Sitzungsstart laden
 
 - [x] Beim Filial-Sitzungsstart alle obersten Filialstammdokumente der eigenen Firma mit `networkFirst` laden und im
-      Stammdatenbestand halten.
+  Stammdatenbestand halten.
 - [x] Bei einem erfolgreichen Online-Start die vollständige Filialübersicht im persistenten Firestore-Cache aktualisieren und
-      bei einem technischen Serverfehler auf den vorhandenen Cachebestand zurückfallen.
+  bei einem technischen Serverfehler auf den vorhandenen Cachebestand zurückfallen.
 - [x] Den operativen App-Kontext und die ausgewählte Filiale unverändert auf die Profilzuordnung begrenzen.
 - [x] Mitarbeiter und Feature-Daten weiterhin ausschließlich im bisher erlaubten Filialkontext laden.
 - [x] Lade-, Cache-, Fehler- und Resetverhalten durch Service- und Store-Tests absichern.
@@ -4586,12 +5029,12 @@ und operative Daten fremder Filialen bleiben unzugänglich; Mitarbeiter der ande
 ### [x] Tests und Abschluss
 
 - [x] `npm test` mit 962 von 962 Unit-Tests und `npm run test:rules` mit 63 von 63 Firestore-Emulator-Tests erfolgreich
-      ausgeführt.
+  ausgeführt.
 - [x] `npm run build:master`, `npm run build:office` und `npm run build:filiale` erfolgreich ausgeführt.
 - [x] Mit einem realen Filialkonto geprüft, dass die Firmenfilialen nach erfolgreichem Online-Start offline in den
-      Mitarbeiterdialogen verfügbar sind, ohne fremde operative Filialdaten zu öffnen.
+  Mitarbeiterdialogen verfügbar sind, ohne fremde operative Filialdaten zu öffnen.
 - [x] Mit einem bereits vorhandenen Cache geprüft, dass ein Online-Start die vollständige Filialübersicht mit `networkFirst`
-      aktualisiert.
+  aktualisiert.
 - [x] Die aktualisierten Firestore Rules erfolgreich im Projekt `pur-system` veröffentlicht.
 - [x] Den umgesetzten und geprüften Stand in `docs/projekt-stand.md` dokumentiert und das abgeschlossene Todo verschoben.
 
@@ -4599,11 +5042,11 @@ und operative Daten fremder Filialen bleiben unzugänglich; Mitarbeiter der ande
 
 - [x] Ein Filialkonto kann alle obersten Filialstammdokumente seiner Firma lesen, aber keine fremden Filial-Untercollections.
 - [x] Der Sitzungsstart lädt die firmenweite Filialübersicht und hält sie im persistenten Cache, ohne den eigenen operativen
-      Filialkontext zu erweitern.
+  Filialkontext zu erweitern.
 - [x] Ein Online-Start aktualisiert die vollständige Filialübersicht mit `networkFirst`; ein technischer Serverfehler verwendet
-      den zuvor vollständig aufgebauten Cachebestand.
+  den zuvor vollständig aufgebauten Cachebestand.
 - [x] Bei der Mitarbeiteranlage und -bearbeitung ist die eigene Filiale verpflichtend; weitere aktive Firmenfilialen sind,
-      sofern vorhanden, optional auswählbar.
+  sofern vorhanden, optional auswählbar.
 - [x] Mitarbeiter-, Dienstplan- und andere Feature-Daten fremder Filialen bleiben außerhalb des geladenen und erlaubten
-      Datenraums.
+  Datenraums.
 - [x] Rules-Tests, Unit-Tests, betroffene Produktionsbuilds, Offline-Prüfung und Dokumentation sind erfolgreich.

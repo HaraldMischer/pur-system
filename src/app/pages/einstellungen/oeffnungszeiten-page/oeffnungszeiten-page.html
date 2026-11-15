@@ -1,25 +1,26 @@
 <!-- pur-system/src/app/pages/einstellungen/oeffnungszeiten-page/oeffnungszeiten-page.html -->
 
-<section class="pur-page oeffnungszeiten-page">
+<section class="pur-page">
+  <mat-toolbar class="pur-toolbar pur-toolbar--page">
+    <h1 class="pur-toolbar__title" purPageRouteTitle></h1>
+  </mat-toolbar>
+
   <div class="pur-scroll pur-scroll--fill">
     <div class="pur-page__content pur-page__content--limited">
-      <section class="pur-page-section">
-        <p class="pur-message pur-message--surface pur-message--full">
-          Priorität der Öffnungsregeln: selbst angelegter jährlicher Sondertag → gesetzlicher Feiertag oder automatisch
-          angelegter jährlicher Sondertag → Wochentagsregel.
+      @if (filialauswahl().length === 0) {
+        <p class="pur-message pur-message--surface pur-message--full" role="status">
+          Wähle mindestens eine Filiale aus.
         </p>
-        @if (filialauswahl().length === 0) {
-          <p class="pur-message pur-message--surface pur-message--full" role="status">
-            Wähle mindestens eine Filiale aus.
-          </p>
-        } @else {
-          <div class="filial-oeffnungszeiten">
-            @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
-              <app-oeffnungszeiten-filiale [filiale]="auswahl.filiale" [pfad]="auswahl.pfad" />
-            }
-          </div>
+      } @else {
+        @for (auswahl of filialauswahl(); track auswahl.filiale.id) {
+          <app-oeffnungszeiten-filiale [filiale]="auswahl.filiale" [pfad]="auswahl.pfad" />
         }
-      </section>
+      }
+
+      <p class="pur-message pur-message--surface pur-message--full">
+        Priorität der Öffnungsregeln: selbst angelegter jährlicher Sondertag → gesetzlicher Feiertag oder automatisch
+        angelegter jährlicher Sondertag → Wochentagsregel.
+      </p>
     </div>
   </div>
 </section>

@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
+import { provideRouter } from '@angular/router';
 
 import { MitarbeiterAnlegenDialog } from '../../../components/mitarbeiter/mitarbeiter-anlegen-dialog/mitarbeiter-anlegen-dialog';
 import { MitarbeiterBearbeitenDialog } from '../../../components/mitarbeiter/mitarbeiter-bearbeiten-dialog/mitarbeiter-bearbeiten-dialog';
@@ -146,6 +147,7 @@ describe('MitarbeiterListePage', () => {
     TestBed.configureTestingModule({
       imports: [MitarbeiterListePage],
       providers: [
+        provideRouter([]),
         { provide: MatDialog, useValue: dialogMock },
         {
           provide: AppKontextStore,

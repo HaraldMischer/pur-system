@@ -261,6 +261,7 @@ describe('resolveOeffnungsregel', () => {
         tag: 24,
       }),
       aktiv: false,
+      modus: 'abweichend' as const,
     };
 
     expect(
